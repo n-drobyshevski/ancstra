@@ -41,3 +41,16 @@
 - **Web mode** triggers full GDPR obligations. See Web Mode Readiness Gate in the security assessment spec.
 - Face embeddings (row 4) and DNA data (row 13) are deferred to Phases 3 and post-launch respectively. DPIA required before implementation.
 - Art. 9 special category data (rows 4, 5, 13) requires explicit consent — not just legitimate interest.
+
+## Article 9 Special Category Data — Event Types
+
+The following `event_type` values in the `events` table may reveal GDPR Article 9 special category data when linked to living persons:
+
+| Event Type | Special Category | GDPR Basis Required |
+|-----------|-----------------|-------------------|
+| `baptism` | Religious affiliation | Art. 9(2)(a) explicit consent |
+| `confirmation` | Religious affiliation | Art. 9(2)(a) explicit consent |
+
+**Mitigation (implemented via PE-1):** The comprehensive living-person filter (ADR-009) strips all events except birth year for living persons viewed by viewer/export/AI contexts. This prevents religious inference for non-privileged viewers.
+
+**Remaining risk:** Owner and admin roles can see all events for living persons. This is acceptable under the household exemption (local mode) and legitimate interest for the tree owner (web mode), but should be documented in the privacy policy.
