@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { WorkspaceTabs, type WorkspaceView } from './workspace-tabs';
 import { useSearchParams } from 'next/navigation';
 import { usePersonConflicts } from '@/lib/research/evidence-client';
+import { BoardTab } from '../board/board-tab';
 
 interface PersonSummary {
   id: string;
@@ -76,15 +77,21 @@ function ShellInner({ person, children }: WorkspaceShellProps) {
       {/* Tab content */}
       <div>
         {children ?? (
-          <div className="py-12 text-center text-sm text-muted-foreground">
-            {activeView === 'board' && 'Evidence board coming soon.'}
+          <>
+            {activeView === 'board' && <BoardTab personId={person.id} />}
             {activeView === 'conflicts' && (
-              conflicts.length === 0
-                ? 'No conflicts detected.'
-                : `${conflicts.length} conflict(s) found.`
+              <div className="py-12 text-center text-sm text-muted-foreground">
+                {conflicts.length === 0
+                  ? 'No conflicts detected.'
+                  : `${conflicts.length} conflict(s) found.`}
+              </div>
             )}
-            {activeView === 'timeline' && 'Timeline view coming soon.'}
-          </div>
+            {activeView === 'timeline' && (
+              <div className="py-12 text-center text-sm text-muted-foreground">
+                Timeline view coming soon.
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
