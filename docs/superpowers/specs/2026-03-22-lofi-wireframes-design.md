@@ -1,6 +1,6 @@
 # Lo-Fi Wireframes — Design Spec
 
-> 20 component wireframes (14 desktop + 6 mobile) for Phase 1 screens.
+> 21 component wireframes (15 desktop + 6 mobile) for Phase 1 screens.
 > Real component shapes in desaturated palette. Same HTML-to-Figma capture pipeline.
 
 ---
@@ -26,7 +26,7 @@ The persistent layout that wraps every page. All wireframes inherit this structu
 |  +------------------------------------------+----------+
 |S |                                           |  Detail  |
 |i |                                           |  Panel   |
-|d |           Page Content                    |  380px   |
+|d |           Page Content                    |  400px   |
 |e |           (fluid width)                   | (optional|
 |b |                                           |  only on |
 |a |                                           |  tree)   |
@@ -53,11 +53,11 @@ The persistent layout that wraps every page. All wireframes inherit this structu
 - Page-specific padding (24px default)
 - No max-width constraint (content fills available space)
 
-**Detail panel (380px, Tree View only):**
+**Detail panel (400px, Tree View only):**
 - Right-side Sheet component, visible only when a person is selected on the tree
 - Resizable via drag on left edge (min 300px, max 500px, persisted)
 - Header: avatar + name + dates + close button
-- Tabs: Overview | Events | Sources
+- Tabs: Overview | Sources | Media* | Matches* (disabled future tabs with tooltip)
 - All other pages: panel not rendered, content uses full width
 
 ### Mobile Shell
@@ -119,7 +119,7 @@ The persistent layout that wraps every page. All wireframes inherit this structu
 
 ---
 
-## Screen Specifications — Desktop (14)
+## Screen Specifications — Desktop (15)
 
 ### WF-01: Dashboard (default)
 
@@ -161,7 +161,7 @@ The persistent layout that wraps every page. All wireframes inherit this structu
 - No detail panel (full-width canvas)
 
 **Content:**
-- **Toolbar** (48px, floating at top of canvas): View selector tabs (Pedigree | Ancestors | Descendants | Hourglass), spacer, zoom controls (-, +, fit), export dropdown
+- **Toolbar** (48px, floating at top of canvas): View selector tabs (Pedigree | Ancestors | Descendants | Hourglass), person search input ("Search person..."), spacer, zoom controls (-, +, fit), export dropdown
 - **Tree canvas** (full remaining area): 8-10 tree nodes connected with lines. Mix of male/female/unknown nodes. Dagre auto-layout (top-down). Nodes show: avatar initials + name + dates + completion bar (all in grayscale)
 - **Minimap** (140x90px, bottom-right corner): simplified dot view with viewport rectangle
 - **Floating "+" button** (bottom-left): add person to canvas
@@ -184,15 +184,15 @@ The persistent layout that wraps every page. All wireframes inherit this structu
 
 **Layout:**
 - App shell with sidebar collapsed
-- Detail panel open (380px, right side)
+- Detail panel open (400px, right side)
 - Canvas occupies remaining width (~836px)
 
 **Canvas (left):** Same as WF-03 but narrower. One node visually highlighted (selected state: ring outline).
 
-**Detail Panel (right, 380px):**
+**Detail Panel (right, 400px):**
 - Header: avatar (44px circle) + name (text-lg semibold) + dates (text-sm muted) + close X button
 - Completion ring (44px) in top-right of header
-- Tabs: Overview | Events | Sources (border-bottom active indicator)
+- Tabs: Overview | Sources | Media* | Matches* (disabled future tabs with tooltip) (border-bottom active indicator)
 - Overview tab content:
   - Relationships section: Father, Mother, Spouse(s), Children — each as a linked name
   - "Add Relative" dropdown button
@@ -288,6 +288,7 @@ The persistent layout that wraps every page. All wireframes inherit this structu
   - Search input at top (auto-focused, placeholder "Search persons, actions...")
   - **Results grouped:**
     - "Persons" group: 3-4 person results (avatar + name + dates)
+    - "Research" group: 1-2 matching research sessions (if query matches session title)
     - "Actions" group: "Add Person", "Import GEDCOM", "New Research Session", "Settings"
   - Keyboard hint at bottom: arrow keys to navigate, Enter to select, Esc to close
 
@@ -338,11 +339,33 @@ The persistent layout that wraps every page. All wireframes inherit this structu
   - Radio group: Light / Dark / System
   - Preview swatch of current theme
 
+### WF-15: Person Detail Page (standalone)
+
+**Frame:** 1280px wide
+
+**Layout:** App shell, no detail panel. Content centered at max-width 800px.
+
+**Content:**
+This is the full-page view at `/person/[id]` — the destination after creating a person, or when navigating from search results. Uses the same content structure as the tree's detail panel but as primary page content (not a sheet).
+
+- **Header:** large avatar (56px) + name (text-xl bold) + dates + completion ring (56px)
+- **Action bar:** "Edit" button, "Add Relative" dropdown, "View on Tree" link
+- **Tabs:** Overview | Sources | Media* | Matches* (disabled future tabs with tooltip)
+- **Overview tab:**
+  - Event timeline (chronological, using EventTimeline component)
+  - Relationships section: cards for Father, Mother, Spouse(s), Children — each clickable
+  - Notes section
+- **Sources tab:** list of linked sources with citation text
+
+> Note: This screen shares content structure with WF-05's detail panel. The difference is layout context — here it's the main page content, not a side sheet.
+
 ---
 
 ## Screen Specifications — Mobile (6)
 
-### WF-15: Mobile Tree View
+> **Note on mobile Import and Settings:** These screens reflow to single-column on mobile using the same content as their desktop versions (WF-08, WF-14). No separate mobile wireframes — the mobile shell (top bar + bottom tabs) wraps the same content at 375px width. The 5-step import wizard stacks vertically; settings tabs become an accordion on mobile.
+
+### WF-16: Mobile Tree View
 
 **Frame:** 375px wide
 
@@ -354,7 +377,7 @@ The persistent layout that wraps every page. All wireframes inherit this structu
 - No toolbar (pinch to zoom, tap node to select)
 - When node tapped: bottom sheet rises with person summary + "View Detail" button
 
-### WF-16: Mobile Person Detail
+### WF-17: Mobile Person Detail
 
 **Frame:** 375px wide, tall (~800px)
 
@@ -363,12 +386,12 @@ The persistent layout that wraps every page. All wireframes inherit this structu
 **Content:**
 - Drag handle at top (centered bar)
 - Person header: avatar + name + dates + completion ring
-- Tabs: Overview | Events | Sources
+- Tabs: Overview | Sources | Media* | Matches* (disabled future tabs with tooltip)
 - Single-column content
 - "Edit" button + "Add Relative" button in header actions
 - Swipe down or X to dismiss
 
-### WF-17: Mobile Person Create Form
+### WF-18: Mobile Person Create Form
 
 **Frame:** 375px wide, tall (~900px)
 
@@ -381,7 +404,7 @@ The persistent layout that wraps every page. All wireframes inherit this structu
 - Events section collapsed (accordion)
 - Sticky "Save" button at bottom (fixed, always visible)
 
-### WF-18: Mobile Search Results
+### WF-19: Mobile Search Results
 
 **Frame:** 375px wide
 
@@ -393,7 +416,7 @@ The persistent layout that wraps every page. All wireframes inherit this structu
 - Stacked person result cards (full width, 1-column)
 - Filter bottom sheet (shown partially): sex checkboxes, living radio, year range
 
-### WF-19: Mobile Research Sessions
+### WF-20: Mobile Research Sessions
 
 **Frame:** 375px wide
 
@@ -404,7 +427,7 @@ The persistent layout that wraps every page. All wireframes inherit this structu
 - Stacked session cards (1-column, full width)
 - Each card: title, note count, person tags, snippet
 
-### WF-20: Mobile Dashboard
+### WF-21: Mobile Dashboard
 
 **Frame:** 375px wide
 
@@ -419,8 +442,8 @@ The persistent layout that wraps every page. All wireframes inherit this structu
 
 ## Figma Organization
 
-- Desktop wireframes (WF-01 through WF-14): page "3. Wireframes-Desktop"
-- Mobile wireframes (WF-15 through WF-20): page "4. Wireframes-Mobile"
+- Desktop wireframes (WF-01 through WF-15): page "3. Wireframes-Desktop"
+- Mobile wireframes (WF-16 through WF-21): page "4. Wireframes-Mobile"
 
 ---
 
@@ -445,12 +468,13 @@ The persistent layout that wraps every page. All wireframes inherit this structu
   wf-12-research-sessions.html
   wf-13-research-detail.html
   wf-14-settings.html
-  wf-15-mobile-tree.html
-  wf-16-mobile-detail.html
-  wf-17-mobile-form.html
-  wf-18-mobile-search.html
-  wf-19-mobile-research.html
-  wf-20-mobile-dashboard.html
+  wf-15-person-detail.html
+  wf-16-mobile-tree.html
+  wf-17-mobile-detail.html
+  wf-18-mobile-form.html
+  wf-19-mobile-search.html
+  wf-20-mobile-research.html
+  wf-21-mobile-dashboard.html
 ```
 
 ---
