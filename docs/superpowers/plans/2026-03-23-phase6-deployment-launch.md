@@ -88,17 +88,38 @@ pnpm-workspace.yaml                 — add "tests" to packages list
 
 This is the most critical task — without it, nothing connects to Turso in production.
 
+**Critical design decision: sync vs async driver divergence.**
+
+`drizzle-orm/better-sqlite3` returns `BetterSQLite3Database` (sync methods: `.get()`, `.all()`, `.run()`). `drizzle-orm/libsql` returns `LibSQLDatabase` (async methods: `.get()`, `.all()`, `.run()` return Promises).
+
+**Strategy: Use `@libsql/client` everywhere.** The `@libsql/client` package supports both local SQLite files AND remote Turso URLs. By always using the libsql driver, we get a unified async API regardless of deployment mode. Local files use `file:` URLs instead of `libsql://`.
+
+This means:
+- Local mode: `createClient({ url: 'file:~/.ancstra/ancstra.sqlite' })`
+- Web mode: `createClient({ url: 'libsql://...', authToken: '...' })`
+- Same Drizzle driver (`drizzle-orm/libsql`) in both cases
+- All DB access becomes async — but most call sites already use `await` or are in async functions
+
+**Migration impact on existing code:** The existing code uses `better-sqlite3` sync driver. Switching to libsql means all `.get()`, `.all()`, `.run()` calls become async. However:
+- API route handlers are already async
+- `packages/auth/` functions already use async patterns in many places
+- The `packages/db/src/quality-queries.ts` uses raw SQL via `db.all()` which would need `await`
+- `packages/auth/src/families.ts` `createFamily()` must become async
+- All call sites of `createFamily()` must be updated to `await`
+
+This is a significant refactor but necessary for production deployment. The alternative (maintaining two code paths) would be far more complex and error-prone.
+
 - [ ] **Step 1: Write failing test**
 
-Test that `isWebMode()` returns true when URL starts with `libsql://`, false otherwise. Test that `createCentralDb()` with a `libsql://` URL uses the libsql driver (mock at the module level or test the URL detection logic in isolation).
+Test that `isWebMode()` returns true when URL starts with `libsql://`, false for `file:` URLs and bare paths. Test that `createCentralDb()` returns a Drizzle instance in both modes.
 
-- [ ] **Step 2: Implement driver detection in index.ts**
-
-Refactor `createCentralDb()` and `createFamilyDb()`:
+- [ ] **Step 2: Implement unified libsql driver in index.ts**
 
 ```typescript
-import { drizzle as drizzleSqlite } from 'drizzle-orm/better-sqlite3';
-import { drizzle as drizzleLibsql } from 'drizzle-orm/libsql';
+import 'dotenv/config';
+import path from 'path';
+import os from 'os';
+import { drizzle } from 'drizzle-orm/libsql';
 import { createClient } from '@libsql/client';
 import * as schema from './family-schema';
 import * as centralSchema from './central-schema';
@@ -107,30 +128,76 @@ export function isWebMode(url?: string): boolean {
   return (url || '').startsWith('libsql://');
 }
 
+function resolveUrl(url: string): { url: string; authToken?: string } {
+  if (url.startsWith('libsql://')) {
+    return { url, authToken: process.env.TURSO_AUTH_TOKEN };
+  }
+  // Local file — @libsql/client supports file: URLs
+  if (url.startsWith('file:')) return { url };
+  // Bare path — convert to file: URL
+  const absPath = path.isAbsolute(url) ? url : path.resolve(url);
+  return { url: `file:${absPath}` };
+}
+
 export function createCentralDb(url?: string) {
   const dbUrl = url || process.env.CENTRAL_DATABASE_URL || path.join(os.homedir(), '.ancstra', 'ancstra.sqlite');
-
-  if (isWebMode(dbUrl)) {
-    const client = createClient({ url: dbUrl, authToken: process.env.TURSO_AUTH_TOKEN! });
-    return drizzleLibsql({ client, schema: centralSchema });
-  }
-
-  return drizzleSqlite({ connection: { source: dbUrl }, schema: centralSchema });
+  const client = createClient(resolveUrl(dbUrl));
+  return drizzle({ client, schema: centralSchema });
 }
 
 export function createFamilyDb(dbFilename: string) {
-  if (isWebMode(dbFilename)) {
-    // dbFilename is actually a libsql:// URL stored in family_registry
-    const client = createClient({ url: dbFilename, authToken: process.env.TURSO_AUTH_TOKEN! });
-    return drizzleLibsql({ client, schema });
+  let dbUrl: string;
+  if (dbFilename.startsWith('libsql://') || dbFilename.startsWith('file:')) {
+    dbUrl = dbFilename;
+  } else {
+    dbUrl = path.join(os.homedir(), '.ancstra', 'families', dbFilename);
   }
+  const client = createClient(resolveUrl(dbUrl));
+  return drizzle({ client, schema });
+}
 
-  const familiesDir = path.join(os.homedir(), '.ancstra', 'families');
-  return drizzleSqlite({ connection: { source: path.join(familiesDir, dbFilename) }, schema });
+// Keep for backward compat during migration
+export function createDb(url?: string) {
+  const dbUrl = url || process.env.DATABASE_URL || './ancstra.db';
+  const client = createClient(resolveUrl(dbUrl));
+  return drizzle({ client, schema });
 }
 ```
 
-Keep the old `createDb()` for backward compat. Keep `createTursoDb()` in turso.ts as-is (it's used by some existing code).
+- [ ] **Step 3: Update all sync DB calls to async**
+
+Since `@libsql/client` is async, all `.get()`, `.all()`, `.run()` calls now return Promises. Audit and add `await` to:
+- `packages/auth/src/families.ts` — `createFamily()` becomes async
+- `packages/auth/src/invitations.ts` — all functions that use `.get()`, `.run()`
+- `packages/auth/src/activity.ts` — same
+- `packages/auth/src/moderation.ts` — same
+- `packages/auth/src/oauth-linking.ts` — same
+- `packages/db/src/quality-queries.ts` — all raw SQL calls
+- `apps/web/lib/auth/context.ts` — `.get()` calls
+- All API route handlers that call DB functions
+
+Many of these already have `await` since the functions were written assuming async behavior. The key changes are functions that were sync but called `.get()` or `.run()` synchronously.
+
+- [ ] **Step 4: Guard initFts5() for local mode only**
+
+The existing `initFts5()` uses `BetterSqlite3` directly (sync, raw SQL). Add a guard:
+```typescript
+export function initFts5(url?: string) {
+  const dbPath = url || process.env.DATABASE_URL || './ancstra.db';
+  if (isWebMode(dbPath)) {
+    console.warn('FTS5 init skipped in web mode — not supported with libsql');
+    return;
+  }
+  // ... existing BetterSqlite3 code
+}
+```
+
+- [ ] **Step 5: Run all tests**
+
+Run: `cd packages/db && npx vitest run && cd ../auth && npx vitest run`
+Expected: All tests pass (tests use in-memory SQLite via better-sqlite3 directly, not through createDb — they should still work)
+
+- [ ] **Step 6: Commit**
 
 - [ ] **Step 3: Run tests**
 
@@ -171,6 +238,11 @@ export async function createTursoDatabase(name: string): Promise<{ url: string }
   const hostname = data.database?.hostname || `${name}-${org}.turso.io`;
   return { url: `libsql://${hostname}` };
 }
+
+// Note: All family DBs share the single TURSO_AUTH_TOKEN (org-level token).
+// Per-DB tokens are not needed for a single-user/small-family app.
+// If security isolation is needed later, create per-DB tokens via
+// POST /v1/organizations/{org}/databases/{name}/auth/tokens
 ```
 
 - [ ] **Step 2: Update createFamily() for web mode**
@@ -178,22 +250,35 @@ export async function createTursoDatabase(name: string): Promise<{ url: string }
 In `packages/auth/src/families.ts`, add web mode path:
 
 ```typescript
-import { createTursoDatabase } from '@ancstra/db/turso';
+import { createTursoDatabase, runFamilySchemaDDL } from '@ancstra/db/turso';
 import { isWebMode } from '@ancstra/db';
 
 // Inside createFamily():
 let dbFilename: string;
 if (isWebMode(process.env.CENTRAL_DATABASE_URL)) {
-  // Web mode: create Turso DB
+  // Web mode: create Turso DB via Platform API
   const { url } = await createTursoDatabase(`ancstra-family-${familyId}`);
   dbFilename = url; // Store the libsql:// URL
-  // Run schema DDL against the new DB
-  const familyDb = createFamilyDb(dbFilename);
-  // TODO: run CREATE TABLE statements
+  // Run schema DDL against the new Turso DB to create all tables
+  await runFamilySchemaDDL(dbFilename);
 } else {
   // Local mode: create .sqlite file (existing behavior)
   dbFilename = `family-${familyId}.sqlite`;
 }
+```
+
+**New function `runFamilySchemaDDL()`** in `packages/db/src/turso.ts`:
+```typescript
+export async function runFamilySchemaDDL(dbUrl: string): Promise<void> {
+  const client = createClient({ url: dbUrl, authToken: process.env.TURSO_AUTH_TOKEN! });
+  // Execute CREATE TABLE statements for all family schema tables
+  // Extract from family-schema.ts or maintain a ddl.sql file
+  // Use client.executeMultiple() for batch DDL
+  await client.executeMultiple(FAMILY_SCHEMA_DDL);
+}
+```
+
+The `FAMILY_SCHEMA_DDL` string contains all CREATE TABLE + CREATE INDEX statements from the family schema. Maintain this as a constant in turso.ts, derived from the Drizzle schema. Test by creating a DB and verifying all tables exist.
 ```
 
 - [ ] **Step 3: Commit**
@@ -507,6 +592,11 @@ Add after the existing `ci` job:
 
       - name: Run E2E tests
         run: cd tests && npx playwright test
+        env:
+          NEXTAUTH_SECRET: test-secret-for-ci
+          NEXTAUTH_URL: http://localhost:3001
+          # Uses local SQLite (file: URLs) — no Turso needed in CI
+          # The dev server will create a local test DB automatically
 
       - name: Upload test results
         if: always()
@@ -818,7 +908,23 @@ Most of these may already be correct via shadcn's sidebar component — verify a
 
 Tab through login, dashboard, tree, person detail, settings. Verify focus ring is visible on all interactive elements. shadcn handles this mostly — check for any custom buttons or links missing focus styles.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 4: Verify contrast**
+
+Check that `text-muted-foreground` meets WCAG AA (4.5:1 ratio) against both light and dark backgrounds. Use browser DevTools accessibility audit or a contrast checker tool. Fix any failing colors.
+
+- [ ] **Step 5: Mobile responsive spot-check**
+
+Verify at 375px viewport: login form usable, dashboard readable, tree view pan/zoom works, person detail scrollable, sidebar collapses. Fix any layout breaks.
+
+- [ ] **Step 6: Loading states audit**
+
+Check dashboard, persons list, tree page, analytics for loading states. Add Suspense boundaries or skeleton screens where data fetching causes blank flashes.
+
+- [ ] **Step 7: Confirmation dialogs audit**
+
+Verify all destructive actions have confirmation: delete person, remove member, revoke invitation, delete family. Most were added in Phase 4 — just verify none were missed.
+
+- [ ] **Step 8: Commit**
 
 ```bash
 git add apps/web/
