@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@/auth';
-import { createDb, searchProviders } from '@ancstra/db';
+import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
+import { searchProviders } from '@ancstra/db';
 import { sql } from 'drizzle-orm';
 
 const DEFAULT_PROVIDERS = [
@@ -79,27 +79,26 @@ const DEFAULT_PROVIDERS = [
 ];
 
 export async function GET() {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  try {
+    const { familyDb } = await withAuth('tree:view');
 
-  const db = createDb();
+    // Check if table has data
+    const [{ count }] = familyDb
+      .select({ count: sql<number>`count(*)` })
+      .from(searchProviders)
+      .all();
 
-  // Check if table has data
-  const [{ count }] = db
-    .select({ count: sql<number>`count(*)` })
-    .from(searchProviders)
-    .all();
-
-  // Seed defaults if empty
-  if (count === 0) {
-    for (const provider of DEFAULT_PROVIDERS) {
-      db.insert(searchProviders).values(provider).run();
+    // Seed defaults if empty
+    if (count === 0) {
+      for (const provider of DEFAULT_PROVIDERS) {
+        familyDb.insert(searchProviders).values(provider).run();
+      }
     }
+
+    const providers = familyDb.select().from(searchProviders).all();
+
+    return NextResponse.json({ providers });
+  } catch (error) {
+    return handleAuthError(error);
   }
-
-  const providers = db.select().from(searchProviders).all();
-
-  return NextResponse.json({ providers });
 }

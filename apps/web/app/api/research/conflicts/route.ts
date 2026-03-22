@@ -1,26 +1,27 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@/auth';
-import { createDb } from '@ancstra/db';
+import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
 import { detectConflicts } from '@ancstra/research';
 
 export async function GET(request: Request) {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  try {
+    const { familyDb } = await withAuth('ai:research');
+
+    const { searchParams } = new URL(request.url);
+    const personId = searchParams.get('personId');
+
+    if (!personId) {
+      return NextResponse.json(
+        { error: 'personId query parameter is required' },
+        { status: 400 },
+      );
+    }
+
+    const conflicts = detectConflicts(familyDb, personId);
+
+    return NextResponse.json({ conflicts });
+  } catch (err) {
+    try { return handleAuthError(err); } catch { /* not an auth error */ }
+    console.error('[research/conflicts GET]', err);
+    return NextResponse.json({ error: String(err) }, { status: 500 });
   }
-
-  const { searchParams } = new URL(request.url);
-  const personId = searchParams.get('personId');
-
-  if (!personId) {
-    return NextResponse.json(
-      { error: 'personId query parameter is required' },
-      { status: 400 },
-    );
-  }
-
-  const db = createDb();
-  const conflicts = detectConflicts(db, personId);
-
-  return NextResponse.json({ conflicts });
 }

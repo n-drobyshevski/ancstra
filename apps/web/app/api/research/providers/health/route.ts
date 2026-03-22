@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
 import {
   ProviderRegistry,
   MockProvider,
@@ -28,56 +29,64 @@ function buildRegistry(): ProviderRegistry {
 }
 
 export async function GET() {
-  const registry = buildRegistry();
-  const providers = registry.listAll();
+  try {
+    await withAuth('tree:view');
 
-  const results: Record<string, HealthStatus> = {};
+    const registry = buildRegistry();
+    const providers = registry.listAll();
 
-  // Check all providers in parallel with 5s timeout each
-  await Promise.allSettled(
-    providers.map(async (provider) => {
+    const results: Record<string, HealthStatus> = {};
+
+    // Check all providers in parallel with 5s timeout each
+    await Promise.allSettled(
+      providers.map(async (provider) => {
+        try {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 5000);
+
+          const status = await provider.healthCheck();
+          clearTimeout(timeout);
+          results[provider.id] = status;
+        } catch {
+          results[provider.id] = 'down';
+        }
+      })
+    );
+
+    // Check Hono worker health separately
+    const workerUrl = process.env.WORKER_URL;
+    if (workerUrl) {
       try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 5000);
-
-        const status = await provider.healthCheck();
-        clearTimeout(timeout);
-        results[provider.id] = status;
+        const res = await fetch(`${workerUrl}/health`, { signal: AbortSignal.timeout(3000) });
+        results['_worker'] = res.ok ? 'healthy' : 'down';
+        // If worker is healthy, scraper-based providers are available
+        if (res.ok) {
+          results['findagrave'] = 'healthy';
+          results['geneanet'] = 'healthy';
+        } else {
+          results['findagrave'] = 'down';
+          results['geneanet'] = 'down';
+        }
       } catch {
-        results[provider.id] = 'down';
-      }
-    })
-  );
-
-  // Check Hono worker health separately
-  const workerUrl = process.env.WORKER_URL;
-  if (workerUrl) {
-    try {
-      const res = await fetch(`${workerUrl}/health`, { signal: AbortSignal.timeout(3000) });
-      results['_worker'] = res.ok ? 'healthy' : 'down';
-      // If worker is healthy, scraper-based providers are available
-      if (res.ok) {
-        results['findagrave'] = 'healthy';
-        results['geneanet'] = 'healthy';
-      } else {
+        results['_worker'] = 'down';
         results['findagrave'] = 'down';
         results['geneanet'] = 'down';
       }
-    } catch {
-      results['_worker'] = 'down';
-      results['findagrave'] = 'down';
-      results['geneanet'] = 'down';
+    } else {
+      results['_worker'] = 'unknown';
+      results['findagrave'] = 'unknown';
+      results['geneanet'] = 'unknown';
     }
-  } else {
-    results['_worker'] = 'unknown';
-    results['findagrave'] = 'unknown';
-    results['geneanet'] = 'unknown';
-  }
 
-  // Web search depends on config
-  if (!process.env.SEARXNG_URL && !process.env.BRAVE_API_KEY) {
-    results['web_search'] = 'unknown';
-  }
+    // Web search depends on config
+    if (!process.env.SEARXNG_URL && !process.env.BRAVE_API_KEY) {
+      results['web_search'] = 'unknown';
+    }
 
-  return NextResponse.json({ statuses: results, checkedAt: new Date().toISOString() });
+    return NextResponse.json({ statuses: results, checkedAt: new Date().toISOString() });
+  } catch (err) {
+    try { return handleAuthError(err); } catch { /* not an auth error */ }
+    console.error('[research/providers/health GET]', err);
+    return NextResponse.json({ error: String(err) }, { status: 500 });
+  }
 }

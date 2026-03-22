@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@/auth';
-import { createDb, searchProviders } from '@ancstra/db';
+import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
+import { searchProviders } from '@ancstra/db';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 
@@ -15,56 +15,55 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  try {
+    const { familyDb } = await withAuth('settings:manage');
+
+    const { id } = await params;
+    const body = await request.json();
+    const parsed = updateProviderSchema.safeParse(body);
+
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: 'Validation failed', issues: parsed.error.issues },
+        { status: 400 }
+      );
+    }
+
+    const [existing] = familyDb
+      .select()
+      .from(searchProviders)
+      .where(eq(searchProviders.id, id))
+      .all();
+
+    if (!existing) {
+      return NextResponse.json({ error: 'Provider not found' }, { status: 404 });
+    }
+
+    const updates: Record<string, unknown> = {};
+    const data = parsed.data;
+
+    if (data.isEnabled !== undefined) updates.isEnabled = data.isEnabled;
+    if (data.config !== undefined) updates.config = data.config;
+    if (data.rateLimitRpm !== undefined) updates.rateLimitRpm = data.rateLimitRpm;
+    if (data.baseUrl !== undefined) updates.baseUrl = data.baseUrl;
+
+    if (Object.keys(updates).length === 0) {
+      return NextResponse.json(existing);
+    }
+
+    familyDb.update(searchProviders)
+      .set(updates)
+      .where(eq(searchProviders.id, id))
+      .run();
+
+    const [updated] = familyDb
+      .select()
+      .from(searchProviders)
+      .where(eq(searchProviders.id, id))
+      .all();
+
+    return NextResponse.json(updated);
+  } catch (error) {
+    return handleAuthError(error);
   }
-
-  const { id } = await params;
-  const body = await request.json();
-  const parsed = updateProviderSchema.safeParse(body);
-
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: 'Validation failed', issues: parsed.error.issues },
-      { status: 400 }
-    );
-  }
-
-  const db = createDb();
-
-  const [existing] = db
-    .select()
-    .from(searchProviders)
-    .where(eq(searchProviders.id, id))
-    .all();
-
-  if (!existing) {
-    return NextResponse.json({ error: 'Provider not found' }, { status: 404 });
-  }
-
-  const updates: Record<string, unknown> = {};
-  const data = parsed.data;
-
-  if (data.isEnabled !== undefined) updates.isEnabled = data.isEnabled;
-  if (data.config !== undefined) updates.config = data.config;
-  if (data.rateLimitRpm !== undefined) updates.rateLimitRpm = data.rateLimitRpm;
-  if (data.baseUrl !== undefined) updates.baseUrl = data.baseUrl;
-
-  if (Object.keys(updates).length === 0) {
-    return NextResponse.json(existing);
-  }
-
-  db.update(searchProviders)
-    .set(updates)
-    .where(eq(searchProviders.id, id))
-    .run();
-
-  const [updated] = db
-    .select()
-    .from(searchProviders)
-    .where(eq(searchProviders.id, id))
-    .all();
-
-  return NextResponse.json(updated);
 }

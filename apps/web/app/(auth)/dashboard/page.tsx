@@ -2,11 +2,17 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ContributionQueue } from '@/components/moderation/contribution-queue';
 import { createDb, persons, personNames, events } from '@ancstra/db';
 import { eq, isNull, sql } from 'drizzle-orm';
+import { hasPermission } from '@ancstra/auth';
+import { getAuthContext } from '@/lib/auth/context';
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
   const db = createDb();
+  const authContext = await getAuthContext();
+  const canReview =
+    authContext != null && hasPermission(authContext.role, 'contributions:review');
 
   // Fetch last 5 persons ordered by created_at desc
   const recentRows = db
@@ -119,6 +125,10 @@ export default function DashboardPage() {
           )}
         </CardContent>
       </Card>
+
+      {canReview && authContext && (
+        <ContributionQueue familyId={authContext.familyId} />
+      )}
     </div>
   );
 }

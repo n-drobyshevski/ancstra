@@ -1,5 +1,5 @@
 import { sqliteTable, text, integer, real, index, unique, primaryKey } from 'drizzle-orm/sqlite-core';
-import { users, persons, sources, sourceCitations } from './schema';
+import { persons, sources, sourceCitations } from './family-schema';
 
 // ==================== SEARCH PROVIDERS ====================
 export const searchProviders = sqliteTable('search_providers', {
@@ -40,7 +40,7 @@ export const researchItems = sqliteTable('research_items', {
     enum: ['draft', 'promoted', 'dismissed'],
   }).notNull().default('draft'),
   promotedSourceId: text('promoted_source_id').references(() => sources.id),
-  createdBy: text('created_by').notNull().references(() => users.id),
+  createdBy: text('created_by').notNull(),
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
   updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
 }, (table) => [

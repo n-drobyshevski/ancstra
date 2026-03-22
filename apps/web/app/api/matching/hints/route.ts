@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@/auth';
-import { createDb, matchCandidates, persons, personNames, events } from '@ancstra/db';
+import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
+import { matchCandidates, persons, personNames, events } from '@ancstra/db';
 import { eq, and } from 'drizzle-orm';
 import {
   ProviderRegistry,
@@ -24,10 +24,7 @@ function buildRegistry(): ProviderRegistry {
 
 export async function GET(request: Request) {
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { familyDb } = await withAuth('relationship:validate');
 
     const { searchParams } = new URL(request.url);
     const personId = searchParams.get('personId');
@@ -37,14 +34,12 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'personId is required' }, { status: 400 });
     }
 
-    const db = createDb();
-
     const conditions = [eq(matchCandidates.personId, personId)];
     if (status) {
       conditions.push(eq(matchCandidates.matchStatus, status));
     }
 
-    const hints = db
+    const hints = familyDb
       .select()
       .from(matchCandidates)
       .where(and(...conditions))
@@ -54,6 +49,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ hints, count: hints.length });
   } catch (err) {
+    try { return handleAuthError(err); } catch { /* not an auth error */ }
     console.error('[matching/hints GET]', err);
     return NextResponse.json({ error: String(err) }, { status: 500 });
   }
@@ -61,10 +57,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { familyDb } = await withAuth('relationship:validate');
 
     const body = await request.json();
     const { personId } = body;
@@ -73,16 +66,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'personId is required' }, { status: 400 });
     }
 
-    const db = createDb();
-
     // Fetch person data
-    const person = db.select().from(persons).where(eq(persons.id, personId)).get();
+    const person = familyDb.select().from(persons).where(eq(persons.id, personId)).get();
     if (!person) {
       return NextResponse.json({ error: 'Person not found' }, { status: 404 });
     }
 
     // Fetch primary name
-    const name = db
+    const name = familyDb
       .select()
       .from(personNames)
       .where(eq(personNames.personId, personId))
@@ -94,7 +85,7 @@ export async function POST(request: Request) {
     }
 
     // Fetch birth/death events
-    const personEvents = db
+    const personEvents = familyDb
       .select()
       .from(events)
       .where(eq(events.personId, personId))
@@ -142,7 +133,7 @@ export async function POST(request: Request) {
     // Upsert into match_candidates
     let newCount = 0;
     for (const hint of hints) {
-      const existing = db
+      const existing = familyDb
         .select()
         .from(matchCandidates)
         .where(
@@ -156,7 +147,7 @@ export async function POST(request: Request) {
 
       if (existing) {
         // Update score if changed
-        db.update(matchCandidates)
+        familyDb.update(matchCandidates)
           .set({
             matchScore: hint.matchScore,
             externalData: JSON.stringify({
@@ -169,7 +160,7 @@ export async function POST(request: Request) {
           .where(eq(matchCandidates.id, existing.id))
           .run();
       } else {
-        db.insert(matchCandidates)
+        familyDb.insert(matchCandidates)
           .values({
             personId,
             sourceSystem: hint.providerId,
@@ -193,6 +184,7 @@ export async function POST(request: Request) {
       totalSearchResults: rawResults.length,
     });
   } catch (err) {
+    try { return handleAuthError(err); } catch { /* not an auth error */ }
     console.error('[matching/hints POST]', err);
     return NextResponse.json({ error: String(err) }, { status: 500 });
   }

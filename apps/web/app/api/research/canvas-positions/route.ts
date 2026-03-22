@@ -1,14 +1,11 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@/auth';
-import { createDb, researchCanvasPositions } from '@ancstra/db';
+import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
+import { researchCanvasPositions } from '@ancstra/db';
 import { eq, and } from 'drizzle-orm';
 
 export async function GET(request: Request) {
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { familyDb } = await withAuth('ai:research');
 
     const { searchParams } = new URL(request.url);
     const personId = searchParams.get('personId');
@@ -19,8 +16,7 @@ export async function GET(request: Request) {
       );
     }
 
-    const db = createDb();
-    const positions = db
+    const positions = familyDb
       .select()
       .from(researchCanvasPositions)
       .where(eq(researchCanvasPositions.personId, personId))
@@ -28,6 +24,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ positions });
   } catch (err) {
+    try { return handleAuthError(err); } catch { /* not an auth error */ }
     console.error('[canvas-positions GET]', err);
     return NextResponse.json({ error: String(err) }, { status: 500 });
   }
@@ -35,10 +32,7 @@ export async function GET(request: Request) {
 
 export async function PUT(request: Request) {
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { familyDb } = await withAuth('ai:research');
 
     const body = await request.json();
     const { personId, positions } = body;
@@ -50,12 +44,10 @@ export async function PUT(request: Request) {
       );
     }
 
-    const db = createDb();
-
     type NodeType = 'research_item' | 'source' | 'note' | 'conflict';
 
     for (const pos of positions) {
-      db.insert(researchCanvasPositions)
+      familyDb.insert(researchCanvasPositions)
         .values({
           id: crypto.randomUUID(),
           personId,
@@ -77,6 +69,7 @@ export async function PUT(request: Request) {
 
     return NextResponse.json({ ok: true });
   } catch (err) {
+    try { return handleAuthError(err); } catch { /* not an auth error */ }
     console.error('[canvas-positions PUT]', err);
     return NextResponse.json({ error: String(err) }, { status: 500 });
   }
@@ -84,10 +77,7 @@ export async function PUT(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { familyDb } = await withAuth('ai:research');
 
     const { searchParams } = new URL(request.url);
     const personId = searchParams.get('personId');
@@ -101,8 +91,7 @@ export async function DELETE(request: Request) {
       );
     }
 
-    const db = createDb();
-    db.delete(researchCanvasPositions)
+    familyDb.delete(researchCanvasPositions)
       .where(
         and(
           eq(researchCanvasPositions.personId, personId),
@@ -114,6 +103,7 @@ export async function DELETE(request: Request) {
 
     return NextResponse.json({ ok: true });
   } catch (err) {
+    try { return handleAuthError(err); } catch { /* not an auth error */ }
     console.error('[canvas-positions DELETE]', err);
     return NextResponse.json({ error: String(err) }, { status: 500 });
   }

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@/auth';
-import { createDb, matchCandidates } from '@ancstra/db';
+import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
+import { matchCandidates } from '@ancstra/db';
 import { eq } from 'drizzle-orm';
 
 const VALID_STATUSES = ['accepted', 'rejected', 'maybe', 'pending'] as const;
@@ -11,10 +11,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { familyDb } = await withAuth('relationship:validate');
 
     const { id } = await params;
     const body = await request.json();
@@ -27,9 +24,7 @@ export async function PATCH(
       );
     }
 
-    const db = createDb();
-
-    const existing = db
+    const existing = familyDb
       .select()
       .from(matchCandidates)
       .where(eq(matchCandidates.id, id))
@@ -39,7 +34,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
-    db.update(matchCandidates)
+    familyDb.update(matchCandidates)
       .set({
         matchStatus,
         reviewedAt: new Date().toISOString(),
@@ -47,7 +42,7 @@ export async function PATCH(
       .where(eq(matchCandidates.id, id))
       .run();
 
-    const updated = db
+    const updated = familyDb
       .select()
       .from(matchCandidates)
       .where(eq(matchCandidates.id, id))
@@ -55,6 +50,7 @@ export async function PATCH(
 
     return NextResponse.json(updated);
   } catch (err) {
+    try { return handleAuthError(err); } catch { /* not an auth error */ }
     console.error('[matching/hints PATCH]', err);
     return NextResponse.json({ error: String(err) }, { status: 500 });
   }
