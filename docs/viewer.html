@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ancstra Planning Docs</title>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
+<style>
+  :root {
+    --bg: #0f1117;
+    --bg-sidebar: #161822;
+    --bg-card: #1c1f2e;
+    --bg-hover: #252840;
+    --border: #2a2d42;
+    --text: #e1e4ed;
+    --text-dim: #8b8fa7;
+    --text-heading: #f0f2f8;
+    --accent: #6c8cff;
+    --accent-dim: #3d5299;
+    --green: #4ade80;
+    --amber: #fbbf24;
+    --red: #f87171;
+    --purple: #c084fc;
+    --cyan: #22d3ee;
+    --code-bg: #1a1d2e;
+    --sidebar-w: 300px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.65;
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  .sidebar {
+    width: var(--sidebar-w);
+    min-width: var(--sidebar-w);
+    background: var(--bg-sidebar);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .sidebar-header {
+    padding: 20px 16px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sidebar-header h1 { font-size: 18px; font-weight: 700; color: var(--text-heading); letter-spacing: -0.02em; }
+  .sidebar-header .subtitle { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+
+  .search-box { margin: 12px 16px; position: relative; }
+
+  .search-box input {
+    width: 100%;
+    padding: 8px 12px 8px 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .search-box input::placeholder { color: var(--text-dim); }
+  .search-box input:focus { border-color: var(--accent); }
+
+  .nav-tree { flex: 1; overflow-y: auto; padding: 8px 0; }
+  .nav-tree::-webkit-scrollbar { width: 4px; }
+  .nav-tree::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  .nav-section { padding: 0 8px; margin-bottom: 4px; }
+
+  .nav-section-title {
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 8px; font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--text-dim); cursor: pointer; user-select: none;
+  }
+
+  .nav-section-title:hover { color: var(--text); }
+  .nav-section-title .chevron { font-size: 10px; transition: transform 0.15s; display: inline-block; }
+  .nav-section.collapsed .chevron { transform: rotate(-90deg); }
+  .nav-section.collapsed .nav-items { display: none; }
+
+  .nav-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 8px 6px 24px; border-radius: 6px;
+    font-size: 13px; color: var(--text-dim);
+    cursor: pointer; transition: all 0.1s; text-decoration: none;
+  }
+
+  .nav-item:hover { background: var(--bg-hover); color: var(--text); }
+  .nav-item.active { background: var(--accent-dim); color: #fff; font-weight: 500; }
+
+  .nav-item .badge {
+    margin-left: auto; font-size: 10px; padding: 1px 6px;
+    border-radius: 10px; font-weight: 600; white-space: nowrap;
+  }
+
+  .badge-impl { background: var(--green); color: #000; opacity: 0.8; }
+  .badge-design { background: var(--accent); color: #fff; opacity: 0.7; }
+  .badge-static { background: var(--purple); color: #fff; opacity: 0.6; }
+  .badge-phase { background: var(--amber); color: #000; opacity: 0.8; }
+
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+  .topbar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 12px 24px; border-bottom: 1px solid var(--border);
+    background: var(--bg-sidebar); font-size: 13px; color: var(--text-dim); min-height: 48px;
+  }
+
+  .topbar .breadcrumb span { color: var(--text); font-weight: 500; }
+  .topbar .breadcrumb .sep { margin: 0 6px; opacity: 0.4; }
+
+  .content-wrapper {
+    flex: 1; overflow-y: auto; padding: 32px 48px 80px; max-width: 900px;
+  }
+
+  .content-wrapper::-webkit-scrollbar { width: 6px; }
+  .content-wrapper::-webkit-scrollbar-thumb { background: var(--border); border-radius: 6px; }
+
+  .dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 32px; }
+
+  .stat-card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 20px; cursor: pointer; transition: all 0.15s;
+  }
+
+  .stat-card:hover { border-color: var(--accent); transform: translateY(-1px); }
+  .stat-card .stat-value { font-size: 32px; font-weight: 700; color: var(--text-heading); line-height: 1; }
+  .stat-card .stat-label { font-size: 13px; color: var(--text-dim); margin-top: 4px; }
+  .stat-card .stat-icon { font-size: 20px; margin-bottom: 8px; }
+
+  .phase-timeline { display: flex; flex-direction: column; gap: 12px; margin: 24px 0 32px; }
+
+  .phase-row {
+    display: flex; align-items: center; gap: 12px; cursor: pointer;
+    padding: 12px 16px; background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 10px; transition: all 0.15s;
+  }
+
+  .phase-row:hover { border-color: var(--accent); transform: translateX(2px); }
+
+  .phase-number {
+    width: 32px; height: 32px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 700; flex-shrink: 0;
+  }
+
+  .phase-row:nth-child(1) .phase-number { background: #6c8cff30; color: var(--accent); }
+  .phase-row:nth-child(2) .phase-number { background: #4ade8030; color: var(--green); }
+  .phase-row:nth-child(3) .phase-number { background: #fbbf2430; color: var(--amber); }
+  .phase-row:nth-child(4) .phase-number { background: #c084fc30; color: var(--purple); }
+  .phase-row:nth-child(5) .phase-number { background: #22d3ee30; color: var(--cyan); }
+
+  .phase-info { flex: 1; }
+  .phase-name { font-size: 14px; font-weight: 600; color: var(--text-heading); }
+  .phase-meta { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+
+  .phase-bar { width: 120px; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+  .phase-bar-fill { height: 100%; border-radius: 3px; background: var(--accent); transition: width 0.3s; }
+  .phase-weeks { font-size: 12px; color: var(--text-dim); width: 60px; text-align: right; }
+
+  .md h1 { font-size: 28px; font-weight: 700; color: var(--text-heading); margin: 0 0 16px; letter-spacing: -0.02em; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+  .md h2 { font-size: 20px; font-weight: 600; color: var(--text-heading); margin: 32px 0 12px; }
+  .md h3 { font-size: 16px; font-weight: 600; color: var(--text-heading); margin: 24px 0 8px; }
+  .md h4 { font-size: 14px; font-weight: 600; color: var(--text-heading); margin: 20px 0 8px; }
+  .md p { margin: 0 0 12px; font-size: 14.5px; }
+  .md ul, .md ol { margin: 0 0 12px; padding-left: 24px; font-size: 14.5px; }
+  .md li { margin: 4px 0; }
+  .md li input[type="checkbox"] { margin-right: 6px; accent-color: var(--accent); }
+
+  .md blockquote {
+    border-left: 3px solid var(--accent); padding: 8px 16px; margin: 0 0 16px;
+    background: var(--bg-card); border-radius: 0 8px 8px 0; color: var(--text-dim); font-size: 13.5px;
+  }
+
+  .md code { background: var(--code-bg); padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 13px; color: var(--cyan); }
+
+  .md pre {
+    background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px;
+    padding: 16px; margin: 0 0 16px; overflow-x: auto; font-size: 13px; line-height: 1.5;
+  }
+
+  .md pre code { background: none; padding: 0; color: var(--text); }
+
+  .md table { width: 100%; border-collapse: collapse; margin: 0 0 16px; font-size: 13.5px; }
+  .md th { text-align: left; padding: 10px 12px; background: var(--bg-card); border: 1px solid var(--border); font-weight: 600; color: var(--text-heading); font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .md td { padding: 8px 12px; border: 1px solid var(--border); }
+  .md tr:hover td { background: var(--bg-card); }
+  .md a { color: var(--accent); text-decoration: none; }
+  .md a:hover { text-decoration: underline; }
+  .md strong { color: var(--text-heading); }
+  .md hr { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+
+  .loading { display: flex; align-items: center; justify-content: center; height: 200px; color: var(--text-dim); font-size: 14px; gap: 8px; }
+  .spinner { width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.6s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .overview-header { margin-bottom: 32px; }
+  .overview-header h1 { font-size: 32px; margin-bottom: 8px; border: none; padding: 0; }
+  .overview-header p { font-size: 15px; color: var(--text-dim); max-width: 600px; line-height: 1.6; }
+
+  .section-title { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); margin: 32px 0 12px; }
+
+  .spec-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; margin-bottom: 24px; }
+
+  .spec-card {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 16px; cursor: pointer; transition: all 0.15s;
+  }
+
+  .spec-card:hover { border-color: var(--accent); transform: translateY(-1px); }
+  .spec-card-title { font-size: 14px; font-weight: 600; color: var(--text-heading); margin-bottom: 4px; }
+  .spec-card-meta { font-size: 12px; color: var(--text-dim); display: flex; gap: 8px; align-items: center; }
+  .spec-card-badge { font-size: 10px; padding: 1px 6px; border-radius: 10px; font-weight: 600; }
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="sidebar-header">
+    <h1>Ancstra</h1>
+    <div class="subtitle">Planning Documentation</div>
+  </div>
+  <div class="search-box">
+    <input type="text" placeholder="Search docs..." id="searchInput">
+  </div>
+  <div class="nav-tree" id="navTree"></div>
+</div>
+
+<div class="main">
+  <div class="topbar">
+    <div class="breadcrumb" id="breadcrumb"></div>
+  </div>
+  <div class="content-wrapper" id="content"></div>
+</div>
+
+<script>
+const DOC_STRUCTURE = {
+  'Overview': { items: [
+    { path: null, label: 'Dashboard', badge: null },
+  ]},
+  'Foundation': { items: [
+    { path: 'vision.md', label: 'Vision & Scope', badge: 'static' },
+    { path: 'architecture/overview.md', label: 'Architecture', badge: 'design' },
+    { path: 'architecture/data-model.md', label: 'Data Model', badge: 'design' },
+    { path: 'architecture/ai-strategy.md', label: 'AI Strategy', badge: 'design' },
+  ]},
+  'System Specs': { items: [
+    { path: 'specs/gedcom-import.md', label: 'GEDCOM Import/Export', badge: 'impl', phase: 1 },
+    { path: 'specs/tree-visualization.md', label: 'Tree Visualization', badge: 'impl', phase: 1 },
+    { path: 'specs/relationship-validation.md', label: 'Relationship Validation', badge: 'impl', phase: 2 },
+    { path: 'specs/familysearch-api.md', label: 'FamilySearch API', badge: 'design', phase: 2 },
+    { path: 'specs/ai-research-assistant.md', label: 'AI Research Assistant', badge: 'design', phase: 2 },
+    { path: 'specs/record-matching.md', label: 'Record Matching', badge: 'design', phase: 2 },
+    { path: 'specs/document-processing.md', label: 'Document Processing', badge: 'design', phase: 3 },
+    { path: 'specs/photo-analysis.md', label: 'Photo Analysis', badge: 'design', phase: 4 },
+    { path: 'specs/dna-integration.md', label: 'DNA Integration', badge: 'design', phase: 4 },
+    { path: 'specs/collaboration.md', label: 'Collaboration', badge: 'design', phase: 5 },
+  ]},
+  'Phase Plans': { items: [
+    { path: 'phases/phase-1-core.md', label: 'Phase 1: Core Tree Builder', badge: 'phase', weeks: '1-8' },
+    { path: 'phases/phase-2-search.md', label: 'Phase 2: AI Search & Matching', badge: 'phase', weeks: '9-18' },
+    { path: 'phases/phase-3-documents.md', label: 'Phase 3: Document Processing', badge: 'phase', weeks: '19-25' },
+    { path: 'phases/phase-4-photos-dna.md', label: 'Phase 4: Photos & DNA', badge: 'phase', weeks: '26-33' },
+    { path: 'phases/phase-5-polish.md', label: 'Phase 5: Collaboration & Polish', badge: 'phase', weeks: '34-41' },
+  ]},
+  'Decisions': { items: [
+    { path: 'architecture/decisions/001-js-over-python.md', label: 'ADR-001: JS/TS over Python', badge: 'static' },
+    { path: 'architecture/decisions/002-sqlite-local-first.md', label: 'ADR-002: SQLite Local-First', badge: 'static' },
+    { path: 'architecture/decisions/003-gramps-reference-only.md', label: 'ADR-003: Gramps Reference Only', badge: 'static' },
+    { path: 'architecture/decisions/004-family-chart-viz.md', label: 'ADR-004: family-chart Viz', badge: 'static' },
+  ]},
+  'Reference': { items: [
+    { path: 'research/first_research.md', label: 'Initial Research', badge: 'static' },
+  ]},
+};
+
+const BADGE_LABELS = { impl: 'IMPL-READY', design: 'DESIGN', static: 'STATIC', phase: 'PLAN' };
+const BADGE_CLASSES = { impl: 'badge-impl', design: 'badge-design', static: 'badge-static', phase: 'badge-phase' };
+
+let currentPath = null;
+const fileCache = {};
+
+marked.setOptions({ breaks: false, gfm: true });
+
+function sanitize(html) {
+  return DOMPurify.sanitize(html, {
+    ADD_ATTR: ['onclick'],
+    ADD_TAGS: ['input'],
+  });
+}
+
+function buildNav() {
+  const nav = document.getElementById('navTree');
+  nav.textContent = '';
+
+  for (const [section, data] of Object.entries(DOC_STRUCTURE)) {
+    const sectionEl = document.createElement('div');
+    sectionEl.className = 'nav-section';
+    sectionEl.dataset.section = section;
+
+    const titleEl = document.createElement('div');
+    titleEl.className = 'nav-section-title';
+    titleEl.appendChild(Object.assign(document.createElement('span'), { className: 'chevron', textContent: '\u25BE' }));
+    titleEl.appendChild(document.createTextNode(' ' + section));
+    titleEl.addEventListener('click', () => sectionEl.classList.toggle('collapsed'));
+    sectionEl.appendChild(titleEl);
+
+    const itemsEl = document.createElement('div');
+    itemsEl.className = 'nav-items';
+
+    for (const item of data.items) {
+      const itemEl = document.createElement('div');
+      itemEl.className = 'nav-item';
+      itemEl.dataset.path = String(item.path);
+      itemEl.textContent = item.label;
+      if (item.badge) {
+        const badge = document.createElement('span');
+        badge.className = 'badge ' + BADGE_CLASSES[item.badge];
+        badge.textContent = BADGE_LABELS[item.badge];
+        itemEl.appendChild(badge);
+      }
+      itemEl.addEventListener('click', () => loadDoc(item.path));
+      itemsEl.appendChild(itemEl);
+    }
+
+    sectionEl.appendChild(itemsEl);
+    nav.appendChild(sectionEl);
+  }
+}
+
+function setActiveNav(path) {
+  document.querySelectorAll('.nav-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.path === String(path));
+  });
+}
+
+function updateBreadcrumb(path) {
+  const bc = document.getElementById('breadcrumb');
+  bc.textContent = '';
+  if (!path) {
+    const s = document.createElement('span');
+    s.textContent = 'Overview';
+    bc.appendChild(s);
+    return;
+  }
+  const root = document.createElement('span');
+  root.textContent = 'Docs';
+  root.style.cursor = 'pointer';
+  root.addEventListener('click', () => loadDoc(null));
+  bc.appendChild(root);
+
+  const parts = path.replace('.md', '').split('/');
+  for (let i = 0; i < parts.length; i++) {
+    const sep = document.createElement('span');
+    sep.className = 'sep';
+    sep.textContent = '/';
+    bc.appendChild(sep);
+    const s = document.createElement('span');
+    s.textContent = parts[i].replace(/-/g, ' ').replace(/^\d+\s*/, '');
+    bc.appendChild(s);
+  }
+}
+
+async function fetchDoc(path) {
+  if (fileCache[path]) return fileCache[path];
+  const res = await fetch('/api/read?path=' + encodeURIComponent(path));
+  if (!res.ok) return '# Error\n\nCould not load `' + path + '`';
+  const text = await res.text();
+  fileCache[path] = text;
+  return text;
+}
+
+function countCheckboxes(md) {
+  const total = (md.match(/- \[[ x]\]/g) || []).length;
+  const done = (md.match(/- \[x\]/gi) || []).length;
+  return { total, done };
+}
+
+function createStatCard(icon, value, label, onclick) {
+  const card = document.createElement('div');
+  card.className = 'stat-card';
+  if (onclick) card.addEventListener('click', onclick);
+
+  const iconEl = document.createElement('div');
+  iconEl.className = 'stat-icon';
+  iconEl.textContent = icon;
+
+  const valEl = document.createElement('div');
+  valEl.className = 'stat-value';
+  valEl.textContent = value;
+
+  const labEl = document.createElement('div');
+  labEl.className = 'stat-label';
+  labEl.textContent = label;
+
+  card.append(iconEl, valEl, labEl);
+  return card;
+}
+
+function createPhaseRow(i, label, totalTasks, doneTasks, weeks, file) {
+  const row = document.createElement('div');
+  row.className = 'phase-row';
+  row.addEventListener('click', () => loadDoc(file));
+
+  const num = document.createElement('div');
+  num.className = 'phase-number';
+  num.textContent = i + 1;
+
+  const info = document.createElement('div');
+  info.className = 'phase-info';
+  const name = document.createElement('div');
+  name.className = 'phase-name';
+  name.textContent = label;
+  const meta = document.createElement('div');
+  meta.className = 'phase-meta';
+  meta.textContent = totalTasks + ' tasks \u00B7 ' + doneTasks + ' done';
+  info.append(name, meta);
+
+  const bar = document.createElement('div');
+  bar.className = 'phase-bar';
+  const fill = document.createElement('div');
+  fill.className = 'phase-bar-fill';
+  const pct = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
+  fill.style.width = pct + '%';
+  bar.appendChild(fill);
+
+  const wksEl = document.createElement('div');
+  wksEl.className = 'phase-weeks';
+  wksEl.textContent = weeks + ' weeks';
+
+  row.append(num, info, bar, wksEl);
+  return row;
+}
+
+function createSpecCard(label, badgeType, metaText, file) {
+  const card = document.createElement('div');
+  card.className = 'spec-card';
+  card.addEventListener('click', () => loadDoc(file));
+
+  const title = document.createElement('div');
+  title.className = 'spec-card-title';
+  title.textContent = label;
+
+  const metaDiv = document.createElement('div');
+  metaDiv.className = 'spec-card-meta';
+  const badge = document.createElement('span');
+  badge.className = 'spec-card-badge ' + BADGE_CLASSES[badgeType];
+  badge.textContent = BADGE_LABELS[badgeType];
+  const span = document.createElement('span');
+  span.textContent = metaText;
+  metaDiv.append(badge, span);
+
+  card.append(title, metaDiv);
+  return card;
+}
+
+async function renderDashboard() {
+  const content = document.getElementById('content');
+  content.textContent = '';
+
+  const header = document.createElement('div');
+  header.className = 'overview-header';
+  const h1 = document.createElement('h1');
+  h1.textContent = 'Ancstra Planning Docs';
+  h1.style.cssText = 'font-size:32px;font-weight:700;color:var(--text-heading);margin-bottom:8px';
+  const p = document.createElement('p');
+  p.textContent = 'AI-powered personal genealogy app. Privacy-first, local-first, built with Next.js 16 + TypeScript + Claude AI. 41-week phased development roadmap.';
+  header.append(h1, p);
+  content.appendChild(header);
+
+  // Stats
+  let totalTasks = 0, doneTasks = 0;
+  const phases = [
+    { label: 'Core Tree Builder', wks: 8, file: 'phases/phase-1-core.md' },
+    { label: 'AI Search & Matching', wks: 10, file: 'phases/phase-2-search.md' },
+    { label: 'Document Processing', wks: 7, file: 'phases/phase-3-documents.md' },
+    { label: 'Photos & DNA', wks: 8, file: 'phases/phase-4-photos-dna.md' },
+    { label: 'Collaboration & Polish', wks: 8, file: 'phases/phase-5-polish.md' },
+  ];
+
+  const phaseCounts = [];
+  for (const ph of phases) {
+    const md = await fetchDoc(ph.file);
+    const counts = countCheckboxes(md);
+    phaseCounts.push(counts);
+    totalTasks += counts.total;
+    doneTasks += counts.done;
+  }
+
+  const specCount = DOC_STRUCTURE['System Specs'].items.length;
+  const adrCount = DOC_STRUCTURE['Decisions'].items.length;
+  const implReady = DOC_STRUCTURE['System Specs'].items.filter(i => i.badge === 'impl').length;
+
+  const dashboard = document.createElement('div');
+  dashboard.className = 'dashboard';
+  dashboard.append(
+    createStatCard('\uD83D\uDCC4', specCount, 'System Specs', () => loadDoc('specs/gedcom-import.md')),
+    createStatCard('\u2705', implReady, 'Implementation-Ready'),
+    createStatCard('\uD83D\uDCCB', totalTasks, 'Total Tasks'),
+    createStatCard('\uD83D\uDCDA', adrCount, 'ADRs', () => loadDoc('architecture/decisions/001-js-over-python.md')),
+  );
+  content.appendChild(dashboard);
+
+  // Phases
+  const phaseTitle = document.createElement('div');
+  phaseTitle.className = 'section-title';
+  phaseTitle.textContent = 'Development Phases (41 weeks)';
+  content.appendChild(phaseTitle);
+
+  const timeline = document.createElement('div');
+  timeline.className = 'phase-timeline';
+  for (let i = 0; i < phases.length; i++) {
+    timeline.appendChild(createPhaseRow(i, phases[i].label, phaseCounts[i].total, phaseCounts[i].done, phases[i].wks, phases[i].file));
+  }
+  content.appendChild(timeline);
+
+  // Spec grid
+  const specTitle = document.createElement('div');
+  specTitle.className = 'section-title';
+  specTitle.textContent = 'System Specifications';
+  content.appendChild(specTitle);
+
+  const specGrid = document.createElement('div');
+  specGrid.className = 'spec-grid';
+  for (const item of DOC_STRUCTURE['System Specs'].items) {
+    specGrid.appendChild(createSpecCard(item.label, item.badge, 'Phase ' + item.phase, item.path));
+  }
+  content.appendChild(specGrid);
+
+  // ADR grid
+  const adrTitle = document.createElement('div');
+  adrTitle.className = 'section-title';
+  adrTitle.textContent = 'Architecture Decisions';
+  content.appendChild(adrTitle);
+
+  const adrGrid = document.createElement('div');
+  adrGrid.className = 'spec-grid';
+  for (const item of DOC_STRUCTURE['Decisions'].items) {
+    adrGrid.appendChild(createSpecCard(item.label, item.badge, 'Accepted', item.path));
+  }
+  content.appendChild(adrGrid);
+}
+
+async function loadDoc(path) {
+  currentPath = path;
+  setActiveNav(path);
+  updateBreadcrumb(path);
+
+  const content = document.getElementById('content');
+
+  if (!path) {
+    await renderDashboard();
+    return;
+  }
+
+  content.textContent = '';
+  const loadingDiv = document.createElement('div');
+  loadingDiv.className = 'loading';
+  loadingDiv.textContent = 'Loading ';
+  const spinner = document.createElement('div');
+  spinner.className = 'spinner';
+  loadingDiv.appendChild(spinner);
+  content.appendChild(loadingDiv);
+
+  const md = await fetchDoc(path);
+  let html = marked.parse(md);
+
+  // Rewrite internal .md links to use the viewer
+  html = html.replace(/href="([^"]*\.md[^"]*)"/g, (match, href) => {
+    if (href.startsWith('http')) return match;
+    const baseParts = path.split('/').slice(0, -1);
+    const hrefParts = href.split('/');
+    const resolved = [...baseParts];
+    for (const part of hrefParts) {
+      if (part === '..') resolved.pop();
+      else resolved.push(part);
+    }
+    const resolvedPath = resolved.join('/');
+    return 'href="#" data-nav-path="' + resolvedPath + '"';
+  });
+
+  const wrapper = document.createElement('div');
+  wrapper.className = 'md';
+  wrapper.innerHTML = sanitize(html);
+
+  // Attach click handlers for internal links
+  wrapper.querySelectorAll('[data-nav-path]').forEach(a => {
+    a.addEventListener('click', (e) => {
+      e.preventDefault();
+      loadDoc(a.dataset.navPath);
+    });
+  });
+
+  content.textContent = '';
+  content.appendChild(wrapper);
+  content.scrollTop = 0;
+}
+
+// Search filter
+document.getElementById('searchInput').addEventListener('input', (e) => {
+  const q = e.target.value.toLowerCase();
+  document.querySelectorAll('.nav-item').forEach(el => {
+    el.style.display = el.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+  if (q) {
+    document.querySelectorAll('.nav-section').forEach(el => el.classList.remove('collapsed'));
+  }
+});
+
+buildNav();
+loadDoc(null);
+</script>
+
+</body>
+</html>
