@@ -80,3 +80,4 @@ export function initFts5(url?: string) {
 export type Database = ReturnType<typeof createDb>;
 export * from './family-schema';
 export * as centralSchema from './central-schema';
+export * from './quality-queries';
