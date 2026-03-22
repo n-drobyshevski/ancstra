@@ -11,6 +11,7 @@ const sexColors = {
 } as const;
 
 function PersonNodeComponent({ data, selected }: NodeProps<PersonNodeType>) {
+  const dimmed = !!(data as any).dimmed;
   const colors = sexColors[data.sex] ?? sexColors.U;
   const initials = `${data.givenName[0] ?? ''}${data.surname[0] ?? ''}`.toUpperCase();
 
@@ -21,9 +22,9 @@ function PersonNodeComponent({ data, selected }: NodeProps<PersonNodeType>) {
       <Handle type="source" position={Position.Right} id="right" className="!w-2 !h-2 !bg-muted-foreground/40" />
       <Handle type="target" position={Position.Left} id="left" className="!w-2 !h-2 !bg-muted-foreground/40" />
       <div
-        className={`w-[200px] rounded-lg bg-card shadow-sm border transition-shadow ${
+        className={`w-[200px] rounded-lg bg-card shadow-sm border transition-all ${
           selected ? 'ring-2 ring-primary shadow-md' : ''
-        }`}
+        } ${dimmed ? 'opacity-30 pointer-events-none' : ''}`}
         style={{ borderLeftWidth: 4, borderLeftColor: colors.border }}
       >
         <div className="flex items-center gap-2.5 p-2.5">

@@ -222,4 +222,38 @@ export function validateConnection(
   return { valid: true };
 }
 
+export interface FilterState {
+  sex: { M: boolean; F: boolean; U: boolean };
+  living: { living: boolean; deceased: boolean };
+}
+
+export const DEFAULT_FILTERS: FilterState = {
+  sex: { M: true, F: true, U: true },
+  living: { living: true, deceased: true },
+};
+
+export function applyFilters(nodes: Node[], filterState: FilterState): Node[] {
+  return nodes.map((node) => {
+    if (node.type === 'draftPerson') return node;
+    const data = node.data as PersonNodeData;
+    const sexVisible = filterState.sex[data.sex as 'M' | 'F' | 'U'] ?? true;
+    const livingVisible = data.isLiving
+      ? filterState.living.living
+      : filterState.living.deceased;
+    const dimmed = !sexVisible || !livingVisible;
+    return { ...node, data: { ...data, dimmed } };
+  });
+}
+
+export function applyEdgeFilters(edges: Edge[], nodes: Node[]): Edge[] {
+  const dimmedIds = new Set(nodes.filter((n) => (n.data as any)?.dimmed).map((n) => n.id));
+  return edges.map((edge) => ({
+    ...edge,
+    style: {
+      ...edge.style,
+      opacity: dimmedIds.has(edge.source) || dimmedIds.has(edge.target) ? 0.3 : 1,
+    },
+  }));
+}
+
 export { NODE_WIDTH, NODE_HEIGHT };

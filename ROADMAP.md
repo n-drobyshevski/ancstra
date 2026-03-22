@@ -8,11 +8,9 @@
 
 ## Current Focus
 
-> **Phase 1: Core Tree Builder — Named Layouts** — `[█████████░] 95% In Progress`
+> **Phase 1: Core Tree Builder** — `[██████████] 100% Complete`
 >
-> Done: All CRUD, tree viz (iter 1+2), GEDCOM, sources, FTS5+Cmd+K, CI, PWA, sign-out — 111 tests
->
-> Working on: Named layout management (DB persistence replacing localStorage)
+> Done: All CRUD, tree viz (full editor), GEDCOM, sources, FTS5+Cmd+K, named layouts, filter pills, multi-select, CI, PWA — 122 tests
 >
 > Next up: Phase 2 — AI features (FamilySearch integration, Claude-powered matching)
 > Next up: CI pipeline, PWA, tree viz iteration 2
@@ -151,9 +149,9 @@
 | Drag-from-palette (DraftPersonNode) | ~0.5w | `[██████████] 100% Complete` | Canvas |
 | Edge drawing (relationships on canvas) | ~0.5w | `[██████████] 100% Complete` | Canvas |
 | Search-to-focus (/tree?focus=) | ~0.25w | `[██████████] 100% Complete` | Canvas |
-| Named layouts (DB persistence) | ~0.5w | `[░░░░░░░░░░] 0% Starting` | Canvas |
-| Topola PDF/PNG/SVG export | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Canvas |
-| Filter panel (sex, generation, living) | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Canvas |
+| Named layouts (DB persistence) | ~0.5w | `[██████████] 100% Complete` | Canvas |
+| Filter pills + multi-select | ~0.25w | `[██████████] 100% Complete` | Canvas |
+| PNG/SVG/PDF export (html-to-image + jsPDF) | ~0.25w | `[██████████] 100% Complete` | Canvas |
 
 ### GEDCOM (Complete)
 

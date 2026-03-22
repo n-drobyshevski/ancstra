@@ -9,6 +9,9 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { Star, ChevronDown } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
+import type { FilterState } from './tree-utils';
+import { TreeExport } from './tree-export';
 
 interface TreeToolbarProps {
   onAutoLayout: () => void;
@@ -23,6 +26,8 @@ interface TreeToolbarProps {
   onSetDefault: () => void;
   onDeleteLayout: () => void;
   onRenameLayout: () => void;
+  filterState: FilterState;
+  onToggleFilter: (category: 'sex' | 'living', key: string) => void;
 }
 
 export function TreeToolbar({
@@ -38,6 +43,8 @@ export function TreeToolbar({
   onSetDefault,
   onDeleteLayout,
   onRenameLayout,
+  filterState,
+  onToggleFilter,
 }: TreeToolbarProps) {
   return (
     <div className="absolute top-3 left-3 right-3 z-10 flex justify-between pointer-events-none">
@@ -112,12 +119,52 @@ export function TreeToolbar({
         <Button variant="secondary" size="sm" className="shadow-sm" disabled>
           Search
         </Button>
-        <Button variant="secondary" size="sm" className="shadow-sm" disabled>
-          Filter
+
+        <Button
+          variant={filterState.sex.M ? 'secondary' : 'outline'}
+          size="sm"
+          className="shadow-sm h-7 text-xs"
+          onClick={() => onToggleFilter('sex', 'M')}
+        >
+          M
         </Button>
-        <Button variant="secondary" size="sm" className="shadow-sm" disabled>
-          Export
+        <Button
+          variant={filterState.sex.F ? 'secondary' : 'outline'}
+          size="sm"
+          className="shadow-sm h-7 text-xs"
+          onClick={() => onToggleFilter('sex', 'F')}
+        >
+          F
         </Button>
+        <Button
+          variant={filterState.sex.U ? 'secondary' : 'outline'}
+          size="sm"
+          className="shadow-sm h-7 text-xs"
+          onClick={() => onToggleFilter('sex', 'U')}
+        >
+          U
+        </Button>
+
+        <Separator orientation="vertical" className="h-5 mx-0.5" />
+
+        <Button
+          variant={filterState.living.living ? 'secondary' : 'outline'}
+          size="sm"
+          className="shadow-sm h-7 text-xs"
+          onClick={() => onToggleFilter('living', 'living')}
+        >
+          Living
+        </Button>
+        <Button
+          variant={filterState.living.deceased ? 'secondary' : 'outline'}
+          size="sm"
+          className="shadow-sm h-7 text-xs"
+          onClick={() => onToggleFilter('living', 'deceased')}
+        >
+          Deceased
+        </Button>
+
+        <TreeExport />
       </div>
     </div>
   );

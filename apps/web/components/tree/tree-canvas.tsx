@@ -16,6 +16,7 @@ import {
   type OnNodesChange,
   type Connection,
   ReactFlowProvider,
+  SelectionMode,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
@@ -34,6 +35,10 @@ import {
   applyPositionMap,
   extractPositions,
   validateConnection,
+  type FilterState,
+  DEFAULT_FILTERS,
+  applyFilters,
+  applyEdgeFilters,
 } from './tree-utils';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -78,6 +83,18 @@ function TreeCanvasInner({ treeData, focusPersonId }: TreeCanvasProps) {
   const [layouts, setLayouts] = useState<{ id: string; name: string; isDefault: boolean }[]>([]);
   const [activeLayoutId, setActiveLayoutId] = useState<string | null>(null);
   const [activeLayoutName, setActiveLayoutName] = useState<string | null>(null);
+
+  const [filterState, setFilterState] = useState<FilterState>(DEFAULT_FILTERS);
+
+  const handleToggleFilter = useCallback((category: 'sex' | 'living', key: string) => {
+    setFilterState(prev => ({
+      ...prev,
+      [category]: {
+        ...prev[category],
+        [key]: !prev[category][key as keyof typeof prev[typeof category]],
+      },
+    }));
+  }, []);
 
   const autoSaveRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -393,6 +410,14 @@ function TreeCanvasInner({ treeData, focusPersonId }: TreeCanvasProps) {
     return () => clearTimeout(timer);
   }, [focusPersonId, fitView, treeData]);
 
+  // Apply filters when filterState changes
+  useEffect(() => {
+    setNodes(nds => applyFilters(nds, filterState));
+  }, [filterState, setNodes]);
+
+  // Compute filtered edges (dimmed based on node dimmed status)
+  const filteredEdges = useMemo(() => applyEdgeFilters(edges, nodes), [edges, nodes]);
+
   // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -400,10 +425,14 @@ function TreeCanvasInner({ treeData, focusPersonId }: TreeCanvasProps) {
         setSelectedPerson(null);
         setContextMenu(null);
       }
+      if ((e.metaKey || e.ctrlKey) && e.key === 'a') {
+        e.preventDefault();
+        setNodes(nds => nds.map(n => ({ ...n, selected: !(n.data as any)?.dimmed })));
+      }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, []);
+  }, [setNodes]);
 
   return (
     <div className="relative flex h-full">
@@ -412,7 +441,7 @@ function TreeCanvasInner({ treeData, focusPersonId }: TreeCanvasProps) {
       >
         <ReactFlow
           nodes={nodes}
-          edges={edges}
+          edges={filteredEdges}
           onNodesChange={handleNodesChange}
           onEdgesChange={onEdgesChange}
           onNodeClick={onNodeClick}
@@ -430,6 +459,9 @@ function TreeCanvasInner({ treeData, focusPersonId }: TreeCanvasProps) {
           minZoom={0.1}
           maxZoom={2}
           deleteKeyCode="Delete"
+          selectionOnDrag
+          selectionMode={SelectionMode.Partial}
+          multiSelectionKeyCode="Shift"
         >
           <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
           <MiniMap
@@ -457,6 +489,8 @@ function TreeCanvasInner({ treeData, focusPersonId }: TreeCanvasProps) {
           onSetDefault={handleSetDefault}
           onDeleteLayout={handleDeleteLayout}
           onRenameLayout={handleRenameLayout}
+          filterState={filterState}
+          onToggleFilter={handleToggleFilter}
         />
 
         {paletteOpen && (
