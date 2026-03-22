@@ -142,3 +142,13 @@ export const sourceCitations = sqliteTable('source_citations', {
   index('idx_citations_event').on(table.eventId),
   index('idx_citations_family').on(table.familyId),
 ]);
+
+// ==================== TREE LAYOUTS ====================
+export const treeLayouts = sqliteTable('tree_layouts', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  name: text('name').notNull(),
+  isDefault: integer('is_default', { mode: 'boolean' }).notNull().default(false),
+  layoutData: text('layout_data').notNull(),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
+});

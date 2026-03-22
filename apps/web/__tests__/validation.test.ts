@@ -7,6 +7,7 @@ import {
   createEventSchema,
   createSourceSchema,
   createCitationSchema,
+  createLayoutSchema,
 } from '../lib/validation';
 
 describe('createPersonSchema', () => {
@@ -142,5 +143,17 @@ describe('createCitationSchema', () => {
   });
   it('rejects missing entity link', () => {
     expect(createCitationSchema.safeParse({ sourceId: 's1' }).success).toBe(false);
+  });
+});
+
+describe('createLayoutSchema', () => {
+  it('accepts valid layout', () => {
+    expect(createLayoutSchema.safeParse({ name: 'My Layout', layoutData: '{}' }).success).toBe(true);
+  });
+  it('rejects missing name', () => {
+    expect(createLayoutSchema.safeParse({ layoutData: '{}' }).success).toBe(false);
+  });
+  it('rejects missing layoutData', () => {
+    expect(createLayoutSchema.safeParse({ name: 'Test' }).success).toBe(false);
   });
 });
