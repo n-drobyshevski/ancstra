@@ -31,10 +31,8 @@ import { DraftPersonNode } from './draft-person-node';
 import {
   treeDataToFlow,
   applyDagreLayout,
-  savePositions,
-  loadPositions,
-  clearPositions,
-  applyStoredPositions,
+  applyPositionMap,
+  extractPositions,
   validateConnection,
 } from './tree-utils';
 import { useRouter } from 'next/navigation';
@@ -57,11 +55,10 @@ function TreeCanvasInner({ treeData, focusPersonId }: TreeCanvasProps) {
     [treeData],
   );
 
-  const initialNodes = useMemo(() => {
-    const stored = loadPositions();
-    if (stored) return applyStoredPositions(rawNodes, stored);
-    return applyDagreLayout(rawNodes, rawEdges);
-  }, [rawNodes, rawEdges]);
+  const initialNodes = useMemo(
+    () => applyDagreLayout(rawNodes, rawEdges),
+    [rawNodes, rawEdges],
+  );
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, , onEdgesChange] = useEdgesState(rawEdges);
@@ -77,26 +74,84 @@ function TreeCanvasInner({ treeData, focusPersonId }: TreeCanvasProps) {
     edgeId?: string;
   } | null>(null);
 
-  // Debounced position save
-  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  // Layout management state
+  const [layouts, setLayouts] = useState<{ id: string; name: string; isDefault: boolean }[]>([]);
+  const [activeLayoutId, setActiveLayoutId] = useState<string | null>(null);
+  const [activeLayoutName, setActiveLayoutName] = useState<string | null>(null);
+
+  const autoSaveRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  // Fetch layouts on mount and load default (or migrate localStorage)
+  useEffect(() => {
+    fetch('/api/layouts')
+      .then((r) => r.json())
+      .then((data) => {
+        const list = data.layouts ?? [];
+        setLayouts(list);
+        const defaultLayout = list.find((l: { isDefault: boolean }) => l.isDefault);
+        if (defaultLayout) {
+          fetch(`/api/layouts/${defaultLayout.id}`)
+            .then((r) => r.json())
+            .then((layout) => {
+              const positions = JSON.parse(layout.layoutData);
+              setNodes(applyPositionMap(rawNodes, positions));
+              setActiveLayoutId(layout.id);
+              setActiveLayoutName(layout.name);
+            });
+        } else if (typeof window !== 'undefined' && localStorage.getItem('ancstra-tree-layout')) {
+          const stored = localStorage.getItem('ancstra-tree-layout');
+          if (stored) {
+            const positions = JSON.parse(stored);
+            setNodes(applyPositionMap(rawNodes, positions));
+            fetch('/api/layouts', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ name: 'Default', layoutData: stored, isDefault: true }),
+            })
+              .then((r) => r.json())
+              .then((layout) => {
+                setActiveLayoutId(layout.id);
+                setActiveLayoutName('Default');
+                setLayouts([{ id: layout.id, name: 'Default', isDefault: true }]);
+              });
+            localStorage.removeItem('ancstra-tree-layout');
+          }
+        }
+      });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Helper to refresh the layouts list
+  const refreshLayouts = useCallback(() => {
+    fetch('/api/layouts')
+      .then((r) => r.json())
+      .then((data) => setLayouts(data.layouts ?? []));
+  }, []);
+
+  // Debounced auto-save on drag
   const handleNodesChange: OnNodesChange = useCallback(
     (changes) => {
       onNodesChange(changes);
       if (
+        activeLayoutId &&
         changes.some(
           (c) => c.type === 'position' && !('dragging' in c && c.dragging),
         )
       ) {
-        clearTimeout(saveTimeoutRef.current);
-        saveTimeoutRef.current = setTimeout(() => {
+        clearTimeout(autoSaveRef.current);
+        autoSaveRef.current = setTimeout(() => {
           setNodes((currentNodes) => {
-            savePositions(currentNodes);
+            const positions = extractPositions(currentNodes);
+            fetch(`/api/layouts/${activeLayoutId}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ layoutData: JSON.stringify(positions) }),
+            });
             return currentNodes;
           });
-        }, 500);
+        }, 2000);
       }
     },
-    [onNodesChange, setNodes],
+    [onNodesChange, setNodes, activeLayoutId],
   );
 
   const onNodeClick = useCallback(
@@ -149,29 +204,98 @@ function TreeCanvasInner({ treeData, focusPersonId }: TreeCanvasProps) {
   const onPaneClick = useCallback(() => setContextMenu(null), []);
 
   const handleAutoLayout = useCallback(() => {
-    clearPositions();
     const laid = applyDagreLayout(rawNodes, rawEdges);
     setNodes(laid);
-    savePositions(laid);
+    setActiveLayoutId(null);
+    setActiveLayoutName(null);
   }, [rawNodes, rawEdges, setNodes]);
 
-  const handleSaveLayout = useCallback(() => {
+  const handleLoadLayout = useCallback(
+    (id: string) => {
+      fetch(`/api/layouts/${id}`)
+        .then((r) => r.json())
+        .then((layout) => {
+          const positions = JSON.parse(layout.layoutData);
+          setNodes(applyPositionMap(rawNodes, positions));
+          setActiveLayoutId(layout.id);
+          setActiveLayoutName(layout.name);
+        });
+    },
+    [rawNodes, setNodes],
+  );
+
+  const handleSaveAsNew = useCallback(() => {
+    const name = prompt('Layout name:');
+    if (!name) return;
     setNodes((currentNodes) => {
-      savePositions(currentNodes);
+      const positions = extractPositions(currentNodes);
+      fetch('/api/layouts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, layoutData: JSON.stringify(positions) }),
+      })
+        .then((r) => r.json())
+        .then((layout) => {
+          setActiveLayoutId(layout.id);
+          setActiveLayoutName(name);
+          refreshLayouts();
+          toast.success(`Layout "${name}" saved`);
+        });
       return currentNodes;
     });
-  }, [setNodes]);
+  }, [setNodes, refreshLayouts]);
 
-  // Layout management stubs (wired up in Task 3)
-  const [layouts] = useState<{ id: string; name: string; isDefault: boolean }[]>([]);
-  const [activeLayoutId] = useState<string | null>(null);
-  const [activeLayoutName] = useState<string | null>(null);
-  const handleLoadLayout = useCallback((_id: string) => {}, []);
-  const handleSaveAsNew = useCallback(() => { handleSaveLayout(); }, [handleSaveLayout]);
-  const handleUpdateLayout = useCallback(() => { handleSaveLayout(); }, [handleSaveLayout]);
-  const handleSetDefault = useCallback(() => {}, []);
-  const handleDeleteLayout = useCallback(() => {}, []);
-  const handleRenameLayout = useCallback(() => {}, []);
+  const handleUpdateLayout = useCallback(() => {
+    if (!activeLayoutId) {
+      toast.error('No active layout to update');
+      return;
+    }
+    setNodes((currentNodes) => {
+      const positions = extractPositions(currentNodes);
+      fetch(`/api/layouts/${activeLayoutId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ layoutData: JSON.stringify(positions) }),
+      }).then(() => {
+        toast.success('Layout updated');
+      });
+      return currentNodes;
+    });
+  }, [activeLayoutId, setNodes]);
+
+  const handleSetDefault = useCallback(() => {
+    if (!activeLayoutId) return;
+    fetch(`/api/layouts/${activeLayoutId}/default`, { method: 'PUT' }).then(() => {
+      refreshLayouts();
+      toast.success('Default layout set');
+    });
+  }, [activeLayoutId, refreshLayouts]);
+
+  const handleRenameLayout = useCallback(() => {
+    if (!activeLayoutId) return;
+    const newName = prompt('New layout name:', activeLayoutName ?? '');
+    if (!newName) return;
+    fetch(`/api/layouts/${activeLayoutId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: newName }),
+    }).then(() => {
+      setActiveLayoutName(newName);
+      refreshLayouts();
+      toast.success(`Layout renamed to "${newName}"`);
+    });
+  }, [activeLayoutId, activeLayoutName, refreshLayouts]);
+
+  const handleDeleteLayout = useCallback(() => {
+    if (!activeLayoutId) return;
+    if (!confirm('Delete this layout?')) return;
+    fetch(`/api/layouts/${activeLayoutId}`, { method: 'DELETE' }).then(() => {
+      setActiveLayoutId(null);
+      setActiveLayoutName(null);
+      refreshLayouts();
+      toast.success('Layout deleted');
+    });
+  }, [activeLayoutId, refreshLayouts]);
 
   const handleClosePanel = useCallback(() => setSelectedPerson(null), []);
 
