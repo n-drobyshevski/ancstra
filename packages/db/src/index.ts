@@ -1,7 +1,10 @@
 import 'dotenv/config';
+import path from 'path';
+import os from 'os';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import BetterSqlite3 from 'better-sqlite3';
 import * as schema from './schema';
+import * as centralSchema from './central-schema';
 
 export function createDb(url?: string) {
   return drizzle({
@@ -9,6 +12,25 @@ export function createDb(url?: string) {
     schema,
   });
 }
+
+export function createCentralDb(url?: string) {
+  const defaultPath = path.join(os.homedir(), '.ancstra', 'ancstra.sqlite');
+  return drizzle({
+    connection: { source: url || process.env.CENTRAL_DATABASE_URL || defaultPath },
+    schema: centralSchema,
+  });
+}
+
+export function createFamilyDb(dbFilename: string) {
+  const familiesDir = path.join(os.homedir(), '.ancstra', 'families');
+  return drizzle({
+    connection: { source: path.join(familiesDir, dbFilename) },
+    schema,
+  });
+}
+
+export type CentralDatabase = ReturnType<typeof createCentralDb>;
+export type FamilyDatabase = ReturnType<typeof createFamilyDb>;
 
 /**
  * Initialise FTS5 full-text search on person_names.
@@ -57,3 +79,4 @@ export function initFts5(url?: string) {
 
 export type Database = ReturnType<typeof createDb>;
 export * from './schema';
+export * as centralSchema from './central-schema';
