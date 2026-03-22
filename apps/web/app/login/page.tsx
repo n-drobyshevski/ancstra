@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { OAuthButtons } from '@/components/auth/oauth-buttons';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -69,6 +70,7 @@ export default function LoginPage() {
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? 'Signing in...' : 'Sign In'}
             </Button>
+            <OAuthButtons />
             <p className="text-center text-sm text-muted-foreground">
               Don&apos;t have an account?{' '}
               <Link href="/signup" className="text-primary underline">

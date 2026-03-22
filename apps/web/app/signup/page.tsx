@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { OAuthButtons } from '@/components/auth/oauth-buttons';
 
 export default function SignUpPage() {
   const [state, action, pending] = useActionState<SignUpState, FormData>(
@@ -64,6 +65,7 @@ export default function SignUpPage() {
             <Button type="submit" className="w-full" disabled={pending}>
               {pending ? 'Creating account...' : 'Create Account'}
             </Button>
+            <OAuthButtons />
             <p className="text-center text-sm text-muted-foreground">
               Already have an account?{' '}
               <Link href="/login" className="text-primary underline">
