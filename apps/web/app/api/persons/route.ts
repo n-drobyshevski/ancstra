@@ -27,60 +27,62 @@ export async function POST(request: Request) {
   const personId = crypto.randomUUID();
   const nameId = crypto.randomUUID();
 
-  // Transaction: insert person + name + optional events
-  db.insert(persons)
-    .values({
-      id: personId,
-      sex: data.sex,
-      isLiving: data.isLiving,
-      notes: data.notes ?? null,
-      createdBy: session.user.id ?? null,
-      createdAt: now,
-      updatedAt: now,
-    })
-    .run();
-
-  db.insert(personNames)
-    .values({
-      id: nameId,
-      personId,
-      givenName: data.givenName,
-      surname: data.surname,
-      nameType: 'birth',
-      isPrimary: true,
-      createdAt: now,
-    })
-    .run();
-
-  if (data.birthDate || data.birthPlace) {
-    db.insert(events)
+  // Drizzle + better-sqlite3 transactions are SYNCHRONOUS
+  db.transaction((tx) => {
+    tx.insert(persons)
       .values({
-        id: crypto.randomUUID(),
-        personId,
-        eventType: 'birth',
-        dateOriginal: data.birthDate ?? null,
-        dateSort: data.birthDate ? parseDateToSort(data.birthDate) : null,
-        placeText: data.birthPlace ?? null,
+        id: personId,
+        sex: data.sex,
+        isLiving: data.isLiving,
+        notes: data.notes ?? null,
+        createdBy: session.user.id ?? null,
         createdAt: now,
         updatedAt: now,
       })
       .run();
-  }
 
-  if (data.deathDate || data.deathPlace) {
-    db.insert(events)
+    tx.insert(personNames)
       .values({
-        id: crypto.randomUUID(),
+        id: nameId,
         personId,
-        eventType: 'death',
-        dateOriginal: data.deathDate ?? null,
-        dateSort: data.deathDate ? parseDateToSort(data.deathDate) : null,
-        placeText: data.deathPlace ?? null,
+        givenName: data.givenName,
+        surname: data.surname,
+        nameType: 'birth',
+        isPrimary: true,
         createdAt: now,
-        updatedAt: now,
       })
       .run();
-  }
+
+    if (data.birthDate || data.birthPlace) {
+      tx.insert(events)
+        .values({
+          id: crypto.randomUUID(),
+          personId,
+          eventType: 'birth',
+          dateOriginal: data.birthDate ?? null,
+          dateSort: data.birthDate ? parseDateToSort(data.birthDate) : null,
+          placeText: data.birthPlace ?? null,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .run();
+    }
+
+    if (data.deathDate || data.deathPlace) {
+      tx.insert(events)
+        .values({
+          id: crypto.randomUUID(),
+          personId,
+          eventType: 'death',
+          dateOriginal: data.deathDate ?? null,
+          dateSort: data.deathDate ? parseDateToSort(data.deathDate) : null,
+          placeText: data.deathPlace ?? null,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .run();
+    }
+  });
 
   return NextResponse.json(
     {
