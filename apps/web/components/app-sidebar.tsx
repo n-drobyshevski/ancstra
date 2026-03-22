@@ -8,6 +8,7 @@ import {
   GitBranch,
   Search,
   BookOpen,
+  Bookmark,
   Upload,
   Settings,
 } from 'lucide-react';
@@ -29,6 +30,7 @@ const navItems = [
   { title: 'Tree', href: '/tree', icon: GitBranch },
   { title: 'Search', href: '/search', icon: Search },
   { title: 'Research', href: '/research', icon: BookOpen },
+  { title: 'Sources', href: '/sources', icon: Bookmark },
   { title: 'Import', href: '/import', icon: Upload },
 ];
 
