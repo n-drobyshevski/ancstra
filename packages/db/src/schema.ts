@@ -101,3 +101,44 @@ export const events = sqliteTable('events', {
   index('idx_events_family').on(table.familyId),
   index('idx_events_type').on(table.eventType),
 ]);
+
+// ==================== SOURCES ====================
+export const sources = sqliteTable('sources', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  title: text('title').notNull(),
+  author: text('author'),
+  publisher: text('publisher'),
+  publicationDate: text('publication_date'),
+  repositoryName: text('repository_name'),
+  repositoryUrl: text('repository_url'),
+  sourceType: text('source_type', {
+    enum: ['vital_record', 'census', 'military', 'church', 'newspaper',
+      'immigration', 'land', 'probate', 'cemetery', 'photograph',
+      'personal_knowledge', 'correspondence', 'book', 'online', 'other']
+  }),
+  notes: text('notes'),
+  createdBy: text('created_by').references(() => users.id),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
+});
+
+// ==================== SOURCE CITATIONS ====================
+export const sourceCitations = sqliteTable('source_citations', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  sourceId: text('source_id').notNull().references(() => sources.id, { onDelete: 'cascade' }),
+  citationDetail: text('citation_detail'),
+  citationText: text('citation_text'),
+  confidence: text('confidence', {
+    enum: ['high', 'medium', 'low', 'disputed']
+  }).notNull().default('medium'),
+  personId: text('person_id').references(() => persons.id, { onDelete: 'cascade' }),
+  eventId: text('event_id').references(() => events.id, { onDelete: 'cascade' }),
+  familyId: text('family_id').references(() => families.id, { onDelete: 'cascade' }),
+  personNameId: text('person_name_id').references(() => personNames.id, { onDelete: 'cascade' }),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+}, (table) => [
+  index('idx_citations_source').on(table.sourceId),
+  index('idx_citations_person').on(table.personId),
+  index('idx_citations_event').on(table.eventId),
+  index('idx_citations_family').on(table.familyId),
+]);

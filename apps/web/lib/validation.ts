@@ -84,3 +84,48 @@ export const addChildSchema = z.object({
   relationshipToParent1: z.enum(['biological', 'adopted', 'foster', 'step', 'unknown']).optional(),
   relationshipToParent2: z.enum(['biological', 'adopted', 'foster', 'step', 'unknown']).optional(),
 });
+
+const sourceTypeEnum = z.enum([
+  'vital_record', 'census', 'military', 'church', 'newspaper',
+  'immigration', 'land', 'probate', 'cemetery', 'photograph',
+  'personal_knowledge', 'correspondence', 'book', 'online', 'other',
+]);
+
+export const createSourceSchema = z.object({
+  title: z.string().min(1, 'Title is required'),
+  author: z.string().optional(),
+  publisher: z.string().optional(),
+  publicationDate: z.string().optional(),
+  repositoryName: z.string().optional(),
+  repositoryUrl: z.string().optional(),
+  sourceType: sourceTypeEnum.optional(),
+  notes: z.string().optional(),
+});
+
+export const updateSourceSchema = z.object({
+  title: z.string().min(1).optional(),
+  author: z.string().optional(),
+  publisher: z.string().optional(),
+  publicationDate: z.string().optional(),
+  repositoryName: z.string().optional(),
+  repositoryUrl: z.string().optional(),
+  sourceType: sourceTypeEnum.optional(),
+  notes: z.string().optional(),
+}).refine(
+  (data) => Object.values(data).some((v) => v !== undefined),
+  { message: 'At least one field must be provided' }
+);
+
+export const createCitationSchema = z.object({
+  sourceId: z.string().min(1, 'Source is required'),
+  citationDetail: z.string().optional(),
+  citationText: z.string().optional(),
+  confidence: z.enum(['high', 'medium', 'low', 'disputed']).optional(),
+  personId: z.string().optional(),
+  eventId: z.string().optional(),
+  familyId: z.string().optional(),
+  personNameId: z.string().optional(),
+}).refine(
+  (data) => data.personId || data.eventId || data.familyId || data.personNameId,
+  { message: 'At least one entity link is required' }
+);
