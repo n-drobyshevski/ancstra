@@ -12,6 +12,8 @@ import { BoardTab } from '../board/board-tab';
 import { ConflictsTab } from '../conflicts/conflicts-tab';
 import { TimelineTab } from '../timeline/timeline-tab';
 import { HintsPanel } from '../hints/hints-panel';
+import { MatrixTab } from '../matrix/matrix-tab';
+import { ProofTab } from '../proof/proof-tab';
 
 interface PersonSummary {
   id: string;
@@ -84,6 +86,12 @@ function ShellInner({ person, children }: WorkspaceShellProps) {
         {children ?? (
           <>
             {activeView === 'board' && <BoardTab personId={person.id} />}
+            {activeView === 'matrix' && (
+              <MatrixTab
+                personId={person.id}
+                personName={`${person.givenName} ${person.surname}`.trim()}
+              />
+            )}
             {activeView === 'conflicts' && (
               <ConflictsTab personId={person.id} />
             )}
@@ -99,6 +107,12 @@ function ShellInner({ person, children }: WorkspaceShellProps) {
                   birthDate: person.birthDate,
                   deathDate: person.deathDate,
                 }}
+              />
+            )}
+            {activeView === 'proof' && (
+              <ProofTab
+                personId={person.id}
+                personName={`${person.givenName} ${person.surname}`.trim()}
               />
             )}
           </>
