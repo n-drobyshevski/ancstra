@@ -41,6 +41,10 @@ export {
 } from './facts/queries.js';
 export type { CreateFactInput, UpdateFactInput } from './facts/queries.js';
 
+// Source Promotion
+export { promoteToSource } from './facts/promote.js';
+export type { PromoteInput, PromoteResult } from './facts/promote.js';
+
 // Conflict Detection & Resolution
 export {
   detectConflicts,
