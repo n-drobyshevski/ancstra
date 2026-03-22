@@ -151,7 +151,7 @@
 | Search-to-focus (/tree?focus=) | ~0.25w | `[██████████] 100% Complete` | Canvas |
 | Named layouts (DB persistence) | ~0.5w | `[██████████] 100% Complete` | Canvas |
 | Filter pills + multi-select | ~0.25w | `[██████████] 100% Complete` | Canvas |
-| Topola PDF/PNG/SVG export | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Canvas |
+| PNG/SVG/PDF export (html-to-image + jsPDF) | ~0.25w | `[██████████] 100% Complete` | Canvas |
 
 ### GEDCOM (Complete)
 
