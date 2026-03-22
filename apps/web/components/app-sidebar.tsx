@@ -10,6 +10,7 @@ import {
   BookOpen,
   Bookmark,
   Upload,
+  Activity,
   Settings,
   LogOut,
 } from 'lucide-react';
@@ -33,6 +34,7 @@ const navItems = [
   { title: 'Research', href: '/research', icon: Search },
   { title: 'Sources', href: '/sources', icon: Bookmark },
   { title: 'Import', href: '/import', icon: Upload },
+  { title: 'Activity', href: '/activity', icon: Activity },
 ];
 
 export function AppSidebar() {
