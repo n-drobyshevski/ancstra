@@ -1,0 +1,103 @@
+'use client';
+
+import { Suspense } from 'react';
+import { Search, Sparkles } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { WorkspaceTabs, type WorkspaceView } from './workspace-tabs';
+import { useSearchParams } from 'next/navigation';
+import { usePersonConflicts } from '@/lib/research/evidence-client';
+import { BoardTab } from '../board/board-tab';
+import { ConflictsTab } from '../conflicts/conflicts-tab';
+import { TimelineTab } from '../timeline/timeline-tab';
+
+interface PersonSummary {
+  id: string;
+  givenName: string;
+  surname: string;
+  birthDate: string | null;
+  deathDate: string | null;
+  sex: string;
+}
+
+interface WorkspaceShellProps {
+  person: PersonSummary;
+  children?: React.ReactNode;
+}
+
+function getInitials(givenName: string, surname: string): string {
+  const first = givenName.charAt(0).toUpperCase();
+  const last = surname.charAt(0).toUpperCase();
+  return `${first}${last}`.trim() || '?';
+}
+
+function formatDates(birthDate: string | null, deathDate: string | null): string {
+  if (!birthDate && !deathDate) return '';
+  const birth = birthDate ?? '?';
+  const death = deathDate ?? '';
+  return death ? `${birth} - ${death}` : `b. ${birth}`;
+}
+
+function ShellInner({ person, children }: WorkspaceShellProps) {
+  const searchParams = useSearchParams();
+  const activeView = (searchParams.get('view') as WorkspaceView) || 'board';
+  const { conflicts } = usePersonConflicts(person.id);
+  const dates = formatDates(person.birthDate, person.deathDate);
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Avatar size="lg">
+            <AvatarFallback>{getInitials(person.givenName, person.surname)}</AvatarFallback>
+          </Avatar>
+          <div>
+            <h1 className="text-xl font-semibold">
+              {person.givenName} {person.surname}
+            </h1>
+            {dates && (
+              <p className="text-sm text-muted-foreground">{dates}</p>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm">
+            <Search className="mr-1.5" />
+            Search Sources
+          </Button>
+          <Button variant="outline" size="sm">
+            <Sparkles className="mr-1.5" />
+            Ask AI
+          </Button>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <WorkspaceTabs conflictCount={conflicts.length} />
+
+      {/* Tab content */}
+      <div>
+        {children ?? (
+          <>
+            {activeView === 'board' && <BoardTab personId={person.id} />}
+            {activeView === 'conflicts' && (
+              <ConflictsTab personId={person.id} />
+            )}
+            {activeView === 'timeline' && (
+              <TimelineTab personId={person.id} />
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function WorkspaceShell(props: WorkspaceShellProps) {
+  return (
+    <Suspense>
+      <ShellInner {...props} />
+    </Suspense>
+  );
+}

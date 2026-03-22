@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@ancstra/db": "workspace:^",
+    "@ancstra/research": "workspace:^",
     "@ancstra/shared": "workspace:^",
     "@dagrejs/dagre": "^2.0.4",
     "@xyflow/react": "^12.10.1",

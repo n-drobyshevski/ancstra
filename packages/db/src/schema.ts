@@ -152,3 +152,5 @@ export const treeLayouts = sqliteTable('tree_layouts', {
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
   updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
 });
+
+export * from './research-schema';
