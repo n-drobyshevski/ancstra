@@ -11,11 +11,14 @@ interface ContextMenuProps {
   type: 'node' | 'edge' | 'canvas';
   nodeId?: string;
   edgeId?: string;
+  edgeType?: string;
+  edgeFamilyId?: string;
+  edgeChildId?: string;
   persons: PersonListItem[];
   onClose: () => void;
 }
 
-export function TreeContextMenu({ x, y, type, nodeId, persons, onClose }: ContextMenuProps) {
+export function TreeContextMenu({ x, y, type, nodeId, edgeId, edgeType, edgeFamilyId, edgeChildId, persons, onClose }: ContextMenuProps) {
   const router = useRouter();
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -58,7 +61,24 @@ export function TreeContextMenu({ x, y, type, nodeId, persons, onClose }: Contex
   } else if (type === 'edge') {
     items.push({
       label: 'Delete Relationship', destructive: true,
-      onClick: () => { toast.info('Relationship removal — coming soon'); onClose(); },
+      onClick: async () => {
+        try {
+          if (edgeType === 'partner' && edgeFamilyId) {
+            const res = await fetch(`/api/families/${edgeFamilyId}`, { method: 'DELETE' });
+            if (!res.ok) { toast.error('Failed to delete relationship'); onClose(); return; }
+          } else if (edgeType === 'parentChild' && edgeFamilyId && edgeChildId) {
+            const res = await fetch(`/api/families/${edgeFamilyId}/children/${edgeChildId}`, { method: 'DELETE' });
+            if (!res.ok) { toast.error('Failed to unlink child'); onClose(); return; }
+          } else {
+            toast.error('Cannot determine relationship type');
+            onClose();
+            return;
+          }
+          toast.success('Relationship deleted');
+          router.refresh();
+        } catch { toast.error('Network error'); }
+        onClose();
+      },
     });
   } else if (type === 'canvas') {
     items.push(

@@ -66,7 +66,28 @@ function TreeCanvasInner({ treeData, focusPersonId }: TreeCanvasProps) {
   );
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, , onEdgesChange] = useEdgesState(rawEdges);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(rawEdges);
+
+  // Sync nodes/edges when treeData changes (after router.refresh)
+  const treeDataRef = useRef(treeData);
+  useEffect(() => {
+    if (treeDataRef.current === treeData) return;
+    treeDataRef.current = treeData;
+
+    // Preserve existing node positions
+    setNodes((prev) => {
+      const posMap: Record<string, { x: number; y: number }> = {};
+      for (const n of prev) {
+        if (n.type !== 'draftPerson') posMap[n.id] = n.position;
+      }
+      const laid = applyDagreLayout(rawNodes, rawEdges);
+      return laid.map((n) => ({
+        ...n,
+        position: posMap[n.id] ?? n.position,
+      }));
+    });
+    setEdges(rawEdges);
+  }, [treeData, rawNodes, rawEdges, setNodes, setEdges]);
 
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [selectedPerson, setSelectedPerson] =
@@ -77,6 +98,9 @@ function TreeCanvasInner({ treeData, focusPersonId }: TreeCanvasProps) {
     type: 'node' | 'edge' | 'canvas';
     nodeId?: string;
     edgeId?: string;
+    edgeType?: string;
+    edgeFamilyId?: string;
+    edgeChildId?: string;
   } | null>(null);
 
   // Layout management state
@@ -199,6 +223,9 @@ function TreeCanvasInner({ treeData, focusPersonId }: TreeCanvasProps) {
       setContextMenu({
         x: event.clientX,
         y: event.clientY,
+        edgeType: edge.type as string,
+        edgeFamilyId: (edge.data as any)?.familyId as string | undefined,
+        edgeChildId: edge.type === 'parentChild' ? edge.target : undefined,
         type: 'edge',
         edgeId: edge.id,
       });
@@ -398,6 +425,39 @@ function TreeCanvasInner({ treeData, focusPersonId }: TreeCanvasProps) {
     } catch { toast.error('Network error'); }
   }, [treeData, router]);
 
+  // Edge disconnect-by-drag: drag an edge endpoint to empty canvas to delete it
+  const edgeReconnectSuccessful = useRef(true);
+
+  const onReconnectStart = useCallback(() => {
+    edgeReconnectSuccessful.current = false;
+  }, []);
+
+  const onReconnect = useCallback(() => {
+    edgeReconnectSuccessful.current = true;
+  }, []);
+
+  const onReconnectEnd = useCallback(async (_event: MouseEvent | TouchEvent, edge: Edge) => {
+    if (edgeReconnectSuccessful.current) return; // Was reconnected to another handle, not dropped
+
+    // Edge was dropped on empty canvas → delete the relationship
+    const edgeType = edge.type;
+    const familyId = (edge.data as any)?.familyId as string | undefined;
+
+    if (!familyId) return;
+
+    try {
+      if (edgeType === 'partner') {
+        await fetch(`/api/families/${familyId}`, { method: 'DELETE' });
+      } else if (edgeType === 'parentChild') {
+        await fetch(`/api/families/${familyId}/children/${edge.target}`, { method: 'DELETE' });
+      }
+      toast.success('Relationship removed');
+      router.refresh();
+    } catch {
+      toast.error('Failed to remove relationship');
+    }
+  }, [router]);
+
   // Focus on person when focusPersonId is provided (e.g. from /tree?focus=...)
   useEffect(() => {
     if (!focusPersonId) return;
@@ -453,6 +513,10 @@ function TreeCanvasInner({ treeData, focusPersonId }: TreeCanvasProps) {
           edgeTypes={edgeTypes}
           connectionMode={ConnectionMode.Loose}
           onConnect={onConnect}
+          onReconnectStart={onReconnectStart}
+          onReconnect={onReconnect}
+          onReconnectEnd={onReconnectEnd}
+          edgesReconnectable
           onDragOver={onDragOver}
           onDrop={onDrop}
           fitView
