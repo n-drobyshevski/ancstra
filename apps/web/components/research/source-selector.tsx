@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
-import { Settings2, Check } from 'lucide-react';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { Settings2, Check, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Popover,
@@ -62,9 +62,56 @@ interface SourceSelectorProps {
   onSelectionChange: (providerIds: string[]) => void;
 }
 
+type HealthStatus = 'healthy' | 'degraded' | 'down' | 'unknown' | 'checking';
+
+const HEALTH_DOT_COLORS: Record<HealthStatus, string> = {
+  healthy: 'bg-emerald-500',
+  degraded: 'bg-amber-500',
+  down: 'bg-red-500',
+  unknown: 'bg-muted-foreground/40',
+  checking: 'bg-muted-foreground/40 animate-pulse',
+};
+
+const HEALTH_LABELS: Record<HealthStatus, string> = {
+  healthy: 'Online',
+  degraded: 'Degraded',
+  down: 'Offline',
+  unknown: 'Not checked',
+  checking: 'Checking...',
+};
+
 export function SourceSelector({ onSelectionChange }: SourceSelectorProps) {
   const [selected, setSelected] = useState<Set<string>>(loadSelectedProviders);
   const [open, setOpen] = useState(false);
+  const [healthMap, setHealthMap] = useState<Record<string, HealthStatus>>({});
+  const [healthLoading, setHealthLoading] = useState(false);
+  const lastChecked = useRef<number>(0);
+
+  // Fetch health when popover opens (throttled to once per 30s)
+  useEffect(() => {
+    if (!open) return;
+    const now = Date.now();
+    if (now - lastChecked.current < 30_000 && Object.keys(healthMap).length > 0) return;
+
+    setHealthLoading(true);
+    // Set all to 'checking' initially
+    const checking: Record<string, HealthStatus> = {};
+    ALL_PROVIDERS.forEach(p => { checking[p.id] = 'checking'; });
+    setHealthMap(checking);
+
+    fetch('/api/research/providers/health')
+      .then(res => res.json())
+      .then(data => {
+        setHealthMap(data.statuses ?? {});
+        lastChecked.current = Date.now();
+      })
+      .catch(() => {
+        const failed: Record<string, HealthStatus> = {};
+        ALL_PROVIDERS.forEach(p => { failed[p.id] = 'unknown'; });
+        setHealthMap(failed);
+      })
+      .finally(() => setHealthLoading(false));
+  }, [open]);
 
   // Persist and notify on change
   useEffect(() => {
@@ -176,27 +223,35 @@ export function SourceSelector({ onSelectionChange }: SourceSelectorProps) {
                     {cat.label}
                   </button>
                   <div className="grid grid-cols-2 gap-0.5 ml-5">
-                    {cat.providers.map(provider => (
-                      <button
-                        key={provider.id}
-                        type="button"
-                        onClick={() => toggle(provider.id)}
-                        className="flex items-center gap-2 px-2 py-1.5 rounded text-xs hover:bg-muted transition-colors text-left"
-                      >
-                        <div className={`size-3.5 rounded border flex items-center justify-center shrink-0 ${
-                          selected.has(provider.id)
-                            ? 'bg-primary border-primary'
-                            : 'border-muted-foreground'
-                        }`}>
-                          {selected.has(provider.id) && (
-                            <Check className="size-2.5 text-primary-foreground" />
-                          )}
-                        </div>
-                        <span className={selected.has(provider.id) ? 'text-foreground' : 'text-muted-foreground'}>
-                          {provider.name}
-                        </span>
-                      </button>
-                    ))}
+                    {cat.providers.map(provider => {
+                      const health = healthMap[provider.id] ?? 'unknown';
+                      return (
+                        <button
+                          key={provider.id}
+                          type="button"
+                          onClick={() => toggle(provider.id)}
+                          className="flex items-center gap-2 px-2 py-1.5 rounded text-xs hover:bg-muted transition-colors text-left group"
+                          title={HEALTH_LABELS[health]}
+                        >
+                          <div className={`size-3.5 rounded border flex items-center justify-center shrink-0 ${
+                            selected.has(provider.id)
+                              ? 'bg-primary border-primary'
+                              : 'border-muted-foreground'
+                          }`}>
+                            {selected.has(provider.id) && (
+                              <Check className="size-2.5 text-primary-foreground" />
+                            )}
+                          </div>
+                          <span className={`flex-1 ${selected.has(provider.id) ? 'text-foreground' : 'text-muted-foreground'}`}>
+                            {provider.name}
+                          </span>
+                          <span
+                            className={`size-1.5 rounded-full shrink-0 ${HEALTH_DOT_COLORS[health]}`}
+                            title={HEALTH_LABELS[health]}
+                          />
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               );
@@ -207,9 +262,17 @@ export function SourceSelector({ onSelectionChange }: SourceSelectorProps) {
 
           {/* Footer */}
           <div className="flex items-center justify-between">
-            <span className="text-[11px] text-muted-foreground">
-              {selected.size} of {ALL_PROVIDERS.length} sources selected
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-muted-foreground">
+                {selected.size}/{ALL_PROVIDERS.length} sources
+              </span>
+              {healthMap['_worker'] && (
+                <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                  <span className={`size-1.5 rounded-full ${HEALTH_DOT_COLORS[healthMap['_worker'] as HealthStatus]}`} />
+                  Worker {HEALTH_LABELS[healthMap['_worker'] as HealthStatus]?.toLowerCase()}
+                </span>
+              )}
+            </div>
             <Button size="sm" onClick={() => setOpen(false)}>
               Apply
             </Button>
