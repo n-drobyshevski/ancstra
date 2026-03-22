@@ -5,19 +5,21 @@ import { useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 
-export type WorkspaceView = 'board' | 'conflicts' | 'timeline';
+export type WorkspaceView = 'board' | 'conflicts' | 'timeline' | 'hints';
 
 const tabs: { value: WorkspaceView; label: string }[] = [
   { value: 'board', label: 'Board' },
   { value: 'conflicts', label: 'Conflicts' },
   { value: 'timeline', label: 'Timeline' },
+  { value: 'hints', label: 'Hints' },
 ];
 
 interface WorkspaceTabsProps {
   conflictCount?: number;
+  hintCount?: number;
 }
 
-export function WorkspaceTabs({ conflictCount = 0 }: WorkspaceTabsProps) {
+export function WorkspaceTabs({ conflictCount = 0, hintCount = 0 }: WorkspaceTabsProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -56,6 +58,11 @@ export function WorkspaceTabs({ conflictCount = 0 }: WorkspaceTabsProps) {
           {tab.value === 'conflicts' && conflictCount > 0 && (
             <Badge variant="destructive" className="ml-1 h-4 min-w-4 px-1 text-[10px]">
               {conflictCount}
+            </Badge>
+          )}
+          {tab.value === 'hints' && hintCount > 0 && (
+            <Badge variant="secondary" className="ml-1 h-4 min-w-4 px-1 text-[10px]">
+              {hintCount}
             </Badge>
           )}
         </button>
