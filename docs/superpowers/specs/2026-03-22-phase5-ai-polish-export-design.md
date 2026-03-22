@@ -463,5 +463,5 @@ packages/db/src/ai-schema.ts                — extend ai_usage.taskType enum
 - [ ] AI budget hard limit blocks generation when exceeded
 - [ ] Budget override allows single-action bypass
 - [ ] API routes paginated (persons, sources, events)
-- [ ] Image thumbnails generated on upload
+- [ ] ~~Image thumbnails generated on upload~~ (deferred — media schema not yet implemented)
 - [ ] Slow queries logged (>500ms warning)

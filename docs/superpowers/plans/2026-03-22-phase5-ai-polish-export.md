@@ -12,6 +12,10 @@
 
 **Important:** Next.js 16 — read `node_modules/next/dist/docs/` before writing Next.js code. Never use `.js` extensions in TS imports. Existing AI chat route is at `apps/web/app/api/ai/chat/route.ts`. Existing GEDCOM serializer is at `apps/web/lib/gedcom/serialize.ts`. Cost tracker is at `packages/ai/src/context/cost-tracker.ts`.
 
+**Prerequisite:** Phase 4 must be merged before starting. Verify these files exist: `packages/db/src/family-schema.ts`, `packages/db/src/central-schema.ts`, `apps/web/lib/auth/api-guard.ts`, `apps/web/proxy.ts`. If they don't exist, merge the `feature/phase4-auth` branch first.
+
+**SQL column naming:** Drizzle uses camelCase in TypeScript (`placeText`) but snake_case in SQL (`place_text`). When writing raw SQL queries (e.g., in quality-queries.ts), always use the SQL column name (`place_text`). When using Drizzle query builder, use the TypeScript name (`events.placeText`).
+
 ---
 
 ## File Map
@@ -64,7 +68,7 @@ apps/web/
 ├── components/export/export-options.tsx
 ├── lib/gedcom/serialize-70.ts
 ├── lib/gedcom/index.ts
-├── docker-compose.yml                  (Gotenberg for local dev)
+docker-compose.yml                      (project root, Gotenberg for local dev)
 ```
 
 ### Modified files
@@ -189,10 +193,14 @@ export const BIOGRAPHY_ESTIMATE = {
 export const HISTORICAL_CONTEXT_ESTIMATE = { inputTokens: 1000, outputTokens: 500 };
 ```
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 4: Update existing chat route to use central DB budget**
+
+The existing chat route at `apps/web/app/api/ai/chat/route.ts` reads the budget from `process.env.AI_MONTHLY_BUDGET_USD`. Update it to read from `family_registry.monthly_ai_budget_usd` in the central DB instead, matching the new biography/context routes. This ensures all AI features use the same configurable budget.
+
+- [ ] **Step 5: Commit**
 
 ```bash
-git add packages/ai/src/context/cost-tracker.ts
+git add packages/ai/src/context/cost-tracker.ts apps/web/app/api/ai/chat/route.ts
 git commit -m "feat(ai): extend cost tracker with biography/context task types and estimates"
 ```
 
@@ -827,16 +835,26 @@ export class GotenbergClient {
 
 Test `isAvailable()` returns false when no server. Test `htmlToPdf()` throws on connection error. (Integration test with real Gotenberg deferred to CI with Docker.)
 
-- [ ] **Step 4: Create docker-compose.yml**
+- [ ] **Step 4: Create docker-compose.yml at project root**
+
+Note: Gotenberg defaults to port 3000, which conflicts with Next.js dev server. Map to 3100 instead.
 
 ```yaml
 services:
   gotenberg:
     image: gotenberg/gotenberg:8
     ports:
-      - "3000:3000"
+      - "3100:3000"
     restart: unless-stopped
 ```
+
+- [ ] **Step 5: Verify pnpm-workspace.yaml includes packages/export**
+
+Check if `packages/*` glob covers it. If not, add `packages/export`.
+
+- [ ] **Step 6: Update GOTENBERG_URL default**
+
+In `gotenberg-client.ts`, change default to `http://localhost:3100`.
 
 - [ ] **Step 5: Commit**
 
