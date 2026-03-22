@@ -6,7 +6,12 @@ import {
   Library,
   Search,
   CheckCircle,
+  FileText,
+  FileCode,
+  Copy,
+  Printer,
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -22,6 +27,7 @@ import {
   usePersonConflicts,
 } from '@/lib/research/evidence-client';
 import { ProofSection } from './proof-section';
+import { exportProofAsPdf, exportProofAsMarkdown } from './proof-export';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -173,6 +179,34 @@ export function ProofTab({ personId, personName = 'Unknown' }: ProofTabProps) {
     [persistProof],
   );
 
+  // Export helpers
+  const includedSources = proof.sourcesIncluded.filter((s) => s.included);
+  const canExport = proof.question.trim().length > 0;
+
+  const handleExportPdf = () => {
+    exportProofAsPdf(proof, personName, includedSources);
+  };
+
+  const handleExportMarkdown = () => {
+    const md = exportProofAsMarkdown(proof, personName, includedSources);
+    const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${personName.replace(/\s+/g, '-')}-proof-summary-${proof.conclusionDate}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleCopy = async () => {
+    const md = exportProofAsMarkdown(proof, personName, includedSources);
+    await navigator.clipboard.writeText(md);
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
   // Loading skeleton
   if (!loaded || itemsLoading || conflictsLoading) {
     return (
@@ -185,12 +219,48 @@ export function ProofTab({ personId, personName = 'Unknown' }: ProofTabProps) {
   }
 
   return (
+    <>
       <div className="mx-auto max-w-3xl space-y-5 proof-content">
-        {/* Header */}
-        <div className="flex items-center gap-2 print:hidden">
+        {/* Export toolbar */}
+        <div className="flex items-center gap-2 flex-wrap print:hidden">
           <h2 className="text-base font-semibold text-foreground flex-1">
             Proof Summary
           </h2>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!canExport}
+            onClick={handleExportPdf}
+          >
+            <FileText className="mr-1.5 h-3.5 w-3.5" />
+            Export PDF
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!canExport}
+            onClick={handleExportMarkdown}
+          >
+            <FileCode className="mr-1.5 h-3.5 w-3.5" />
+            Export Markdown
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!canExport}
+            onClick={handleCopy}
+          >
+            <Copy className="mr-1.5 h-3.5 w-3.5" />
+            Copy
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handlePrint}
+          >
+            <Printer className="mr-1.5 h-3.5 w-3.5" />
+            Print
+          </Button>
         </div>
 
         {/* Section 1: Research Question */}
@@ -356,5 +426,30 @@ export function ProofTab({ personId, personName = 'Unknown' }: ProofTabProps) {
           </div>
         </ProofSection>
       </div>
+
+      {/* Print-friendly styles */}
+      <style>{`
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+          .proof-content,
+          .proof-content * {
+            visibility: visible;
+          }
+          .proof-content {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            max-width: 100%;
+            padding: 2rem;
+          }
+          .print\\:hidden {
+            display: none !important;
+          }
+        }
+      `}</style>
+    </>
   );
 }
