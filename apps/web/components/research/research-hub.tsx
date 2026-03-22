@@ -7,6 +7,7 @@ import { SearchResults } from './search-results';
 import { ResearchItemCard } from './research-item-card';
 import { UrlPasteInput } from './url-paste-input';
 import { TextPasteModal } from './text-paste-modal';
+import { SourceSelector } from './source-selector';
 import { Button } from '@/components/ui/button';
 import { useResearchSearch, useResearchItems } from '@/lib/research/search-client';
 
@@ -27,12 +28,17 @@ const PROVIDERS = [
 export function ResearchHub() {
   const [query, setQuery] = useState('');
   const [textModalOpen, setTextModalOpen] = useState(false);
+  const [selectedProviders, setSelectedProviders] = useState<string[]>([]);
+
+  const providerParam = selectedProviders.length > 0 && selectedProviders.length < 8
+    ? selectedProviders.join(',')
+    : undefined;
 
   const {
     data: searchData,
     isLoading: searchLoading,
     error: searchError,
-  } = useResearchSearch(query, !!query);
+  } = useResearchSearch(query, !!query, providerParam);
 
   const {
     data: itemsData,
@@ -79,7 +85,12 @@ export function ResearchHub() {
         </div>
       </div>
 
-      <SearchBar onSearch={handleSearch} />
+      <div className="flex gap-2">
+        <div className="flex-1">
+          <SearchBar onSearch={handleSearch} />
+        </div>
+        <SourceSelector onSelectionChange={setSelectedProviders} />
+      </div>
 
       <div className="flex items-center gap-3">
         <div className="h-px flex-1 bg-border" />

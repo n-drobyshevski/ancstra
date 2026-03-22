@@ -30,8 +30,7 @@ const navItems = [
   { title: 'Dashboard', href: '/dashboard', icon: Home },
   { title: 'People', href: '/persons', icon: Users },
   { title: 'Tree', href: '/tree', icon: GitBranch },
-  { title: 'Search', href: '/search', icon: Search },
-  { title: 'Research', href: '/research', icon: BookOpen },
+  { title: 'Research', href: '/research', icon: Search },
   { title: 'Sources', href: '/sources', icon: Bookmark },
   { title: 'Import', href: '/import', icon: Upload },
 ];

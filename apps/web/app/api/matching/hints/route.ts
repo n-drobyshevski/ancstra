@@ -127,7 +127,7 @@ export async function POST(request: Request) {
     // Map search results to pipeline input
     const searchResults: SearchResultInput[] = rawResults.map((r) => ({
       providerId: r.providerId,
-      externalId: r.recordId ?? r.id ?? crypto.randomUUID(),
+      externalId: r.externalId ?? crypto.randomUUID(),
       title: r.title,
       snippet: r.snippet ?? '',
       url: r.url ?? '',
