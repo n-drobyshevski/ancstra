@@ -1,0 +1,22 @@
+{
+  "name": "@ancstra/auth",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@ancstra/db": "workspace:*",
+    "drizzle-orm": "^0.45.1"
+  },
+  "devDependencies": {
+    "better-sqlite3": "^12.8.0",
+    "@types/better-sqlite3": "^7.6.13",
+    "vitest": "^3.2.3",
+    "typescript": "^5"
+  }
+}
