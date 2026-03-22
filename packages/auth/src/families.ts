@@ -3,6 +3,7 @@ import {
   familyRegistry,
   familyMembers,
 } from '@ancstra/db/central-schema';
+import { isWebMode } from '@ancstra/db';
 import type { CentralDatabase } from '@ancstra/db';
 import type { Role } from './types';
 
@@ -32,8 +33,18 @@ export async function createFamily(
   opts: { name: string; ownerId: string },
 ): Promise<{ familyId: string; dbFilename: string }> {
   const familyId = crypto.randomUUID();
-  const dbFilename = `family-${familyId}.sqlite`;
   const now = new Date().toISOString();
+
+  let dbFilename: string;
+  if (isWebMode(process.env.CENTRAL_DATABASE_URL)) {
+    // Dynamic import to avoid loading Turso Platform API code in local mode
+    const { createTursoDatabase, runFamilySchemaDDL } = await import('@ancstra/db/turso');
+    const { url } = await createTursoDatabase(`ancstra-family-${familyId}`);
+    dbFilename = url;
+    await runFamilySchemaDDL(dbFilename);
+  } else {
+    dbFilename = `family-${familyId}.sqlite`;
+  }
 
   await centralDb.insert(familyRegistry).values({
     id: familyId,
