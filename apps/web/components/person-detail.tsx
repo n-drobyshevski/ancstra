@@ -23,6 +23,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { EventList } from '@/components/event-list';
+import { CitationList } from '@/components/citation-list';
 import { PersonLinkPopover } from '@/components/person-link-popover';
 import { toast } from 'sonner';
 
@@ -382,6 +383,16 @@ export function PersonDetail({ person }: { person: PersonDetailType }) {
             personId={person.id}
             onUpdate={() => router.refresh()}
           />
+        </CardContent>
+      </Card>
+
+      {/* ── Sources ── */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Sources</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <CitationList personId={person.id} onUpdate={() => router.refresh()} />
         </CardContent>
       </Card>
 
