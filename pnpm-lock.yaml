@@ -23,6 +23,9 @@ importers:
       '@ancstra/ai':
         specifier: workspace:^
         version: link:../../packages/ai
+      '@ancstra/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
       '@ancstra/db':
         specifier: workspace:^
         version: link:../../packages/db

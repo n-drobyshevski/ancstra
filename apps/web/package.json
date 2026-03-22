@@ -11,6 +11,7 @@
   "dependencies": {
     "@ai-sdk/anthropic": "^1.2.0",
     "@ancstra/ai": "workspace:^",
+    "@ancstra/auth": "workspace:*",
     "@ancstra/db": "workspace:^",
     "@ancstra/matching": "workspace:^",
     "@ancstra/research": "workspace:^",
