@@ -1,339 +1,302 @@
-# Phase 2: AI Search & Matching
+# Phase 2: AI Search, Research & Matching
 
-> Weeks 9-18 | Started: TBD | Target: TBD
+> Weeks 9-20 | Started: TBD | Target: TBD
+
+## Approach (2026-03-22)
+
+Phase 2 is now significantly expanded beyond the original FamilySearch + matching + AI chat scope. It now includes a full OSINT-powered research workspace with multi-source search, web scraping, evidence analysis, and structured fact management. See the [research workspace design spec](../superpowers/specs/2026-03-22-research-workspace-design.md) for the full architecture.
+
+**Key design decisions:**
+- **Research + Source Hybrid** (Approach C): Research items stage in a lightweight table. Promotion to `sources` is one-click. Keeps the tree clean.
+- **Free/open APIs first + full web scraping**: Playwright on Hono worker for JS-rendered pages.
+- **Evidence workspace with tabbed views** (Hybrid 3): Board (default), Canvas, Matrix, Timeline, Conflicts, Proof Summary. Ship Board first, add others incrementally.
+- **AI chat is parallel, not the hub**: Research workspace is standalone. AI chat shares data but is a separate interface.
 
 ## Goals
 
-- Connect the app to FamilySearch's 66 billion records via OAuth authentication
-- Build an intelligent record matching engine with probabilistic scoring (Jaro-Winkler, blocking, confidence thresholds)
-- Deliver an AI-powered research assistant that intelligently queries multiple free data sources
-- Implement one-click record attachment and source linking workflow
+- Build a multi-source search engine with pluggable provider architecture (8+ sources)
+- Deliver a full-power web scraping engine (Playwright) for sites without APIs
+- Create a research item staging area with draft/promote/dismiss workflow
+- Build an evidence analysis workspace with multiple view modes per person
+- Implement structured fact extraction with conflict detection
+- Connect the app to FamilySearch's 66 billion records via OAuth
+- Build an intelligent record matching engine with probabilistic scoring
+- Deliver an AI-powered research assistant with tool-calling capability
+- Scaffold the Hono worker backend for heavy scraping/matching jobs
 
 ## Systems in Scope
 
+- [Research Workspace Design](../superpowers/specs/2026-03-22-research-workspace-design.md) (NEW)
 - [FamilySearch API](../specs/familysearch-api.md)
 - [Record Matching](../specs/record-matching.md)
 - [AI Research Assistant](../specs/ai-research-assistant.md)
 - [Relationship Validation](../specs/relationship-validation.md)
+- [Backend Architecture](../superpowers/specs/2026-03-21-backend-architecture-design.md)
 
 ## Task Breakdown
 
-### Week 9-10: FamilySearch OAuth & API Client Setup
+### Week 9-10: Hono Worker Scaffold + Search Infrastructure
 
-**Goal:** Authenticate with FamilySearch and establish API client infrastructure.
+**Goal:** Scaffold the Hono worker, create packages/research, implement SearchProvider interface.
 
-- [ ] Register for FamilySearch developer account and obtain client credentials
-  - [ ] Get `client_id` and `client_secret` for both sandbox and production
-  - [ ] Add to `.env.local`
-- [ ] Implement OAuth 2.0 PKCE flow:
-  - [ ] Create `apps/web/lib/familysearch/auth.ts` with:
-    - [ ] `generateAuthUrl()` — generates authorization URL with code_challenge (S256)
-    - [ ] `exchangeCodeForTokens()` — exchanges auth code + verifier for access/refresh tokens
-    - [ ] `refreshAccessToken()` — refreshes expired tokens
-  - [ ] Create callback route `apps/web/app/api/auth/familysearch/callback` to handle redirect
-  - [ ] Store access/refresh tokens in NextAuth.js session
-  - [ ] Add logout endpoint to revoke tokens
-- [ ] Build FamilySearch API client `apps/web/lib/familysearch/client.ts`:
-  - [ ] Rate limiter: respect FamilySearch's ~18 seconds execution time per minute
-  - [ ] Implement exponential backoff for 429 (rate limit) responses
-  - [ ] Auto-refresh tokens on 401 responses
-  - [ ] Add request logging for debugging
-  - [ ] Error handling class: `FamilySearchApiError` with status codes
-- [ ] Add FamilySearch TypeScript types `packages/lib/types/familysearch.ts`:
-  - [ ] `FSPerson`, `FSAncestry`, `FSDescendancy`, `FSRecord`, `FSSearchResult`, etc.
-  - [ ] Map FamilySearch schema to internal types
-- [ ] Create API route to check FamilySearch connection status: `GET /api/familysearch/status`
-- [ ] Build UI for FamilySearch authentication:
-  - [ ] "Connect to FamilySearch" button on dashboard
-  - [ ] OAuth redirect and callback handling
-  - [ ] Display connected status in settings
+- [ ] Scaffold `apps/worker` with Hono (see backend architecture spec)
+  - [ ] Health check, JWT auth middleware, job dispatch routes
+  - [ ] Docker setup for Railway deployment
+  - [ ] WebSocket for job progress
+- [ ] Create `packages/research` monorepo package
+  - [ ] `SearchProvider` interface + `SearchRequest` / `SearchResult` types
+  - [ ] Provider registry with enable/disable, health tracking
+  - [ ] Rate limiter (token bucket, per-provider)
+- [ ] Database migration: `research_items`, `research_item_persons`, `research_facts`, `search_providers` tables
+- [ ] Add `research_canvas_positions` table for canvas view
+- [ ] FTS5 virtual table for research items
+- [ ] Research item CRUD API routes (`/api/research/items`)
+- [ ] Write ADR-007 (Hono worker sidecar)
 
-### Week 10-11: FamilySearch Search Endpoints
+### Week 10-12: FamilySearch + Core Providers
 
-**Goal:** Query FamilySearch for persons and records.
+**Goal:** Implement FamilySearch OAuth and 3-4 additional search providers.
 
-- [ ] Implement FamilySearch search methods in client:
-  - [ ] `searchPersons(name, birthDate?, birthPlace?)` — find matching persons in FamilySearch tree
-  - [ ] `searchRecords(name, birthDate?, birthPlace?, recordType?)` — search indexed records (census, vital, military, etc.)
-  - [ ] `getPersonDetails(personId)` — retrieve full person record from FamilySearch
-  - [ ] `getAncestry(personId, generations?)` — retrieve ancestor pedigree
-  - [ ] `getDescendancy(personId, generations?)` — retrieve descendant pedigree
-  - [ ] `getPlaceAuthority(placeName)` — search place hierarchy (for standardizing places)
-  - [ ] `getSourceInfo(sourceId)` — retrieve source metadata
-- [ ] Create search API routes:
-  - [ ] `GET /api/familysearch/search?name={name}&birthDate={date}&birthPlace={place}&type={record|person}`
-  - [ ] `GET /api/familysearch/persons/{personId}` — retrieve specific person
-  - [ ] `GET /api/familysearch/records/{recordId}` — retrieve specific record details
-- [ ] Add input validation for search parameters (Zod schemas)
-- [ ] Implement search result caching with React Query to avoid redundant API calls
+- [ ] FamilySearch OAuth 2.0 PKCE flow
+  - [ ] `generateAuthUrl()`, `exchangeCodeForTokens()`, `refreshAccessToken()`
+  - [ ] Callback route, token storage in session
+  - [ ] "Connect to FamilySearch" UI
+- [ ] FamilySearch SearchProvider implementation
+  - [ ] Person search, record search, place authority
+  - [ ] Rate limiting (30 req/min), auto-refresh on 401
+- [ ] NARA Catalog SearchProvider
+- [ ] Chronicling America SearchProvider
+- [ ] Unified search UI
+  - [ ] Single search bar, federated results across enabled providers
+  - [ ] Result cards with provider badge, relevance score
+  - [ ] "Save" button to create research item
+- [ ] Offline mock providers for development
 
-### Week 11-12: Record Matching Engine (TypeScript)
+### Week 12-13: Web Scraping + Additional Providers
 
-**Goal:** Build probabilistic matching without Splink (using pure TypeScript).
+**Goal:** Playwright scraping engine + FindAGrave, WikiTree, web search.
 
-- [ ] Design matching algorithm in `apps/web/lib/matching/engine.ts`:
-  - [ ] **Name comparison:**
-    - [ ] Implement Jaro-Winkler distance for fuzzy name matching
-    - [ ] Set threshold: >= 0.90 for "likely match", 0.85-0.89 for "possible match", < 0.85 for "skip"
-    - [ ] Handle name variations (maiden names, nicknames, abbreviated names)
-    - [ ] Normalize names before comparison (lowercase, remove accents, remove punctuation)
-  - [ ] **Date comparison:**
-    - [ ] Exact match = 1.0
-    - [ ] Within ±1 year = 0.8
-    - [ ] Within ±2 years = 0.6
-    - [ ] Beyond ±2 years but same decade = 0.4
-    - [ ] Missing date = 0.5 (neutral)
-  - [ ] **Place comparison:**
-    - [ ] Exact match = 1.0
-    - [ ] Partial match (same county/state) = 0.7
-    - [ ] Same country but different region = 0.4
-    - [ ] Different country = 0 (likely not the same person)
-    - [ ] Missing place = 0.5
-  - [ ] **Composite scoring:**
-    - [ ] Weight: 50% name, 30% birth date, 20% birth place (configurable)
-    - [ ] Final score = (name_score * 0.5) + (date_score * 0.3) + (place_score * 0.2)
-  - [ ] **Blocking strategy** to reduce search space:
-    - [ ] Filter FamilySearch results by surname match (exact or Jaro-Winkler >= 0.85)
-    - [ ] Further filter by birth decade match (if date available)
-    - [ ] Only score remaining candidates
-- [ ] Implement matching functions:
-  - [ ] `jaroDist(s1: string, s2: string): number` — Jaro-Winkler distance (0-1)
-  - [ ] `nameDist(name1: StructuredName, name2: StructuredName): number` — compare given + surname
-  - [ ] `dateDist(date1: string, date2: string): number` — compare with year tolerance
-  - [ ] `placeDist(place1: string, place2: string): number` — hierarchical place comparison
-  - [ ] `matchScore(localPerson, fsRecord): number` — composite score
-  - [ ] `rankMatches(candidates: FSRecord[]): RankedMatch[]` — sort by score
-- [ ] Create matching service `apps/web/lib/matching/service.ts`:
-  - [ ] `findMatchesForPerson(personId)` — query FamilySearch for a local person, rank results
-  - [ ] Batch operation: `findMatchesForAllPersons()` — process entire tree, generate "hints"
-- [ ] Add unit tests for matching functions (test Jaro-Winkler, date comparison, edge cases)
+- [ ] Playwright integration on Hono worker
+  - [ ] `POST /jobs/scrape-url` — single URL scrape
+  - [ ] `POST /jobs/scrape-batch` — queue of URLs
+  - [ ] Extract: title, text content, metadata, screenshot
+  - [ ] Rate limiting (1 req/sec/domain), robots.txt awareness
+- [ ] Web archive storage (HTML + screenshot to local filesystem)
+- [ ] FindAGrave provider (unofficial API / scrape hybrid)
+- [ ] WikiTree provider (free API)
+- [ ] Web search provider (SearXNG self-hosted or Brave Search API)
+- [ ] Geneanet provider (scraper, Hono worker)
+- [ ] OpenArchives provider (OAI-PMH)
+- [ ] Hybrid clipping system
+  - [ ] URL paste + extract (dispatches to Playwright)
+  - [ ] Text paste + AI entity extraction
+- [ ] Provider configuration UI (`/settings/providers`)
 
-### Week 12-13: Hints Engine & Record Review UI
+### Week 13-14: Record Matching Engine
 
-**Goal:** Automatically discover potential records for each person.
+**Goal:** Build probabilistic matching for FamilySearch records.
 
-- [ ] Build hints generation pipeline in `apps/web/lib/hints/engine.ts`:
-  - [ ] For each person in local tree:
-    - [ ] If not already linked to FamilySearch, query for matches
-    - [ ] Score matches using matching engine
-    - [ ] Store top matches (if score >= threshold 0.75) in database
-  - [ ] Store hints in new database tables:
-    - [ ] `hints` — id, person_id, record_id, record_type, score, status (new, reviewed, linked, dismissed), created_at
-    - [ ] `hint_details` — id, hint_id, fs_person_id, fs_record_id, fs_data (JSON blob with FS record)
-- [ ] Create API route for hints:
-  - [ ] `GET /api/persons/[id]/hints` — retrieve hints for a person
-  - [ ] `PUT /api/hints/[id]/status` — update hint status (reviewed, linked, dismissed)
-  - [ ] `POST /api/hints/[id]/accept` — accept a hint and link the FamilySearch record
-- [ ] Build hints UI panel `apps/web/components/HintsPanel.tsx`:
-  - [ ] Display hints sorted by score (highest first)
-  - [ ] For each hint, show:
-    - [ ] Record image/thumbnail (if available from FamilySearch)
-    - [ ] Record details (name, dates, places, record type)
-    - [ ] Confidence score with color indicator (green for >0.9, yellow for 0.75-0.89, gray for < 0.75)
-    - [ ] "Preview", "Link This Record", "Not This Person" buttons
-  - [ ] Preview modal showing full record details and comparison with local person
-  - [ ] Accept/reject buttons to save user decision
-- [ ] Integrate hints into person detail view:
-  - [ ] Show "X new hints available" badge
-  - [ ] Display hints panel in sidebar or expandable section
-- [ ] Add settings for hint generation:
-  - [ ] Minimum score threshold
-  - [ ] Auto-generate for all persons vs. on-demand
-  - [ ] Enable/disable specific record types
+- [ ] Jaro-Winkler name comparison (`packages/matching`)
+- [ ] Date comparator (exact/±1yr/±2yr/decade/missing)
+- [ ] Place comparator (exact/county/state/country/missing)
+- [ ] Composite scoring with configurable weights (50% name, 30% date, 20% place)
+- [ ] Blocking strategy (surname + birth decade filter before scoring)
+- [ ] Hints generation pipeline
+  - [ ] For each person: query FamilySearch, score matches, store top hits
+  - [ ] Store in `match_candidates` table
+- [ ] Hints review UI
+  - [ ] Cards with confidence score, record preview
+  - [ ] Accept / reject / maybe buttons
+  - [ ] Side-by-side comparison (local vs FamilySearch)
+- [ ] Relationship validation queue
+  - [ ] Pending proposals from AI, matching, imports
+  - [ ] Editor review with evidence display
 
-### Week 13-14: Relationship Validation Queue
+### Week 14-16: Evidence Analysis Workspace
 
-**Goal:** Help users verify relationships between matched records.
+**Goal:** Build the per-person evidence workspace with Board tab as default.
 
-- [ ] Build relationship validator `apps/web/lib/matching/relationships.ts`:
-  - [ ] Compute relationship between two FamilySearch persons:
-    - [ ] Direct match (same person ID)
-    - [ ] Parent-child relationship
-    - [ ] Spouse relationship
-    - [ ] Siblings (shared parents)
-    - [ ] Grandparent, grandchild, aunt/uncle, cousin (N levels up)
-    - [ ] Unrelated or distant
-  - [ ] Compare local tree relationships with FamilySearch relationships
-  - [ ] Flag conflicts or differences
-- [ ] Create validation queue database tables:
-  - [ ] `relationship_queue` — id, person_a_id, person_b_id, fs_person_a_id, fs_person_b_id, local_relationship, fs_relationship, conflict_flag, created_at, resolved_at
-- [ ] API route for validation:
-  - [ ] `GET /api/relationships/queue` — list unresolved relationship conflicts
-  - [ ] `PUT /api/relationships/[id]/resolve` — accept or reject proposed relationship merge
-- [ ] Build UI for relationship review:
-  - [ ] Queue panel showing conflicts
-  - [ ] Side-by-side comparison: local tree vs. FamilySearch
-  - [ ] Action buttons: "Merge", "Keep Local", "Update from FamilySearch"
-- [ ] Implement relationship conflict resolution:
-  - [ ] If FamilySearch shows different parent: offer option to update or keep existing
-  - [ ] If spouse linked differently: show both families, let user choose
+- [ ] Workspace page at `/research/person/[id]`
+  - [ ] Person header (name, dates, avatar)
+  - [ ] Tab navigation (Board, Conflicts, Timeline — Canvas/Matrix/Proof later)
+- [ ] **Board tab** (3-column layout)
+  - [ ] Left: source list (promoted sources + draft research items, dismissed faded)
+  - [ ] Center: fact matrix (rows = facts, columns = sources, conflicts highlighted)
+  - [ ] Right: detail panel (archived content, extracted facts, notes, actions)
+- [ ] Research facts CRUD
+  - [ ] Manual fact entry per research item or source
+  - [ ] AI-assisted fact extraction from research item text
+  - [ ] Fact confidence ratings (high/medium/low/disputed)
+- [ ] Conflict detection
+  - [ ] SQL query: same person + same fact_type + different fact_value
+  - [ ] Visual highlighting in fact matrix (red rows)
+  - [ ] Conflict resolution: accept one value, mark disputed
+- [ ] **Conflicts tab**
+  - [ ] Dedicated list of all fact disagreements
+  - [ ] Each conflict: competing claims, source links, resolution buttons
+- [ ] **Timeline tab**
+  - [ ] Chronological events from all sources
+  - [ ] Each event linked to its source
+  - [ ] Visual gaps where evidence is missing
 
-### Week 14-15: FamilySearch Record Linking
+### Week 16-17: Source Promotion + AI Research Assistant
 
-**Goal:** Seamlessly attach FamilySearch records to local persons as sources.
+**Goal:** One-click promotion workflow and Claude-powered chat.
 
-- [ ] Create record linking workflow:
-  - [ ] When user accepts a hint, store FamilySearch person/record ID in local person record
-  - [ ] Create source entry from FamilySearch record data
-  - [ ] Link all events extracted from that record
-- [ ] Add source attachment `apps/web/lib/familysearch/source-converter.ts`:
-  - [ ] Convert FamilySearch record metadata to source citation (title, author, repository, URL)
-  - [ ] Generate citation text in Chicago style
-  - [ ] Store FamilySearch IDs for future sync
-- [ ] Build source linking UI:
-  - [ ] "Add FamilySearch Record" button in person detail
-  - [ ] Search/browse dialog for FamilySearch records
-  - [ ] Preview record details
-  - [ ] Link and create source on confirm
-- [ ] Implement source tracking:
-  - [ ] Store FamilySearch ID in sources table for future updates
-  - [ ] Build sync function to check if FamilySearch records have changed
-  - [ ] Display "View on FamilySearch" link in source citation
-
-### Week 15-16: Claude AI Research Assistant
-
-**Goal:** Build an intelligent chat interface for genealogy research.
-
-- [ ] Create Claude API integration `apps/web/lib/ai/client.ts`:
-  - [ ] Initialize Vercel AI SDK with Claude (claude-3-5-sonnet or similar)
-  - [ ] Implement streaming responses for chat
-  - [ ] Add prompt templates for genealogy-specific queries
-- [ ] Build AI system prompt `apps/web/lib/ai/prompts.ts` with context:
-  - [ ] Provide tree structure (current person, ancestors, descendants, known sources)
-  - [ ] Provide research guidelines (primary vs. secondary sources, NARA, Chronicling America, etc.)
-  - [ ] Provide research history (already checked these sources, found these records, etc.)
-- [ ] Create tool definitions for the AI to call:
-  - [ ] `search_familysearch(name, birthDate, birthPlace, recordType)` — search FamilySearch
-  - [ ] `search_nara(keywords)` — search NARA Catalog
-  - [ ] `search_chronicling_america(keywords, placeName, dateRange)` — search newspapers
-  - [ ] `explain_relationship(personA_id, personB_id)` — compute relationship between two people
-  - [ ] `suggest_next_research_steps()` — analyze tree, identify gaps
-  - [ ] `generate_research_plan(person_id, depth)` — create structured research task list
-- [ ] Build chat UI `apps/web/components/ResearchAssistant.tsx`:
-  - [ ] Chat interface with message history
-  - [ ] User message input
-  - [ ] Claude responses with streaming text
+- [ ] Source promotion workflow
+  - [ ] Research item → source with auto-generated citation
+  - [ ] AI citation generation (Chicago / Evidence Explained style)
+  - [ ] Fact carry-over: research_facts → source_citations
+  - [ ] Backlink via `research_items.promoted_source_id`
+- [ ] Vercel AI SDK + Claude integration
+  - [ ] Streaming chat API route (`/api/ai/chat`)
+  - [ ] System prompt with tree context injection
+  - [ ] Model selection per task (Haiku/Sonnet/Opus)
+  - [ ] Cost tracking + monthly budget
+- [ ] Core AI tools
+  - [ ] `searchLocalTree` — FTS5 search
+  - [ ] `searchFamilySearch` — FamilySearch records
+  - [ ] `searchNARA` — NARA catalog
+  - [ ] `searchNewspapers` — Chronicling America
+  - [ ] `computeRelationship` — path-finding between two persons
+  - [ ] `analyzeTreeGaps` — identify research gaps
+  - [ ] `explainRecord` — historical record context
+  - [ ] `proposeRelationship` — create pending proposal
+- [ ] Research-specific AI tools
+  - [ ] `searchWeb` — federated search across all providers
+  - [ ] `scrapeUrl` — fetch + extract a web page
+  - [ ] `getResearchItems` — retrieve staged items for a person
+  - [ ] `extractFacts` — structured fact extraction from text
+  - [ ] `detectConflicts` — find fact disagreements
+  - [ ] `suggestSearches` — recommend sources based on gaps
+- [ ] Chat UI (`/research` page)
+  - [ ] Message history, streaming responses
   - [ ] Tool call indicators and results
-  - [ ] Ability to open/review matched records from search results
-  - [ ] Save/export conversation history
-- [ ] Create research assistant page `apps/web/app/(auth)/research/page.tsx`
-- [ ] Implement example prompts:
-  - [ ] "What should I research next?"
-  - [ ] "Help me find my great-grandmother born in Poland around 1885"
-  - [ ] "Suggest sources for validating this relationship"
-  - [ ] "What records exist for this ancestor in NARA?"
-- [ ] Add context awareness:
-  - [ ] Assistant has access to current person being viewed
-  - [ ] Can reference tree structure and existing research
-  - [ ] Makes specific suggestions vs. generic advice
+  - [ ] "Ask AI" button from evidence workspace
 
-### Week 16-17: NARA & Chronicling America Integration
+### Week 17-18: Additional Workspace Tabs
 
-**Goal:** Extend research assistant to query free historical databases.
+**Goal:** Add Matrix and Canvas tabs to the evidence workspace.
 
-- [ ] NARA Catalog API client `apps/web/lib/nara/client.ts`:
-  - [ ] Get free API key from NARA
-  - [ ] Implement search endpoint with keyword, dateRange filters
-  - [ ] Parse JSON results
-  - [ ] Add rate limiting (10,000 queries/month)
-- [ ] Chronicling America API client `apps/web/lib/chronicling-america/client.ts`:
-  - [ ] No API key required
-  - [ ] Implement keyword search across 21M+ newspaper pages
-  - [ ] Support date range filtering (1756-1963)
-  - [ ] Parse results with page/edition metadata
-- [ ] Create research endpoints:
-  - [ ] `GET /api/search/nara?keywords={kw}&dateRange={start}-{end}`
-  - [ ] `GET /api/search/chronicling-america?keywords={kw}&place={place}&dateRange={start}-{end}`
-- [ ] Build search UI components:
-  - [ ] NARA search widget with keyword/date filters
-  - [ ] Chronicling America search widget with keyword/place/date filters
-  - [ ] Result cards showing preview, link to source
-- [ ] Integrate into research assistant:
-  - [ ] Tool definitions for the AI to call these APIs
-  - [ ] Automatic suggestions to search these sources for specific ancestors
+- [ ] **Matrix tab** (full-width spreadsheet)
+  - [ ] Facts as rows, sources as columns
+  - [ ] Editable Conclusion column for user assessments
+  - [ ] Conflict rows highlighted
+  - [ ] Click cell for source detail slide-out
+  - [ ] CSV/PDF export
+- [ ] **Canvas tab** (React Flow spatial canvas)
+  - [ ] Draggable source cards, note cards, conflict nodes
+  - [ ] Connection lines between related sources
+  - [ ] Left sidebar: source palette (drag to add)
+  - [ ] Floating toolbar: Connect, Auto-Layout, Zoom Fit
+  - [ ] Canvas positions stored in `research_canvas_positions` table
+- [ ] **Proof Summary tab**
+  - [ ] GPS-inspired proof statement builder
+  - [ ] Sections: Question, Sources Consulted, Information Items, Analysis, Conclusion
+  - [ ] Exportable as document
 
-### Week 17-18: Editor Decision Flow & Testing
+### Week 19-20: Integration Testing & Polish
 
-**Goal:** Create workflow for reviewing and deciding on matches.
+**Goal:** End-to-end testing, performance, documentation.
 
-- [ ] Build decision workflow `apps/web/lib/hints/decision-flow.ts`:
-  - [ ] For each hint:
-    - [ ] Show side-by-side comparison (local vs. FamilySearch)
-    - [ ] Display matching algorithm breakdown (why this score?)
-    - [ ] Collect user decision: "Yes, link", "No, different person", "Maybe, mark for review"
-  - [ ] Track decision and reasoning for future machine learning
-- [ ] Create decision UI:
-  - [ ] Dedicated page for hint review `apps/web/app/(auth)/review-hints/page.tsx`
-  - [ ] Batch hint review interface (process multiple in sequence)
-  - [ ] Show match confidence breakdown
-  - [ ] Add notes field for user reasoning
-- [ ] Build analytics dashboard to track:
-  - [ ] # of hints generated
-  - [ ] # of hints reviewed
-  - [ ] # of hints accepted vs. rejected
-  - [ ] Average match score for accepted vs. rejected
-- [ ] Comprehensive testing:
-  - [ ] Unit tests for matching algorithm (Jaro-Winkler, date/place comparison)
-  - [ ] Integration tests for FamilySearch API calls (mock responses)
-  - [ ] End-to-end tests for hint generation and review workflow
-  - [ ] Test with real FamilySearch data in sandbox environment
+- [ ] Integration tests
+  - [ ] Search provider tests (mock responses)
+  - [ ] Research item lifecycle (create → tag → promote → verify source created)
+  - [ ] Fact extraction + conflict detection
+  - [ ] FamilySearch OAuth flow (sandbox)
+  - [ ] Matching engine precision test
+  - [ ] AI tool calling (5 predefined queries)
+  - [ ] Playwright scraping (live URL test)
+- [ ] Performance
+  - [ ] Search response time < 2s for federated search
+  - [ ] Evidence workspace loads < 1s for person with 10+ sources
+  - [ ] Phase 1 baselines still pass
+- [ ] Provider health monitoring
+  - [ ] Cron job: daily health check on all providers
+  - [ ] Auto-disable after 3 consecutive failures
+- [ ] Documentation
+  - [ ] Research workspace usage guide
+  - [ ] Search provider development guide (how to add a new provider)
+  - [ ] FamilySearch integration setup (OAuth, rate limits)
+  - [ ] Matching algorithm documentation
 
 ## MoSCoW Prioritization
 
 | Priority | Items |
 |----------|-------|
-| **Must** | FamilySearch OAuth + API client, Record matching engine (Jaro-Winkler), Hints generation + review UI, Claude AI research assistant (basic chat + tool calling) |
-| **Should** | Relationship validation queue, FamilySearch record linking + source creation, NARA integration, Batch hint generation |
-| **Could** | Chronicling America integration, Decision analytics dashboard, Match score visualization breakdown |
-| **Won't (this phase)** | Auto-accept hints, ML-based matching improvement, FamilySearch tree sync |
+| **Must** | SearchProvider interface + registry, FamilySearch OAuth + provider, Research items CRUD + staging workflow, Evidence workspace Board tab + fact matrix, Conflict detection, Source promotion, AI research assistant (chat + core tools), Hono worker scaffold |
+| **Should** | NARA + Chronicling America providers, Playwright scraping, Hints + matching engine, Conflicts tab, Timeline tab, URL/text paste clipping, Research-specific AI tools |
+| **Could** | FindAGrave, WikiTree, Geneanet, OpenArchives providers, Matrix tab, Canvas tab, Proof Summary tab, Web search provider, Provider health monitoring, CSV/PDF export |
+| **Won't (this phase)** | DNA match correlation, FamilySearch bidirectional sync, Auto-accept hints, ML-based matching improvement, Provider marketplace |
 
-## Mid-Phase Checkpoint (Week 13)
+## Build Order (Incremental Delivery)
 
-At the midpoint, assess:
-- [ ] FamilySearch OAuth works end-to-end
-- [ ] Matching engine has basic scoring (Jaro-Winkler + dates)
-- [ ] If behind: defer NARA and Chronicling America to Phase 3 buffer or Phase 5b
+1. Hono worker scaffold + packages/research + schema migration
+2. FamilySearch provider + unified search UI
+3. Research items staging + save/tag workflow
+4. Evidence workspace Board tab (3-column layout)
+5. Fact extraction + conflict detection
+6. Record matching + hints
+7. Source promotion workflow
+8. AI research assistant (chat + tools)
+9. Playwright scraping + additional providers
+10. Timeline + Conflicts tabs
+11. Matrix tab
+12. Canvas tab
+13. Proof Summary tab
 
 ## API Resilience
 
-- [ ] Build API clients with abstraction layers that can be mocked for development
-- [ ] Create mock/fixture data for FamilySearch, NARA, and Chronicling America
-- [ ] Development should work without live API access (offline-capable development)
+- [ ] All search providers have mock/fixture implementations
+- [ ] Development works without live API access
+- [ ] Playwright scraping has timeout + fallback to basic fetch
+- [ ] AI tools handle provider failures gracefully (suggest manual search)
 
-## Documentation (write during this phase)
+## Mid-Phase Checkpoint (Week 14)
 
-- [ ] FamilySearch integration guide (OAuth setup, rate limits, troubleshooting)
-- [ ] Matching algorithm documentation (scoring weights, thresholds, tuning)
-- [ ] Research assistant usage guide
+At midpoint, assess:
+- [ ] SearchProvider interface works with 2+ real providers
+- [ ] Research items can be saved and tagged to persons
+- [ ] Board tab renders with fact matrix
+- [ ] If behind: defer Canvas tab, Matrix tab, Proof Summary to Phase 5 buffer
 
 ## Exit Gate: Phase 2 to Phase 3
 
 Before starting Phase 3, verify:
-- [ ] FamilySearch OAuth flow works end-to-end (login, search, logout)
-- [ ] Matching engine achieves >80% precision on a test dataset of known matches
-- [ ] AI research assistant answers 5 predefined genealogy queries with correct tool calls
-- [ ] Hints system generates and displays results for 10+ persons
-- [ ] All Phase 1 performance baselines still pass (no regression)
+- [ ] FamilySearch OAuth works end-to-end
+- [ ] At least 4 search providers functional
+- [ ] Research items: save, tag, promote, dismiss workflow works
+- [ ] Evidence workspace Board tab functional with fact matrix
+- [ ] Conflict detection identifies disagreements correctly
+- [ ] Matching engine >80% precision on test dataset
+- [ ] AI assistant answers 5 predefined queries with correct tool calls
+- [ ] Playwright scrapes and archives a URL successfully
+- [ ] Hono worker deploys to Railway with health check
+- [ ] Phase 1 performance baselines still pass
 
 ## Feedback Loop
 
 After Phase 2 is complete:
-- [ ] Post on r/Genealogy or genealogy forums for concept feedback on the AI research assistant
-- [ ] Share screenshots or demo video of hints + matching workflow
-- [ ] Ask: "Would this be useful in your research? What's missing?"
+- [ ] Post on r/Genealogy for feedback on research workspace concept
+- [ ] Screen-share: watch someone research an ancestor using the workspace
+- [ ] Ask: "Does the evidence board help? What view mode do you use most?"
 - [ ] Document feedback for Phase 3+ prioritization
 
 ---
 
 ## Key Risks
 
-1. **FamilySearch API rate limiting** — With many persons in tree, generating hints for all could trigger rate limits. Mitigate: implement batch processing with rate limiter (Week 9-10), add queue system for background hint generation, start conservative (generate hints only on-demand or nightly).
+1. **FamilySearch API rate limiting** — batch operations could trigger limits. Mitigate: conservative rate limiter, background queue, on-demand over batch.
 
-2. **Matching algorithm false positives** — Low thresholds may link wrong records; high thresholds may miss true matches. Jaro-Winkler alone may not handle all edge cases (hyphenated names, prefixes, nicknames). Mitigate: set conservative thresholds (0.75 minimum for suggestions, 0.90 for auto-accept), collect user feedback on false matches, iterate on scoring weights.
+2. **Matching false positives** — Jaro-Winkler alone may miss edge cases. Mitigate: conservative thresholds (0.75 min), collect user feedback, iterate scoring weights.
 
-3. **AI tool calling failures** — If Claude cannot call research tools (API errors, malformed arguments), the research assistant breaks. Mitigate: comprehensive error handling, fallback to manual search suggestions, log failures for debugging.
+3. **AI tool calling failures** — malformed arguments or API errors. Mitigate: comprehensive error handling, fallback to manual search suggestions.
 
-4. **Scope creep with sources** — Full source management (notes, page numbers, access dates) adds complexity. Mitigate: focus on minimum viable source (title, URL, FamilySearch ID); defer detailed citation management to Phase 3+.
+4. **Playwright on Railway** — headless Chromium uses ~200-400MB RAM. Mitigate: limit to 1 concurrent scrape job, prefer client-side for single pages, fallback to basic fetch.
+
+5. **Scraping legal/ethical** — some sites may block or have ToS against scraping. Mitigate: respect robots.txt by default, identify as Ancstra, use official APIs where available.
+
+6. **Scope management** — research workspace has 6 tabs. Mitigate: ship Board first, add tabs incrementally per MoSCoW. Canvas and Proof Summary can defer to Phase 5 if needed.
 
 ## Decisions Made During This Phase
 
