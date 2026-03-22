@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Search, Palette, Shield, Database } from 'lucide-react';
+import { Search, Palette, Shield, Database, Bot } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
@@ -10,6 +10,7 @@ const navItems = [
   { title: 'Appearance', href: '/settings/appearance', icon: Palette },
   { title: 'Privacy', href: '/settings/privacy', icon: Shield },
   { title: 'Data', href: '/settings/data', icon: Database },
+  { title: 'AI', href: '/settings/ai', icon: Bot },
 ];
 
 export function SettingsNav() {
