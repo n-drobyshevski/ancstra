@@ -45,6 +45,18 @@ export type { CreateFactInput, UpdateFactInput } from './facts/queries';
 export { promoteToSource } from './facts/promote';
 export type { PromoteInput, PromoteResult } from './facts/promote';
 
+// URL Scraper
+export type {
+  ScrapeOptions,
+  ScrapeResult,
+  PageMetadata,
+  ScreenshotOptions,
+  ArchiveResult,
+} from './scraper/types';
+export { scrapeUrl } from './scraper/url-scraper';
+export { captureScreenshot } from './scraper/screenshot';
+export { archiveScrapeResult } from './scraper/archiver';
+
 // Conflict Detection & Resolution
 export {
   detectConflicts,
