@@ -23,3 +23,6 @@ export { createGetResearchItemsTool } from './tools/research/get-research-items'
 export { createExtractFactsTool, parseExtractedFacts, validateFactType } from './tools/research/extract-facts';
 export { createDetectConflictsTool, executeDetectConflicts } from './tools/research/detect-conflicts';
 export { createSuggestSearchesTool, executeSuggestSearches } from './tools/research/suggest-searches';
+
+// Cost Tracking
+export { calculateCost, recordUsage, checkBudget, getUsageStats, PRICING } from './context/cost-tracker';
