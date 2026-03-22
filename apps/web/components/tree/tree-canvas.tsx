@@ -98,6 +98,9 @@ function TreeCanvasInner({ treeData, focusPersonId }: TreeCanvasProps) {
     type: 'node' | 'edge' | 'canvas';
     nodeId?: string;
     edgeId?: string;
+    edgeType?: string;
+    edgeFamilyId?: string;
+    edgeChildId?: string;
   } | null>(null);
 
   // Layout management state
@@ -220,6 +223,9 @@ function TreeCanvasInner({ treeData, focusPersonId }: TreeCanvasProps) {
       setContextMenu({
         x: event.clientX,
         y: event.clientY,
+        edgeType: edge.type as string,
+        edgeFamilyId: (edge.data as any)?.familyId as string | undefined,
+        edgeChildId: edge.type === 'parentChild' ? edge.target : undefined,
         type: 'edge',
         edgeId: edge.id,
       });

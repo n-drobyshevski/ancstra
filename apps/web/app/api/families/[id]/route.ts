@@ -132,3 +132,38 @@ export async function PUT(
   const [updated] = db.select().from(families).where(eq(families.id, id)).all();
   return NextResponse.json(updated);
 }
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const session = await auth();
+  if (!session?.user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const { id } = await params;
+  const db = createDb();
+
+  const [existing] = db
+    .select()
+    .from(families)
+    .where(and(eq(families.id, id), isNull(families.deletedAt)))
+    .all();
+
+  if (!existing) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  }
+
+  // Soft-delete family (children cascade via ON DELETE CASCADE won't fire for soft-delete,
+  // so also delete child links explicitly)
+  db.transaction((tx) => {
+    tx.delete(children).where(eq(children.familyId, id)).run();
+    tx.update(families)
+      .set({ deletedAt: new Date().toISOString() })
+      .where(eq(families.id, id))
+      .run();
+  });
+
+  return NextResponse.json({ success: true });
+}
