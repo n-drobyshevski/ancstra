@@ -6,3 +6,4 @@ export * from './invitations';
 export * from './activity';
 export * from './oauth-linking';
 export * from './families';
+export { AncstraAdapter } from './nextauth-adapter';
