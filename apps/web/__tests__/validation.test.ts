@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createPersonSchema } from '../lib/validation';
+import { createPersonSchema, signUpSchema } from '../lib/validation';
 
 describe('createPersonSchema', () => {
   it('accepts valid input', () => {
@@ -46,5 +46,34 @@ describe('createPersonSchema', () => {
       expect(result.data.birthDate).toBeUndefined();
       expect(result.data.notes).toBeUndefined();
     }
+  });
+});
+
+describe('signUpSchema', () => {
+  it('accepts valid sign-up input', () => {
+    const result = signUpSchema.safeParse({
+      name: 'Test User',
+      email: 'test@example.com',
+      password: 'securepass',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects invalid email', () => {
+    const result = signUpSchema.safeParse({
+      name: 'Test',
+      email: 'not-an-email',
+      password: 'securepass',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects short password', () => {
+    const result = signUpSchema.safeParse({
+      name: 'Test',
+      email: 'test@example.com',
+      password: 'short',
+    });
+    expect(result.success).toBe(false);
   });
 });
