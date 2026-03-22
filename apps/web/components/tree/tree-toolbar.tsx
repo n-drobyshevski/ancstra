@@ -11,6 +11,7 @@ import {
 import { Star, ChevronDown } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import type { FilterState } from './tree-utils';
+import { TreeExport } from './tree-export';
 
 interface TreeToolbarProps {
   onAutoLayout: () => void;
@@ -163,9 +164,7 @@ export function TreeToolbar({
           Deceased
         </Button>
 
-        <Button variant="secondary" size="sm" className="shadow-sm" disabled>
-          Export
-        </Button>
+        <TreeExport />
       </div>
     </div>
   );
