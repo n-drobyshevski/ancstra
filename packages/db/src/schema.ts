@@ -154,3 +154,4 @@ export const treeLayouts = sqliteTable('tree_layouts', {
 });
 
 export * from './research-schema';
+export * from './ai-schema';
