@@ -12,8 +12,7 @@
 >
 > Done: All CRUD, tree viz (full editor), GEDCOM, sources, FTS5+Cmd+K, named layouts, filter pills, multi-select, CI, PWA — 122 tests
 >
-> Next up: Phase 2 — AI features (FamilySearch integration, Claude-powered matching)
-> Next up: CI pipeline, PWA, tree viz iteration 2
+> Next up: Phase 2 — Research workspace, multi-source search, web scraping, evidence analysis, AI assistant, FamilySearch integration
 
 ---
 
@@ -212,19 +211,80 @@
 
 ---
 
-## Phase 2: AI Search & Matching
+## Phase 2: AI Search, Research & Matching
 
-> Weeks 9-18 (~10 weeks) | `[░░░░░░░░░░] 0% Not Started`
-> [Detailed plan](docs/phases/phase-2-search.md)
+> Weeks 9-20 (~12 weeks) | `[░░░░░░░░░░] 0% Not Started`
+> [Detailed plan](docs/phases/phase-2-search.md) | [Research workspace spec](docs/superpowers/specs/2026-03-22-research-workspace-design.md)
 
-### FamilySearch Integration
+### Multi-Source Search Engine (packages/research)
 
 | Feature | ~Duration | Status | Depends On |
 |---------|-----------|--------|------------|
-| OAuth 2.0 PKCE flow | ~1w | `[░░░░░░░░░░] 0% Not Started` | Phase 1 Auth |
-| FamilySearch API client (rate limiter, retry) | ~1w | `[░░░░░░░░░░] 0% Not Started` | OAuth |
-| Person & record search endpoints | ~1w | `[░░░░░░░░░░] 0% Not Started` | API client |
-| Record linking + source creation | ~1w | `[░░░░░░░░░░] 0% Not Started` | Search, Schema |
+| SearchProvider interface + registry | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Phase 1 complete |
+| FamilySearch provider (OAuth + API client) | ~2w | `[░░░░░░░░░░] 0% Not Started` | Registry |
+| NARA Catalog provider | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Registry |
+| Chronicling America provider | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Registry |
+| FindAGrave provider | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Registry |
+| WikiTree provider | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Registry |
+| Geneanet provider (scraper) | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Playwright |
+| OpenArchives provider (OAI-PMH) | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Registry |
+| Web search provider (SearXNG / Brave) | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Registry |
+| Unified search UI (federated results) | ~1w | `[░░░░░░░░░░] 0% Not Started` | Providers |
+| Provider settings page (/settings/providers) | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Registry |
+| Offline mock providers | ~0.25w | `[░░░░░░░░░░] 0% Not Started` | Registry |
+
+### Web Scraping Engine (Hono Worker)
+
+| Feature | ~Duration | Status | Depends On |
+|---------|-----------|--------|------------|
+| Playwright integration on Hono worker | ~1w | `[░░░░░░░░░░] 0% Not Started` | Worker scaffold |
+| URL scraper (text, metadata, screenshot) | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Playwright |
+| Web archive storage (HTML + screenshot) | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Scraper |
+| Batch scraping (URL queue, background job) | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Scraper |
+| Rate limiting + robots.txt awareness | ~0.25w | `[░░░░░░░░░░] 0% Not Started` | Scraper |
+
+### Research Items (Staging Area)
+
+| Feature | ~Duration | Status | Depends On |
+|---------|-----------|--------|------------|
+| research_items + research_item_persons schema | ~0.25w | `[░░░░░░░░░░] 0% Not Started` | Phase 1 Schema |
+| Research item CRUD API routes | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Schema |
+| Save search result as research item | ~0.25w | `[░░░░░░░░░░] 0% Not Started` | CRUD, Search UI |
+| URL paste + extract (Playwright fetch) | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Scraper |
+| Text paste + AI entity extraction | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | AI SDK |
+| Status workflow (draft/promoted/dismissed) | ~0.25w | `[░░░░░░░░░░] 0% Not Started` | CRUD |
+| Person tagging + bulk operations | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | CRUD |
+| FTS5 search across research items | ~0.25w | `[░░░░░░░░░░] 0% Not Started` | Schema |
+
+### Evidence Analysis Workspace
+
+| Feature | ~Duration | Status | Depends On |
+|---------|-----------|--------|------------|
+| Workspace page /research/person/[id] | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Research items |
+| Board tab (3-col: sources | matrix | detail) | ~1.5w | `[░░░░░░░░░░] 0% Not Started` | Workspace page |
+| Conflicts tab (dedicated conflict resolution) | ~1w | `[░░░░░░░░░░] 0% Not Started` | Research facts |
+| Timeline tab (chronological events) | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Research facts |
+| Matrix tab (full-width spreadsheet + conclusions) | ~1w | `[░░░░░░░░░░] 0% Not Started` | Board tab |
+| Canvas tab (React Flow spatial canvas) | ~1.5w | `[░░░░░░░░░░] 0% Not Started` | Board tab |
+| Proof Summary tab (GPS-style builder) | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Conflicts tab |
+
+### Fact Extraction & Conflict Detection
+
+| Feature | ~Duration | Status | Depends On |
+|---------|-----------|--------|------------|
+| research_facts schema + migration | ~0.25w | `[░░░░░░░░░░] 0% Not Started` | Schema |
+| Manual fact entry | ~0.25w | `[░░░░░░░░░░] 0% Not Started` | Schema |
+| AI-assisted fact extraction | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | AI SDK |
+| Conflict detection query + UI | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Facts |
+| Fact confidence ratings | ~0.25w | `[░░░░░░░░░░] 0% Not Started` | Facts |
+
+### Source Promotion Workflow
+
+| Feature | ~Duration | Status | Depends On |
+|---------|-----------|--------|------------|
+| One-click promote (research item → source) | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Research items, Sources |
+| AI citation generation (Chicago style) | ~0.25w | `[░░░░░░░░░░] 0% Not Started` | AI SDK |
+| Fact carry-over to source_citations | ~0.25w | `[░░░░░░░░░░] 0% Not Started` | Promote |
 
 ### Record Matching Engine
 
@@ -233,16 +293,8 @@
 | Jaro-Winkler name comparison | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | — |
 | Date + place comparators | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | — |
 | Composite scoring + blocking | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Comparators |
-| Matching service (per-person + batch) | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Scoring |
-
-### Hints & Review
-
-| Feature | ~Duration | Status | Depends On |
-|---------|-----------|--------|------------|
-| Hints generation pipeline | ~1w | `[░░░░░░░░░░] 0% Not Started` | Matching, FS search |
-| Hints review UI (cards, preview, accept/reject) | ~1w | `[░░░░░░░░░░] 0% Not Started` | Hints pipeline |
+| Hints generation + review UI | ~1w | `[░░░░░░░░░░] 0% Not Started` | Matching, Search |
 | Relationship validation queue | ~1w | `[░░░░░░░░░░] 0% Not Started` | Hints |
-| Editor decision flow + analytics | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Validation queue |
 
 ### AI Research Assistant
 
@@ -250,29 +302,27 @@
 |---------|-----------|--------|------------|
 | Vercel AI SDK + Claude integration | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Phase 1 complete |
 | System prompt + tree context injection | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | AI SDK |
-| Tool definitions (search, explain, propose) | ~1w | `[░░░░░░░░░░] 0% Not Started` | AI SDK, FS client |
+| Core tools (searchLocalTree, searchFamilySearch, etc.) | ~1w | `[░░░░░░░░░░] 0% Not Started` | AI SDK, Providers |
+| Research tools (searchWeb, scrapeUrl, extractFacts) | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Core tools, Scraper |
+| Evidence tools (detectConflicts, suggestSearches) | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Research facts |
 | Chat UI with streaming + tool results | ~1w | `[░░░░░░░░░░] 0% Not Started` | Tools |
-
-### External Data Sources
-
-| Feature | ~Duration | Status | Depends On |
-|---------|-----------|--------|------------|
-| NARA Catalog API client | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | — |
-| Chronicling America API client | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | — |
-| Search UI widgets for NARA + newspapers | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | API clients |
-| AI tool integration for external sources | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Tools, API clients |
 
 #### Risks
 - **FamilySearch rate limiting** — batch hint generation could trigger limits
 - **Matching false positives** — Jaro-Winkler alone may miss edge cases (hyphenated names, nicknames)
 - **AI tool calling failures** — malformed arguments or API errors break assistant
-- **Scope creep with sources** — full citation management adds complexity
+- **Playwright on Railway** — headless Chromium uses significant RAM (~200-400MB); limit to one concurrent scrape job
+- **Scraping legal/ethical** — respect robots.txt by default; some sites may block; have fallbacks
+- **Scope management** — research workspace has 6 tabs; ship Board first, add others incrementally
 
 #### Exit Gate → Phase 3
 - [ ] FamilySearch OAuth works end-to-end
+- [ ] At least 4 search providers functional (FS, NARA, Chronicling America, web search)
 - [ ] Matching engine >80% precision on test dataset
+- [ ] Research items: save, tag, promote, dismiss workflow works
+- [ ] Evidence workspace Board tab functional with fact matrix + conflict detection
 - [ ] AI assistant answers 5 predefined queries with correct tool calls
-- [ ] Hints generated and displayed for 10+ persons
+- [ ] Playwright scrapes and archives a URL successfully
 - [ ] Phase 1 performance baselines still pass
 
 ---

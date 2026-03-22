@@ -17,6 +17,7 @@
 | FamilySearch API | [spec](specs/familysearch-api.md) | 2 | design | Not Started |
 | AI Research Assistant | [spec](specs/ai-research-assistant.md) | 2 | design | Not Started |
 | Record Matching | [spec](specs/record-matching.md) | 2 | design | Not Started |
+| Research Workspace | [spec](superpowers/specs/2026-03-22-research-workspace-design.md) | 2 | approved | Not Started |
 | Document Processing | [spec](specs/document-processing.md) | 3 | design | Not Started |
 | Photo Analysis | [spec](specs/photo-analysis.md) | Post-launch | design | Not Started |
 | DNA Integration | [spec](specs/dna-integration.md) | Post-launch | design | Not Started |
@@ -43,7 +44,7 @@
 | 0: UX/UI Design | [phase-0-design](phases/phase-0-design.md) | ~3 weeks | In Progress |
 | 0.5: Technical Spikes | [phase-0.5-spikes](phases/phase-0.5-spikes.md) | 1 week | Not Started |
 | 1: Core Tree Builder | [phase-1-core](phases/phase-1-core.md) | 8 weeks | Not Started |
-| 2: AI Search & Matching | [phase-2-search](phases/phase-2-search.md) | 10 weeks | Not Started |
+| 2: AI Search, Research & Matching | [phase-2-search](phases/phase-2-search.md) | 12 weeks | Not Started |
 | 3: Document Processing | [phase-3-documents](phases/phase-3-documents.md) | 7 weeks | Not Started |
 | 4: Auth & Collaboration | [phase-4-auth](phases/phase-4-auth.md) | 4 weeks | Not Started |
 | 5: AI Polish & Export | [phase-5-polish](phases/phase-5-polish.md) | 3 weeks | Not Started |
@@ -51,7 +52,7 @@
 | 6.5: Beta Period | [phase-6.5-beta](phases/phase-6.5-beta.md) | 2 weeks | Not Started |
 | Post-launch: Photos & DNA | [future-enhancements](phases/future-enhancements.md) | ~16-19 weeks | Not Started |
 
-**Total to launch: ~44.5 weeks (~11 months)** including buffer weeks between phases.
+**Total to launch: ~46.5 weeks (~11.5 months)** including buffer weeks between phases.
 
 ## Architecture Decisions
 

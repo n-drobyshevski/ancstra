@@ -6,3 +6,4 @@ dist/
 .env
 .turbo/
 .superpowers/
+.worktrees/
