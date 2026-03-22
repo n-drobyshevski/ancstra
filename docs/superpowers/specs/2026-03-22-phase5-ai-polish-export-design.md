@@ -41,11 +41,11 @@ Build features as vertical slices in this order:
 | % with full names | Persons with `person_names` row having given_name + surname |
 | % with birth date | Persons with a `birth` event |
 | % with death date | Non-living persons with a `death` event |
-| % with birth place | Birth events with `place_id` set |
+| % with birth place | Birth events with non-null `placeText` (note: schema uses `placeText`, not `place_id`) |
 | % sourced | Persons with at least one `source_citations` row |
-| % with media | Persons with at least one `media_persons` link |
+| % with media | Deferred — `media` table not yet implemented in Drizzle schema. Score weight redistributed. |
 | Avg sources per person | Total source_citations / total persons |
-| Completeness score | 0-100 per person: name (20), birth date (20), birth place (15), death date (15), source (20), media (10) |
+| Completeness score | 0-100 per person: name (20), birth date (25), birth place (20), death date (15), source (20). Media deferred until media schema exists. |
 
 ### API
 
@@ -102,7 +102,7 @@ CREATE TABLE biographies (
 );
 ```
 
-Re-generating with same options replaces cached version. Different option combinations cached independently.
+Re-generating with same options replaces cached version (POST route uses `INSERT OR REPLACE` on the unique constraint). Different option combinations cached independently. The "Regenerate" button calls the same POST endpoint — no separate delete needed.
 
 ### API
 
@@ -152,7 +152,7 @@ CREATE TABLE historical_context (
 );
 ```
 
-Cached indefinitely. Regenerate only if person's dates/places change.
+Cached indefinitely. Cache invalidation is manual — user clicks "Regenerate" on the timeline. No automatic trigger when person data changes. This is acceptable because historical context changes rarely (it's based on birth/death years and locations, which don't change often).
 
 ### UI integration
 
@@ -176,12 +176,16 @@ Same data as 5.5.1 export, wrapped in 7.0-compliant structure:
 
 ### Implementation
 
+**Note:** The existing GEDCOM serializer lives at `apps/web/lib/gedcom/serialize.ts` (not `packages/gedcom/`). The existing export is triggered via server action `apps/web/app/actions/export-gedcom.ts`. Phase 5 adds a 7.0 serializer alongside and introduces a new API route to replace the server action.
+
 ```
-packages/gedcom/exporter/
-├── index.ts              (existing — routes to right version)
-├── gedcom551.ts          (existing)
-└── gedcom70.ts           (new — 7.0 structural wrapper)
+apps/web/lib/gedcom/
+├── serialize.ts          (existing — GEDCOM 5.5.1 serializer)
+├── serialize-70.ts       (new — GEDCOM 7.0 structural serializer)
+└── index.ts              (new — routes to 5.5.1 or 7.0 based on version param)
 ```
+
+The existing `export-gedcom.ts` server action is deprecated in favor of the new `GET /api/export/gedcom` route. The export page should be updated to use the API route.
 
 ### Export options UI
 
@@ -198,6 +202,15 @@ Response: GEDCOM file download
 ```
 
 Permission: `gedcom:export` (Editor+).
+
+## AI Usage Schema Update
+
+The existing `ai_usage.taskType` enum is `['chat', 'extraction', 'analysis', 'citation']`. Phase 5 adds two new task types:
+
+- `'biography'` — biography generation
+- `'historical_context'` — historical context generation
+
+Update the enum in `packages/db/src/ai-schema.ts` to include these values.
 
 ## Narrative PDF Export
 
@@ -267,23 +280,23 @@ Permission: `gedcom:export`. Returns 503 if Gotenberg unavailable. In local dev 
 
 ### Pagination
 
-Add offset pagination to endpoints currently returning all results:
+Add offset pagination to endpoints that don't have it yet:
 
-| Route | After |
+| Route | Status |
 |---|---|
-| `GET /api/persons` | `?page=1&limit=50`, default 50 |
-| `GET /api/sources` | `?page=1&limit=50` |
-| `GET /api/events` | `?page=1&limit=50` |
+| `GET /api/persons` | Already paginated (has `page`/`pageSize` params) — no change needed |
+| `GET /api/sources` | Needs pagination — add `?page=1&limit=50` |
+| `GET /api/events` | Needs pagination — add `?page=1&limit=50` |
 
 Return `{ items, total, page, pageSize }`.
 
 ### Image optimization
 
-On media upload:
+**Deferred** — the `media` table is not yet implemented in the Drizzle schema. Thumbnail generation will be added when the media schema is created (likely Phase 3 or a pre-Phase 5 task). The approach when implemented:
 - Store original as-is
 - Generate thumbnail: max 400px wide, JPEG 80% quality via `sharp`
-- New column `media.thumbnail_path`
-- List views and tree nodes use thumbnails; detail view uses original
+- `media.thumbnail_path` column
+- List views use thumbnails; detail view uses original
 
 ### Query timing
 
@@ -308,12 +321,20 @@ Lightweight wrapper in `api-guard.ts`:
 
 ### Enforcement
 
+The budget check requires two databases:
+- **Central DB:** read `family_registry.monthly_ai_budget_usd` for the configurable limit
+- **Family DB:** sum `ai_usage.cost_usd` for current month spend
+
+Implementation: update `checkBudget()` in `packages/ai/src/context/cost-tracker.ts` to accept both a budget limit (number, read from central DB at the call site) and the family DB (to sum usage). The API route reads the limit from central DB, then passes it to `checkBudget()`.
+
 ```
-AI action triggered → checkBudget(centralDb, familyId)
-  → Under limit: proceed, log usage after
-  → Over limit: block with message
-    → User options: "Wait" or "Allow this action" (one-time override)
-    → Override bypasses for single action, still logged
+API route:
+  1. Read limit from centralDb → family_registry.monthly_ai_budget_usd
+  2. Call checkBudget(familyDb, limit)
+  3. If over: return { blocked: true, spent, limit }
+     → User options: "Wait" or "Allow this action" (one-time override)
+     → Override bypasses for single action, still logged
+  4. If under: proceed, log usage to ai_usage after completion
 ```
 
 Budget resets monthly (calendar month). `checkBudget()` sums `ai_usage.cost_usd` WHERE `created_at >= first of current month`.
@@ -349,16 +370,16 @@ packages/export/
 │   │   │   ├── family-history.ts
 │   │   │   └── person-biography.ts
 │   │   └── index.ts
-│   └── gedcom70/
-│       ├── serializer.ts
-│       └── index.ts
+│   └── index.ts
 ```
+
+Note: GEDCOM 7.0 serializer lives at `apps/web/lib/gedcom/serialize-70.ts` alongside the existing 5.5.1 serializer. Add `packages/export` to `pnpm-workspace.yaml` if not covered by existing glob.
 
 ### Schema additions (family DB)
 
 - `biographies` table
 - `historical_context` table
-- `media.thumbnail_path` column
+- `media.thumbnail_path` column (deferred until media schema exists)
 
 ### Schema additions (central DB)
 
@@ -367,7 +388,7 @@ packages/export/
 ### New dependencies
 
 - `recharts` — chart library (apps/web)
-- `sharp` — image resizing (apps/web)
+- `sharp` — image resizing (deferred until media schema exists)
 - Gotenberg — Docker service (not npm)
 
 ### New API routes
@@ -422,8 +443,10 @@ apps/web/app/(auth)/person/[id]/page.tsx    — biography tab, historical timeli
 apps/web/components/app-sidebar.tsx         — "Analytics" link
 packages/db/src/family-schema.ts            — new tables + columns
 packages/db/src/central-schema.ts           — budget column
-packages/gedcom/exporter/index.ts           — route to 7.0 serializer
-apps/web/lib/auth/api-guard.ts              — query timing wrapper
+apps/web/lib/gedcom/serialize.ts             — add index routing to 5.5.1 or 7.0
+apps/web/app/actions/export-gedcom.ts       — deprecate in favor of API route
+apps/web/lib/auth/api-guard.ts              — add query timing wrapper (file exists from Phase 4)
+packages/db/src/ai-schema.ts                — extend ai_usage.taskType enum
 ```
 
 ## Exit Criteria
