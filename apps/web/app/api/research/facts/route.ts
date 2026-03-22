@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@/auth';
-import { createDb } from '@ancstra/db';
+import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
 import {
   createFact,
   getFactsByPerson,
@@ -8,50 +7,53 @@ import {
 } from '@ancstra/research';
 
 export async function GET(request: Request) {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  try {
+    const { familyDb } = await withAuth('ai:research');
 
-  const { searchParams } = new URL(request.url);
-  const personId = searchParams.get('personId');
-  const researchItemId = searchParams.get('researchItemId');
+    const { searchParams } = new URL(request.url);
+    const personId = searchParams.get('personId');
+    const researchItemId = searchParams.get('researchItemId');
 
-  if (!personId && !researchItemId) {
-    return NextResponse.json(
-      { error: 'Either personId or researchItemId query parameter is required' },
-      { status: 400 }
-    );
-  }
+    if (!personId && !researchItemId) {
+      return NextResponse.json(
+        { error: 'Either personId or researchItemId query parameter is required' },
+        { status: 400 }
+      );
+    }
 
-  const db = createDb();
+    if (personId) {
+      const facts = getFactsByPerson(familyDb, personId);
+      return NextResponse.json({ facts });
+    }
 
-  if (personId) {
-    const facts = getFactsByPerson(db, personId);
+    const facts = getFactsByResearchItem(familyDb, researchItemId!);
     return NextResponse.json({ facts });
+  } catch (err) {
+    try { return handleAuthError(err); } catch { /* not an auth error */ }
+    console.error('[research/facts GET]', err);
+    return NextResponse.json({ error: String(err) }, { status: 500 });
   }
-
-  const facts = getFactsByResearchItem(db, researchItemId!);
-  return NextResponse.json({ facts });
 }
 
 export async function POST(request: Request) {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  try {
+    const { familyDb } = await withAuth('ai:research');
+
+    const body = await request.json();
+
+    if (!body.personId || !body.factType || !body.factValue) {
+      return NextResponse.json(
+        { error: 'Validation failed: personId, factType, and factValue are required' },
+        { status: 400 }
+      );
+    }
+
+    const result = createFact(familyDb, body);
+
+    return NextResponse.json(result, { status: 201 });
+  } catch (err) {
+    try { return handleAuthError(err); } catch { /* not an auth error */ }
+    console.error('[research/facts POST]', err);
+    return NextResponse.json({ error: String(err) }, { status: 500 });
   }
-
-  const body = await request.json();
-
-  if (!body.personId || !body.factType || !body.factValue) {
-    return NextResponse.json(
-      { error: 'Validation failed: personId, factType, and factValue are required' },
-      { status: 400 }
-    );
-  }
-
-  const db = createDb();
-  const result = createFact(db, body);
-
-  return NextResponse.json(result, { status: 201 });
 }

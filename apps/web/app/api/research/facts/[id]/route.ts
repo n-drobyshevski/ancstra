@@ -1,11 +1,10 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@/auth';
-import { createDb } from '@ancstra/db';
+import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
 import { eq } from 'drizzle-orm';
-import { researchFacts } from '@ancstra/db';
+import { researchFacts, type FamilyDatabase } from '@ancstra/db';
 import { updateFact, deleteFact } from '@ancstra/research';
 
-function getFact(db: ReturnType<typeof createDb>, id: string) {
+function getFact(db: FamilyDatabase, id: string) {
   const [fact] = db
     .select()
     .from(researchFacts)
@@ -18,75 +17,78 @@ export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  try {
+    const { familyDb } = await withAuth('ai:research');
+    const { id } = await params;
+    const fact = getFact(familyDb, id);
+
+    if (!fact) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+
+    return NextResponse.json(fact);
+  } catch (err) {
+    try { return handleAuthError(err); } catch { /* not an auth error */ }
+    console.error('[research/facts/[id] GET]', err);
+    return NextResponse.json({ error: String(err) }, { status: 500 });
   }
-
-  const { id } = await params;
-  const db = createDb();
-  const fact = getFact(db, id);
-
-  if (!fact) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 });
-  }
-
-  return NextResponse.json(fact);
 }
 
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  try {
+    const { familyDb } = await withAuth('ai:research');
+    const { id } = await params;
+    const body = await request.json();
 
-  const { id } = await params;
-  const body = await request.json();
-  const db = createDb();
-
-  const existing = getFact(db, id);
-  if (!existing) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 });
-  }
-
-  if (body.confidence !== undefined) {
-    const validConfidences = ['high', 'medium', 'low', 'disputed'];
-    if (!validConfidences.includes(body.confidence)) {
-      return NextResponse.json(
-        { error: 'Invalid confidence. Must be one of: high, medium, low, disputed' },
-        { status: 400 }
-      );
+    const existing = getFact(familyDb, id);
+    if (!existing) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
+
+    if (body.confidence !== undefined) {
+      const validConfidences = ['high', 'medium', 'low', 'disputed'];
+      if (!validConfidences.includes(body.confidence)) {
+        return NextResponse.json(
+          { error: 'Invalid confidence. Must be one of: high, medium, low, disputed' },
+          { status: 400 }
+        );
+      }
+    }
+
+    const updated = updateFact(familyDb, id, {
+      factValue: body.factValue,
+      confidence: body.confidence,
+    });
+
+    return NextResponse.json(updated);
+  } catch (err) {
+    try { return handleAuthError(err); } catch { /* not an auth error */ }
+    console.error('[research/facts/[id] PATCH]', err);
+    return NextResponse.json({ error: String(err) }, { status: 500 });
   }
-
-  const updated = updateFact(db, id, {
-    factValue: body.factValue,
-    confidence: body.confidence,
-  });
-
-  return NextResponse.json(updated);
 }
 
 export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  try {
+    const { familyDb } = await withAuth('ai:research');
+    const { id } = await params;
+
+    const existing = getFact(familyDb, id);
+    if (!existing) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+
+    deleteFact(familyDb, id);
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    try { return handleAuthError(err); } catch { /* not an auth error */ }
+    console.error('[research/facts/[id] DELETE]', err);
+    return NextResponse.json({ error: String(err) }, { status: 500 });
   }
-
-  const { id } = await params;
-  const db = createDb();
-
-  const existing = getFact(db, id);
-  if (!existing) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 });
-  }
-
-  deleteFact(db, id);
-  return NextResponse.json({ success: true });
 }
