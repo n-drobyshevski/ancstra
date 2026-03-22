@@ -5,6 +5,7 @@ import { Search, Globe, Newspaper, BookOpen, Archive, Bookmark } from 'lucide-re
 import { SearchBar } from './search-bar';
 import { SearchResults } from './search-results';
 import { ResearchItemCard } from './research-item-card';
+import { UrlPasteInput } from './url-paste-input';
 import { useResearchSearch, useResearchItems } from '@/lib/research/search-client';
 
 const EXAMPLE_SEARCHES = [
@@ -66,6 +67,14 @@ export function ResearchHub() {
       </div>
 
       <SearchBar onSearch={handleSearch} />
+
+      <div className="flex items-center gap-3">
+        <div className="h-px flex-1 bg-border" />
+        <span className="text-xs text-muted-foreground">or paste a URL</span>
+        <div className="h-px flex-1 bg-border" />
+      </div>
+
+      <UrlPasteInput onSaved={handleSaved} />
 
       {showEmptyState ? (
         /* ── Empty state: confident guide ── */
