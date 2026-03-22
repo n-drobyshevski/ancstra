@@ -148,3 +148,58 @@ export interface TreeData {
   families: FamilyRecord[];
   childLinks: ChildLink[];
 }
+
+export type SourceType = 'vital_record' | 'census' | 'military' | 'church' | 'newspaper' |
+  'immigration' | 'land' | 'probate' | 'cemetery' | 'photograph' |
+  'personal_knowledge' | 'correspondence' | 'book' | 'online' | 'other';
+
+export interface Source {
+  id: string;
+  title: string;
+  author: string | null;
+  publisher: string | null;
+  publicationDate: string | null;
+  repositoryName: string | null;
+  repositoryUrl: string | null;
+  sourceType: SourceType | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  citationCount?: number;
+}
+
+export interface Citation {
+  id: string;
+  sourceId: string;
+  source?: Source;
+  citationDetail: string | null;
+  citationText: string | null;
+  confidence: 'high' | 'medium' | 'low' | 'disputed';
+  personId: string | null;
+  eventId: string | null;
+  familyId: string | null;
+  personNameId: string | null;
+  createdAt: string;
+}
+
+export interface CreateSourceInput {
+  title: string;
+  author?: string;
+  publisher?: string;
+  publicationDate?: string;
+  repositoryName?: string;
+  repositoryUrl?: string;
+  sourceType?: SourceType;
+  notes?: string;
+}
+
+export interface CreateCitationInput {
+  sourceId: string;
+  citationDetail?: string;
+  citationText?: string;
+  confidence?: Citation['confidence'];
+  personId?: string;
+  eventId?: string;
+  familyId?: string;
+  personNameId?: string;
+}
