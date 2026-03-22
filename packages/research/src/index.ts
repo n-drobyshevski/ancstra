@@ -40,3 +40,11 @@ export {
   deleteFact,
 } from './facts/queries.js';
 export type { CreateFactInput, UpdateFactInput } from './facts/queries.js';
+
+// Conflict Detection & Resolution
+export {
+  detectConflicts,
+  resolveConflict,
+  MULTI_VALUED_TYPES,
+} from './facts/conflicts.js';
+export type { ConflictPair } from './facts/conflicts.js';
