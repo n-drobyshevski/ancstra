@@ -52,6 +52,16 @@ Request → proxy.ts reads JWT → { userId }
   → Attach { userId, role, familyDb, centralDb } to request context
 ```
 
+### proxy.ts (Next.js 16)
+
+Next.js 16 replaces `middleware.ts` with `proxy.ts` for route-level interception. This is not a custom concept — it is the Next.js 16 equivalent. The proxy handles:
+- JWT session validation
+- User role resolution for the active family
+- Family DB connection setup
+- Request context attachment
+
+Public routes (`/login`, `/signup`, `/join`) bypass the proxy. All `/(auth)/` routes require authentication.
+
 ## Central Database Schema (`ancstra.sqlite`)
 
 ```sql
@@ -77,13 +87,21 @@ CREATE TABLE oauth_accounts (
   UNIQUE(provider, provider_account_id)
 );
 
+-- NextAuth v5 verification tokens (for email verification, password reset)
+CREATE TABLE verification_tokens (
+  identifier TEXT NOT NULL,        -- email address
+  token TEXT NOT NULL UNIQUE,
+  expires TEXT NOT NULL,
+  PRIMARY KEY (identifier, token)
+);
+
 CREATE TABLE family_registry (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   owner_id TEXT NOT NULL REFERENCES users(id),
   db_filename TEXT NOT NULL,       -- 'family-{id}.sqlite' or Turso URL
   moderation_enabled INTEGER NOT NULL DEFAULT 0,
-  privacy_level TEXT NOT NULL DEFAULT 'strict',
+  max_members INTEGER NOT NULL DEFAULT 50,  -- Cap on total family membership
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -93,6 +111,7 @@ CREATE TABLE family_members (
   family_id TEXT NOT NULL REFERENCES family_registry(id) ON DELETE CASCADE,
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   role TEXT NOT NULL CHECK (role IN ('owner', 'admin', 'editor', 'viewer')),
+  invited_role TEXT,               -- Original role at invitation time (audit)
   joined_at TEXT NOT NULL,
   is_active INTEGER NOT NULL DEFAULT 1,
   last_seen_at TEXT,               -- For unread activity indicator
@@ -110,6 +129,7 @@ CREATE TABLE invitations (
   accepted_at TEXT,
   accepted_by TEXT REFERENCES users(id),
   revoked_at TEXT,
+  revoked_by TEXT REFERENCES users(id),
   created_at TEXT NOT NULL
 );
 
@@ -124,27 +144,131 @@ CREATE TABLE activity_feed (
   metadata TEXT,                   -- JSON blob for extra context
   created_at TEXT NOT NULL
 );
+
+-- Indexes
+CREATE INDEX idx_oauth_accounts_user ON oauth_accounts(user_id);
+CREATE INDEX idx_family_members_family ON family_members(family_id);
+CREATE INDEX idx_family_members_user ON family_members(user_id);
+CREATE INDEX idx_invitations_family ON invitations(family_id);
+CREATE INDEX idx_invitations_token ON invitations(token);
+CREATE INDEX idx_activity_feed_family_date ON activity_feed(family_id, created_at);
+CREATE INDEX idx_activity_feed_user ON activity_feed(user_id);
 ```
+
+## NextAuth Adapter Strategy
+
+NextAuth v5 with a **custom Drizzle adapter** for the central DB. The adapter maps NextAuth's expected operations to our custom schema:
+
+| NextAuth concept | Our table |
+|---|---|
+| User | `users` |
+| Account (OAuth) | `oauth_accounts` |
+| Session | Not stored — JWT strategy (stateless) |
+| VerificationToken | `verification_tokens` |
+
+We use JWT session strategy (`session: { strategy: 'jwt' }`), so no `sessions` table is needed. The JWT payload includes `{ userId, email, name }`. Family-specific data (role, familyId) is resolved per-request in `proxy.ts` from the central DB — not baked into the JWT — so role changes take effect immediately without requiring re-login.
+
+The custom adapter is implemented in `packages/auth/src/nextauth-adapter.ts`, wrapping Drizzle queries against the central schema. This is preferred over the standard NextAuth Drizzle adapter because our schema diverges (nullable `password_hash`, custom `oauth_accounts` shape, no `sessions` table).
+
+## Migration Strategy (Existing Data)
+
+### Users table migration
+
+The current `users` table has `password_hash TEXT NOT NULL`. OAuth-only users need this nullable. SQLite does not support `ALTER COLUMN`, so this requires a table rebuild:
+
+```sql
+-- 1. Create new table with nullable password_hash + new columns
+CREATE TABLE users_new (
+  id TEXT PRIMARY KEY,
+  email TEXT NOT NULL UNIQUE,
+  password_hash TEXT,                  -- NOW NULLABLE
+  name TEXT NOT NULL,
+  avatar_url TEXT,
+  email_verified INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+
+-- 2. Copy existing data
+INSERT INTO users_new (id, email, password_hash, name, created_at, updated_at)
+SELECT id, email, password_hash, COALESCE(name, email), created_at, created_at
+FROM users;
+
+-- 3. Drop old, rename new
+DROP TABLE users;
+ALTER TABLE users_new RENAME TO users;
+```
+
+### Single-DB to multi-DB split
+
+Existing installations have one SQLite file with users + tree data together. A one-time migration script handles the split:
+
+1. Create `~/.ancstra/` directory structure
+2. Create `ancstra.sqlite` (central) with new schema
+3. Copy `users` rows from old DB to central `users` table
+4. Create `family_registry` entry for the existing tree
+5. Copy old DB as `families/family-{id}.sqlite` (the tree data)
+6. Drop `users` table from the family DB
+7. Convert ALL `created_by` and `author_id` FKs in the family DB to plain TEXT columns (drop FK constraints): `persons.created_by`, `research_items.created_by`, `relationship_justifications.author_id`, and any other user-referencing columns
+8. Add `version` columns and `pending_contributions` table to family DB
+9. Create `family_members` row: existing user as owner
+
+This migration runs automatically on first launch after the Phase 4 upgrade.
+
+### Cross-DB reference handling (persons.createdBy)
+
+The existing `persons.createdBy` references `users.id`, but after the split, `users` lives in the central DB. Resolution:
+
+- **Keep `created_by` as a plain TEXT column** in the family DB (drop the FK constraint)
+- It stores the user ID but is not enforced at the DB level
+- Application code resolves user names via `family_user_cache`
+- This is acceptable because `created_by` is metadata, not structural
+- Same treatment applies to all user-referencing columns in the family DB
+
+**Note:** The `persons.privacy_level` column is unrelated to the central DB changes. It remains in the family DB schema unchanged — it controls per-person visibility within the tree, not family-level settings.
 
 ## Family Database Changes
 
 Minimal additions to existing per-family schema.
 
+### Cross-DB user resolution
+
+Family DBs reference user IDs (in `created_by`, `pending_contributions.user_id`, etc.) but cannot enforce FKs to the central DB. To display user names/avatars without cross-DB joins:
+
+```sql
+-- Denormalized user cache in each family DB
+-- Synced from central DB when user joins family or updates their profile
+CREATE TABLE family_user_cache (
+  user_id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  avatar_url TEXT,
+  updated_at TEXT NOT NULL
+);
+```
+
+This table is:
+- Populated when a user joins a family
+- Updated when a user changes their name/avatar (central DB triggers app-level sync)
+- Used for display purposes only (not authoritative — central DB is source of truth)
+- Cleaned up when a user is removed from the family
+
 ### Version columns for optimistic locking
 
-Added to: `persons`, `person_names`, `families`, `children`, `events`, `sources`, `source_citations`, `media`.
+Added to: `persons`, `person_names`, `families`, `children`, `events`, `sources`, `source_citations`, `media`, `proposed_relationships`, `proposed_persons`.
 
 ```sql
 ALTER TABLE persons ADD COLUMN version INTEGER NOT NULL DEFAULT 1;
 -- (same for all mutable tables listed above)
 ```
 
+`proposed_relationships` and `proposed_persons` get versioning because multiple admins may review proposals concurrently.
+
 ### Moderation queue
 
 ```sql
 CREATE TABLE pending_contributions (
   id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL,               -- Editor (references central DB)
+  user_id TEXT NOT NULL,               -- Editor (references central DB via family_user_cache)
   operation TEXT NOT NULL CHECK (operation IN ('create', 'update', 'delete')),
   entity_type TEXT NOT NULL,           -- 'person', 'family', 'event', 'source', 'media'
   entity_id TEXT,                      -- NULL for creates
@@ -172,6 +296,12 @@ CREATE INDEX idx_pending_status ON pending_contributions(status) WHERE status = 
 
 Owner/Admin bypass moderation always. When `moderation_enabled = false`, Editors write directly (with audit trail).
 
+**Double-review guard:** The review UPDATE uses `WHERE id = ? AND status = 'pending'` to prevent two reviewers from acting on the same contribution simultaneously. If 0 rows affected, the contribution was already reviewed — return a "already reviewed" response.
+
+### Places table note
+
+The `places` table defined in `docs/architecture/data-model.md` is not yet implemented in the Drizzle schema. Phase 4 does not address this gap — it is tracked for Phase 1 implementation. The family DB schema changes in Phase 4 are additive (version columns, pending_contributions, family_user_cache) and do not affect the places table design.
+
 ## RBAC Permission System
 
 ### Permission matrix
@@ -183,7 +313,7 @@ Owner/Admin bypass moderation always. When `moderation_enabled = false`, Editors
 | Edit existing data | Yes | Yes | Yes* | No |
 | Delete persons/data | Yes | Yes | No | No |
 | Import GEDCOM | Yes | Yes | No | No |
-| Export GEDCOM | Yes | Yes | Yes (redacted) | No |
+| Export GEDCOM | Yes | Yes | Yes | No |
 | AI research | Yes | Yes | Yes | No |
 | Validate relationships | Yes | Yes | Yes | No |
 | Upload media | Yes | Yes | Yes* | No |
@@ -193,6 +323,8 @@ Owner/Admin bypass moderation always. When `moderation_enabled = false`, Editors
 | View activity feed | Yes | Yes | Yes | Yes (filtered) |
 
 *When moderation is enabled, Editor creates/edits go through `pending_contributions`.*
+
+**GEDCOM export for Editors:** Editors can export the full tree. Living person redaction in exports is a separate concern controlled by the export UI (checkbox: "Include living persons"). This applies equally to all roles that can export. Viewers cannot export at all.
 
 ### Implementation
 
@@ -264,6 +396,7 @@ OAuth sign-in returns profile { email, name, avatar }
 
 - Apple relay emails (`xyz@privaterelay.appleid.com`): can't auto-link, creates new account
 - Apple only sends name on first sign-in: store immediately
+- **Local development:** Apple Sign In requires HTTPS and a registered domain. For local dev, Apple OAuth is skipped (button hidden when `NODE_ENV=development`). Google OAuth works locally via `localhost` redirect URIs. Credentials auth is always available.
 
 ### Invite + OAuth interaction
 
@@ -275,6 +408,16 @@ User visits `/join?token=xxx` -> shown family name + role -> can sign up/in via 
 
 Random 32-byte hex string stored in DB (not JWT). Revocable by setting `revoked_at`. Expires after 7 days.
 
+### Rate limiting
+
+The `/join?token=xxx` endpoint is rate-limited to 10 attempts per IP per minute. Failed token validations (expired, revoked, not found) count toward the limit. This prevents brute-force probing.
+
+### Limits
+
+- Max active (unexpired, unaccepted, unrevoked) invitations per family: 20
+- Max total members per family: configurable via `family_registry.max_members` (default 50)
+- Attempting to invite beyond limits returns 429
+
 ### Creation flow
 
 Owner/Admin clicks "Invite Member" -> optional email + role picker -> generates token -> UI shows copyable link `/join?token={token}` -> activity feed logged.
@@ -283,12 +426,18 @@ Owner/Admin clicks "Invite Member" -> optional email + role picker -> generates 
 
 ```
 /join?token=xxx
-  → Validate: exists, not expired, not revoked, not accepted
-    → Invalid: error page
-    → Valid: show join page
-      → Already logged in: "Join [Family] as [Role]" button
-      → Not logged in: sign up/in form (credentials or OAuth)
-      → After auth: create family_members, mark accepted, redirect to tree
+  → Rate limit check (10/min per IP)
+  → Validate token:
+    → Exists in DB?
+    → Not expired?
+    → Not revoked?
+    → Not already accepted?
+    → Family not at max_members?
+      → Invalid: error page with explanation
+      → Valid: show join page
+        → Already logged in: "Join [Family] as [Role]" button
+        → Not logged in: sign up/in form (credentials or OAuth)
+        → After auth: create family_members, mark accepted, redirect to tree
 ```
 
 ### Constraints
@@ -298,6 +447,20 @@ Owner/Admin clicks "Invite Member" -> optional email + role picker -> generates 
 - Owner role can't be assigned via invite (must be transferred explicitly)
 - If email is set on invite, only that email can accept
 - If email is NULL, anyone with link can accept (one-time use)
+
+### Owner transfer
+
+Owner can transfer ownership to an existing Admin via Settings > Members. The flow:
+
+1. Owner selects an Admin and clicks "Transfer Ownership"
+2. Confirmation dialog with warning
+3. On confirm: the Admin becomes Owner, the former Owner becomes Admin
+4. Both `family_members` roles updated atomically
+5. `family_registry.owner_id` updated to new Owner
+6. Activity feed entry logged
+7. Former Owner retains Admin access (not kicked out)
+
+If the Owner's account becomes inaccessible, there is no self-service recovery path. This is a known limitation — a future admin tool or support flow could handle this edge case.
 
 ## Living Person Redaction
 
@@ -346,6 +509,7 @@ Entries referencing living persons show redacted summaries for Viewers: "A famil
 | `contribution_submitted` | "{user} submitted a change to {entity}" |
 | `contribution_approved` | "{user} approved {editor}'s change to {entity}" |
 | `contribution_rejected` | "{user} rejected {editor}'s change to {entity}" |
+| `owner_transferred` | "{user} transferred ownership to {new_owner}" |
 
 ### API
 
@@ -358,6 +522,10 @@ Cursor-based pagination. Viewer sees redacted summaries. Filter by `?action=` an
 ### Unread indicator
 
 `last_seen_at` column on `family_members` tracks when user last viewed the feed.
+
+### Retention
+
+No automatic pruning for now. A personal genealogy app with a handful of users generates minimal feed volume. If needed later, add a configurable retention period (e.g., archive entries older than 2 years).
 
 ## Optimistic Locking
 
@@ -381,9 +549,9 @@ On 409: show toast "This record was updated by someone else", refresh form with 
 
 ### Tables with versioning
 
-`persons`, `person_names`, `families`, `children`, `events`, `sources`, `source_citations`, `media`.
+`persons`, `person_names`, `families`, `children`, `events`, `sources`, `source_citations`, `media`, `proposed_relationships`, `proposed_persons`.
 
-NOT versioned: `change_log`, `pending_contributions`, `tree_layouts`, `ancestor_paths`, `person_summary`.
+NOT versioned: `change_log`, `pending_contributions`, `tree_layouts`, `ancestor_paths`, `person_summary`, `family_user_cache`.
 
 ### Interaction with moderation
 
@@ -396,12 +564,13 @@ When moderation is on, Editor changes go to `pending_contributions` (no conflict
 ```
 packages/auth/src/
 ├── index.ts              # Public exports
+├── nextauth-adapter.ts   # Custom Drizzle adapter for central DB
 ├── permissions.ts        # RBAC: Role, Permission, hasPermission, requirePermission
 ├── privacy.ts            # redactForViewer, isPresumablyLiving
 ├── invitations.ts        # generateInviteToken, validateToken, acceptInvite, revokeInvite
 ├── activity.ts           # logActivity, getActivityFeed
 ├── moderation.ts         # submitContribution, reviewContribution, shouldModerate
-├── families.ts           # createFamily, getFamilyForUser, switchFamily
+├── families.ts           # createFamily, getFamilyForUser, switchFamily, transferOwnership
 ├── oauth-linking.ts      # linkOAuthAccount, findUserByEmail, mergeAccounts
 └── types.ts              # Shared types
 ```
@@ -412,10 +581,12 @@ packages/auth/src/
 packages/db/src/
 ├── index.ts              # createCentralDb, createFamilyDb exports
 ├── central-schema.ts     # NEW: users, oauth_accounts, family_registry, etc.
-├── family-schema.ts      # RENAMED from schema.ts + version columns + pending_contributions
+├── family-schema.ts      # RENAMED from schema.ts + version columns + pending_contributions + family_user_cache
 ├── research-schema.ts    # Unchanged
 ├── ai-schema.ts          # Unchanged
 ├── matching-schema.ts    # Unchanged
+├── migrations/
+│   └── split-to-multi-db.ts  # NEW: one-time migration from single DB to central + family
 ├── seed.ts               # Updated: seeds both central + family DBs
 └── turso.ts              # Updated: supports central + per-family Turso URLs
 ```
@@ -473,6 +644,17 @@ User signs up (first time, no families)
 
 For web mode, `createFamilyDb()` uses `@libsql/client` instead of `better-sqlite3`. The `db_filename` in `family_registry` becomes a Turso URL (`libsql://ancstra-family-{id}-username.turso.io`). Same Drizzle schema, different driver.
 
+**Turso DB provisioning:** New family databases are created via the Turso Platform API (`POST /v1/organizations/{org}/databases`). This is called from `packages/auth/src/families.ts#createFamily()` when in web mode. Turso's free tier supports up to 500 databases. The API call takes ~2-3 seconds, which is acceptable for family creation (a rare operation).
+
+## Hono Worker Interaction
+
+The Hono worker (introduced in Phase 2) authenticates via a shared service secret (`WORKER_AUTH_SECRET`). It does not use NextAuth or `proxy.ts`. Instead:
+
+- Worker receives job payloads that include `{ familyId, userId }`
+- Worker resolves the family DB the same way: query `family_registry` for `db_filename`, create Drizzle connection
+- Worker uses the central DB for activity feed logging
+- Worker does not enforce RBAC (the API route that enqueued the job already checked permissions)
+
 ## Family Switching
 
 Family picker dropdown in top nav (visible when user belongs to multiple families). Selecting a family updates session cookie and reloads data. Each family is completely isolated.
@@ -489,3 +671,6 @@ Family picker dropdown in top nav (visible when user belongs to multiple familie
 - [ ] Activity feed shows accurate history
 - [ ] Living person full redaction verified for Viewers
 - [ ] Multi-DB architecture works (central + multiple family DBs)
+- [ ] Single-DB to multi-DB migration tested
+- [ ] Owner transfer flow works
+- [ ] Rate limiting on join endpoint verified
