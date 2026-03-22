@@ -38,9 +38,10 @@ const edgeTypes = { partner: PartnerEdge, parentChild: ParentChildEdge };
 
 interface TreeCanvasProps {
   treeData: TreeData;
+  focusPersonId?: string;
 }
 
-function TreeCanvasInner({ treeData }: TreeCanvasProps) {
+function TreeCanvasInner({ treeData, focusPersonId }: TreeCanvasProps) {
   const { fitView } = useReactFlow();
 
   const { nodes: rawNodes, edges: rawEdges } = useMemo(
@@ -161,6 +162,18 @@ function TreeCanvasInner({ treeData }: TreeCanvasProps) {
     },
     [treeData],
   );
+
+  // Focus on person when focusPersonId is provided (e.g. from /tree?focus=...)
+  useEffect(() => {
+    if (!focusPersonId) return;
+    // Small delay to let React Flow render nodes first
+    const timer = setTimeout(() => {
+      fitView({ nodes: [{ id: focusPersonId }], duration: 500, padding: 0.5 });
+      const person = treeData.persons.find((p) => p.id === focusPersonId);
+      if (person) setSelectedPerson(person);
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [focusPersonId, fitView, treeData]);
 
   // Keyboard shortcuts
   useEffect(() => {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import {
   CommandDialog,
   CommandEmpty,
@@ -27,6 +27,7 @@ const sexLabel = { M: 'Male', F: 'Female', U: 'Unknown' } as const;
 
 export function CommandPalette() {
   const router = useRouter();
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<PersonListItem[]>([]);
@@ -80,9 +81,15 @@ export function CommandPalette() {
       setOpen(false);
       setQuery('');
       setResults([]);
-      router.push(href);
+      // If selecting a person while on tree page, focus instead of navigating away
+      if (href.startsWith('/person/') && pathname === '/tree') {
+        const personId = href.replace('/person/', '');
+        router.push(`/tree?focus=${personId}`);
+      } else {
+        router.push(href);
+      }
     },
-    [router],
+    [router, pathname],
   );
 
   // Filter actions client-side
