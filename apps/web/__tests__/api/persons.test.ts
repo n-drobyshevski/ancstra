@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import Database from 'better-sqlite3';
-import { eq, and, isNull, inArray } from 'drizzle-orm';
+import { eq, and, isNull, inArray, sql } from 'drizzle-orm';
 import * as schema from '@ancstra/db';
 import { parseDateToSort } from '@ancstra/shared';
 import { createPersonSchema } from '../../lib/validation';
@@ -283,6 +283,85 @@ describe('Person CRUD (integration)', () => {
       .offset(2)
       .all();
     expect(page2).toHaveLength(1);
+  });
+
+  it('updates person name via direct DB update', () => {
+    const id = createPerson({ givenName: 'John', surname: 'Smith', sex: 'M', isLiving: true });
+    db.update(personNames)
+      .set({ givenName: 'Jonathan' })
+      .where(and(eq(personNames.personId, id), eq(personNames.isPrimary, true)))
+      .run();
+    const [name] = db
+      .select()
+      .from(personNames)
+      .where(and(eq(personNames.personId, id), eq(personNames.isPrimary, true)))
+      .all();
+    expect(name.givenName).toBe('Jonathan');
+  });
+
+  it('upserts birth event on update', () => {
+    const id = createPerson({ givenName: 'John', surname: 'Smith', sex: 'M', isLiving: true });
+    db.insert(events)
+      .values({
+        id: crypto.randomUUID(),
+        personId: id,
+        eventType: 'birth',
+        dateOriginal: '1850',
+        dateSort: 18500101,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      })
+      .run();
+    db.update(events)
+      .set({ dateOriginal: '15 Mar 1850', dateSort: 18500315 })
+      .where(and(eq(events.personId, id), eq(events.eventType, 'birth')))
+      .run();
+    const [birth] = db
+      .select()
+      .from(events)
+      .where(and(eq(events.personId, id), eq(events.eventType, 'birth')))
+      .all();
+    expect(birth.dateOriginal).toBe('15 Mar 1850');
+    expect(birth.dateSort).toBe(18500315);
+  });
+
+  it('soft-deletes a person', () => {
+    const id = createPerson({ givenName: 'ToDelete', surname: 'Person', sex: 'U', isLiving: false });
+    db.update(persons)
+      .set({ deletedAt: new Date().toISOString() })
+      .where(eq(persons.id, id))
+      .run();
+    const result = db
+      .select()
+      .from(persons)
+      .where(and(eq(persons.id, id), isNull(persons.deletedAt)))
+      .all();
+    expect(result).toHaveLength(0);
+  });
+
+  it('filters persons by surname with LIKE search', () => {
+    createPerson({ givenName: 'Alice', surname: 'Smith', sex: 'F', isLiving: true });
+    createPerson({ givenName: 'Bob', surname: 'Jones', sex: 'M', isLiving: true });
+    createPerson({ givenName: 'Charlie', surname: 'Smith', sex: 'M', isLiving: true });
+
+    const smithRows = db.select({ id: persons.id, givenName: personNames.givenName })
+      .from(persons)
+      .innerJoin(personNames, sql`${personNames.personId} = ${persons.id} AND ${personNames.isPrimary} = 1`)
+      .where(and(isNull(persons.deletedAt), sql`(${personNames.surname} LIKE '%Smith%' OR ${personNames.givenName} LIKE '%Smith%')`))
+      .all();
+    expect(smithRows).toHaveLength(2);
+  });
+
+  it('filters persons by given name with LIKE search', () => {
+    createPerson({ givenName: 'Alice', surname: 'Smith', sex: 'F', isLiving: true });
+    createPerson({ givenName: 'Bob', surname: 'Jones', sex: 'M', isLiving: true });
+
+    const aliceRows = db.select({ id: persons.id })
+      .from(persons)
+      .innerJoin(personNames, sql`${personNames.personId} = ${persons.id} AND ${personNames.isPrimary} = 1`)
+      .where(and(isNull(persons.deletedAt), sql`(${personNames.surname} LIKE '%Alice%' OR ${personNames.givenName} LIKE '%Alice%')`))
+      .all();
+    expect(aliceRows).toHaveLength(1);
   });
 
   it('soft-deleted persons are excluded from queries', () => {

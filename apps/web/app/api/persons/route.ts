@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { createDb, persons, personNames, events } from '@ancstra/db';
-import { eq, isNull, sql } from 'drizzle-orm';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 import { createPersonSchema } from '@/lib/validation';
 import { parseDateToSort } from '@ancstra/shared';
 
@@ -27,60 +27,62 @@ export async function POST(request: Request) {
   const personId = crypto.randomUUID();
   const nameId = crypto.randomUUID();
 
-  // Transaction: insert person + name + optional events
-  db.insert(persons)
-    .values({
-      id: personId,
-      sex: data.sex,
-      isLiving: data.isLiving,
-      notes: data.notes ?? null,
-      createdBy: session.user.id ?? null,
-      createdAt: now,
-      updatedAt: now,
-    })
-    .run();
-
-  db.insert(personNames)
-    .values({
-      id: nameId,
-      personId,
-      givenName: data.givenName,
-      surname: data.surname,
-      nameType: 'birth',
-      isPrimary: true,
-      createdAt: now,
-    })
-    .run();
-
-  if (data.birthDate || data.birthPlace) {
-    db.insert(events)
+  // Drizzle + better-sqlite3 transactions are SYNCHRONOUS
+  db.transaction((tx) => {
+    tx.insert(persons)
       .values({
-        id: crypto.randomUUID(),
-        personId,
-        eventType: 'birth',
-        dateOriginal: data.birthDate ?? null,
-        dateSort: data.birthDate ? parseDateToSort(data.birthDate) : null,
-        placeText: data.birthPlace ?? null,
+        id: personId,
+        sex: data.sex,
+        isLiving: data.isLiving,
+        notes: data.notes ?? null,
+        createdBy: session.user?.id ?? null,
         createdAt: now,
         updatedAt: now,
       })
       .run();
-  }
 
-  if (data.deathDate || data.deathPlace) {
-    db.insert(events)
+    tx.insert(personNames)
       .values({
-        id: crypto.randomUUID(),
+        id: nameId,
         personId,
-        eventType: 'death',
-        dateOriginal: data.deathDate ?? null,
-        dateSort: data.deathDate ? parseDateToSort(data.deathDate) : null,
-        placeText: data.deathPlace ?? null,
+        givenName: data.givenName,
+        surname: data.surname,
+        nameType: 'birth',
+        isPrimary: true,
         createdAt: now,
-        updatedAt: now,
       })
       .run();
-  }
+
+    if (data.birthDate || data.birthPlace) {
+      tx.insert(events)
+        .values({
+          id: crypto.randomUUID(),
+          personId,
+          eventType: 'birth',
+          dateOriginal: data.birthDate ?? null,
+          dateSort: data.birthDate ? parseDateToSort(data.birthDate) : null,
+          placeText: data.birthPlace ?? null,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .run();
+    }
+
+    if (data.deathDate || data.deathPlace) {
+      tx.insert(events)
+        .values({
+          id: crypto.randomUUID(),
+          personId,
+          eventType: 'death',
+          dateOriginal: data.deathDate ?? null,
+          dateSort: data.deathDate ? parseDateToSort(data.deathDate) : null,
+          placeText: data.deathPlace ?? null,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .run();
+    }
+  });
 
   return NextResponse.json(
     {
@@ -104,8 +106,16 @@ export async function GET(request: Request) {
   const page = Math.max(1, parseInt(searchParams.get('page') ?? '1'));
   const pageSize = Math.min(100, Math.max(1, parseInt(searchParams.get('pageSize') ?? '20')));
   const offset = (page - 1) * pageSize;
+  const q = searchParams.get('q');
 
   const db = createDb();
+
+  const whereClause = q
+    ? and(
+        isNull(persons.deletedAt),
+        sql`(${personNames.givenName} LIKE ${'%' + q + '%'} OR ${personNames.surname} LIKE ${'%' + q + '%'})`
+      )
+    : isNull(persons.deletedAt);
 
   const rows = db
     .select({
@@ -120,15 +130,24 @@ export async function GET(request: Request) {
       personNames,
       sql`${personNames.personId} = ${persons.id} AND ${personNames.isPrimary} = 1`
     )
-    .where(isNull(persons.deletedAt))
+    .where(whereClause)
     .limit(pageSize)
     .offset(offset)
     .all();
 
-  const [{ count }] = db
+  const countQuery = db
     .select({ count: sql<number>`count(*)` })
-    .from(persons)
-    .where(isNull(persons.deletedAt))
+    .from(persons);
+
+  if (q) {
+    countQuery.innerJoin(
+      personNames,
+      sql`${personNames.personId} = ${persons.id} AND ${personNames.isPrimary} = 1`
+    );
+  }
+
+  const [{ count }] = countQuery
+    .where(whereClause)
     .all();
 
   // Add birth/death dates from events

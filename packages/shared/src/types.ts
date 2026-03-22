@@ -50,3 +50,81 @@ export interface PaginatedResponse<T> {
   page: number;
   pageSize: number;
 }
+
+export interface Family {
+  id: string;
+  partner1Id: string | null;
+  partner2Id: string | null;
+  relationshipType: 'married' | 'civil_union' | 'domestic_partner' | 'unmarried' | 'unknown';
+  validationStatus: 'confirmed' | 'proposed' | 'disputed';
+  partner1?: PersonListItem | null;
+  partner2?: PersonListItem | null;
+  children?: PersonListItem[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Event {
+  id: string;
+  eventType: string;
+  dateOriginal: string | null;
+  dateSort: number | null;
+  dateModifier: 'exact' | 'about' | 'estimated' | 'before' | 'after' | 'between' | 'calculated' | 'interpreted' | null;
+  dateEndSort: number | null;
+  placeText: string | null;
+  description: string | null;
+  personId: string | null;
+  familyId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UpdatePersonInput {
+  givenName?: string;
+  surname?: string;
+  sex?: 'M' | 'F' | 'U';
+  birthDate?: string;
+  birthPlace?: string;
+  deathDate?: string;
+  deathPlace?: string;
+  isLiving?: boolean;
+  notes?: string;
+}
+
+export interface CreateFamilyInput {
+  partner1Id?: string;
+  partner2Id?: string;
+  relationshipType?: Family['relationshipType'];
+}
+
+export interface CreateEventInput {
+  eventType: string;
+  dateOriginal?: string;
+  dateEndOriginal?: string;
+  placeText?: string;
+  description?: string;
+  dateModifier?: Event['dateModifier'];
+  personId?: string;
+  familyId?: string;
+}
+
+export interface UpdateEventInput {
+  eventType?: string;
+  dateOriginal?: string;
+  dateEndOriginal?: string;
+  placeText?: string;
+  description?: string;
+  dateModifier?: Event['dateModifier'];
+}
+
+export interface RelationContext {
+  relation: 'spouse' | 'father' | 'mother' | 'child';
+  ofPersonId: string;
+}
+
+export interface PersonDetail extends Person {
+  spouses: PersonListItem[];
+  parents: PersonListItem[];
+  children: PersonListItem[];
+  events: Event[];
+}
