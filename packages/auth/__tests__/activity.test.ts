@@ -84,8 +84,8 @@ describe('logActivity', () => {
     ({ db } = createTestDb());
   });
 
-  it('inserts a row into activity_feed', () => {
-    logActivity(db, {
+  it('inserts a row into activity_feed', async () => {
+    await logActivity(db, {
       familyId: 'f1',
       userId: 'u1',
       action: 'person_added',
@@ -95,7 +95,7 @@ describe('logActivity', () => {
       metadata: { source: 'manual' },
     });
 
-    const result = getActivityFeed(db, { familyId: 'f1' });
+    const result = await getActivityFeed(db, { familyId: 'f1' });
     expect(result.items).toHaveLength(1);
     expect(result.items[0].action).toBe('person_added');
     expect(result.items[0].summary).toBe('Added John Doe');
@@ -104,15 +104,15 @@ describe('logActivity', () => {
     expect(result.items[0].metadata).toEqual({ source: 'manual' });
   });
 
-  it('inserts with optional fields omitted', () => {
-    logActivity(db, {
+  it('inserts with optional fields omitted', async () => {
+    await logActivity(db, {
       familyId: 'f1',
       userId: 'u1',
       action: 'gedcom_imported',
       summary: 'Imported GEDCOM file',
     });
 
-    const result = getActivityFeed(db, { familyId: 'f1' });
+    const result = await getActivityFeed(db, { familyId: 'f1' });
     expect(result.items).toHaveLength(1);
     expect(result.items[0].entityType).toBeNull();
     expect(result.items[0].entityId).toBeNull();
@@ -128,16 +128,16 @@ describe('getActivityFeed', () => {
     ({ db, sqlite } = createTestDb());
   });
 
-  it('returns items ordered by created_at desc', () => {
+  it('returns items ordered by created_at desc', async () => {
     insertRawActivity(sqlite, 'a1', { summary: 'First', createdAt: '2026-01-01T00:00:00Z' });
     insertRawActivity(sqlite, 'a2', { summary: 'Second', createdAt: '2026-01-02T00:00:00Z' });
     insertRawActivity(sqlite, 'a3', { summary: 'Third', createdAt: '2026-01-03T00:00:00Z' });
 
-    const result = getActivityFeed(db, { familyId: 'f1' });
+    const result = await getActivityFeed(db, { familyId: 'f1' });
     expect(result.items.map((i) => i.summary)).toEqual(['Third', 'Second', 'First']);
   });
 
-  it('respects limit and returns nextCursor', () => {
+  it('respects limit and returns nextCursor', async () => {
     for (let i = 0; i < 5; i++) {
       insertRawActivity(sqlite, `item${i}`, {
         summary: `Activity ${i}`,
@@ -145,48 +145,48 @@ describe('getActivityFeed', () => {
       });
     }
 
-    const page1 = getActivityFeed(db, { familyId: 'f1', limit: 2 });
+    const page1 = await getActivityFeed(db, { familyId: 'f1', limit: 2 });
     expect(page1.items).toHaveLength(2);
     expect(page1.nextCursor).not.toBeNull();
     expect(page1.items[0].summary).toBe('Activity 4');
     expect(page1.items[1].summary).toBe('Activity 3');
 
-    const page2 = getActivityFeed(db, { familyId: 'f1', limit: 2, cursor: page1.nextCursor! });
+    const page2 = await getActivityFeed(db, { familyId: 'f1', limit: 2, cursor: page1.nextCursor! });
     expect(page2.items).toHaveLength(2);
     expect(page2.nextCursor).not.toBeNull();
     expect(page2.items[0].summary).toBe('Activity 2');
     expect(page2.items[1].summary).toBe('Activity 1');
 
-    const page3 = getActivityFeed(db, { familyId: 'f1', limit: 2, cursor: page2.nextCursor! });
+    const page3 = await getActivityFeed(db, { familyId: 'f1', limit: 2, cursor: page2.nextCursor! });
     expect(page3.items).toHaveLength(1);
     expect(page3.nextCursor).toBeNull();
     expect(page3.items[0].summary).toBe('Activity 0');
   });
 
-  it('filters by action', () => {
+  it('filters by action', async () => {
     insertRawActivity(sqlite, 'x1', { action: 'person_added', summary: 'Added', createdAt: '2026-01-01T00:00:00Z' });
     insertRawActivity(sqlite, 'x2', { action: 'media_uploaded', summary: 'Uploaded', createdAt: '2026-01-02T00:00:00Z' });
     insertRawActivity(sqlite, 'x3', { action: 'person_added', summary: 'Added again', createdAt: '2026-01-03T00:00:00Z' });
 
-    const result = getActivityFeed(db, { familyId: 'f1', action: 'person_added' });
+    const result = await getActivityFeed(db, { familyId: 'f1', action: 'person_added' });
     expect(result.items).toHaveLength(2);
     expect(result.items.every((i) => i.action === 'person_added')).toBe(true);
   });
 
-  it('filters by userId', () => {
+  it('filters by userId', async () => {
     insertRawActivity(sqlite, 'y1', { userId: 'u1', summary: 'By Alice', createdAt: '2026-01-01T00:00:00Z' });
     insertRawActivity(sqlite, 'y2', { userId: 'u2', summary: 'By Bob', createdAt: '2026-01-02T00:00:00Z' });
     insertRawActivity(sqlite, 'y3', { userId: 'u1', summary: 'By Alice again', createdAt: '2026-01-03T00:00:00Z' });
 
-    const result = getActivityFeed(db, { familyId: 'f1', userId: 'u2' });
+    const result = await getActivityFeed(db, { familyId: 'f1', userId: 'u2' });
     expect(result.items).toHaveLength(1);
     expect(result.items[0].summary).toBe('By Bob');
   });
 
-  it('returns null nextCursor when no more pages', () => {
+  it('returns null nextCursor when no more pages', async () => {
     insertRawActivity(sqlite, 'z1', { summary: 'Only one', createdAt: '2026-01-01T00:00:00Z' });
 
-    const result = getActivityFeed(db, { familyId: 'f1', limit: 10 });
+    const result = await getActivityFeed(db, { familyId: 'f1', limit: 10 });
     expect(result.items).toHaveLength(1);
     expect(result.nextCursor).toBeNull();
   });

@@ -1,10 +1,11 @@
 import crypto from 'node:crypto';
 import { eq, and, isNull, count } from 'drizzle-orm';
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import * as centralSchema from '@ancstra/db/central-schema';
 import type { Role } from './types';
 
-type CentralDb = BetterSQLite3Database<typeof centralSchema>;
+// Accept any Drizzle DB instance (works with both better-sqlite3 and libsql drivers)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type CentralDb = any;
 type InviteRole = 'admin' | 'editor' | 'viewer';
 
 export interface CreateInvitationOpts {
@@ -63,7 +64,7 @@ export async function createInvitation(
 
   // Check active invite count (pending = not accepted, not revoked, not expired)
   const now = new Date().toISOString();
-  const activeInvites = centralDb
+  const activeInvites = await centralDb
     .select({ count: count() })
     .from(centralSchema.invitations)
     .where(
@@ -83,7 +84,7 @@ export async function createInvitation(
   const token = generateInviteToken();
   const expiresAt = new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000).toISOString();
 
-  const invitation = centralDb
+  const invitation = await centralDb
     .insert(centralSchema.invitations)
     .values({
       familyId,
@@ -108,7 +109,7 @@ export async function validateInviteToken(
   token: string,
   userEmail?: string
 ): Promise<ValidateResult> {
-  const invitation = centralDb
+  const invitation = await centralDb
     .select()
     .from(centralSchema.invitations)
     .where(eq(centralSchema.invitations.token, token))
@@ -138,14 +139,14 @@ export async function validateInviteToken(
   }
 
   // Check family max members
-  const family = centralDb
+  const family = await centralDb
     .select()
     .from(centralSchema.familyRegistry)
     .where(eq(centralSchema.familyRegistry.id, invitation.familyId))
     .get();
 
   if (family) {
-    const memberCount = centralDb
+    const memberCount = await centralDb
       .select({ count: count() })
       .from(centralSchema.familyMembers)
       .where(
@@ -182,7 +183,7 @@ export async function acceptInvite(
   const now = new Date().toISOString();
 
   // Create family_members row
-  centralDb
+  await centralDb
     .insert(centralSchema.familyMembers)
     .values({
       familyId: invitation.familyId,
@@ -194,7 +195,7 @@ export async function acceptInvite(
     .run();
 
   // Mark invitation as accepted
-  const updated = centralDb
+  const updated = await centralDb
     .update(centralSchema.invitations)
     .set({
       acceptedAt: now,
@@ -217,7 +218,7 @@ export async function revokeInvite(
 ): Promise<InvitationRow> {
   const now = new Date().toISOString();
 
-  const updated = centralDb
+  const updated = await centralDb
     .update(centralSchema.invitations)
     .set({
       revokedAt: now,

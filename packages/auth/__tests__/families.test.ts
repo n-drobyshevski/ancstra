@@ -54,9 +54,9 @@ function createTestCentralDb() {
   return { db: drizzle(sqlite, { schema: centralSchema }), sqlite };
 }
 
-function seedUser(db: ReturnType<typeof createTestCentralDb>['db'], id: string, name: string) {
+async function seedUser(db: ReturnType<typeof createTestCentralDb>['db'], id: string, name: string) {
   const now = new Date().toISOString();
-  db.insert(centralSchema.users).values({
+  await db.insert(centralSchema.users).values({
     id,
     email: `${name.toLowerCase()}@test.com`,
     name,
@@ -69,15 +69,15 @@ describe('createFamily', () => {
   let db: ReturnType<typeof createTestCentralDb>['db'];
   let sqlite: Database.Database;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     const ctx = createTestCentralDb();
     db = ctx.db;
     sqlite = ctx.sqlite;
-    seedUser(db, 'user-1', 'Alice');
+    await seedUser(db, 'user-1', 'Alice');
   });
 
-  it('creates a family_registry row and owner membership', () => {
-    const result = createFamily(db, { name: 'Smith Family', ownerId: 'user-1' });
+  it('creates a family_registry row and owner membership', async () => {
+    const result = await createFamily(db, { name: 'Smith Family', ownerId: 'user-1' });
 
     expect(result.familyId).toBeDefined();
     expect(result.dbFilename).toMatch(/\.sqlite$/);
@@ -98,9 +98,9 @@ describe('createFamily', () => {
     expect(membership.is_active).toBe(1);
   });
 
-  it('generates a unique db_filename for each family', () => {
-    const r1 = createFamily(db, { name: 'Family A', ownerId: 'user-1' });
-    const r2 = createFamily(db, { name: 'Family B', ownerId: 'user-1' });
+  it('generates a unique db_filename for each family', async () => {
+    const r1 = await createFamily(db, { name: 'Family A', ownerId: 'user-1' });
+    const r2 = await createFamily(db, { name: 'Family B', ownerId: 'user-1' });
     expect(r1.dbFilename).not.toBe(r2.dbFilename);
   });
 });
@@ -108,16 +108,16 @@ describe('createFamily', () => {
 describe('getFamiliesForUser', () => {
   let db: ReturnType<typeof createTestCentralDb>['db'];
 
-  beforeEach(() => {
+  beforeEach(async () => {
     const ctx = createTestCentralDb();
     db = ctx.db;
-    seedUser(db, 'user-1', 'Alice');
-    seedUser(db, 'user-2', 'Bob');
+    await seedUser(db, 'user-1', 'Alice');
+    await seedUser(db, 'user-2', 'Bob');
   });
 
-  it('returns all families the user belongs to with their roles', () => {
-    const f1 = createFamily(db, { name: 'Smith Family', ownerId: 'user-1' });
-    const f2 = createFamily(db, { name: 'Jones Family', ownerId: 'user-2' });
+  it('returns all families the user belongs to with their roles', async () => {
+    const f1 = await createFamily(db, { name: 'Smith Family', ownerId: 'user-1' });
+    const f2 = await createFamily(db, { name: 'Jones Family', ownerId: 'user-2' });
 
     // Add user-1 as editor in Jones family
     const now = new Date().toISOString();
@@ -129,7 +129,7 @@ describe('getFamiliesForUser', () => {
       joinedAt: now,
     }).run();
 
-    const families = getFamiliesForUser(db, 'user-1');
+    const families = await getFamiliesForUser(db, 'user-1');
     expect(families).toHaveLength(2);
 
     const smithEntry = families.find((f) => f.familyId === f1.familyId);
@@ -142,8 +142,8 @@ describe('getFamiliesForUser', () => {
     expect(jonesEntry!.role).toBe('editor');
   });
 
-  it('returns empty array for a user with no families', () => {
-    const families = getFamiliesForUser(db, 'user-1');
+  it('returns empty array for a user with no families', async () => {
+    const families = await getFamiliesForUser(db, 'user-1');
     expect(families).toEqual([]);
   });
 });
@@ -151,16 +151,16 @@ describe('getFamiliesForUser', () => {
 describe('getFamilyMembership', () => {
   let db: ReturnType<typeof createTestCentralDb>['db'];
 
-  beforeEach(() => {
+  beforeEach(async () => {
     const ctx = createTestCentralDb();
     db = ctx.db;
-    seedUser(db, 'user-1', 'Alice');
-    seedUser(db, 'user-2', 'Bob');
+    await seedUser(db, 'user-1', 'Alice');
+    await seedUser(db, 'user-2', 'Bob');
   });
 
-  it('returns the membership row when the user is a member', () => {
-    const f = createFamily(db, { name: 'Smith Family', ownerId: 'user-1' });
-    const membership = getFamilyMembership(db, 'user-1', f.familyId);
+  it('returns the membership row when the user is a member', async () => {
+    const f = await createFamily(db, { name: 'Smith Family', ownerId: 'user-1' });
+    const membership = await getFamilyMembership(db, 'user-1', f.familyId);
 
     expect(membership).not.toBeNull();
     expect(membership!.role).toBe('owner');
@@ -168,9 +168,9 @@ describe('getFamilyMembership', () => {
     expect(membership!.familyId).toBe(f.familyId);
   });
 
-  it('returns null when the user is not a member', () => {
-    const f = createFamily(db, { name: 'Smith Family', ownerId: 'user-1' });
-    const membership = getFamilyMembership(db, 'user-2', f.familyId);
+  it('returns null when the user is not a member', async () => {
+    const f = await createFamily(db, { name: 'Smith Family', ownerId: 'user-1' });
+    const membership = await getFamilyMembership(db, 'user-2', f.familyId);
     expect(membership).toBeNull();
   });
 });
@@ -179,17 +179,17 @@ describe('transferOwnership', () => {
   let db: ReturnType<typeof createTestCentralDb>['db'];
   let sqlite: Database.Database;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     const ctx = createTestCentralDb();
     db = ctx.db;
     sqlite = ctx.sqlite;
-    seedUser(db, 'user-1', 'Alice');
-    seedUser(db, 'user-2', 'Bob');
-    seedUser(db, 'user-3', 'Charlie');
+    await seedUser(db, 'user-1', 'Alice');
+    await seedUser(db, 'user-2', 'Bob');
+    await seedUser(db, 'user-3', 'Charlie');
   });
 
-  it('swaps owner/admin roles and updates family_registry.owner_id', () => {
-    const f = createFamily(db, { name: 'Smith Family', ownerId: 'user-1' });
+  it('swaps owner/admin roles and updates family_registry.owner_id', async () => {
+    const f = await createFamily(db, { name: 'Smith Family', ownerId: 'user-1' });
 
     // Add user-2 as admin
     const now = new Date().toISOString();
@@ -201,7 +201,7 @@ describe('transferOwnership', () => {
       joinedAt: now,
     }).run();
 
-    const result = transferOwnership(db, {
+    const result = await transferOwnership(db, {
       familyId: f.familyId,
       currentOwnerId: 'user-1',
       newOwnerId: 'user-2',
@@ -211,11 +211,11 @@ describe('transferOwnership', () => {
     expect(result.error).toBeUndefined();
 
     // Former owner is now admin
-    const formerOwner = getFamilyMembership(db, 'user-1', f.familyId);
+    const formerOwner = await getFamilyMembership(db, 'user-1', f.familyId);
     expect(formerOwner!.role).toBe('admin');
 
     // New owner is now owner
-    const newOwner = getFamilyMembership(db, 'user-2', f.familyId);
+    const newOwner = await getFamilyMembership(db, 'user-2', f.familyId);
     expect(newOwner!.role).toBe('owner');
 
     // Registry updated
@@ -223,8 +223,8 @@ describe('transferOwnership', () => {
     expect(registry.owner_id).toBe('user-2');
   });
 
-  it('fails if the target user is not an admin', () => {
-    const f = createFamily(db, { name: 'Smith Family', ownerId: 'user-1' });
+  it('fails if the target user is not an admin', async () => {
+    const f = await createFamily(db, { name: 'Smith Family', ownerId: 'user-1' });
 
     // Add user-3 as editor (not admin)
     const now = new Date().toISOString();
@@ -236,7 +236,7 @@ describe('transferOwnership', () => {
       joinedAt: now,
     }).run();
 
-    const result = transferOwnership(db, {
+    const result = await transferOwnership(db, {
       familyId: f.familyId,
       currentOwnerId: 'user-1',
       newOwnerId: 'user-3',
@@ -246,14 +246,14 @@ describe('transferOwnership', () => {
     expect(result.error).toBeDefined();
 
     // Roles unchanged
-    const owner = getFamilyMembership(db, 'user-1', f.familyId);
+    const owner = await getFamilyMembership(db, 'user-1', f.familyId);
     expect(owner!.role).toBe('owner');
   });
 
-  it('fails if the target user is not a member at all', () => {
-    const f = createFamily(db, { name: 'Smith Family', ownerId: 'user-1' });
+  it('fails if the target user is not a member at all', async () => {
+    const f = await createFamily(db, { name: 'Smith Family', ownerId: 'user-1' });
 
-    const result = transferOwnership(db, {
+    const result = await transferOwnership(db, {
       familyId: f.familyId,
       currentOwnerId: 'user-1',
       newOwnerId: 'user-2',

@@ -3,6 +3,7 @@ import {
   familyRegistry,
   familyMembers,
 } from '@ancstra/db/central-schema';
+import { isWebMode } from '@ancstra/db';
 import type { CentralDatabase } from '@ancstra/db';
 import type { Role } from './types';
 
@@ -27,15 +28,25 @@ export interface Membership {
  * Create a new family. Inserts a family_registry row and an owner membership row.
  * Note: actual SQLite file creation and migration is an integration concern.
  */
-export function createFamily(
+export async function createFamily(
   centralDb: CentralDatabase,
   opts: { name: string; ownerId: string },
-): { familyId: string; dbFilename: string } {
+): Promise<{ familyId: string; dbFilename: string }> {
   const familyId = crypto.randomUUID();
-  const dbFilename = `family-${familyId}.sqlite`;
   const now = new Date().toISOString();
 
-  centralDb.insert(familyRegistry).values({
+  let dbFilename: string;
+  if (isWebMode(process.env.CENTRAL_DATABASE_URL)) {
+    // Dynamic import to avoid loading Turso Platform API code in local mode
+    const { createTursoDatabase, runFamilySchemaDDL } = await import('@ancstra/db/turso');
+    const { url } = await createTursoDatabase(`ancstra-family-${familyId}`);
+    dbFilename = url;
+    await runFamilySchemaDDL(dbFilename);
+  } else {
+    dbFilename = `family-${familyId}.sqlite`;
+  }
+
+  await centralDb.insert(familyRegistry).values({
     id: familyId,
     name: opts.name,
     ownerId: opts.ownerId,
@@ -44,7 +55,7 @@ export function createFamily(
     updatedAt: now,
   }).run();
 
-  centralDb.insert(familyMembers).values({
+  await centralDb.insert(familyMembers).values({
     id: crypto.randomUUID(),
     familyId,
     userId: opts.ownerId,
@@ -59,11 +70,11 @@ export function createFamily(
 /**
  * Get all families a user belongs to, along with their role in each.
  */
-export function getFamiliesForUser(
+export async function getFamiliesForUser(
   centralDb: CentralDatabase,
   userId: string,
-): FamilyWithRole[] {
-  const rows = centralDb
+): Promise<FamilyWithRole[]> {
+  const rows = await centralDb
     .select({
       familyId: familyRegistry.id,
       name: familyRegistry.name,
@@ -82,12 +93,12 @@ export function getFamiliesForUser(
 /**
  * Get a specific membership row for a user in a family, or null if not a member.
  */
-export function getFamilyMembership(
+export async function getFamilyMembership(
   centralDb: CentralDatabase,
   userId: string,
   familyId: string,
-): Membership | null {
-  const row = centralDb
+): Promise<Membership | null> {
+  const row = await centralDb
     .select({
       id: familyMembers.id,
       familyId: familyMembers.familyId,
@@ -112,16 +123,16 @@ export function getFamilyMembership(
  * Transfer family ownership from current owner to new owner (must be admin).
  * Atomically swaps roles and updates family_registry.owner_id.
  */
-export function transferOwnership(
+export async function transferOwnership(
   centralDb: CentralDatabase,
   opts: {
     familyId: string;
     currentOwnerId: string;
     newOwnerId: string;
   },
-): { success: boolean; error?: string } {
+): Promise<{ success: boolean; error?: string }> {
   // Verify the new owner is currently an admin
-  const newOwnerMembership = getFamilyMembership(centralDb, opts.newOwnerId, opts.familyId);
+  const newOwnerMembership = await getFamilyMembership(centralDb, opts.newOwnerId, opts.familyId);
 
   if (!newOwnerMembership) {
     return { success: false, error: 'Target user is not a member of this family' };
@@ -131,36 +142,34 @@ export function transferOwnership(
     return { success: false, error: 'Target user must be an admin to receive ownership' };
   }
 
-  // Use a transaction to swap atomically
-  centralDb.transaction((tx) => {
-    // Demote current owner to admin
-    tx.update(familyMembers)
-      .set({ role: 'admin' })
-      .where(
-        and(
-          eq(familyMembers.familyId, opts.familyId),
-          eq(familyMembers.userId, opts.currentOwnerId),
-        ),
-      )
-      .run();
+  // Execute the three updates sequentially.
+  // SQLite is single-writer so these are effectively atomic when executed back-to-back.
+  // We avoid .transaction() here because better-sqlite3 rejects async callbacks
+  // while libsql requires them — this pattern works with both drivers.
+  await centralDb.update(familyMembers)
+    .set({ role: 'admin' })
+    .where(
+      and(
+        eq(familyMembers.familyId, opts.familyId),
+        eq(familyMembers.userId, opts.currentOwnerId),
+      ),
+    )
+    .run();
 
-    // Promote new owner
-    tx.update(familyMembers)
-      .set({ role: 'owner' })
-      .where(
-        and(
-          eq(familyMembers.familyId, opts.familyId),
-          eq(familyMembers.userId, opts.newOwnerId),
-        ),
-      )
-      .run();
+  await centralDb.update(familyMembers)
+    .set({ role: 'owner' })
+    .where(
+      and(
+        eq(familyMembers.familyId, opts.familyId),
+        eq(familyMembers.userId, opts.newOwnerId),
+      ),
+    )
+    .run();
 
-    // Update the registry
-    tx.update(familyRegistry)
-      .set({ ownerId: opts.newOwnerId, updatedAt: new Date().toISOString() })
-      .where(eq(familyRegistry.id, opts.familyId))
-      .run();
-  });
+  await centralDb.update(familyRegistry)
+    .set({ ownerId: opts.newOwnerId, updatedAt: new Date().toISOString() })
+    .where(eq(familyRegistry.id, opts.familyId))
+    .run();
 
   return { success: true };
 }

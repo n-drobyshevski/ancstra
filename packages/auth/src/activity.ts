@@ -1,5 +1,4 @@
 import { eq, and, or, lt, desc } from 'drizzle-orm';
-import { type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import { activityFeed } from '@ancstra/db/central-schema';
 import { type ActivityAction } from './types';
 
@@ -18,8 +17,10 @@ export interface ActivityEntry {
 /**
  * Insert an activity feed entry.
  */
-export function logActivity(
-  centralDb: BetterSQLite3Database,
+// Accept any Drizzle DB instance (works with both better-sqlite3 and libsql drivers)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function logActivity(
+  centralDb: any,
   entry: {
     familyId: string;
     userId: string;
@@ -29,11 +30,11 @@ export function logActivity(
     summary: string;
     metadata?: Record<string, unknown>;
   }
-): void {
+): Promise<void> {
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
 
-  centralDb
+  await centralDb
     .insert(activityFeed)
     .values({
       id,
@@ -53,8 +54,9 @@ export function logActivity(
  * Cursor-paginated activity feed query with optional filters.
  * Uses composite cursor (created_at, id) for stable ordering.
  */
-export function getActivityFeed(
-  centralDb: BetterSQLite3Database,
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function getActivityFeed(
+  centralDb: any,
   opts: {
     familyId: string;
     cursor?: string;
@@ -62,7 +64,7 @@ export function getActivityFeed(
     action?: string;
     userId?: string;
   }
-): { items: ActivityEntry[]; nextCursor: string | null } {
+): Promise<{ items: ActivityEntry[]; nextCursor: string | null }> {
   const limit = opts.limit ?? 50;
 
   const conditions: ReturnType<typeof eq>[] = [eq(activityFeed.familyId, opts.familyId)];
@@ -75,7 +77,7 @@ export function getActivityFeed(
   }
 
   if (opts.cursor) {
-    const cursorRow = centralDb
+    const cursorRow = await centralDb
       .select({
         createdAt: activityFeed.createdAt,
         id: activityFeed.id,
@@ -97,7 +99,7 @@ export function getActivityFeed(
     }
   }
 
-  const rows = centralDb
+  const rows = await centralDb
     .select()
     .from(activityFeed)
     .where(and(...conditions))

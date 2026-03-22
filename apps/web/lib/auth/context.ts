@@ -27,7 +27,7 @@ export async function getAuthContext(): Promise<AuthContext | null> {
   // If no family specified, find the user's first family
   let resolvedFamilyId = familyId;
   if (!resolvedFamilyId) {
-    const firstMembership = centralDb
+    const firstMembership = await centralDb
       .select()
       .from(centralSchema.familyMembers)
       .where(
@@ -44,7 +44,7 @@ export async function getAuthContext(): Promise<AuthContext | null> {
   }
 
   // Get membership to determine role
-  const membership = centralDb
+  const membership = await centralDb
     .select()
     .from(centralSchema.familyMembers)
     .where(
@@ -59,7 +59,7 @@ export async function getAuthContext(): Promise<AuthContext | null> {
   if (!membership) return null;
 
   // Get family registry for db filename
-  const family = centralDb
+  const family = await centralDb
     .select()
     .from(centralSchema.familyRegistry)
     .where(eq(centralSchema.familyRegistry.id, resolvedFamilyId))

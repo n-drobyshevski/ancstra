@@ -137,25 +137,25 @@ function createFamilyDb() {
   return { db: drizzle(sqlite, { schema: { persons, pendingContributions } }), sqlite };
 }
 
-function seedUser(
+async function seedUser(
   db: ReturnType<typeof createCentralDb>['db'],
   id: string,
   name: string,
 ) {
   const now = new Date().toISOString();
-  db.insert(centralSchema.users)
+  await db.insert(centralSchema.users)
     .values({ id, email: `${name.toLowerCase()}@test.com`, name, createdAt: now, updatedAt: now })
     .run();
 }
 
-function addMember(
+async function addMember(
   db: ReturnType<typeof createCentralDb>['db'],
   familyId: string,
   userId: string,
   role: Role,
 ) {
   const now = new Date().toISOString();
-  db.insert(centralSchema.familyMembers)
+  await db.insert(centralSchema.familyMembers)
     .values({ id: crypto.randomUUID(), familyId, userId, role, joinedAt: now, isActive: 1 })
     .run();
 }
@@ -184,21 +184,21 @@ describe('RBAC integration', () => {
   let centralDb: ReturnType<typeof createCentralDb>['db'];
   let familyId: string;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     const ctx = createCentralDb();
     centralDb = ctx.db;
 
-    seedUser(centralDb, 'owner-1', 'Owner');
-    seedUser(centralDb, 'admin-1', 'Admin');
-    seedUser(centralDb, 'editor-1', 'Editor');
-    seedUser(centralDb, 'viewer-1', 'Viewer');
+    await seedUser(centralDb, 'owner-1', 'Owner');
+    await seedUser(centralDb, 'admin-1', 'Admin');
+    await seedUser(centralDb, 'editor-1', 'Editor');
+    await seedUser(centralDb, 'viewer-1', 'Viewer');
 
-    const result = createFamily(centralDb, { name: 'Test Family', ownerId: 'owner-1' });
+    const result = await createFamily(centralDb, { name: 'Test Family', ownerId: 'owner-1' });
     familyId = result.familyId;
 
-    addMember(centralDb, familyId, 'admin-1', 'admin');
-    addMember(centralDb, familyId, 'editor-1', 'editor');
-    addMember(centralDb, familyId, 'viewer-1', 'viewer');
+    await addMember(centralDb, familyId, 'admin-1', 'admin');
+    await addMember(centralDb, familyId, 'editor-1', 'editor');
+    await addMember(centralDb, familyId, 'viewer-1', 'viewer');
   });
 
   it('owner has every permission', () => {
@@ -250,11 +250,11 @@ describe('RBAC integration', () => {
     expect(() => requirePermission('owner', 'settings:manage')).not.toThrow();
   });
 
-  it('each member role is correctly stored in DB', () => {
-    expect(getFamilyMembership(centralDb, 'owner-1', familyId)!.role).toBe('owner');
-    expect(getFamilyMembership(centralDb, 'admin-1', familyId)!.role).toBe('admin');
-    expect(getFamilyMembership(centralDb, 'editor-1', familyId)!.role).toBe('editor');
-    expect(getFamilyMembership(centralDb, 'viewer-1', familyId)!.role).toBe('viewer');
+  it('each member role is correctly stored in DB', async () => {
+    expect((await getFamilyMembership(centralDb, 'owner-1', familyId))!.role).toBe('owner');
+    expect((await getFamilyMembership(centralDb, 'admin-1', familyId))!.role).toBe('admin');
+    expect((await getFamilyMembership(centralDb, 'editor-1', familyId))!.role).toBe('editor');
+    expect((await getFamilyMembership(centralDb, 'viewer-1', familyId))!.role).toBe('viewer');
   });
 
   it('moderation gates only editors when enabled', () => {
@@ -274,15 +274,15 @@ describe('invitation flow', () => {
   let centralDb: ReturnType<typeof createCentralDb>['db'];
   let familyId: string;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     const ctx = createCentralDb();
     centralDb = ctx.db;
 
-    seedUser(centralDb, 'owner-1', 'Owner');
-    seedUser(centralDb, 'newuser-1', 'NewUser');
-    seedUser(centralDb, 'newuser-2', 'OtherUser');
+    await seedUser(centralDb, 'owner-1', 'Owner');
+    await seedUser(centralDb, 'newuser-1', 'NewUser');
+    await seedUser(centralDb, 'newuser-2', 'OtherUser');
 
-    const result = createFamily(centralDb, { name: 'Smith Family', ownerId: 'owner-1' });
+    const result = await createFamily(centralDb, { name: 'Smith Family', ownerId: 'owner-1' });
     familyId = result.familyId;
   });
 
@@ -309,7 +309,7 @@ describe('invitation flow', () => {
     expect(accepted.acceptedAt).not.toBeNull();
 
     // 4. Verify new user has editor role in family_members
-    const membership = getFamilyMembership(centralDb, 'newuser-1', familyId);
+    const membership = await getFamilyMembership(centralDb, 'newuser-1', familyId);
     expect(membership).not.toBeNull();
     expect(membership!.role).toBe('editor');
 
@@ -495,7 +495,7 @@ describe('moderation flow', () => {
     familyDb = ctx.db;
   });
 
-  it('editor submission goes to pending, admin approval creates person', () => {
+  it('editor submission goes to pending, admin approval creates person', async () => {
     const personPayload = {
       id: 'person-mod-1',
       sex: 'M',
@@ -508,7 +508,7 @@ describe('moderation flow', () => {
     expect(shouldModerate('editor', true)).toBe(true);
 
     // 2. Editor submits a person creation
-    const contribId = submitContribution(familyDb, {
+    const contribId = await submitContribution(familyDb, {
       userId: 'editor-1',
       operation: 'create',
       entityType: 'person',
@@ -521,7 +521,7 @@ describe('moderation flow', () => {
     expect(personsBefore).toHaveLength(0);
 
     // 4. Verify pending_contributions has the entry
-    const pending = getPendingContributions(familyDb);
+    const pending = await getPendingContributions(familyDb);
     expect(pending).toHaveLength(1);
     expect(pending[0].userId).toBe('editor-1');
     expect(pending[0].operation).toBe('create');
@@ -529,7 +529,7 @@ describe('moderation flow', () => {
     expect(pending[0].status).toBe('pending');
 
     // 5. Admin approves — person now in persons table
-    const approveResult = reviewContribution(familyDb, {
+    const approveResult = await reviewContribution(familyDb, {
       contributionId: contribId,
       reviewerId: 'admin-1',
       action: 'approve',
@@ -544,15 +544,15 @@ describe('moderation flow', () => {
     expect(personsAfter[0].version).toBe(1);
   });
 
-  it('rejection leaves persons table unchanged', () => {
-    const contribId = submitContribution(familyDb, {
+  it('rejection leaves persons table unchanged', async () => {
+    const contribId = await submitContribution(familyDb, {
       userId: 'editor-1',
       operation: 'create',
       entityType: 'person',
       payload: JSON.stringify({ id: 'person-rej-1', sex: 'F' }),
     });
 
-    const result = reviewContribution(familyDb, {
+    const result = await reviewContribution(familyDb, {
       contributionId: contribId,
       reviewerId: 'admin-1',
       action: 'reject',
@@ -571,8 +571,8 @@ describe('moderation flow', () => {
     expect(contrib!.reviewComment).toBe('Insufficient evidence');
   });
 
-  it('double-review guard prevents second review', () => {
-    const contribId = submitContribution(familyDb, {
+  it('double-review guard prevents second review', async () => {
+    const contribId = await submitContribution(familyDb, {
       userId: 'editor-1',
       operation: 'create',
       entityType: 'person',
@@ -580,7 +580,7 @@ describe('moderation flow', () => {
     });
 
     // First review — approve
-    const first = reviewContribution(familyDb, {
+    const first = await reviewContribution(familyDb, {
       contributionId: contribId,
       reviewerId: 'admin-1',
       action: 'approve',
@@ -588,7 +588,7 @@ describe('moderation flow', () => {
     expect(first.success).toBe(true);
 
     // Second review — should be blocked
-    const second = reviewContribution(familyDb, {
+    const second = await reviewContribution(familyDb, {
       contributionId: contribId,
       reviewerId: 'admin-2',
       action: 'reject',
@@ -717,24 +717,24 @@ describe('owner transfer', () => {
   let sqlite: Database.Database;
   let familyId: string;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     const ctx = createCentralDb();
     centralDb = ctx.db;
     sqlite = ctx.sqlite;
 
-    seedUser(centralDb, 'owner-1', 'Owner');
-    seedUser(centralDb, 'admin-1', 'Admin');
-    seedUser(centralDb, 'editor-1', 'Editor');
+    await seedUser(centralDb, 'owner-1', 'Owner');
+    await seedUser(centralDb, 'admin-1', 'Admin');
+    await seedUser(centralDb, 'editor-1', 'Editor');
 
-    const result = createFamily(centralDb, { name: 'Transfer Family', ownerId: 'owner-1' });
+    const result = await createFamily(centralDb, { name: 'Transfer Family', ownerId: 'owner-1' });
     familyId = result.familyId;
 
-    addMember(centralDb, familyId, 'admin-1', 'admin');
-    addMember(centralDb, familyId, 'editor-1', 'editor');
+    await addMember(centralDb, familyId, 'admin-1', 'admin');
+    await addMember(centralDb, familyId, 'editor-1', 'editor');
   });
 
-  it('transfers ownership from owner to admin', () => {
-    const result = transferOwnership(centralDb, {
+  it('transfers ownership from owner to admin', async () => {
+    const result = await transferOwnership(centralDb, {
       familyId,
       currentOwnerId: 'owner-1',
       newOwnerId: 'admin-1',
@@ -743,11 +743,11 @@ describe('owner transfer', () => {
     expect(result.success).toBe(true);
 
     // Former owner is now admin
-    const formerOwner = getFamilyMembership(centralDb, 'owner-1', familyId);
+    const formerOwner = await getFamilyMembership(centralDb, 'owner-1', familyId);
     expect(formerOwner!.role).toBe('admin');
 
     // Former admin is now owner
-    const newOwner = getFamilyMembership(centralDb, 'admin-1', familyId);
+    const newOwner = await getFamilyMembership(centralDb, 'admin-1', familyId);
     expect(newOwner!.role).toBe('owner');
 
     // family_registry.owner_id updated
@@ -757,8 +757,8 @@ describe('owner transfer', () => {
     expect(registry.owner_id).toBe('admin-1');
   });
 
-  it('fails to transfer to non-admin (editor)', () => {
-    const result = transferOwnership(centralDb, {
+  it('fails to transfer to non-admin (editor)', async () => {
+    const result = await transferOwnership(centralDb, {
       familyId,
       currentOwnerId: 'owner-1',
       newOwnerId: 'editor-1',
@@ -768,14 +768,14 @@ describe('owner transfer', () => {
     expect(result.error).toBe('Target user must be an admin to receive ownership');
 
     // Roles unchanged
-    expect(getFamilyMembership(centralDb, 'owner-1', familyId)!.role).toBe('owner');
-    expect(getFamilyMembership(centralDb, 'editor-1', familyId)!.role).toBe('editor');
+    expect((await getFamilyMembership(centralDb, 'owner-1', familyId))!.role).toBe('owner');
+    expect((await getFamilyMembership(centralDb, 'editor-1', familyId))!.role).toBe('editor');
   });
 
-  it('fails to transfer to non-member', () => {
-    seedUser(centralDb, 'outsider-1', 'Outsider');
+  it('fails to transfer to non-member', async () => {
+    await seedUser(centralDb, 'outsider-1', 'Outsider');
 
-    const result = transferOwnership(centralDb, {
+    const result = await transferOwnership(centralDb, {
       familyId,
       currentOwnerId: 'owner-1',
       newOwnerId: 'outsider-1',
@@ -785,14 +785,14 @@ describe('owner transfer', () => {
     expect(result.error).toBe('Target user is not a member of this family');
   });
 
-  it('after transfer, new owner has full permissions', () => {
-    transferOwnership(centralDb, {
+  it('after transfer, new owner has full permissions', async () => {
+    await transferOwnership(centralDb, {
       familyId,
       currentOwnerId: 'owner-1',
       newOwnerId: 'admin-1',
     });
 
-    const newOwnerMembership = getFamilyMembership(centralDb, 'admin-1', familyId);
+    const newOwnerMembership = await getFamilyMembership(centralDb, 'admin-1', familyId);
     expect(newOwnerMembership!.role).toBe('owner');
 
     // New owner should have settings:manage (only owners get this)
@@ -800,7 +800,7 @@ describe('owner transfer', () => {
     expect(hasPermission(newOwnerMembership!.role, 'tree:delete')).toBe(true);
 
     // Former owner (now admin) should not
-    const formerOwnerMembership = getFamilyMembership(centralDb, 'owner-1', familyId);
+    const formerOwnerMembership = await getFamilyMembership(centralDb, 'owner-1', familyId);
     expect(hasPermission(formerOwnerMembership!.role, 'settings:manage')).toBe(false);
   });
 });
