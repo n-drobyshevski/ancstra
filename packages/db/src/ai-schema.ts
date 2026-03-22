@@ -1,10 +1,10 @@
 import { sqliteTable, text, integer, real, index } from 'drizzle-orm/sqlite-core';
-import { users, persons } from './schema';
+import { persons } from './family-schema';
 
 // ==================== AI USAGE TRACKING ====================
 export const aiUsage = sqliteTable('ai_usage', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  userId: text('user_id').notNull().references(() => users.id),
+  userId: text('user_id').notNull(),
   model: text('model').notNull(),
   inputTokens: integer('input_tokens').notNull(),
   outputTokens: integer('output_tokens').notNull(),
@@ -34,11 +34,12 @@ export const proposedRelationships = sqliteTable('proposed_relationships', {
   status: text('status', {
     enum: ['pending', 'validated', 'rejected', 'needs_info'],
   }).notNull().default('pending'),
-  validatedBy: text('validated_by').references(() => users.id),
+  validatedBy: text('validated_by'),
   validatedAt: text('validated_at'),
   rejectionReason: text('rejection_reason'),
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
   updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
+  version: integer('version').notNull().default(1),
 }, (table) => [
   index('idx_proposed_rels_status').on(table.status),
   index('idx_proposed_rels_person1').on(table.person1Id),

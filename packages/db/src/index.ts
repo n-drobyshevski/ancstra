@@ -3,7 +3,7 @@ import path from 'path';
 import os from 'os';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import BetterSqlite3 from 'better-sqlite3';
-import * as schema from './schema';
+import * as schema from './family-schema';
 import * as centralSchema from './central-schema';
 
 export function createDb(url?: string) {
@@ -78,5 +78,5 @@ export function initFts5(url?: string) {
 }
 
 export type Database = ReturnType<typeof createDb>;
-export * from './schema';
+export * from './family-schema';
 export * as centralSchema from './central-schema';

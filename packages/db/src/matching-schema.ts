@@ -1,5 +1,5 @@
 import { sqliteTable, text, integer, real, index, unique } from 'drizzle-orm/sqlite-core';
-import { persons, families, children, sourceCitations, users } from './schema';
+import { persons, families, children, sourceCitations } from './family-schema';
 
 // ==================== MATCH CANDIDATES ====================
 export const matchCandidates = sqliteTable('match_candidates', {
@@ -27,7 +27,7 @@ export const relationshipJustifications = sqliteTable('relationship_justificatio
   childLinkId: text('child_link_id').references(() => children.id, { onDelete: 'cascade' }),
   justificationText: text('justification_text').notNull(),
   sourceCitationId: text('source_citation_id').references(() => sourceCitations.id),
-  authorId: text('author_id').notNull().references(() => users.id),
+  authorId: text('author_id').notNull(),
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
   updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
 }, (table) => [

@@ -1,14 +1,5 @@
 import { sqliteTable, text, integer, index, unique } from 'drizzle-orm/sqlite-core';
 
-// ==================== USERS (NextAuth) ====================
-export const users = sqliteTable('users', {
-  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  email: text('email').notNull().unique(),
-  passwordHash: text('password_hash').notNull(),
-  name: text('name'),
-  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
-});
-
 // ==================== PERSONS ====================
 export const persons = sqliteTable('persons', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -16,10 +7,11 @@ export const persons = sqliteTable('persons', {
   isLiving: integer('is_living', { mode: 'boolean' }).notNull().default(true),
   privacyLevel: text('privacy_level', { enum: ['public', 'private', 'restricted'] }).notNull().default('private'),
   notes: text('notes'),
-  createdBy: text('created_by').references(() => users.id),
+  createdBy: text('created_by'),
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
   updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
   deletedAt: text('deleted_at'),
+  version: integer('version').notNull().default(1),
 }, (table) => [
   index('idx_persons_sex').on(table.sex),
 ]);
@@ -37,6 +29,7 @@ export const personNames = sqliteTable('person_names', {
   isPrimary: integer('is_primary', { mode: 'boolean' }).notNull().default(false),
   sortOrder: integer('sort_order').notNull().default(0),
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+  version: integer('version').notNull().default(1),
 }, (table) => [
   index('idx_person_names_person').on(table.personId),
   index('idx_person_names_name').on(table.surname, table.givenName),
@@ -56,6 +49,7 @@ export const families = sqliteTable('families', {
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
   updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
   deletedAt: text('deleted_at'),
+  version: integer('version').notNull().default(1),
 });
 
 // ==================== CHILDREN ====================
@@ -74,6 +68,7 @@ export const children = sqliteTable('children', {
     enum: ['confirmed', 'proposed', 'disputed']
   }).notNull().default('confirmed'),
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+  version: integer('version').notNull().default(1),
 }, (table) => [
   unique('uq_children_family_person').on(table.familyId, table.personId),
   index('idx_children_family').on(table.familyId, table.personId),
@@ -96,6 +91,7 @@ export const events = sqliteTable('events', {
   familyId: text('family_id').references(() => families.id, { onDelete: 'cascade' }),
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
   updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
+  version: integer('version').notNull().default(1),
 }, (table) => [
   index('idx_events_person').on(table.personId, table.dateSort),
   index('idx_events_family').on(table.familyId),
@@ -117,9 +113,10 @@ export const sources = sqliteTable('sources', {
       'personal_knowledge', 'correspondence', 'book', 'online', 'other']
   }),
   notes: text('notes'),
-  createdBy: text('created_by').references(() => users.id),
+  createdBy: text('created_by'),
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
   updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
+  version: integer('version').notNull().default(1),
 });
 
 // ==================== SOURCE CITATIONS ====================
@@ -136,6 +133,7 @@ export const sourceCitations = sqliteTable('source_citations', {
   familyId: text('family_id').references(() => families.id, { onDelete: 'cascade' }),
   personNameId: text('person_name_id').references(() => personNames.id, { onDelete: 'cascade' }),
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+  version: integer('version').notNull().default(1),
 }, (table) => [
   index('idx_citations_source').on(table.sourceId),
   index('idx_citations_person').on(table.personId),
@@ -152,6 +150,32 @@ export const treeLayouts = sqliteTable('tree_layouts', {
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
   updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
 });
+
+// ==================== FAMILY USER CACHE ====================
+export const familyUserCache = sqliteTable('family_user_cache', {
+  userId: text('user_id').primaryKey(),
+  name: text('name').notNull(),
+  avatarUrl: text('avatar_url'),
+  updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
+});
+
+// ==================== PENDING CONTRIBUTIONS ====================
+export const pendingContributions = sqliteTable('pending_contributions', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text('user_id').notNull(),
+  operation: text('operation', { enum: ['create', 'update', 'delete'] }).notNull(),
+  entityType: text('entity_type', { enum: ['person', 'family', 'event', 'source', 'media'] }).notNull(),
+  entityId: text('entity_id'),
+  payload: text('payload').notNull(),
+  status: text('status', { enum: ['pending', 'approved', 'rejected', 'revision_requested'] }).notNull().default('pending'),
+  reviewerId: text('reviewer_id'),
+  reviewComment: text('review_comment'),
+  reviewedAt: text('reviewed_at'),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
+}, (table) => [
+  index('idx_pending_status').on(table.status),
+]);
 
 export * from './research-schema';
 export * from './ai-schema';

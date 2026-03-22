@@ -1,15 +1,17 @@
-import { createDb } from './index.js';
-import { users, persons, personNames, events } from './schema.js';
+import { createDb, createCentralDb } from './index';
+import { persons, personNames, events } from './family-schema';
+import { users } from './central-schema';
 import bcrypt from 'bcryptjs';
 
 const db = createDb();
+const centralDb = createCentralDb();
 
 async function seed() {
   console.log('Seeding database...');
 
-  // Create dev user
+  // Create dev user in central database
   const passwordHash = await bcrypt.hash('password', 10);
-  const [devUser] = db.insert(users).values({
+  const [devUser] = centralDb.insert(users).values({
     email: 'dev@ancstra.app',
     passwordHash,
     name: 'Dev User',
