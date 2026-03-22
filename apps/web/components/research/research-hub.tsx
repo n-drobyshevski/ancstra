@@ -1,11 +1,13 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { Search, Globe, Newspaper, BookOpen, Archive, Bookmark } from 'lucide-react';
+import { Search, Globe, Newspaper, BookOpen, Archive, Bookmark, FileText } from 'lucide-react';
 import { SearchBar } from './search-bar';
 import { SearchResults } from './search-results';
 import { ResearchItemCard } from './research-item-card';
 import { UrlPasteInput } from './url-paste-input';
+import { TextPasteModal } from './text-paste-modal';
+import { Button } from '@/components/ui/button';
 import { useResearchSearch, useResearchItems } from '@/lib/research/search-client';
 
 const EXAMPLE_SEARCHES = [
@@ -24,6 +26,7 @@ const PROVIDERS = [
 
 export function ResearchHub() {
   const [query, setQuery] = useState('');
+  const [textModalOpen, setTextModalOpen] = useState(false);
 
   const {
     data: searchData,
@@ -58,12 +61,22 @@ export function ResearchHub() {
             Search historical records across multiple sources
           </p>
         </div>
-        {hasItems && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Bookmark className="size-4" />
-            {itemsData?.items.length} saved
-          </div>
-        )}
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setTextModalOpen(true)}
+          >
+            <FileText className="size-3.5" />
+            Paste Text
+          </Button>
+          {hasItems && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Bookmark className="size-4" />
+              {itemsData?.items.length} saved
+            </div>
+          )}
+        </div>
       </div>
 
       <SearchBar onSearch={handleSearch} />
@@ -75,6 +88,12 @@ export function ResearchHub() {
       </div>
 
       <UrlPasteInput onSaved={handleSaved} />
+
+      <TextPasteModal
+        open={textModalOpen}
+        onOpenChange={setTextModalOpen}
+        onSaved={handleSaved}
+      />
 
       {showEmptyState ? (
         /* ── Empty state: confident guide ── */
