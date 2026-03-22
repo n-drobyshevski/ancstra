@@ -4,6 +4,9 @@ export type { TreeContext, PersonSummary } from './context/tree-context';
 
 // Prompts
 export { buildSystemPrompt } from './prompts/research-assistant';
+export { buildBiographyPrompt } from './prompts/biography-prompt';
+export type { BiographyOptions, PersonBioData } from './prompts/biography-prompt';
+export { buildHistoricalContextPrompt } from './prompts/historical-context-prompt';
 
 // Client
 export { createAnthropicClient, getModel } from './client';

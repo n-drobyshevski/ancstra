@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { PersonDetail as PersonDetailType, PersonListItem } from '@ancstra/shared';
@@ -25,6 +25,8 @@ import {
 import { EventList } from '@/components/event-list';
 import { CitationList } from '@/components/citation-list';
 import { PersonLinkPopover } from '@/components/person-link-popover';
+import { BiographyTab } from '@/components/biography/biography-tab';
+import { HistoricalEvent } from '@/components/timeline/historical-event';
 import { toast } from 'sonner';
 
 const sexLabel = { M: 'Male', F: 'Female', U: 'Unknown' } as const;
@@ -56,6 +58,62 @@ export function PersonDetail({ person }: { person: PersonDetailType }) {
   const [deathPlace, setDeathPlace] = useState(person.deathPlace ?? '');
   const [isLiving, setIsLiving] = useState(person.isLiving);
   const [notes, setNotes] = useState(person.notes ?? '');
+
+  // Historical context state
+  const [showHistorical, setShowHistorical] = useState(false);
+  const [historicalEvents, setHistoricalEvents] = useState<
+    { year: number; title: string; description: string; relevance: string }[]
+  >([]);
+  const [historicalLoading, setHistoricalLoading] = useState(false);
+  const [historicalLoaded, setHistoricalLoaded] = useState(false);
+
+  const fetchHistoricalContext = useCallback(async () => {
+    setHistoricalLoading(true);
+    try {
+      const res = await fetch(
+        `/api/ai/historical-context?personId=${encodeURIComponent(person.id)}`
+      );
+      if (res.ok) {
+        const data = await res.json();
+        if (data.events && Array.isArray(data.events)) {
+          setHistoricalEvents(data.events);
+          setHistoricalLoaded(true);
+        }
+      }
+    } catch {
+      // Failed to load historical context
+    } finally {
+      setHistoricalLoading(false);
+    }
+  }, [person.id]);
+
+  async function generateHistoricalContext() {
+    setHistoricalLoading(true);
+    try {
+      const res = await fetch('/api/ai/historical-context', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ personId: person.id }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.events && Array.isArray(data.events)) {
+          setHistoricalEvents(data.events);
+          setHistoricalLoaded(true);
+        }
+      }
+    } catch {
+      toast.error('Failed to generate historical context');
+    } finally {
+      setHistoricalLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (showHistorical && !historicalLoaded && !historicalLoading) {
+      fetchHistoricalContext();
+    }
+  }, [showHistorical, historicalLoaded, historicalLoading, fetchHistoricalContext]);
 
   function resetForm() {
     setGivenName(person.givenName);
@@ -374,8 +432,18 @@ export function PersonDetail({ person }: { person: PersonDetailType }) {
 
       {/* ── Events ── */}
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base">Events</CardTitle>
+          <div className="flex items-center gap-2">
+            <Switch
+              id="showHistorical"
+              checked={showHistorical}
+              onCheckedChange={setShowHistorical}
+            />
+            <Label htmlFor="showHistorical" className="text-xs">
+              Historical Context
+            </Label>
+          </div>
         </CardHeader>
         <CardContent>
           <EventList
@@ -383,6 +451,45 @@ export function PersonDetail({ person }: { person: PersonDetailType }) {
             personId={person.id}
             onUpdate={() => router.refresh()}
           />
+          {showHistorical && (
+            <div className="mt-4 space-y-1">
+              {historicalLoading && (
+                <p className="text-xs text-muted-foreground py-2">
+                  Loading historical context...
+                </p>
+              )}
+              {!historicalLoading &&
+                historicalLoaded &&
+                historicalEvents.length === 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={generateHistoricalContext}
+                  >
+                    Generate Historical Context
+                  </Button>
+                )}
+              {historicalEvents.map((evt, i) => (
+                <HistoricalEvent
+                  key={i}
+                  year={evt.year}
+                  title={evt.title}
+                  description={evt.description}
+                  relevance={evt.relevance}
+                />
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ── Biography ── */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Biography</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <BiographyTab personId={person.id} />
         </CardContent>
       </Card>
 

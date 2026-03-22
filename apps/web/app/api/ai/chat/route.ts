@@ -1,6 +1,8 @@
 import { streamText } from 'ai';
+import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
+import { createCentralDb, centralSchema } from '@ancstra/db';
 import {
   ProviderRegistry,
   NARAProvider,
@@ -41,8 +43,23 @@ export async function POST(request: Request) {
       );
     }
 
+    // Read budget limit from central DB family_registry, fall back to env var
+    let monthlyLimit = parseFloat(process.env.AI_MONTHLY_BUDGET_USD ?? '10');
+    try {
+      const centralDb = createCentralDb();
+      const [family] = centralDb
+        .select({ budget: centralSchema.familyRegistry.monthlyAiBudgetUsd })
+        .from(centralSchema.familyRegistry)
+        .where(eq(centralSchema.familyRegistry.id, ctx.familyId))
+        .all();
+      if (family) {
+        monthlyLimit = family.budget;
+      }
+    } catch (err) {
+      console.warn('Failed to read budget from central DB, using env fallback:', err);
+    }
+
     // Check budget before proceeding
-    const monthlyLimit = parseFloat(process.env.AI_MONTHLY_BUDGET_USD ?? '10');
     const budget = await checkBudget(familyDb, monthlyLimit);
 
     if (budget.overBudget) {

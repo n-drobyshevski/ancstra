@@ -11,6 +11,7 @@ import {
   Bookmark,
   Upload,
   Activity,
+  BarChart3,
   Settings,
   LogOut,
 } from 'lucide-react';
@@ -21,6 +22,7 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarHeader,
+  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
@@ -35,6 +37,10 @@ const navItems = [
   { title: 'Sources', href: '/sources', icon: Bookmark },
   { title: 'Import', href: '/import', icon: Upload },
   { title: 'Activity', href: '/activity', icon: Activity },
+];
+
+const analyticsItems = [
+  { title: 'Data Quality', href: '/analytics/quality', icon: BarChart3 },
 ];
 
 export function AppSidebar() {
@@ -60,6 +66,25 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarMenu>
             {navItems.map((item) => (
+              <SidebarMenuItem key={item.href}>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname.startsWith(item.href)}
+                  tooltip={item.title}
+                >
+                  <Link href={item.href}>
+                    <item.icon />
+                    <span>{item.title}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ))}
+          </SidebarMenu>
+        </SidebarGroup>
+        <SidebarGroup>
+          <SidebarGroupLabel>Analytics</SidebarGroupLabel>
+          <SidebarMenu>
+            {analyticsItems.map((item) => (
               <SidebarMenuItem key={item.href}>
                 <SidebarMenuButton
                   asChild

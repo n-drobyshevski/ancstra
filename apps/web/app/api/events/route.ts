@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { events } from '@ancstra/db';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { createEventSchema } from '@/lib/validation';
 import { parseDateToSort } from '@ancstra/shared';
 import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
@@ -59,6 +59,50 @@ export async function POST(request: Request) {
       .all();
 
     return NextResponse.json(created, { status: 201 });
+  } catch (error) {
+    return handleAuthError(error);
+  }
+}
+
+export async function GET(request: Request) {
+  try {
+    const { familyDb } = await withAuth('tree:view');
+
+    const { searchParams } = new URL(request.url);
+    const page = Math.max(1, parseInt(searchParams.get('page') ?? '1'));
+    const pageSize = Math.min(100, Math.max(1, parseInt(searchParams.get('pageSize') ?? '50')));
+    const offset = (page - 1) * pageSize;
+    const personId = searchParams.get('personId');
+    const eventType = searchParams.get('eventType');
+
+    const conditions = [];
+    if (personId) {
+      conditions.push(sql`${events.personId} = ${personId}`);
+    }
+    if (eventType) {
+      conditions.push(sql`${events.eventType} = ${eventType}`);
+    }
+
+    const whereClause = conditions.length > 0
+      ? sql.join(conditions, sql` AND `)
+      : undefined;
+
+    const rows = familyDb
+      .select()
+      .from(events)
+      .where(whereClause)
+      .orderBy(events.dateSort)
+      .limit(pageSize)
+      .offset(offset)
+      .all();
+
+    const [{ count: total }] = familyDb
+      .select({ count: sql<number>`count(*)` })
+      .from(events)
+      .where(whereClause)
+      .all();
+
+    return NextResponse.json({ items: rows, total, page, pageSize });
   } catch (error) {
     return handleAuthError(error);
   }

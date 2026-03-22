@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, index, unique, primaryKey } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, real, index, unique, primaryKey } from 'drizzle-orm/sqlite-core';
 
 // ==================== USERS ====================
 export const users = sqliteTable('users', {
@@ -43,6 +43,7 @@ export const familyRegistry = sqliteTable('family_registry', {
   dbFilename: text('db_filename').notNull(),
   moderationEnabled: integer('moderation_enabled').notNull().default(0),
   maxMembers: integer('max_members').notNull().default(50),
+  monthlyAiBudgetUsd: real('monthly_ai_budget_usd').notNull().default(10.0),
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
   updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
 });

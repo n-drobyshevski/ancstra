@@ -54,6 +54,19 @@ export function withOptimisticLock(
 }
 
 /**
+ * Measure async operation duration and warn if slow (>500ms).
+ */
+export async function withTiming<T>(label: string, fn: () => Promise<T>): Promise<T> {
+  const start = performance.now();
+  const result = await fn();
+  const duration = performance.now() - start;
+  if (duration > 500) {
+    console.warn(`[SLOW] ${label}: ${duration.toFixed(0)}ms`);
+  }
+  return result;
+}
+
+/**
  * Handle errors from auth/permission checks in API routes.
  */
 export function handleAuthError(error: unknown): NextResponse {

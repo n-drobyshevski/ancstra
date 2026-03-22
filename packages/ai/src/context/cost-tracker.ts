@@ -31,7 +31,7 @@ interface UsageRecord {
   model: string;
   inputTokens: number;
   outputTokens: number;
-  taskType: 'chat' | 'extraction' | 'analysis' | 'citation';
+  taskType: 'chat' | 'extraction' | 'analysis' | 'citation' | 'biography' | 'historical_context';
   sessionId?: string;
 }
 
@@ -120,3 +120,11 @@ export async function getUsageStats(
     byModel,
   };
 }
+
+export const BIOGRAPHY_ESTIMATE = {
+  brief: { inputTokens: 2000, outputTokens: 300 },
+  standard: { inputTokens: 2000, outputTokens: 700 },
+  detailed: { inputTokens: 2000, outputTokens: 1500 },
+};
+
+export const HISTORICAL_CONTEXT_ESTIMATE = { inputTokens: 1000, outputTokens: 500 };
