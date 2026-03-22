@@ -23,6 +23,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { EventList } from '@/components/event-list';
+import { PersonLinkPopover } from '@/components/person-link-popover';
 import { toast } from 'sonner';
 
 const sexLabel = { M: 'Male', F: 'Female', U: 'Unknown' } as const;
@@ -357,6 +358,15 @@ export function PersonDetail({ person }: { person: PersonDetailType }) {
                 + Add Child
               </Link>
             </Button>
+          </div>
+
+          {/* Link existing person */}
+          <div className="pt-2 border-t">
+            <PersonLinkPopover
+              personId={person.id}
+              personSex={person.sex}
+              onLinked={() => router.refresh()}
+            />
           </div>
         </CardContent>
       </Card>
