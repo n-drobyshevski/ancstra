@@ -425,6 +425,41 @@ function TreeCanvasInner({ treeData, focusPersonId }: TreeCanvasProps) {
     } catch { toast.error('Network error'); }
   }, [treeData, router]);
 
+  // Edge disconnect-by-drag: drag an edge endpoint to empty canvas to delete it
+  const edgeReconnectSuccessful = useRef(true);
+
+  const onReconnectStart = useCallback(() => {
+    edgeReconnectSuccessful.current = false;
+  }, []);
+
+  const onReconnect = useCallback(() => {
+    edgeReconnectSuccessful.current = true;
+  }, []);
+
+  const onReconnectEnd = useCallback(async (_event: MouseEvent | TouchEvent, edge: Edge) => {
+    if (edgeReconnectSuccessful.current) return; // Was reconnected to another handle, not dropped
+
+    // Edge was dropped on empty canvas → delete the relationship
+    const edgeType = edge.type;
+    const familyId = (edge.data as any)?.familyId as string | undefined;
+
+    if (!familyId) return;
+
+    if (!confirm('Remove this relationship?')) return;
+
+    try {
+      if (edgeType === 'partner') {
+        await fetch(`/api/families/${familyId}`, { method: 'DELETE' });
+      } else if (edgeType === 'parentChild') {
+        await fetch(`/api/families/${familyId}/children/${edge.target}`, { method: 'DELETE' });
+      }
+      toast.success('Relationship removed');
+      router.refresh();
+    } catch {
+      toast.error('Failed to remove relationship');
+    }
+  }, [router]);
+
   // Focus on person when focusPersonId is provided (e.g. from /tree?focus=...)
   useEffect(() => {
     if (!focusPersonId) return;
@@ -480,6 +515,10 @@ function TreeCanvasInner({ treeData, focusPersonId }: TreeCanvasProps) {
           edgeTypes={edgeTypes}
           connectionMode={ConnectionMode.Loose}
           onConnect={onConnect}
+          onReconnectStart={onReconnectStart}
+          onReconnect={onReconnect}
+          onReconnectEnd={onReconnectEnd}
+          edgesReconnectable
           onDragOver={onDragOver}
           onDrop={onDrop}
           fitView
