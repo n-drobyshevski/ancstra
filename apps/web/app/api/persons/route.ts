@@ -35,7 +35,7 @@ export async function POST(request: Request) {
         sex: data.sex,
         isLiving: data.isLiving,
         notes: data.notes ?? null,
-        createdBy: session.user.id ?? null,
+        createdBy: session.user?.id ?? null,
         createdAt: now,
         updatedAt: now,
       })

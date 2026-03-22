@@ -133,7 +133,7 @@ function createPerson(data: {
   return personId;
 }
 
-function createFamily(partner1Id: string | null, partner2Id: string | null, relationshipType = 'unknown') {
+function createFamily(partner1Id: string | null, partner2Id: string | null, relationshipType: 'married' | 'civil_union' | 'domestic_partner' | 'unmarried' | 'unknown' = 'unknown') {
   const now = new Date().toISOString();
   const familyId = crypto.randomUUID();
 
