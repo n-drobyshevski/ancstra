@@ -8,13 +8,11 @@
 
 ## Current Focus
 
-> **Phase 2: AI Search, Research & Matching** — `[████████░░] 80% In Progress`
+> **Phase 5: AI Polish & Export** — `[██░░░░░░░░] 10% In Progress`
 >
-> Done (Plans A-E): Search infrastructure, 8 providers, evidence workspace (6 tabs), Playwright scraping, record matching, AI assistant (12 tools), research items CRUD, source promotion
+> Starting: Data quality dashboard, AI biography generation, GEDCOM 7.0 export
 >
-> In progress: Settings page (provider config, appearance, privacy, data management)
->
-> Next up: Settings page implementation, then Phase 3 (Document Processing)
+> Phase 4 (Auth & Collaboration) merged. Phase 5 in progress.
 
 ---
 
@@ -405,87 +403,93 @@
 
 ## Phase 4: Authentication & Collaboration
 
-> Weeks 27-30 (~4 weeks) | `[░░░░░░░░░░] 0% Not Started`
-> [Detailed plan](docs/phases/phase-4-auth.md)
+> Weeks 27-30 (4 weeks) | `[██████████] 100% Complete`
+> [Detailed plan](docs/phases/phase-4-auth.md) | [Spec](docs/superpowers/specs/2026-03-22-phase4-auth-collaboration-design.md) | [Plan](docs/superpowers/plans/2026-03-22-phase4-auth-collaboration.md)
 
-### Multi-User Auth
+### Auth Package (packages/auth/) — 113 Tests
 
-| Feature | ~Duration | Status | Depends On |
-|---------|-----------|--------|------------|
-| Users/families/members DB tables | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Phase 1 Schema |
-| RBAC roles (owner, contributor, viewer) | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Users table |
-| Permission checking utilities | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | RBAC |
-| Permission guards on all API routes | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Permissions |
-| User management UI (list, edit roles, remove) | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | RBAC |
+| Feature | Status |
+|---------|--------|
+| RBAC (Owner/Admin/Editor/Viewer) | `[██████████] 100% Complete` |
+| NextAuth v5 custom adapter | `[██████████] 100% Complete` |
+| Google + Apple OAuth | `[██████████] 100% Complete` |
+| Family invitations (token-based) | `[██████████] 100% Complete` |
+| Activity feed (cursor pagination) | `[██████████] 100% Complete` |
+| Moderation queue (configurable) | `[██████████] 100% Complete` |
+| Living person full redaction | `[██████████] 100% Complete` |
+| Optimistic locking | `[██████████] 100% Complete` |
+| Owner transfer | `[██████████] 100% Complete` |
 
-### Collaboration
+### Multi-DB Architecture
 
-| Feature | ~Duration | Status | Depends On |
-|---------|-----------|--------|------------|
-| Token-based invitation system | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Users table |
-| Join page + onboarding flow | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Invitations |
-| Contribution workflow (add/edit with attribution) | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | RBAC |
-| Contribution moderation queue (optional) | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Contributions |
-| Activity feed (who changed what, when) | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Change log |
+| Feature | Status |
+|---------|--------|
+| Central DB (ancstra.sqlite) | `[██████████] 100% Complete` |
+| Per-family DB (family-{id}.sqlite) | `[██████████] 100% Complete` |
+| Migration script (single → multi-DB) | `[██████████] 100% Complete` |
+| proxy.ts (Next.js 16 route auth) | `[██████████] 100% Complete` |
 
-### OAuth Providers
+### Web Integration
 
-| Feature | ~Duration | Status | Depends On |
-|---------|-----------|--------|------------|
-| Google OAuth | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Auth system |
-| Apple OAuth | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Auth system |
-| Auth + collaboration E2E tests | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | All above |
-
-#### Risks
-- **Authentication complexity** — RBAC increases security surface
-- **Living person exposure** — shared trees risk leaking living person data
-
-#### Exit Gate → Phase 5
-- [ ] Multi-user tested with 3+ concurrent users
-- [ ] RBAC verified for all 3 core roles
-- [ ] Invitation flow works end-to-end
-- [ ] No privilege escalation possible
-- [ ] Activity feed shows accurate history
+| Feature | Status |
+|---------|--------|
+| All ~47 API routes retrofitted with RBAC | `[██████████] 100% Complete` |
+| Members management page | `[██████████] 100% Complete` |
+| Join page (invitation acceptance) | `[██████████] 100% Complete` |
+| Activity feed page | `[██████████] 100% Complete` |
+| OAuth buttons (login/signup) | `[██████████] 100% Complete` |
+| Family picker + role badge | `[██████████] 100% Complete` |
+| Moderation queue UI | `[██████████] 100% Complete` |
+| Family creation flow | `[██████████] 100% Complete` |
 
 ---
 
 ## Phase 5: AI Polish & Export
 
-> Weeks 31-33 (~3 weeks) | `[░░░░░░░░░░] 0% Not Started`
-> [Detailed plan](docs/phases/phase-5-polish.md)
+> Weeks 31-33 (3 weeks) | `[██░░░░░░░░] 10% In Progress`
+> [Detailed plan](docs/phases/phase-5-polish.md) | [Spec](docs/superpowers/specs/2026-03-22-phase5-ai-polish-export-design.md) | [Plan](docs/superpowers/plans/2026-03-22-phase5-ai-polish-export.md)
 
-### AI Features
+### Data Quality Dashboard
 
-| Feature | ~Duration | Status | Depends On |
-|---------|-----------|--------|------------|
-| Biography generation prompts | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | AI SDK (Phase 2) |
-| Biography API (streaming, caching) | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Prompts |
-| Biography UI (generate, edit, export) | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Biography API |
-| Historical context sidebar | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Biography API |
+| Feature | Status |
+|---------|--------|
+| Quality metrics queries | `[░░░░░░░░░░] 0% Not Started` |
+| Quality API routes | `[░░░░░░░░░░] 0% Not Started` |
+| Recharts dashboard UI | `[░░░░░░░░░░] 0% Not Started` |
 
-### Data Quality
+### AI Biography Generation
 
-| Feature | ~Duration | Status | Depends On |
-|---------|-----------|--------|------------|
-| Quality metrics engine (completeness, sourcing) | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Phase 1 Schema |
-| Data quality dashboard UI | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Metrics engine |
-| Research gap recommendations | ~0.25w | `[░░░░░░░░░░] 0% Not Started` | Metrics |
+| Feature | Status |
+|---------|--------|
+| Biography prompt builder | `[░░░░░░░░░░] 0% Not Started` |
+| Biography API (streaming + caching) | `[░░░░░░░░░░] 0% Not Started` |
+| Biography UI (options, viewer, tab) | `[░░░░░░░░░░] 0% Not Started` |
 
-### Export Enhancements
+### Historical Context Timeline
 
-| Feature | ~Duration | Status | Depends On |
-|---------|-----------|--------|------------|
-| GEDCOM 7.0 export | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | GEDCOM 5.5.1 (Phase 1) |
-| Narrative PDF export (pedigree + bios + photos) | ~1w | `[░░░░░░░░░░] 0% Not Started` | Biography, Media |
-| Photo book export | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Media (Phase 3) |
+| Feature | Status |
+|---------|--------|
+| Context prompt builder | `[░░░░░░░░░░] 0% Not Started` |
+| Context API (Haiku + caching) | `[░░░░░░░░░░] 0% Not Started` |
+| Timeline overlay component | `[░░░░░░░░░░] 0% Not Started` |
 
-### Performance
+### Export Features
 
-| Feature | ~Duration | Status | Depends On |
-|---------|-----------|--------|------------|
-| Query profiling + optimization pass | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | All phases |
-| Image optimization (resize, thumbnails) | ~0.25w | `[░░░░░░░░░░] 0% Not Started` | Media (Phase 3) |
-| Web Vitals monitoring | ~0.25w | `[░░░░░░░░░░] 0% Not Started` | — |
+| Feature | Status |
+|---------|--------|
+| GEDCOM 7.0 serializer | `[░░░░░░░░░░] 0% Not Started` |
+| Export options UI + API route | `[░░░░░░░░░░] 0% Not Started` |
+| Gotenberg client (PDF) | `[░░░░░░░░░░] 0% Not Started` |
+| PDF templates (person + family) | `[░░░░░░░░░░] 0% Not Started` |
+| PDF export API | `[░░░░░░░░░░] 0% Not Started` |
+
+### Performance & Infrastructure
+
+| Feature | Status |
+|---------|--------|
+| AI budget hard limit + settings | `[░░░░░░░░░░] 0% Not Started` |
+| Pagination (sources, events) | `[░░░░░░░░░░] 0% Not Started` |
+| Query timing logs | `[░░░░░░░░░░] 0% Not Started` |
 
 #### Risks
 - **Biography quality** — Claude may produce bland or inaccurate narratives
