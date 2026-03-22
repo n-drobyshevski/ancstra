@@ -66,7 +66,28 @@ function TreeCanvasInner({ treeData, focusPersonId }: TreeCanvasProps) {
   );
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, , onEdgesChange] = useEdgesState(rawEdges);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(rawEdges);
+
+  // Sync nodes/edges when treeData changes (after router.refresh)
+  const treeDataRef = useRef(treeData);
+  useEffect(() => {
+    if (treeDataRef.current === treeData) return;
+    treeDataRef.current = treeData;
+
+    // Preserve existing node positions
+    setNodes((prev) => {
+      const posMap: Record<string, { x: number; y: number }> = {};
+      for (const n of prev) {
+        if (n.type !== 'draftPerson') posMap[n.id] = n.position;
+      }
+      const laid = applyDagreLayout(rawNodes, rawEdges);
+      return laid.map((n) => ({
+        ...n,
+        position: posMap[n.id] ?? n.position,
+      }));
+    });
+    setEdges(rawEdges);
+  }, [treeData, rawNodes, rawEdges, setNodes, setEdges]);
 
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [selectedPerson, setSelectedPerson] =
