@@ -64,9 +64,17 @@ SENTRY_DSN=...
 NEXT_PUBLIC_SENTRY_DSN=...
 ```
 
-### Turso driver swap
+### Turso driver swap (needs implementation)
 
-`createCentralDb()` and `createFamilyDb()` in `packages/db/src/index.ts` check if the URL starts with `libsql://` → use `@libsql/client`, otherwise `better-sqlite3`. This is the existing design from `packages/db/src/turso.ts`, extended to cover both central and family DBs.
+**Current state:** `createCentralDb()` and `createFamilyDb()` in `packages/db/src/index.ts` are hardcoded to `better-sqlite3`. A separate `createTursoDb()` exists in `turso.ts` but is not integrated into the main DB creation functions.
+
+**Required change:** Refactor `createCentralDb()` and `createFamilyDb()` to detect the URL scheme:
+- If URL starts with `libsql://` → use `drizzle-orm/libsql` driver with `@libsql/client`
+- Otherwise → use `drizzle-orm/better-sqlite3` driver with `better-sqlite3`
+
+Both drivers return Drizzle instances with the same schema, so the return type remains compatible. The detection is based on the `CENTRAL_DATABASE_URL` env var for central DB, and `family_registry.db_filename` for family DBs (which stores either a local filename or a `libsql://` URL).
+
+This is the most critical implementation task in Phase 6 — without it, the app cannot connect to Turso in production.
 
 ## Turso Production Setup
 
@@ -102,7 +110,9 @@ Calls `POST https://api.turso.tech/v1/organizations/{org}/databases` with auth t
 
 ### Schema migration on new DBs
 
-After creating a Turso family DB, run family schema DDL via `@libsql/client` to create all tables.
+**Central DB:** After creating via Turso CLI, run schema DDL using `turso db shell ancstra-central < schema.sql` or programmatically via a migration script that uses `@libsql/client` to execute all CREATE TABLE statements from `central-schema.ts`.
+
+**Family DBs:** After creating via Platform API, run family schema DDL programmatically via `@libsql/client`. The `createFamily()` function handles this — after provisioning the Turso DB, it executes the same DDL that the local `better-sqlite3` path uses.
 
 ### Additional env vars
 
@@ -116,22 +126,13 @@ TURSO_AUTH_TOKEN=...       # For connecting to databases
 
 ### Hono Worker
 
-Minimal scaffold deployed to Railway:
+**Note:** `apps/worker/` already exists with Hono, JWT auth (via `jose` + `AUTH_SECRET` env var), scrape routes, and a Dockerfile (port 3001). Phase 6 does NOT recreate the worker — it deploys the existing one to Railway and adds:
 
-```
-apps/worker/
-├── Dockerfile
-├── package.json
-├── tsconfig.json
-├── src/
-│   ├── index.ts       # Hono app, port 8080
-│   ├── auth.ts        # WORKER_AUTH_SECRET middleware
-│   └── routes/
-│       ├── health.ts  # GET /health
-│       └── jobs.ts    # POST /jobs (dispatch)
-```
+1. Turso DB connection (add `TURSO_AUTH_TOKEN` + `CENTRAL_DATABASE_URL` env vars)
+2. Gotenberg integration (add `GOTENBERG_URL` env var pointing to Railway internal URL)
+3. Fix Dockerfile to copy all workspace package dependencies (currently missing `packages/research/` etc.)
 
-Docker-based deployment. Authenticates via `WORKER_AUTH_SECRET` header. Connects to same Turso DBs as web app. Actual job handlers (GEDCOM import, batch matching) added incrementally post-launch.
+Existing auth model (JWT via `jose` + `AUTH_SECRET`) is kept — it's more robust than a simple secret header. The existing health check at `GET /health` is already implemented.
 
 ### Gotenberg
 
@@ -197,6 +198,15 @@ tests/
 
 Runs against local dev server by default (`http://localhost:3001`). Can target production via `PLAYWRIGHT_BASE_URL` env var. Chromium only. Screenshots on failure. Trace on first retry.
 
+**Important:** The config must include a `webServer` block so Playwright starts the dev server automatically (especially in CI):
+```typescript
+webServer: process.env.PLAYWRIGHT_BASE_URL ? undefined : {
+  command: 'pnpm --filter @ancstra/web dev --port 3001',
+  port: 3001,
+  reuseExistingServer: !process.env.CI,
+},
+```
+
 ### Test descriptions (8 tests)
 
 1. **auth** — Login with credentials, verify dashboard. Visit protected route unauthenticated → redirect. OAuth buttons visible.
@@ -242,6 +252,7 @@ AI chat test mocks Claude API via Playwright route interception.
 - [ ] Expired JWT → redirect to login
 - [ ] Expired/revoked invite tokens → error page
 - [ ] No secrets in client bundle (network tab audit)
+- [ ] CORS: worker only allows production domain (check `WEB_URL` env var)
 
 ## Accessibility Basics
 
@@ -338,9 +349,9 @@ Manual verification at 375px: login, dashboard, tree (pan/zoom), person detail, 
 ### New packages/apps
 
 ```
-apps/worker/           # Hono worker for Railway
-apps/docs/             # Nextra docs site
-tests/                 # Playwright E2E tests
+apps/worker/           # Existing — deploy to Railway, fix Dockerfile, add Turso/Gotenberg env
+apps/docs/             # NEW — Nextra docs site
+tests/                 # NEW — Playwright E2E tests
 ```
 
 ### New files in apps/web
@@ -354,6 +365,8 @@ lib/error-messages.ts
 components/onboarding/welcome-card.tsx
 ```
 
+**Note:** `tests/` must be added to `pnpm-workspace.yaml` packages list (current config only includes `apps/*` and `packages/*`).
+
 ### Modified files
 
 ```
@@ -362,11 +375,14 @@ apps/web/package.json                — @sentry/nextjs
 apps/web/components/app-sidebar.tsx  — Help link
 apps/web/app/(auth)/dashboard/page.tsx — welcome card
 apps/web/lib/auth/api-guard.ts       — Sentry.captureException
-packages/db/src/index.ts             — Turso driver detection
+packages/db/src/index.ts             — Turso driver detection (libsql:// vs better-sqlite3)
 packages/db/src/turso.ts             — createTursoDatabase() Platform API
 packages/auth/src/families.ts        — web mode Turso DB creation
-.github/workflows/ci.yml            — E2E step
-turbo.json                           — test:e2e pipeline
+apps/worker/Dockerfile               — fix: copy all workspace package dependencies
+apps/worker/src/index.ts             — add Turso env vars, Gotenberg URL
+.github/workflows/ci.yml            — E2E step (use pnpm/action-setup@v4 to match existing)
+turbo.json                           — add "test:e2e": { "dependsOn": ["build"], "cache": false }
+pnpm-workspace.yaml                  — add "tests" to packages list
 ```
 
 ### New dependencies
