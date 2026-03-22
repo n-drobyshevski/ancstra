@@ -9,6 +9,7 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname),
       '@ancstra/db': path.resolve(__dirname, '../../packages/db/src'),
+      '@ancstra/auth': path.resolve(__dirname, '../../packages/auth/src'),
       '@ancstra/shared': path.resolve(__dirname, '../../packages/shared/src'),
     },
   },
