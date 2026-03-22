@@ -72,7 +72,7 @@ afterEach(() => {
 // Helper: create a source (mirrors POST route logic)
 function createSource(data: {
   title: string;
-  sourceType?: string;
+  sourceType?: 'vital_record' | 'census' | 'military' | 'church' | 'newspaper' | 'immigration' | 'land' | 'probate' | 'cemetery' | 'photograph' | 'personal_knowledge' | 'correspondence' | 'book' | 'online' | 'other';
   author?: string;
   notes?: string;
 }) {
