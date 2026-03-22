@@ -445,8 +445,6 @@ function TreeCanvasInner({ treeData, focusPersonId }: TreeCanvasProps) {
 
     if (!familyId) return;
 
-    if (!confirm('Remove this relationship?')) return;
-
     try {
       if (edgeType === 'partner') {
         await fetch(`/api/families/${familyId}`, { method: 'DELETE' });

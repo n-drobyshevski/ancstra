@@ -62,7 +62,6 @@ export function TreeContextMenu({ x, y, type, nodeId, edgeId, edgeType, edgeFami
     items.push({
       label: 'Delete Relationship', destructive: true,
       onClick: async () => {
-        if (!confirm('Delete this relationship?')) { onClose(); return; }
         try {
           if (edgeType === 'partner' && edgeFamilyId) {
             const res = await fetch(`/api/families/${edgeFamilyId}`, { method: 'DELETE' });
