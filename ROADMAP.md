@@ -8,13 +8,11 @@
 
 ## Current Focus
 
-> **Phase 0: UX/UI Design** — `[█████░░░░░] 50% In Progress`
+> **Phase 1: Core Tree Builder — Week 1 Foundation** — `[██████████] 100% Complete`
 >
-> Done: All 8 design markdown artifacts, 12 design decisions resolved
+> Done: Monorepo, DB schema, auth, app shell, person CRUD (form + API + detail), sign-up, dark theme, Turso spike, 13 tests
 >
-> Working on: Figma deliverables (flow diagrams, design system, wireframes, hi-fi mockups)
->
-> Next up: Phase 0.5 Technical Spikes
+> Next up: Phase 1 Week 2 — Person edit/update, relationship linking, family CRUD
 
 ---
 
@@ -81,18 +79,18 @@
 
 ## Phase 0.5: Technical Spikes
 
-> ~1 week | `[░░░░░░░░░░] 0% Not Started`
+> ~1 week | `[████░░░░░░] 40% In Progress`
 > [Detailed plan](docs/phases/phase-0.5-spikes.md)
 
 ### Spikes
 
 | Feature | ~Duration | Status | Depends On |
 |---------|-----------|--------|------------|
-| Turso/libsql driver swap validation | ~1d | `[░░░░░░░░░░] 0% Not Started` | — |
+| Turso/libsql driver swap validation | ~1d | `[██████████] 100% Complete` | — |
 | React Flow rendering at 1K+ nodes | ~1d | `[░░░░░░░░░░] 0% Not Started` | — |
 | Topola GEDCOM parser evaluation | ~1d | `[░░░░░░░░░░] 0% Not Started` | — |
 | Closure table vs recursive CTE bench | ~1d | `[░░░░░░░░░░] 0% Not Started` | — |
-| NextAuth.js v5 + Next.js 16 proxy | ~0.5d | `[░░░░░░░░░░] 0% Not Started` | — |
+| NextAuth.js v5 + Next.js 16 proxy | ~0.5d | `[██████████] 100% Complete` | — |
 
 #### Exit Gate → Phase 1
 - [ ] All spikes documented with findings
@@ -102,28 +100,35 @@
 
 ## Phase 1: Core Tree Builder
 
-> Weeks 1-8 (~8 weeks) | `[░░░░░░░░░░] 0% Not Started`
+> Weeks 1-8 (~8 weeks) | `[██░░░░░░░░] 15% In Progress`
 > [Detailed plan](docs/phases/phase-1-core.md)
 
-### Foundation
+### Foundation (Week 1 — Complete)
 
 | Feature | ~Duration | Status | Depends On |
 |---------|-----------|--------|------------|
-| Monorepo + Turborepo + pnpm | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | — |
-| Next.js 16 + Tailwind v4 + shadcn/ui | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Monorepo |
-| Drizzle ORM + SQLite schema | ~1w | `[░░░░░░░░░░] 0% Not Started` | Monorepo |
+| Monorepo + Turborepo + pnpm | ~0.5w | `[██████████] 100% Complete` | — |
+| Next.js 16 + Tailwind v4 + shadcn/ui | ~0.5w | `[██████████] 100% Complete` | Monorepo |
+| Drizzle ORM + SQLite schema | ~1w | `[██████████] 100% Complete` | Monorepo |
+| NextAuth.js v5 + sign-up | ~1w | `[██████████] 100% Complete` | Monorepo |
+| App shell (sidebar + header) | — | `[██████████] 100% Complete` | Auth |
+| Indigo Heritage dark theme | — | `[██████████] 100% Complete` | Tailwind v4 |
+| Person create + detail (vertical slice) | — | `[██████████] 100% Complete` | Auth, Schema |
+| Vitest + 13 tests (validation + integration) | — | `[██████████] 100% Complete` | CRUD API |
+| Turso libsql driver swap validated | — | `[██████████] 100% Complete` | Schema |
 | Closure table + person_summary | ~1w | `[░░░░░░░░░░] 0% Not Started` | Schema |
 | FTS5 full-text search | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Schema |
-| NextAuth.js v5 | ~1w | `[░░░░░░░░░░] 0% Not Started` | Monorepo |
 | SQLite WAL + backup | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Schema |
 
 ### Person CRUD & Data Entry
 
 | Feature | ~Duration | Status | Depends On |
 |---------|-----------|--------|------------|
-| Person CRUD API routes | ~1w | `[░░░░░░░░░░] 0% Not Started` | Schema, Auth |
-| Person detail panel | ~1w | `[░░░░░░░░░░] 0% Not Started` | CRUD API |
-| Person edit/create forms | ~1w | `[░░░░░░░░░░] 0% Not Started` | CRUD API |
+| Person CRUD API routes (create + read) | ~1w | `[██████░░░░] 60% Complete` | Schema, Auth |
+| Person detail panel | ~1w | `[██████████] 100% Complete` | CRUD API |
+| Person create form | ~1w | `[██████████] 100% Complete` | CRUD API |
+| Person edit/update form | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | CRUD API |
+| Person soft-delete | ~0.25w | `[░░░░░░░░░░] 0% Not Started` | CRUD API |
 | Relationship linking UI | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Forms, Schema |
 | Family/event/source CRUD | ~1w | `[░░░░░░░░░░] 0% Not Started` | CRUD API |
 
@@ -160,8 +165,8 @@
 
 | Feature | ~Duration | Status | Depends On |
 |---------|-----------|--------|------------|
-| Vitest + Testing Library setup | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Monorepo |
-| Unit + integration tests | ~1w | `[░░░░░░░░░░] 0% Not Started` | CRUD API, Parser |
+| Vitest + Testing Library setup | ~0.5w | `[██████████] 100% Complete` | Monorepo |
+| Unit + integration tests | ~1w | `[███░░░░░░░] 30% In Progress` | CRUD API, Parser |
 | Performance baselines (bench suite) | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Schema, Canvas |
 | PWA setup (manifest, SW, offline) | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Monorepo |
 | CI pipeline (GitHub Actions) | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Tests |
