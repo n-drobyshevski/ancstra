@@ -1,0 +1,17 @@
+{
+  "name": "@ancstra/matching",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "test": "vitest run",
+    "build": "tsup src/index.ts --format esm --dts"
+  },
+  "devDependencies": {
+    "vitest": "^3.1.0",
+    "typescript": "^5.8.0",
+    "tsup": "^8.4.0"
+  }
+}
