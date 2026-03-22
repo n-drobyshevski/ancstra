@@ -162,6 +162,17 @@ function TreeCanvasInner({ treeData, focusPersonId }: TreeCanvasProps) {
     });
   }, [setNodes]);
 
+  // Layout management stubs (wired up in Task 3)
+  const [layouts] = useState<{ id: string; name: string; isDefault: boolean }[]>([]);
+  const [activeLayoutId] = useState<string | null>(null);
+  const [activeLayoutName] = useState<string | null>(null);
+  const handleLoadLayout = useCallback((_id: string) => {}, []);
+  const handleSaveAsNew = useCallback(() => { handleSaveLayout(); }, [handleSaveLayout]);
+  const handleUpdateLayout = useCallback(() => { handleSaveLayout(); }, [handleSaveLayout]);
+  const handleSetDefault = useCallback(() => {}, []);
+  const handleDeleteLayout = useCallback(() => {}, []);
+  const handleRenameLayout = useCallback(() => {}, []);
+
   const handleClosePanel = useCallback(() => setSelectedPerson(null), []);
 
   const handleFocusNode = useCallback(
@@ -311,9 +322,17 @@ function TreeCanvasInner({ treeData, focusPersonId }: TreeCanvasProps) {
 
         <TreeToolbar
           onAutoLayout={handleAutoLayout}
-          onSaveLayout={handleSaveLayout}
           onTogglePalette={() => setPaletteOpen((v) => !v)}
           paletteOpen={paletteOpen}
+          layouts={layouts}
+          activeLayoutId={activeLayoutId}
+          activeLayoutName={activeLayoutName}
+          onLoadLayout={handleLoadLayout}
+          onSaveAsNew={handleSaveAsNew}
+          onUpdateLayout={handleUpdateLayout}
+          onSetDefault={handleSetDefault}
+          onDeleteLayout={handleDeleteLayout}
+          onRenameLayout={handleRenameLayout}
         />
 
         {paletteOpen && (
