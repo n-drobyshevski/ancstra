@@ -22,6 +22,7 @@ import { PersonNode } from './person-node';
 import { PartnerEdge } from './partner-edge';
 import { ParentChildEdge } from './parent-child-edge';
 import { TreeToolbar } from './tree-toolbar';
+import { PersonPalette } from './person-palette';
 import { TreeContextMenu } from './tree-context-menu';
 import { TreeDetailPanel } from './tree-detail-panel';
 import {
@@ -58,6 +59,7 @@ function TreeCanvasInner({ treeData, focusPersonId }: TreeCanvasProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, , onEdgesChange] = useEdgesState(rawEdges);
 
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const [selectedPerson, setSelectedPerson] =
     useState<PersonListItem | null>(null);
   const [contextMenu, setContextMenu] = useState<{
@@ -226,7 +228,13 @@ function TreeCanvasInner({ treeData, focusPersonId }: TreeCanvasProps) {
         <TreeToolbar
           onAutoLayout={handleAutoLayout}
           onSaveLayout={handleSaveLayout}
+          onTogglePalette={() => setPaletteOpen((v) => !v)}
+          paletteOpen={paletteOpen}
         />
+
+        {paletteOpen && (
+          <PersonPalette onClose={() => setPaletteOpen(false)} />
+        )}
 
         {contextMenu && (
           <TreeContextMenu

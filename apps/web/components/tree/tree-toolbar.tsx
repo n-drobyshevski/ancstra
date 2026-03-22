@@ -1,14 +1,15 @@
 'use client';
 
-import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 
 interface TreeToolbarProps {
   onAutoLayout: () => void;
   onSaveLayout: () => void;
+  onTogglePalette: () => void;
+  paletteOpen: boolean;
 }
 
-export function TreeToolbar({ onAutoLayout, onSaveLayout }: TreeToolbarProps) {
+export function TreeToolbar({ onAutoLayout, onSaveLayout, onTogglePalette, paletteOpen }: TreeToolbarProps) {
   return (
     <div className="absolute top-3 left-3 right-3 z-10 flex justify-between pointer-events-none">
       <div className="flex gap-1.5 pointer-events-auto">
@@ -18,8 +19,13 @@ export function TreeToolbar({ onAutoLayout, onSaveLayout }: TreeToolbarProps) {
         <Button variant="secondary" size="sm" className="shadow-sm" onClick={onSaveLayout}>
           Save Layout
         </Button>
-        <Button size="sm" className="shadow-sm" asChild>
-          <Link href="/person/new">+ New Person</Link>
+        <Button
+          size="sm"
+          className="shadow-sm"
+          variant={paletteOpen ? 'default' : 'secondary'}
+          onClick={onTogglePalette}
+        >
+          + New Person
         </Button>
       </div>
       <div className="flex gap-1.5 pointer-events-auto">
