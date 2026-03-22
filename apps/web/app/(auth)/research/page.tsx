@@ -1,5 +1,5 @@
-import { ResearchHub } from '@/components/research/research-hub';
+import { ResearchLayout } from '@/components/research/research-layout';
 
 export default function ResearchPage() {
-  return <ResearchHub />;
+  return <ResearchLayout />;
 }
