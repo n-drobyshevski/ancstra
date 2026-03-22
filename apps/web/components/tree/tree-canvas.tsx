@@ -198,6 +198,7 @@ function TreeCanvasInner({ treeData }: TreeCanvasProps) {
           fitView
           minZoom={0.1}
           maxZoom={2}
+          nodesConnectable={false}
           deleteKeyCode="Delete"
         >
           <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
