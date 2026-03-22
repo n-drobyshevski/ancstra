@@ -192,4 +192,53 @@ export function applyStoredPositions(
   });
 }
 
+export function validateConnection(
+  treeData: TreeData,
+  sourceId: string,
+  targetId: string,
+  type: 'spouse' | 'parentChild'
+): { valid: boolean; error?: string } {
+  if (sourceId === targetId) return { valid: false, error: 'Cannot connect a person to themselves' };
+
+  const { families, childLinks } = treeData;
+
+  if (type === 'spouse') {
+    const existing = families.some(
+      (f) => (f.partner1Id === sourceId && f.partner2Id === targetId) ||
+             (f.partner1Id === targetId && f.partner2Id === sourceId)
+    );
+    if (existing) return { valid: false, error: 'These persons are already spouses' };
+  }
+
+  if (type === 'parentChild') {
+    for (const cl of childLinks) {
+      const fam = families.find((f) => f.id === cl.familyId);
+      if (!fam) continue;
+      if ((fam.partner1Id === sourceId || fam.partner2Id === sourceId) && cl.personId === targetId) {
+        return { valid: false, error: 'This parent-child relationship already exists' };
+      }
+    }
+
+    function isAncestor(personId: string, ancestorId: string, visited: Set<string>): boolean {
+      if (visited.has(personId)) return false;
+      visited.add(personId);
+      for (const cl of childLinks) {
+        if (cl.personId !== personId) continue;
+        const fam = families.find((f) => f.id === cl.familyId);
+        if (!fam) continue;
+        if (fam.partner1Id === ancestorId || fam.partner2Id === ancestorId) return true;
+        if (fam.partner1Id && isAncestor(fam.partner1Id, ancestorId, visited)) return true;
+        if (fam.partner2Id && isAncestor(fam.partner2Id, ancestorId, visited)) return true;
+      }
+      return false;
+    }
+
+    if (isAncestor(sourceId, targetId, new Set())) {
+      return { valid: false, error: 'Cannot create circular relationship' };
+    }
+  }
+
+  return { valid: true };
+}
+
 export { NODE_WIDTH, NODE_HEIGHT };

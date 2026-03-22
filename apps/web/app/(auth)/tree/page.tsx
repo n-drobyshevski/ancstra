@@ -2,7 +2,12 @@ import { createDb } from '@ancstra/db';
 import { getTreeData } from '@/lib/queries';
 import { TreeCanvas } from '@/components/tree/tree-canvas';
 
-export default function TreePage() {
+export default async function TreePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ focus?: string }>;
+}) {
+  const { focus } = await searchParams;
   const db = createDb();
   const treeData = getTreeData(db);
 
@@ -27,7 +32,7 @@ export default function TreePage() {
 
   return (
     <div className="-m-6 h-[calc(100vh-3.5rem)]">
-      <TreeCanvas treeData={treeData} />
+      <TreeCanvas treeData={treeData} focusPersonId={focus} />
     </div>
   );
 }

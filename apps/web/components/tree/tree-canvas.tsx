@@ -7,12 +7,14 @@ import {
   Controls,
   Background,
   BackgroundVariant,
+  ConnectionMode,
   useNodesState,
   useEdgesState,
   useReactFlow,
   type Node,
   type Edge,
   type OnNodesChange,
+  type Connection,
   ReactFlowProvider,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
@@ -22,8 +24,10 @@ import { PersonNode } from './person-node';
 import { PartnerEdge } from './partner-edge';
 import { ParentChildEdge } from './parent-child-edge';
 import { TreeToolbar } from './tree-toolbar';
+import { PersonPalette } from './person-palette';
 import { TreeContextMenu } from './tree-context-menu';
 import { TreeDetailPanel } from './tree-detail-panel';
+import { DraftPersonNode } from './draft-person-node';
 import {
   treeDataToFlow,
   applyDagreLayout,
@@ -31,17 +35,22 @@ import {
   loadPositions,
   clearPositions,
   applyStoredPositions,
+  validateConnection,
 } from './tree-utils';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 
-const nodeTypes = { person: PersonNode };
+const nodeTypes = { person: PersonNode, draftPerson: DraftPersonNode };
 const edgeTypes = { partner: PartnerEdge, parentChild: ParentChildEdge };
 
 interface TreeCanvasProps {
   treeData: TreeData;
+  focusPersonId?: string;
 }
 
-function TreeCanvasInner({ treeData }: TreeCanvasProps) {
-  const { fitView } = useReactFlow();
+function TreeCanvasInner({ treeData, focusPersonId }: TreeCanvasProps) {
+  const { fitView, screenToFlowPosition } = useReactFlow();
+  const router = useRouter();
 
   const { nodes: rawNodes, edges: rawEdges } = useMemo(
     () => treeDataToFlow(treeData),
@@ -57,6 +66,7 @@ function TreeCanvasInner({ treeData }: TreeCanvasProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, , onEdgesChange] = useEdgesState(rawEdges);
 
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const [selectedPerson, setSelectedPerson] =
     useState<PersonListItem | null>(null);
   const [contextMenu, setContextMenu] = useState<{
@@ -162,6 +172,92 @@ function TreeCanvasInner({ treeData }: TreeCanvasProps) {
     [treeData],
   );
 
+  const onDragOver = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+  }, []);
+
+  const onDrop = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
+    const type = event.dataTransfer.getData('application/ancstra');
+    if (type !== 'new-person') return;
+
+    const position = screenToFlowPosition({ x: event.clientX, y: event.clientY });
+    const draftId = `draft-${Date.now()}`;
+
+    setNodes((nds) => [
+      ...nds,
+      {
+        id: draftId,
+        type: 'draftPerson',
+        position,
+        data: {
+          onSave: () => {
+            setNodes((n) => n.filter((node) => node.id !== draftId));
+            router.refresh();
+          },
+          onCancel: () => {
+            setNodes((n) => n.filter((node) => node.id !== draftId));
+          },
+        },
+      },
+    ]);
+    setPaletteOpen(false);
+  }, [screenToFlowPosition, setNodes, router]);
+
+  const onConnect = useCallback(async (connection: Connection) => {
+    const { source, target, sourceHandle, targetHandle } = connection;
+    if (!source || !target) return;
+
+    const isSpouse = sourceHandle === 'right' && targetHandle === 'left';
+    const type = isSpouse ? 'spouse' as const : 'parentChild' as const;
+
+    const validation = validateConnection(treeData, source, target, type);
+    if (!validation.valid) {
+      toast.error(validation.error ?? 'Invalid connection');
+      return;
+    }
+
+    try {
+      if (isSpouse) {
+        const res = await fetch('/api/families', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ partner1Id: source, partner2Id: target }),
+        });
+        if (!res.ok) { toast.error('Failed to create relationship'); return; }
+      } else {
+        const famRes = await fetch('/api/families', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ partner1Id: source }),
+        });
+        if (!famRes.ok) { toast.error('Failed to create family'); return; }
+        const family = await famRes.json();
+        const childRes = await fetch(`/api/families/${family.id}/children`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ personId: target }),
+        });
+        if (!childRes.ok) { toast.error('Failed to link child'); return; }
+      }
+      toast.success(isSpouse ? 'Spouse linked' : 'Parent-child linked');
+      router.refresh();
+    } catch { toast.error('Network error'); }
+  }, [treeData, router]);
+
+  // Focus on person when focusPersonId is provided (e.g. from /tree?focus=...)
+  useEffect(() => {
+    if (!focusPersonId) return;
+    // Small delay to let React Flow render nodes first
+    const timer = setTimeout(() => {
+      fitView({ nodes: [{ id: focusPersonId }], duration: 500, padding: 0.5 });
+      const person = treeData.persons.find((p) => p.id === focusPersonId);
+      if (person) setSelectedPerson(person);
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [focusPersonId, fitView, treeData]);
+
   // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -191,10 +287,13 @@ function TreeCanvasInner({ treeData }: TreeCanvasProps) {
           onPaneClick={onPaneClick}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
+          connectionMode={ConnectionMode.Loose}
+          onConnect={onConnect}
+          onDragOver={onDragOver}
+          onDrop={onDrop}
           fitView
           minZoom={0.1}
           maxZoom={2}
-          nodesConnectable={false}
           deleteKeyCode="Delete"
         >
           <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
@@ -213,7 +312,13 @@ function TreeCanvasInner({ treeData }: TreeCanvasProps) {
         <TreeToolbar
           onAutoLayout={handleAutoLayout}
           onSaveLayout={handleSaveLayout}
+          onTogglePalette={() => setPaletteOpen((v) => !v)}
+          paletteOpen={paletteOpen}
         />
+
+        {paletteOpen && (
+          <PersonPalette onClose={() => setPaletteOpen(false)} />
+        )}
 
         {contextMenu && (
           <TreeContextMenu
