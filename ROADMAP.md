@@ -8,11 +8,13 @@
 
 ## Current Focus
 
-> **Phase 1: Core Tree Builder — Week 1 Foundation** — `[██████████] 100% Complete`
+> **Phase 1: Core Tree Builder — Tree Visualization** — `[░░░░░░░░░░] Starting`
 >
-> Done: Monorepo, DB schema, auth, app shell, person CRUD (form + API + detail), sign-up, dark theme, Turso spike, 13 tests
+> Done: Weeks 1-2 complete (monorepo, auth, person CRUD, family CRUD, event CRUD, person list, dark theme, 38 tests)
 >
-> Next up: Phase 1 Week 2 — Person edit/update, relationship linking, family CRUD
+> Working on: React Flow tree canvas with dagre auto-layout, custom nodes, context menus, detail panel
+>
+> Next up: Drag-from-palette, edge drawing, Topola export, search-to-focus
 
 ---
 
@@ -120,28 +122,37 @@
 | FTS5 full-text search | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Schema |
 | SQLite WAL + backup | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Schema |
 
-### Person CRUD & Data Entry
+### Person CRUD & Data Entry (Week 2 — Complete)
 
 | Feature | ~Duration | Status | Depends On |
 |---------|-----------|--------|------------|
-| Person CRUD API routes (create + read) | ~1w | `[██████░░░░] 60% Complete` | Schema, Auth |
-| Person detail panel | ~1w | `[██████████] 100% Complete` | CRUD API |
+| Person CRUD API routes (full) | ~1w | `[██████████] 100% Complete` | Schema, Auth |
+| Person detail panel (with relationships) | ~1w | `[██████████] 100% Complete` | CRUD API |
 | Person create form | ~1w | `[██████████] 100% Complete` | CRUD API |
-| Person edit/update form | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | CRUD API |
-| Person soft-delete | ~0.25w | `[░░░░░░░░░░] 0% Not Started` | CRUD API |
-| Relationship linking UI | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Forms, Schema |
-| Family/event/source CRUD | ~1w | `[░░░░░░░░░░] 0% Not Started` | CRUD API |
+| Person edit/update form + inline edit | ~0.5w | `[██████████] 100% Complete` | CRUD API |
+| Person soft-delete | ~0.25w | `[██████████] 100% Complete` | CRUD API |
+| Relationship linking UI | ~0.5w | `[██████████] 100% Complete` | Forms, Schema |
+| Family CRUD + child link/unlink | ~1w | `[██████████] 100% Complete` | CRUD API |
+| Event CRUD (any event type) | ~0.5w | `[██████████] 100% Complete` | CRUD API |
+| Context-aware person creation | ~0.5w | `[██████████] 100% Complete` | Family CRUD |
+| Person link popover (search+link) | ~0.25w | `[██████████] 100% Complete` | Search, Family |
+| Person list page + dashboard | ~0.25w | `[██████████] 100% Complete` | CRUD API |
+| Search filter (?q= LIKE) | ~0.25w | `[██████████] 100% Complete` | CRUD API |
 
-### Tree Visualization
+### Tree Visualization (In Progress)
 
 | Feature | ~Duration | Status | Depends On |
 |---------|-----------|--------|------------|
-| React Flow canvas + dagre layout | ~1.5w | `[░░░░░░░░░░] 0% Not Started` | Schema, CRUD API |
-| Custom PersonNode component | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Canvas |
-| Custom edge types (parent/partner) | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Canvas |
-| Position persistence (tree_layouts) | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Canvas |
-| Sidebar (palette, search, filters) | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Canvas |
+| React Flow canvas + dagre layout | ~1.5w | `[░░░░░░░░░░] 0% Starting` | Schema, CRUD API |
+| Custom PersonNode component | ~0.5w | `[░░░░░░░░░░] 0% Starting` | Canvas |
+| Custom edge types (parent/partner) | ~0.5w | `[░░░░░░░░░░] 0% Starting` | Canvas |
+| Floating toolbar + context menus | ~0.5w | `[░░░░░░░░░░] 0% Starting` | Canvas |
+| Detail panel (slide-out right) | ~0.5w | `[░░░░░░░░░░] 0% Starting` | Canvas |
+| Position persistence (localStorage) | ~0.25w | `[░░░░░░░░░░] 0% Starting` | Canvas |
+| Drag-from-palette + edge drawing | ~1w | `[░░░░░░░░░░] 0% Not Started` | Canvas |
+| Named layouts (DB persistence) | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Canvas |
 | Topola PDF/PNG/SVG export | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Canvas |
+| Search-to-focus + filter panel | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Canvas |
 
 ### GEDCOM
 
@@ -166,7 +177,7 @@
 | Feature | ~Duration | Status | Depends On |
 |---------|-----------|--------|------------|
 | Vitest + Testing Library setup | ~0.5w | `[██████████] 100% Complete` | Monorepo |
-| Unit + integration tests | ~1w | `[███░░░░░░░] 30% In Progress` | CRUD API, Parser |
+| Unit + integration tests (38 tests) | ~1w | `[██████░░░░] 60% In Progress` | CRUD API, Parser |
 | Performance baselines (bench suite) | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Schema, Canvas |
 | PWA setup (manifest, SW, offline) | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Monorepo |
 | CI pipeline (GitHub Actions) | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Tests |
