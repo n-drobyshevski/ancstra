@@ -24,7 +24,7 @@ export async function PATCH(
       );
     }
 
-    const existing = familyDb
+    const existing = await familyDb
       .select()
       .from(matchCandidates)
       .where(eq(matchCandidates.id, id))
@@ -34,7 +34,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
-    familyDb.update(matchCandidates)
+    await familyDb.update(matchCandidates)
       .set({
         matchStatus,
         reviewedAt: new Date().toISOString(),
@@ -42,7 +42,7 @@ export async function PATCH(
       .where(eq(matchCandidates.id, id))
       .run();
 
-    const updated = familyDb
+    const updated = await familyDb
       .select()
       .from(matchCandidates)
       .where(eq(matchCandidates.id, id))

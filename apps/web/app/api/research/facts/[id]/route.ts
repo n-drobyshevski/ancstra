@@ -5,7 +5,7 @@ import { researchFacts, type FamilyDatabase } from '@ancstra/db';
 import { updateFact, deleteFact } from '@ancstra/research';
 
 function getFact(db: FamilyDatabase, id: string) {
-  const [fact] = db
+  const [fact] = await db
     .select()
     .from(researchFacts)
     .where(eq(researchFacts.id, id))

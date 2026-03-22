@@ -26,7 +26,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'personId required' }, { status: 400 });
     }
 
-    const cached = familyDb
+    const cached = await familyDb
       .select()
       .from(biographies)
       .where(and(
@@ -60,7 +60,7 @@ export async function POST(request: Request) {
     // Read budget limit from central DB
     let monthlyLimit = parseFloat(process.env.AI_MONTHLY_BUDGET_USD ?? '10');
     try {
-      const [family] = centralDb
+      const [family] = await centralDb
         .select({ budget: centralSchema.familyRegistry.monthlyAiBudgetUsd })
         .from(centralSchema.familyRegistry)
         .where(eq(centralSchema.familyRegistry.id, ctx.familyId))
@@ -82,12 +82,12 @@ export async function POST(request: Request) {
     }
 
     // Gather person data
-    const person = familyDb.select().from(persons).where(eq(persons.id, personId)).get();
+    const person = await familyDb.select().from(persons).where(eq(persons.id, personId)).get();
     if (!person) {
       return NextResponse.json({ error: 'Person not found' }, { status: 404 });
     }
 
-    const names = familyDb
+    const names = await familyDb
       .select()
       .from(personNames)
       .where(eq(personNames.personId, personId))
@@ -98,7 +98,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Person has no name records' }, { status: 400 });
     }
 
-    const personEvents = familyDb
+    const personEvents = await familyDb
       .select()
       .from(events)
       .where(eq(events.personId, personId))
@@ -108,7 +108,7 @@ export async function POST(request: Request) {
     const deathEvent = personEvents.find(e => e.eventType === 'death');
 
     // Get parents: find families where this person is a child
-    const childRecords = familyDb
+    const childRecords = await familyDb
       .select()
       .from(children)
       .where(eq(children.personId, personId))
@@ -116,14 +116,14 @@ export async function POST(request: Request) {
 
     const parentNames: PersonBioData['parents'] = [];
     for (const childRec of childRecords) {
-      const family = familyDb.select().from(families).where(eq(families.id, childRec.familyId)).get();
+      const family = await familyDb.select().from(families).where(eq(families.id, childRec.familyId)).get();
       if (!family) continue;
       for (const partnerId of [family.partner1Id, family.partner2Id]) {
         if (!partnerId) continue;
-        const pName = familyDb.select().from(personNames).where(and(eq(personNames.personId, partnerId), eq(personNames.isPrimary, true))).get()
-          || familyDb.select().from(personNames).where(eq(personNames.personId, partnerId)).get();
+        const pName = await familyDb.select().from(personNames).where(and(eq(personNames.personId, partnerId), eq(personNames.isPrimary, true))).get()
+          || await familyDb.select().from(personNames).where(eq(personNames.personId, partnerId)).get();
         if (pName) {
-          const pBirth = familyDb.select().from(events).where(and(eq(events.personId, partnerId), eq(events.eventType, 'birth'))).get();
+          const pBirth = await familyDb.select().from(events).where(and(eq(events.personId, partnerId), eq(events.eventType, 'birth'))).get();
           parentNames.push({
             name: `${pName.givenName} ${pName.surname}`,
             birthYear: pBirth?.dateSort ? new Date(pBirth.dateSort).getFullYear() : undefined,
@@ -134,17 +134,17 @@ export async function POST(request: Request) {
 
     // Get spouses: find families where this person is a partner
     const spouseNames: PersonBioData['spouses'] = [];
-    const asPartner1 = familyDb.select().from(families).where(eq(families.partner1Id, personId)).all();
-    const asPartner2 = familyDb.select().from(families).where(eq(families.partner2Id, personId)).all();
+    const asPartner1 = await familyDb.select().from(families).where(eq(families.partner1Id, personId)).all();
+    const asPartner2 = await familyDb.select().from(families).where(eq(families.partner2Id, personId)).all();
     const allFamilies = [...asPartner1, ...asPartner2];
 
     for (const fam of allFamilies) {
       const spouseId = fam.partner1Id === personId ? fam.partner2Id : fam.partner1Id;
       if (!spouseId) continue;
-      const sName = familyDb.select().from(personNames).where(and(eq(personNames.personId, spouseId), eq(personNames.isPrimary, true))).get()
-        || familyDb.select().from(personNames).where(eq(personNames.personId, spouseId)).get();
+      const sName = await familyDb.select().from(personNames).where(and(eq(personNames.personId, spouseId), eq(personNames.isPrimary, true))).get()
+        || await familyDb.select().from(personNames).where(eq(personNames.personId, spouseId)).get();
       if (sName) {
-        const marriageEvent = familyDb.select().from(events).where(and(eq(events.familyId, fam.id), eq(events.eventType, 'marriage'))).get();
+        const marriageEvent = await familyDb.select().from(events).where(and(eq(events.familyId, fam.id), eq(events.eventType, 'marriage'))).get();
         spouseNames.push({
           name: `${sName.givenName} ${sName.surname}`,
           marriageDate: marriageEvent?.dateOriginal ?? undefined,
@@ -155,12 +155,12 @@ export async function POST(request: Request) {
     // Get children
     const childNames: PersonBioData['children'] = [];
     for (const fam of allFamilies) {
-      const familyChildren = familyDb.select().from(children).where(eq(children.familyId, fam.id)).all();
+      const familyChildren = await familyDb.select().from(children).where(eq(children.familyId, fam.id)).all();
       for (const child of familyChildren) {
-        const cName = familyDb.select().from(personNames).where(and(eq(personNames.personId, child.personId), eq(personNames.isPrimary, true))).get()
-          || familyDb.select().from(personNames).where(eq(personNames.personId, child.personId)).get();
+        const cName = await familyDb.select().from(personNames).where(and(eq(personNames.personId, child.personId), eq(personNames.isPrimary, true))).get()
+          || await familyDb.select().from(personNames).where(eq(personNames.personId, child.personId)).get();
         if (cName) {
-          const cBirth = familyDb.select().from(events).where(and(eq(events.personId, child.personId), eq(events.eventType, 'birth'))).get();
+          const cBirth = await familyDb.select().from(events).where(and(eq(events.personId, child.personId), eq(events.eventType, 'birth'))).get();
           childNames.push({
             name: `${cName.givenName} ${cName.surname}`,
             birthYear: cBirth?.dateSort ? new Date(cBirth.dateSort).getFullYear() : undefined,
@@ -170,7 +170,7 @@ export async function POST(request: Request) {
     }
 
     // Get sources
-    const citations = familyDb
+    const citations = await familyDb
       .select()
       .from(sourceCitations)
       .where(eq(sourceCitations.personId, personId))
@@ -178,7 +178,7 @@ export async function POST(request: Request) {
 
     const personSources: PersonBioData['sources'] = [];
     for (const cit of citations) {
-      const src = familyDb.select().from(sources).where(eq(sources.id, cit.sourceId)).get();
+      const src = await familyDb.select().from(sources).where(eq(sources.id, cit.sourceId)).get();
       if (src) {
         personSources.push({
           title: src.title,
@@ -228,7 +228,7 @@ export async function POST(request: Request) {
           const costUsd = calculateCost(modelName, usage.promptTokens, usage.completionTokens);
 
           // Cache biography (INSERT OR REPLACE via unique constraint)
-          familyDb
+          await familyDb
             .insert(biographies)
             .values({
               personId,

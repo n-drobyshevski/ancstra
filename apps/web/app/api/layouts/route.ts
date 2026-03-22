@@ -23,13 +23,13 @@ export async function POST(request: Request) {
 
     // If this layout should be the default, unset all existing defaults first
     if (data.isDefault) {
-      familyDb.update(treeLayouts)
+      await familyDb.update(treeLayouts)
         .set({ isDefault: false })
         .where(eq(treeLayouts.isDefault, true))
         .run();
     }
 
-    familyDb.insert(treeLayouts)
+    await familyDb.insert(treeLayouts)
       .values({
         id,
         name: data.name,
@@ -40,7 +40,7 @@ export async function POST(request: Request) {
       })
       .run();
 
-    const [layout] = familyDb
+    const [layout] = await familyDb
       .select({
         id: treeLayouts.id,
         name: treeLayouts.name,
@@ -61,7 +61,7 @@ export async function GET() {
   try {
     const { familyDb } = await withAuth('tree:view');
 
-    const layouts = familyDb
+    const layouts = await familyDb
       .select({
         id: treeLayouts.id,
         name: treeLayouts.name,

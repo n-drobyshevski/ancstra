@@ -31,12 +31,12 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'personId required' }, { status: 400 });
       }
 
-      html = buildPersonBiographyHtml(familyDb, personId);
+      html = await buildPersonBiographyHtml(familyDb, personId);
       if (!html) {
         return NextResponse.json({ error: 'Person not found' }, { status: 404 });
       }
     } else if (template === 'family-history') {
-      html = buildFamilyHistoryHtml(familyDb, ctx.userId, options.familyName);
+      html = await buildFamilyHistoryHtml(familyDb, ctx.userId, options.familyName);
     } else {
       return NextResponse.json({ error: 'Invalid template' }, { status: 400 });
     }
@@ -67,14 +67,14 @@ export async function POST(request: Request) {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function buildPersonBiographyHtml(
+async function buildPersonBiographyHtml(
   familyDb: ReturnType<typeof import('@ancstra/db').createFamilyDb>,
   personId: string,
 ): string | null {
-  const person = familyDb.select().from(persons).where(eq(persons.id, personId)).get();
+  const person = await familyDb.select().from(persons).where(eq(persons.id, personId)).get();
   if (!person) return null;
 
-  const primaryName = familyDb
+  const primaryName = await familyDb
     .select()
     .from(personNames)
     .where(and(eq(personNames.personId, personId), eq(personNames.isPrimary, true)))
@@ -85,7 +85,7 @@ function buildPersonBiographyHtml(
     : 'Unknown';
 
   // Gather events sorted by date
-  const personEvents = familyDb
+  const personEvents = await familyDb
     .select()
     .from(events)
     .where(eq(events.personId, personId))
@@ -99,7 +99,7 @@ function buildPersonBiographyHtml(
   const dates = formatDateRange(birthEvent?.dateOriginal, deathEvent?.dateOriginal);
 
   // Get cached biography (most recent)
-  const bio = familyDb
+  const bio = await familyDb
     .select()
     .from(biographies)
     .where(eq(biographies.personId, personId))
@@ -107,7 +107,7 @@ function buildPersonBiographyHtml(
     .get();
 
   // Gather source citations linked to this person or their events
-  const personCitations = familyDb
+  const personCitations = await familyDb
     .select({
       title: sources.title,
       citation: sourceCitations.citationDetail,
@@ -119,7 +119,7 @@ function buildPersonBiographyHtml(
 
   const eventIds = personEvents.map((e) => e.id);
   const eventCitations = eventIds.length > 0
-    ? eventIds.flatMap((eventId) =>
+    ? (await Promise.all(eventIds.map((eventId) =>
         familyDb
           .select({
             title: sources.title,
@@ -129,7 +129,7 @@ function buildPersonBiographyHtml(
           .innerJoin(sources, eq(sourceCitations.sourceId, sources.id))
           .where(eq(sourceCitations.eventId, eventId))
           .all(),
-      )
+      ))).flat()
     : [];
 
   // Deduplicate sources by title
@@ -158,16 +158,16 @@ function buildPersonBiographyHtml(
   });
 }
 
-function buildFamilyHistoryHtml(
+async function buildFamilyHistoryHtml(
   familyDb: ReturnType<typeof import('@ancstra/db').createFamilyDb>,
   compiledBy: string,
   familyName?: string,
 ): string {
   // Gather all persons with primary names, biographies, and events
-  const allPersons = familyDb.select().from(persons).all();
+  const allPersons = await familyDb.select().from(persons).all();
 
-  const personsData = allPersons.map((person) => {
-    const primaryName = familyDb
+  const personsData = await Promise.all(allPersons.map(async (person) => {
+    const primaryName = await familyDb
       .select()
       .from(personNames)
       .where(and(eq(personNames.personId, person.id), eq(personNames.isPrimary, true)))
@@ -177,7 +177,7 @@ function buildFamilyHistoryHtml(
       ? `${primaryName.givenName} ${primaryName.surname}`
       : 'Unknown';
 
-    const personEvents = familyDb
+    const personEvents = await familyDb
       .select()
       .from(events)
       .where(eq(events.personId, person.id))
@@ -189,7 +189,7 @@ function buildFamilyHistoryHtml(
     const deathEvent = personEvents.find((e) => e.eventType === 'DEAT');
     const dates = formatDateRange(birthEvent?.dateOriginal, deathEvent?.dateOriginal);
 
-    const bio = familyDb
+    const bio = await familyDb
       .select()
       .from(biographies)
       .where(eq(biographies.personId, person.id))
@@ -214,7 +214,7 @@ function buildFamilyHistoryHtml(
       surname: primaryName?.surname || '',
       generation: 1, // placeholder, computed below
     };
-  });
+  }));
 
   // Sort by birth year and assign generation buckets (~30 year spans)
   personsData.sort((a, b) => a.birthYear - b.birthYear);

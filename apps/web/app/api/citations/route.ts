@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     const data = parsed.data;
 
     // Verify source exists
-    const [source] = familyDb
+    const [source] = await familyDb
       .select()
       .from(sources)
       .where(eq(sources.id, data.sourceId))
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     const citationId = crypto.randomUUID();
     const now = new Date().toISOString();
 
-    familyDb.insert(sourceCitations)
+    await familyDb.insert(sourceCitations)
       .values({
         id: citationId,
         sourceId: data.sourceId,
@@ -48,7 +48,7 @@ export async function POST(request: Request) {
       .run();
 
     // Return citation with source data joined
-    const [created] = familyDb
+    const [created] = await familyDb
       .select()
       .from(sourceCitations)
       .where(eq(sourceCitations.id, citationId))
@@ -82,21 +82,21 @@ export async function GET(request: Request) {
         ? eq(sourceCitations.eventId, eventId)
         : eq(sourceCitations.familyId, familyId!);
 
-    const citations = familyDb
+    const citations = await familyDb
       .select()
       .from(sourceCitations)
       .where(filter)
       .all();
 
     // Join source data for each citation
-    const result = citations.map((citation) => {
-      const [source] = familyDb
+    const result = await Promise.all(citations.map(async (citation) => {
+      const [source] = await familyDb
         .select()
         .from(sources)
         .where(eq(sources.id, citation.sourceId))
         .all();
       return { ...citation, source };
-    });
+    }));
 
     return NextResponse.json(result);
   } catch (error) {

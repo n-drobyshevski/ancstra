@@ -12,7 +12,7 @@ export async function DELETE(
 
     const { id } = await params;
 
-    const [existing] = familyDb
+    const [existing] = await familyDb
       .select()
       .from(sourceCitations)
       .where(eq(sourceCitations.id, id))
@@ -21,7 +21,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
-    familyDb.delete(sourceCitations).where(eq(sourceCitations.id, id)).run();
+    await familyDb.delete(sourceCitations).where(eq(sourceCitations.id, id)).run();
 
     return NextResponse.json({ success: true });
   } catch (error) {

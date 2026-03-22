@@ -83,7 +83,7 @@ export async function GET() {
     const { familyDb } = await withAuth('tree:view');
 
     // Check if table has data
-    const [{ count }] = familyDb
+    const [{ count }] = await familyDb
       .select({ count: sql<number>`count(*)` })
       .from(searchProviders)
       .all();
@@ -91,11 +91,11 @@ export async function GET() {
     // Seed defaults if empty
     if (count === 0) {
       for (const provider of DEFAULT_PROVIDERS) {
-        familyDb.insert(searchProviders).values(provider).run();
+        await familyDb.insert(searchProviders).values(provider).run();
       }
     }
 
-    const providers = familyDb.select().from(searchProviders).all();
+    const providers = await familyDb.select().from(searchProviders).all();
 
     return NextResponse.json({ providers });
   } catch (error) {

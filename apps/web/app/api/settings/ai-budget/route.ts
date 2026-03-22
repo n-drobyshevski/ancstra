@@ -8,7 +8,7 @@ export async function GET() {
   try {
     const { familyDb, centralDb, ctx } = await withAuth('tree:view');
 
-    const family = centralDb
+    const family = await centralDb
       .select()
       .from(centralSchema.familyRegistry)
       .where(eq(centralSchema.familyRegistry.id, ctx.familyId))
@@ -36,7 +36,7 @@ export async function PATCH(request: Request) {
       );
     }
 
-    centralDb
+    await centralDb
       .update(centralSchema.familyRegistry)
       .set({ monthlyAiBudgetUsd: monthlyBudgetUsd })
       .where(eq(centralSchema.familyRegistry.id, ctx.familyId))

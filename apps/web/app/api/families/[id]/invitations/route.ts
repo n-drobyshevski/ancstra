@@ -17,7 +17,7 @@ export async function GET(
     const centralDb = createCentralDb();
     const now = new Date().toISOString();
 
-    const pending = centralDb
+    const pending = await centralDb
       .select()
       .from(centralSchema.invitations)
       .where(

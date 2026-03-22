@@ -24,7 +24,7 @@ export async function POST(
     const data = parsed.data;
 
     // Check family exists and not deleted
-    const [family] = familyDb
+    const [family] = await familyDb
       .select({ id: families.id })
       .from(families)
       .where(and(eq(families.id, familyId), isNull(families.deletedAt)))
@@ -34,7 +34,7 @@ export async function POST(
     }
 
     // Check person exists and not deleted
-    const [person] = familyDb
+    const [person] = await familyDb
       .select({ id: persons.id })
       .from(persons)
       .where(and(eq(persons.id, data.personId), isNull(persons.deletedAt)))
@@ -44,7 +44,7 @@ export async function POST(
     }
 
     // Check no duplicate link
-    const [existing] = familyDb
+    const [existing] = await familyDb
       .select({ id: children.id })
       .from(children)
       .where(and(eq(children.familyId, familyId), eq(children.personId, data.personId)))
@@ -56,7 +56,7 @@ export async function POST(
       );
     }
 
-    familyDb.insert(children)
+    await familyDb.insert(children)
       .values({
         id: crypto.randomUUID(),
         familyId,

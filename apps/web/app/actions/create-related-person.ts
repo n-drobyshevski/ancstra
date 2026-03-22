@@ -33,9 +33,9 @@ export async function createRelatedPerson(formData: FormData) {
   const db = createDb();
   const personId = crypto.randomUUID();
 
-  db.transaction((tx) => {
+  await db.transaction(async (tx) => {
     // Insert person
-    tx.insert(persons)
+    await tx.insert(persons)
       .values({
         id: personId,
         sex: data.sex,
@@ -46,7 +46,7 @@ export async function createRelatedPerson(formData: FormData) {
       .run();
 
     // Insert primary name
-    tx.insert(personNames)
+    await tx.insert(personNames)
       .values({
         personId,
         givenName: data.givenName,
@@ -58,7 +58,7 @@ export async function createRelatedPerson(formData: FormData) {
 
     // Insert birth event if provided
     if (data.birthDate || data.birthPlace) {
-      tx.insert(events)
+      await tx.insert(events)
         .values({
           personId,
           eventType: 'birth',
@@ -71,7 +71,7 @@ export async function createRelatedPerson(formData: FormData) {
 
     // Insert death event if provided
     if (data.deathDate || data.deathPlace) {
-      tx.insert(events)
+      await tx.insert(events)
         .values({
           personId,
           eventType: 'death',
@@ -85,20 +85,20 @@ export async function createRelatedPerson(formData: FormData) {
     // Link relationship if context provided
     if (relation && ofPersonId) {
       if (relation === 'spouse') {
-        tx.insert(families)
+        await tx.insert(families)
           .values({
             partner1Id: ofPersonId,
             partner2Id: personId,
           })
           .run();
       } else if (relation === 'father') {
-        findOrCreateFamilyForChild(tx as unknown as Parameters<typeof findOrCreateFamilyForChild>[0], ofPersonId, personId, 'partner1');
+        await findOrCreateFamilyForChild(tx as unknown as Parameters<typeof findOrCreateFamilyForChild>[0], ofPersonId, personId, 'partner1');
       } else if (relation === 'mother') {
-        findOrCreateFamilyForChild(tx as unknown as Parameters<typeof findOrCreateFamilyForChild>[0], ofPersonId, personId, 'partner2');
+        await findOrCreateFamilyForChild(tx as unknown as Parameters<typeof findOrCreateFamilyForChild>[0], ofPersonId, personId, 'partner2');
       } else if (relation === 'child') {
-        const partnerFams = findFamiliesAsPartner(tx as unknown as Parameters<typeof findFamiliesAsPartner>[0], ofPersonId);
+        const partnerFams = await findFamiliesAsPartner(tx as unknown as Parameters<typeof findFamiliesAsPartner>[0], ofPersonId);
         if (partnerFams.length > 0) {
-          tx.insert(children)
+          await tx.insert(children)
             .values({
               familyId: partnerFams[0],
               personId,
@@ -106,13 +106,13 @@ export async function createRelatedPerson(formData: FormData) {
             .run();
         } else {
           const famId = crypto.randomUUID();
-          tx.insert(families)
+          await tx.insert(families)
             .values({
               id: famId,
               partner1Id: ofPersonId,
             })
             .run();
-          tx.insert(children)
+          await tx.insert(children)
             .values({
               familyId: famId,
               personId,

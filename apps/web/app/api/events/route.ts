@@ -35,7 +35,7 @@ export async function POST(request: Request) {
 
     const eventId = crypto.randomUUID();
 
-    familyDb.insert(events)
+    await familyDb.insert(events)
       .values({
         id: eventId,
         eventType: data.eventType,
@@ -52,7 +52,7 @@ export async function POST(request: Request) {
       })
       .run();
 
-    const [created] = familyDb
+    const [created] = await familyDb
       .select()
       .from(events)
       .where(eq(events.id, eventId))
@@ -87,7 +87,7 @@ export async function GET(request: Request) {
       ? sql.join(conditions, sql` AND `)
       : undefined;
 
-    const rows = familyDb
+    const rows = await familyDb
       .select()
       .from(events)
       .where(whereClause)
@@ -96,7 +96,7 @@ export async function GET(request: Request) {
       .offset(offset)
       .all();
 
-    const [{ count: total }] = familyDb
+    const [{ count: total }] = await familyDb
       .select({ count: sql<number>`count(*)` })
       .from(events)
       .where(whereClause)

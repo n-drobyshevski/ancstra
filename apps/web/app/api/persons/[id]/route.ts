@@ -13,7 +13,7 @@ export async function GET(
   try {
     const { familyDb } = await withAuth('tree:view');
     const { id } = await params;
-    const person = assemblePersonDetail(familyDb, id);
+    const person = await assemblePersonDetail(familyDb, id);
     if (!person) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     return NextResponse.json(person);
   } catch (error) {
@@ -42,7 +42,7 @@ export async function PUT(
     const now = new Date().toISOString();
 
     // Check person exists
-    const [existing] = familyDb
+    const [existing] = await familyDb
       .select()
       .from(persons)
       .where(and(eq(persons.id, id), isNull(persons.deletedAt)))
@@ -67,20 +67,20 @@ export async function PUT(
     }
 
     // Transaction: update person + name + upsert events
-    familyDb.transaction((tx) => {
+    await familyDb.transaction(async (tx) => {
       // 1. Update persons table (only provided fields)
       const personUpdates: Record<string, unknown> = { updatedAt: now };
       if (data.sex !== undefined) personUpdates.sex = data.sex;
       if (data.isLiving !== undefined) personUpdates.isLiving = data.isLiving;
       if (data.notes !== undefined) personUpdates.notes = data.notes;
-      tx.update(persons).set(personUpdates).where(eq(persons.id, id)).run();
+      await tx.update(persons).set(personUpdates).where(eq(persons.id, id)).run();
 
       // 2. Update primary name if provided
       if (data.givenName || data.surname) {
         const nameUpdates: Record<string, unknown> = {};
         if (data.givenName) nameUpdates.givenName = data.givenName;
         if (data.surname) nameUpdates.surname = data.surname;
-        tx.update(personNames)
+        await tx.update(personNames)
           .set(nameUpdates)
           .where(
             and(eq(personNames.personId, id), eq(personNames.isPrimary, true))
@@ -90,13 +90,13 @@ export async function PUT(
 
       // 3. Upsert birth event
       if (data.birthDate !== undefined || data.birthPlace !== undefined) {
-        const [existingBirth] = tx
+        const [existingBirth] = await tx
           .select()
           .from(events)
           .where(and(eq(events.personId, id), eq(events.eventType, 'birth')))
           .all();
         if (existingBirth) {
-          tx.update(events)
+          await tx.update(events)
             .set({
               dateOriginal: data.birthDate ?? existingBirth.dateOriginal,
               dateSort: data.birthDate
@@ -108,7 +108,7 @@ export async function PUT(
             .where(eq(events.id, existingBirth.id))
             .run();
         } else {
-          tx.insert(events)
+          await tx.insert(events)
             .values({
               id: crypto.randomUUID(),
               personId: id,
@@ -125,13 +125,13 @@ export async function PUT(
 
       // 4. Upsert death event
       if (data.deathDate !== undefined || data.deathPlace !== undefined) {
-        const [existingDeath] = tx
+        const [existingDeath] = await tx
           .select()
           .from(events)
           .where(and(eq(events.personId, id), eq(events.eventType, 'death')))
           .all();
         if (existingDeath) {
-          tx.update(events)
+          await tx.update(events)
             .set({
               dateOriginal: data.deathDate ?? existingDeath.dateOriginal,
               dateSort: data.deathDate
@@ -143,7 +143,7 @@ export async function PUT(
             .where(eq(events.id, existingDeath.id))
             .run();
         } else {
-          tx.insert(events)
+          await tx.insert(events)
             .values({
               id: crypto.randomUUID(),
               personId: id,
@@ -159,7 +159,7 @@ export async function PUT(
       }
     });
 
-    const updated = assemblePersonDetail(familyDb, id);
+    const updated = await assemblePersonDetail(familyDb, id);
     return NextResponse.json(updated);
   } catch (error) {
     return handleAuthError(error);
@@ -175,7 +175,7 @@ export async function DELETE(
 
     const { id } = await params;
 
-    const [existing] = familyDb
+    const [existing] = await familyDb
       .select()
       .from(persons)
       .where(and(eq(persons.id, id), isNull(persons.deletedAt)))
@@ -184,7 +184,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
-    familyDb.update(persons)
+    await familyDb.update(persons)
       .set({ deletedAt: new Date().toISOString() })
       .where(eq(persons.id, id))
       .run();

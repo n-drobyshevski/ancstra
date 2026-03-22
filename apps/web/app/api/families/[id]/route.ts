@@ -4,11 +4,11 @@ import { and, eq, isNull } from 'drizzle-orm';
 import { updateFamilySchema } from '@/lib/validation';
 import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
 
-function getPersonListItem(
+async function getPersonListItem(
   db: FamilyDatabase,
   personId: string,
 ) {
-  const row = db
+  const row = await db
     .select({ id: persons.id, sex: persons.sex, isLiving: persons.isLiving })
     .from(persons)
     .where(and(eq(persons.id, personId), isNull(persons.deletedAt)))
@@ -16,19 +16,19 @@ function getPersonListItem(
 
   if (!row) return null;
 
-  const name = db
+  const name = await db
     .select({ givenName: personNames.givenName, surname: personNames.surname })
     .from(personNames)
     .where(and(eq(personNames.personId, personId), eq(personNames.isPrimary, true)))
     .get();
 
-  const birthEvent = db
+  const birthEvent = await db
     .select({ dateOriginal: events.dateOriginal })
     .from(events)
     .where(and(eq(events.personId, personId), eq(events.eventType, 'birth')))
     .get();
 
-  const deathEvent = db
+  const deathEvent = await db
     .select({ dateOriginal: events.dateOriginal })
     .from(events)
     .where(and(eq(events.personId, personId), eq(events.eventType, 'death')))
@@ -53,7 +53,7 @@ export async function GET(
     const { familyDb } = await withAuth('tree:view');
     const { id } = await params;
 
-    const family = familyDb
+    const family = await familyDb
       .select()
       .from(families)
       .where(and(eq(families.id, id), isNull(families.deletedAt)))
@@ -64,19 +64,19 @@ export async function GET(
     }
 
     // Build partner info
-    const partner1 = family.partner1Id ? getPersonListItem(familyDb, family.partner1Id) : null;
-    const partner2 = family.partner2Id ? getPersonListItem(familyDb, family.partner2Id) : null;
+    const partner1 = family.partner1Id ? await getPersonListItem(familyDb, family.partner1Id) : null;
+    const partner2 = family.partner2Id ? await getPersonListItem(familyDb, family.partner2Id) : null;
 
     // Build children array
-    const childRows = familyDb
+    const childRows = await familyDb
       .select({ personId: children.personId })
       .from(children)
       .where(eq(children.familyId, id))
       .all();
 
-    const childList = childRows
-      .map((cr) => getPersonListItem(familyDb, cr.personId))
-      .filter((c): c is NonNullable<typeof c> => c !== null);
+    const childList = (await Promise.all(
+      childRows.map((cr) => getPersonListItem(familyDb, cr.personId))
+    )).filter((c): c is NonNullable<typeof c> => c !== null);
 
     return NextResponse.json({
       ...family,
@@ -109,7 +109,7 @@ export async function PUT(
     const data = parsed.data;
     const now = new Date().toISOString();
 
-    const [existing] = familyDb
+    const [existing] = await familyDb
       .select()
       .from(families)
       .where(and(eq(families.id, id), isNull(families.deletedAt)))
@@ -123,9 +123,9 @@ export async function PUT(
     if (data.relationshipType !== undefined) updates.relationshipType = data.relationshipType;
     if (data.validationStatus !== undefined) updates.validationStatus = data.validationStatus;
 
-    familyDb.update(families).set(updates).where(eq(families.id, id)).run();
+    await familyDb.update(families).set(updates).where(eq(families.id, id)).run();
 
-    const [updated] = familyDb.select().from(families).where(eq(families.id, id)).all();
+    const [updated] = await familyDb.select().from(families).where(eq(families.id, id)).all();
     return NextResponse.json(updated);
   } catch (error) {
     return handleAuthError(error);
@@ -141,7 +141,7 @@ export async function DELETE(
 
     const { id } = await params;
 
-    const [existing] = familyDb
+    const [existing] = await familyDb
       .select()
       .from(families)
       .where(and(eq(families.id, id), isNull(families.deletedAt)))
@@ -153,9 +153,9 @@ export async function DELETE(
 
     // Soft-delete family (children cascade via ON DELETE CASCADE won't fire for soft-delete,
     // so also delete child links explicitly)
-    familyDb.transaction((tx) => {
-      tx.delete(children).where(eq(children.familyId, id)).run();
-      tx.update(families)
+    await familyDb.transaction(async (tx) => {
+      await tx.delete(children).where(eq(children.familyId, id)).run();
+      await tx.update(families)
         .set({ deletedAt: new Date().toISOString() })
         .where(eq(families.id, id))
         .run();

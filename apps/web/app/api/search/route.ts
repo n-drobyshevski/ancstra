@@ -18,7 +18,7 @@ export async function GET(request: Request) {
       50,
       Math.max(1, parseInt(searchParams.get('limit') ?? '10')),
     );
-    const persons = searchPersonsFts(familyDb, q, limit);
+    const persons = await searchPersonsFts(familyDb, q, limit);
     return NextResponse.json({ persons });
   } catch (error) {
     return handleAuthError(error);

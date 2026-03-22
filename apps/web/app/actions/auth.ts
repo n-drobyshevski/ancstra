@@ -34,7 +34,7 @@ export async function signUp(
   const centralDb = createCentralDb();
 
   // Check if user already exists
-  const [existing] = centralDb
+  const [existing] = await centralDb
     .select()
     .from(centralSchema.users)
     .where(eq(centralSchema.users.email, email))
@@ -46,7 +46,7 @@ export async function signUp(
 
   const passwordHash = await bcrypt.hash(password, 10);
 
-  centralDb.insert(centralSchema.users)
+  await centralDb.insert(centralSchema.users)
     .values({ name, email, passwordHash })
     .run();
 

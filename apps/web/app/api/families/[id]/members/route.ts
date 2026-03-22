@@ -27,7 +27,7 @@ export async function GET(
 
     const centralDb = createCentralDb();
 
-    const members = centralDb
+    const members = await centralDb
       .select({
         id: centralSchema.familyMembers.id,
         userId: centralSchema.familyMembers.userId,

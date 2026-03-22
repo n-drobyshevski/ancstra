@@ -12,7 +12,7 @@ export async function GET(
     const { familyDb } = await withAuth('tree:view');
     const { id } = await params;
 
-    const [source] = familyDb
+    const [source] = await familyDb
       .select()
       .from(sources)
       .where(eq(sources.id, id))
@@ -22,7 +22,7 @@ export async function GET(
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
-    const [{ count: citationCount }] = familyDb
+    const [{ count: citationCount }] = await familyDb
       .select({ count: sql<number>`count(*)` })
       .from(sourceCitations)
       .where(eq(sourceCitations.sourceId, id))
@@ -54,7 +54,7 @@ export async function PUT(
     const data = parsed.data;
     const now = new Date().toISOString();
 
-    const [existing] = familyDb
+    const [existing] = await familyDb
       .select()
       .from(sources)
       .where(eq(sources.id, id))
@@ -74,12 +74,12 @@ export async function PUT(
     if (data.sourceType !== undefined) updates.sourceType = data.sourceType;
     if (data.notes !== undefined) updates.notes = data.notes;
 
-    familyDb.update(sources)
+    await familyDb.update(sources)
       .set(updates)
       .where(eq(sources.id, id))
       .run();
 
-    const [updated] = familyDb
+    const [updated] = await familyDb
       .select()
       .from(sources)
       .where(eq(sources.id, id))
@@ -100,7 +100,7 @@ export async function DELETE(
 
     const { id } = await params;
 
-    const [existing] = familyDb
+    const [existing] = await familyDb
       .select()
       .from(sources)
       .where(eq(sources.id, id))
@@ -110,7 +110,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
-    familyDb.delete(sources)
+    await familyDb.delete(sources)
       .where(eq(sources.id, id))
       .run();
 

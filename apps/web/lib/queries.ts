@@ -15,16 +15,14 @@ import type {
   FamilyRecord,
   ChildLink,
 } from '@ancstra/shared';
-import type BetterSqlite3 from 'better-sqlite3';
-
 // ---------------------------------------------------------------------------
 // Exported: FTS5 full-text search for persons
 // ---------------------------------------------------------------------------
-export function searchPersonsFts(
+export async function searchPersonsFts(
   db: Database,
   query: string,
   limit: number = 10,
-): PersonListItem[] {
+): Promise<PersonListItem[]> {
   // Sanitize: strip FTS5 special characters
   const sanitized = query.replace(/['"*()]/g, '').trim();
   if (!sanitized) return [];
@@ -38,42 +36,33 @@ export function searchPersonsFts(
 
   if (!matchExpr) return [];
 
-  // Access the raw better-sqlite3 instance from Drizzle
-  const rawDb = (db as any).$client as BetterSqlite3.Database;
-
-  const rows = rawDb
-    .prepare(
-      `SELECT p.id, p.sex, p.is_living as isLiving, pn.given_name as givenName, pn.surname
-       FROM persons_fts
-       JOIN person_names pn ON pn.rowid = persons_fts.rowid
-       JOIN persons p ON p.id = pn.person_id
-       WHERE persons_fts MATCH ?
-         AND p.deleted_at IS NULL
-         AND pn.is_primary = 1
-       ORDER BY bm25(persons_fts)
-       LIMIT ?`,
-    )
-    .all(matchExpr, limit) as Array<{
+  const rows = await db.all<{
     id: string;
     sex: string;
     isLiving: number;
     givenName: string;
     surname: string;
-  }>;
+  }>(sql`
+    SELECT p.id, p.sex, p.is_living as isLiving, pn.given_name as givenName, pn.surname
+    FROM persons_fts
+    JOIN person_names pn ON pn.rowid = persons_fts.rowid
+    JOIN persons p ON p.id = pn.person_id
+    WHERE persons_fts MATCH ${matchExpr}
+      AND p.deleted_at IS NULL
+      AND pn.is_primary = 1
+    ORDER BY bm25(persons_fts)
+    LIMIT ${limit}
+  `);
 
   // Fetch birth/death dates for each matched person
-  return rows.map((row): PersonListItem => {
-    const birthEvent = rawDb
-      .prepare(
-        `SELECT date_original FROM events WHERE person_id = ? AND event_type = 'birth' LIMIT 1`,
-      )
-      .get(row.id) as { date_original: string | null } | undefined;
+  return Promise.all(rows.map(async (row): Promise<PersonListItem> => {
+    const [birthEvent] = await db.all<{ date_original: string | null }>(sql`
+      SELECT date_original FROM events WHERE person_id = ${row.id} AND event_type = 'birth' LIMIT 1
+    `);
 
-    const deathEvent = rawDb
-      .prepare(
-        `SELECT date_original FROM events WHERE person_id = ? AND event_type = 'death' LIMIT 1`,
-      )
-      .get(row.id) as { date_original: string | null } | undefined;
+    const [deathEvent] = await db.all<{ date_original: string | null }>(sql`
+      SELECT date_original FROM events WHERE person_id = ${row.id} AND event_type = 'death' LIMIT 1
+    `);
 
     return {
       id: row.id,
@@ -84,17 +73,17 @@ export function searchPersonsFts(
       birthDate: birthEvent?.date_original ?? null,
       deathDate: deathEvent?.date_original ?? null,
     };
-  });
+  }));
 }
 
 // ---------------------------------------------------------------------------
 // Private helper: build a PersonListItem from a personId
 // ---------------------------------------------------------------------------
-function getPersonListItem(
+async function getPersonListItem(
   db: Database,
   personId: string,
-): PersonListItem | null {
-  const row = db
+): Promise<PersonListItem | null> {
+  const row = await db
     .select({
       id: persons.id,
       sex: persons.sex,
@@ -106,7 +95,7 @@ function getPersonListItem(
 
   if (!row) return null;
 
-  const name = db
+  const name = await db
     .select({
       givenName: personNames.givenName,
       surname: personNames.surname,
@@ -120,13 +109,13 @@ function getPersonListItem(
     )
     .get();
 
-  const birthEvent = db
+  const birthEvent = await db
     .select({ dateOriginal: events.dateOriginal })
     .from(events)
     .where(and(eq(events.personId, personId), eq(events.eventType, 'birth')))
     .get();
 
-  const deathEvent = db
+  const deathEvent = await db
     .select({ dateOriginal: events.dateOriginal })
     .from(events)
     .where(and(eq(events.personId, personId), eq(events.eventType, 'death')))
@@ -146,11 +135,11 @@ function getPersonListItem(
 // ---------------------------------------------------------------------------
 // Exported: find family IDs where person appears as a child
 // ---------------------------------------------------------------------------
-export function findFamiliesAsChild(
+export async function findFamiliesAsChild(
   db: Database,
   personId: string,
-): string[] {
-  const rows = db
+): Promise<string[]> {
+  const rows = await db
     .select({ familyId: children.familyId })
     .from(children)
     .where(eq(children.personId, personId))
@@ -162,11 +151,11 @@ export function findFamiliesAsChild(
 // ---------------------------------------------------------------------------
 // Exported: find family IDs where person appears as partner1 or partner2
 // ---------------------------------------------------------------------------
-export function findFamiliesAsPartner(
+export async function findFamiliesAsPartner(
   db: Database,
   personId: string,
-): string[] {
-  const rows = db
+): Promise<string[]> {
+  const rows = await db
     .select({ id: families.id })
     .from(families)
     .where(
@@ -186,26 +175,26 @@ export function findFamiliesAsPartner(
 // ---------------------------------------------------------------------------
 // Exported: find or create a family record linking a child to a parent
 // ---------------------------------------------------------------------------
-export function findOrCreateFamilyForChild(
+export async function findOrCreateFamilyForChild(
   db: Database,
   childId: string,
   parentId: string,
   parentRole: 'partner1' | 'partner2',
-): string {
-  const existingFamilyIds = findFamiliesAsChild(db, childId);
+): Promise<string> {
+  const existingFamilyIds = await findFamiliesAsChild(db, childId);
 
   if (existingFamilyIds.length > 0) {
     // Update the first existing family to set the parent in the given role
     const familyId = existingFamilyIds[0];
     const col =
       parentRole === 'partner1' ? families.partner1Id : families.partner2Id;
-    db.update(families).set({ [col.name]: parentId }).where(eq(families.id, familyId)).run();
+    await db.update(families).set({ [col.name]: parentId }).where(eq(families.id, familyId)).run();
     return familyId;
   }
 
   // No existing family — create one
   const familyId = crypto.randomUUID();
-  db.insert(families)
+  await db.insert(families)
     .values({
       id: familyId,
       ...(parentRole === 'partner1'
@@ -214,7 +203,7 @@ export function findOrCreateFamilyForChild(
     })
     .run();
 
-  db.insert(children)
+  await db.insert(children)
     .values({
       familyId,
       personId: childId,
@@ -227,12 +216,12 @@ export function findOrCreateFamilyForChild(
 // ---------------------------------------------------------------------------
 // Exported: assemble a full PersonDetail — the single source of truth
 // ---------------------------------------------------------------------------
-export function assemblePersonDetail(
+export async function assemblePersonDetail(
   db: Database,
   personId: string,
-): PersonDetail | null {
+): Promise<PersonDetail | null> {
   // 1. Person + primary name
-  const person = db
+  const person = await db
     .select()
     .from(persons)
     .where(and(eq(persons.id, personId), isNull(persons.deletedAt)))
@@ -240,7 +229,7 @@ export function assemblePersonDetail(
 
   if (!person) return null;
 
-  const primaryName = db
+  const primaryName = await db
     .select()
     .from(personNames)
     .where(
@@ -252,11 +241,11 @@ export function assemblePersonDetail(
     .get();
 
   // 2. Spouses: families where person is a partner → extract OTHER partner
-  const partnerFamilyIds = findFamiliesAsPartner(db, personId);
+  const partnerFamilyIds = await findFamiliesAsPartner(db, personId);
   const spouseMap = new Map<string, PersonListItem>();
 
   for (const fId of partnerFamilyIds) {
-    const fam = db
+    const fam = await db
       .select({ partner1Id: families.partner1Id, partner2Id: families.partner2Id })
       .from(families)
       .where(and(eq(families.id, fId), isNull(families.deletedAt)))
@@ -271,17 +260,17 @@ export function assemblePersonDetail(
 
     for (const oid of otherIds) {
       if (!oid || spouseMap.has(oid)) continue;
-      const item = getPersonListItem(db, oid);
+      const item = await getPersonListItem(db, oid);
       if (item) spouseMap.set(oid, item);
     }
   }
 
   // 3. Parents: children table where person is child → family → non-null, non-deleted partners
-  const childFamilyIds = findFamiliesAsChild(db, personId);
+  const childFamilyIds = await findFamiliesAsChild(db, personId);
   const parentMap = new Map<string, PersonListItem>();
 
   for (const fId of childFamilyIds) {
-    const fam = db
+    const fam = await db
       .select({ partner1Id: families.partner1Id, partner2Id: families.partner2Id })
       .from(families)
       .where(eq(families.id, fId))
@@ -291,7 +280,7 @@ export function assemblePersonDetail(
 
     for (const pid of [fam.partner1Id, fam.partner2Id]) {
       if (!pid || parentMap.has(pid)) continue;
-      const item = getPersonListItem(db, pid);
+      const item = await getPersonListItem(db, pid);
       if (item) parentMap.set(pid, item);
     }
   }
@@ -300,7 +289,7 @@ export function assemblePersonDetail(
   const childMap = new Map<string, PersonListItem>();
 
   for (const fId of partnerFamilyIds) {
-    const childRows = db
+    const childRows = await db
       .select({ personId: children.personId })
       .from(children)
       .where(eq(children.familyId, fId))
@@ -308,13 +297,13 @@ export function assemblePersonDetail(
 
     for (const cr of childRows) {
       if (childMap.has(cr.personId)) continue;
-      const item = getPersonListItem(db, cr.personId);
+      const item = await getPersonListItem(db, cr.personId);
       if (item) childMap.set(cr.personId, item);
     }
   }
 
   // 5. All events for person, ordered by dateSort ASC NULLS LAST
-  const personEvents = db
+  const personEvents = await db
     .select()
     .from(events)
     .where(eq(events.personId, personId))
@@ -351,8 +340,8 @@ export function assemblePersonDetail(
 // ---------------------------------------------------------------------------
 // Exported: fetch all tree data (persons + families + child links)
 // ---------------------------------------------------------------------------
-export function getTreeData(db: Database): TreeData {
-  const personRows = db
+export async function getTreeData(db: Database): Promise<TreeData> {
+  const personRows = await db
     .select({
       id: persons.id,
       sex: persons.sex,
@@ -370,7 +359,7 @@ export function getTreeData(db: Database): TreeData {
 
   const personIds = personRows.map((r) => r.id);
   const birthDeathEvents = personIds.length > 0
-    ? db
+    ? await db
         .select({
           personId: events.personId,
           eventType: events.eventType,
@@ -401,7 +390,7 @@ export function getTreeData(db: Database): TreeData {
     deathDate: eventsByPerson.get(r.id)?.deathDate ?? null,
   }));
 
-  const familyRows: FamilyRecord[] = db
+  const familyRows: FamilyRecord[] = await db
     .select({
       id: families.id,
       partner1Id: families.partner1Id,
@@ -413,7 +402,7 @@ export function getTreeData(db: Database): TreeData {
     .where(isNull(families.deletedAt))
     .all();
 
-  const childRows: ChildLink[] = db
+  const childRows: ChildLink[] = await db
     .select({
       familyId: children.familyId,
       personId: children.personId,
