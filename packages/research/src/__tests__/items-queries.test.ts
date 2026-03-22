@@ -11,7 +11,7 @@ import {
   tagPersonToItem,
   untagPersonFromItem,
   deleteResearchItem,
-} from '../items/queries.js';
+} from '../items/queries';
 
 let sqlite: InstanceType<typeof Database>;
 let db: ReturnType<typeof drizzle>;

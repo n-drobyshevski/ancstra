@@ -8,7 +8,7 @@ import {
   getFactsByResearchItem,
   updateFact,
   deleteFact,
-} from '../facts/queries.js';
+} from '../facts/queries';
 
 let sqlite: InstanceType<typeof Database>;
 let db: ReturnType<typeof drizzle>;

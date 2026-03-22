@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { FamilySearchProvider } from '../providers/familysearch/provider.js';
+import { FamilySearchProvider } from '../providers/familysearch/provider';
 
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);

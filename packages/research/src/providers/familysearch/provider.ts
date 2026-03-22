@@ -4,9 +4,9 @@ import type {
   SearchResult,
   HealthStatus,
   ProviderType,
-} from '../types.js';
-import { RateLimiter } from '../rate-limiter.js';
-import type { FSSearchResponse, FSPerson } from './types.js';
+} from '../types';
+import { RateLimiter } from '../rate-limiter';
+import type { FSSearchResponse, FSPerson } from './types';
 
 const FS_API_BASE = 'https://api.familysearch.org/platform/tree';
 

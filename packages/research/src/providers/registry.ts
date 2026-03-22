@@ -1,4 +1,4 @@
-import type { SearchProvider, SearchRequest, SearchResult } from './types.js';
+import type { SearchProvider, SearchRequest, SearchResult } from './types';
 
 /**
  * Registry that manages search providers and dispatches federated queries.

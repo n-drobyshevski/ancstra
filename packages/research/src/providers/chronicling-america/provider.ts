@@ -4,8 +4,8 @@ import type {
   SearchResult,
   HealthStatus,
   ProviderType,
-} from '../types.js';
-import { RateLimiter } from '../rate-limiter.js';
+} from '../types';
+import { RateLimiter } from '../rate-limiter';
 
 const CA_API_BASE =
   'https://chroniclingamerica.loc.gov/search/pages/results/';

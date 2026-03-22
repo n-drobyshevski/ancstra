@@ -4,7 +4,7 @@ import type {
   SearchResult,
   HealthStatus,
   ProviderType,
-} from '../types.js';
+} from '../types';
 
 const MOCK_RESULTS: SearchResult[] = [
   {

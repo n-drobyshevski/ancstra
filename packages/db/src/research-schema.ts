@@ -1,5 +1,5 @@
 import { sqliteTable, text, integer, real, index, unique, primaryKey } from 'drizzle-orm/sqlite-core';
-import { users, persons, sources, sourceCitations } from './schema.js';
+import { users, persons, sources, sourceCitations } from './schema';
 
 // ==================== SEARCH PROVIDERS ====================
 export const searchProviders = sqliteTable('search_providers', {

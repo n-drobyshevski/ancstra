@@ -6,17 +6,17 @@ export type {
   HealthStatus,
   ProviderType,
   SearchProvider,
-} from './providers/types.js';
+} from './providers/types';
 
-export { ProviderRegistry } from './providers/registry.js';
-export { RateLimiter } from './providers/rate-limiter.js';
+export { ProviderRegistry } from './providers/registry';
+export { RateLimiter } from './providers/rate-limiter';
 
-export { MockProvider } from './providers/mock/provider.js';
-export { NARAProvider } from './providers/nara/provider.js';
-export { ChroniclingAmericaProvider } from './providers/chronicling-america/provider.js';
-export { FamilySearchProvider } from './providers/familysearch/provider.js';
-export { generateAuthUrl, exchangeCodeForTokens } from './providers/familysearch/auth.js';
-export type { FSTokens, FSPerson, FSSearchResponse } from './providers/familysearch/types.js';
+export { MockProvider } from './providers/mock/provider';
+export { NARAProvider } from './providers/nara/provider';
+export { ChroniclingAmericaProvider } from './providers/chronicling-america/provider';
+export { FamilySearchProvider } from './providers/familysearch/provider';
+export { generateAuthUrl, exchangeCodeForTokens } from './providers/familysearch/auth';
+export type { FSTokens, FSPerson, FSSearchResponse } from './providers/familysearch/types';
 
 // Research Items CRUD
 export {
@@ -28,8 +28,8 @@ export {
   tagPersonToItem,
   untagPersonFromItem,
   deleteResearchItem,
-} from './items/queries.js';
-export type { CreateResearchItemInput, ResearchItemFilters } from './items/queries.js';
+} from './items/queries';
+export type { CreateResearchItemInput, ResearchItemFilters } from './items/queries';
 
 // Research Facts CRUD
 export {
@@ -38,17 +38,17 @@ export {
   getFactsByResearchItem,
   updateFact,
   deleteFact,
-} from './facts/queries.js';
-export type { CreateFactInput, UpdateFactInput } from './facts/queries.js';
+} from './facts/queries';
+export type { CreateFactInput, UpdateFactInput } from './facts/queries';
 
 // Source Promotion
-export { promoteToSource } from './facts/promote.js';
-export type { PromoteInput, PromoteResult } from './facts/promote.js';
+export { promoteToSource } from './facts/promote';
+export type { PromoteInput, PromoteResult } from './facts/promote';
 
 // Conflict Detection & Resolution
 export {
   detectConflicts,
   resolveConflict,
   MULTI_VALUED_TYPES,
-} from './facts/conflicts.js';
-export type { ConflictPair } from './facts/conflicts.js';
+} from './facts/conflicts';
+export type { ConflictPair } from './facts/conflicts';

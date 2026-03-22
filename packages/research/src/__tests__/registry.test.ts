@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { ProviderRegistry } from '../providers/registry.js';
-import type { SearchProvider, SearchRequest, SearchResult, HealthStatus } from '../providers/types.js';
+import { ProviderRegistry } from '../providers/registry';
+import type { SearchProvider, SearchRequest, SearchResult, HealthStatus } from '../providers/types';
 
 class FakeProvider implements SearchProvider {
   readonly id: string;

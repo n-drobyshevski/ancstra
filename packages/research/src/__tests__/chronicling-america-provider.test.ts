@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { ChroniclingAmericaProvider } from '../providers/chronicling-america/provider.js';
+import { ChroniclingAmericaProvider } from '../providers/chronicling-america/provider';
 
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);

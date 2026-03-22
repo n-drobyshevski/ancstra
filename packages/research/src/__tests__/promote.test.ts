@@ -3,8 +3,8 @@ import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { eq } from 'drizzle-orm';
 import Database from 'better-sqlite3';
 import * as schema from '@ancstra/db';
-import { promoteToSource } from '../facts/promote.js';
-import { createFact, getFactsByResearchItem } from '../facts/queries.js';
+import { promoteToSource } from '../facts/promote';
+import { createFact, getFactsByResearchItem } from '../facts/queries';
 
 let sqlite: InstanceType<typeof Database>;
 let db: ReturnType<typeof drizzle>;

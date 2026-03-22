@@ -2,8 +2,8 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { serve } from '@hono/node-server';
-import { auth } from './middleware/auth.js';
-import { health } from './routes/health.js';
+import { auth } from './middleware/auth';
+import { health } from './routes/health';
 
 const app = new Hono();
 

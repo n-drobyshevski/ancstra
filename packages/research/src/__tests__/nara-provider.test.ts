@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { NARAProvider } from '../providers/nara/provider.js';
+import { NARAProvider } from '../providers/nara/provider';
 
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);

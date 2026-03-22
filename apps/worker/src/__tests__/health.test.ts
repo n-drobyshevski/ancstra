@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { Hono } from 'hono';
-import { health } from '../routes/health.js';
+import { health } from '../routes/health';
 
 describe('GET /health', () => {
   const app = new Hono();

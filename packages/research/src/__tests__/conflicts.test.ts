@@ -2,8 +2,8 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import Database from 'better-sqlite3';
 import * as schema from '@ancstra/db';
-import { createFact } from '../facts/queries.js';
-import { detectConflicts, resolveConflict, MULTI_VALUED_TYPES } from '../facts/conflicts.js';
+import { createFact } from '../facts/queries';
+import { detectConflicts, resolveConflict, MULTI_VALUED_TYPES } from '../facts/conflicts';
 
 let sqlite: InstanceType<typeof Database>;
 let db: ReturnType<typeof drizzle>;

@@ -153,4 +153,4 @@ export const treeLayouts = sqliteTable('tree_layouts', {
   updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
 });
 
-export * from './research-schema.js';
+export * from './research-schema';
