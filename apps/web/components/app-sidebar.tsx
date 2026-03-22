@@ -14,6 +14,7 @@ import {
   BarChart3,
   Settings,
   LogOut,
+  ExternalLink,
 } from 'lucide-react';
 import { signOut } from 'next-auth/react';
 import {
@@ -109,6 +110,18 @@ export function AppSidebar() {
                 <Settings />
                 <span>Settings</span>
               </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild tooltip="Help">
+              <a
+                href={process.env.NEXT_PUBLIC_DOCS_URL || 'https://ancstra-docs.vercel.app'}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <ExternalLink />
+                <span>Help</span>
+              </a>
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>

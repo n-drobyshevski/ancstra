@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ContributionQueue } from '@/components/moderation/contribution-queue';
+import { WelcomeCard } from '@/components/onboarding/welcome-card';
 import { createDb, persons, personNames, events } from '@ancstra/db';
 import { eq, isNull, sql } from 'drizzle-orm';
 import { hasPermission } from '@ancstra/auth';
@@ -67,6 +68,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      <WelcomeCard />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold">Welcome to Ancstra</h1>
