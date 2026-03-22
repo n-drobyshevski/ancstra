@@ -18,8 +18,8 @@ export { FamilySearchProvider } from './providers/familysearch/provider';
 export { generateAuthUrl, exchangeCodeForTokens } from './providers/familysearch/auth';
 export type { FSTokens, FSPerson, FSSearchResponse } from './providers/familysearch/types';
 
-export { FindAGraveProvider } from './providers/findagrave/provider';
-export { parseMemorialPage } from './providers/findagrave/parser';
+// FindAGrave provider uses cheerio (server-only) — import directly from
+// '@ancstra/research/providers/findagrave/provider' when needed
 export type { MemorialData, FamilyLink } from './providers/findagrave/parser';
 
 export { WikiTreeProvider } from './providers/wikitree/provider';
@@ -57,7 +57,8 @@ export type { CreateFactInput, UpdateFactInput } from './facts/queries';
 export { promoteToSource } from './facts/promote';
 export type { PromoteInput, PromoteResult } from './facts/promote';
 
-// URL Scraper
+// Scraper types only — implementations use sharp/playwright and must be
+// imported directly by the worker (not through this barrel export)
 export type {
   ScrapeOptions,
   ScrapeResult,
@@ -65,11 +66,6 @@ export type {
   ScreenshotOptions,
   ArchiveResult,
 } from './scraper/types';
-export { scrapeUrl } from './scraper/url-scraper';
-export { captureScreenshot } from './scraper/screenshot';
-export { archiveScrapeResult } from './scraper/archiver';
-export { RobotsChecker } from './scraper/robots';
-export { DomainRateLimiter } from './scraper/rate-limiter-domain';
 
 // Conflict Detection & Resolution
 export {
