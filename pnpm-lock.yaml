@@ -20,6 +20,9 @@ importers:
       '@ancstra/db':
         specifier: workspace:^
         version: link:../../packages/db
+      '@ancstra/research':
+        specifier: workspace:^
+        version: link:../../packages/research
       '@ancstra/shared':
         specifier: workspace:^
         version: link:../../packages/shared
