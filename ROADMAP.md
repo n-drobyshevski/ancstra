@@ -8,11 +8,13 @@
 
 ## Current Focus
 
-> **Phase 1: Core Tree Builder** — `[██████████] 100% Complete`
+> **Phase 2: AI Search, Research & Matching** — `[████████░░] 80% In Progress`
 >
-> Done: All CRUD, tree viz (full editor), GEDCOM, sources, FTS5+Cmd+K, named layouts, filter pills, multi-select, CI, PWA — 122 tests
+> Done (Plans A-E): Search infrastructure, 8 providers, evidence workspace (6 tabs), Playwright scraping, record matching, AI assistant (12 tools), research items CRUD, source promotion
 >
-> Next up: Phase 2 — Research workspace, multi-source search, web scraping, evidence analysis, AI assistant, FamilySearch integration
+> In progress: Settings page (provider config, appearance, privacy, data management)
+>
+> Next up: Settings page implementation, then Phase 3 (Document Processing)
 
 ---
 
@@ -213,8 +215,8 @@
 
 ## Phase 2: AI Search, Research & Matching
 
-> Weeks 9-20 (~12 weeks) | `[░░░░░░░░░░] 0% Not Started`
-> [Detailed plan](docs/phases/phase-2-search.md) | [Research workspace spec](docs/superpowers/specs/2026-03-22-research-workspace-design.md)
+> Weeks 9-20 (~12 weeks) | `[████████░░] 80% In Progress`
+> [Detailed plan](docs/phases/phase-2-search.md) | [Research workspace spec](docs/superpowers/specs/2026-03-22-research-workspace-design.md) | [Settings spec](docs/superpowers/specs/2026-03-22-settings-page-design.md)
 
 ### Multi-Source Search Engine (packages/research)
 
@@ -306,6 +308,18 @@
 | Research tools (searchWeb, scrapeUrl, extractFacts) | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Core tools, Scraper |
 | Evidence tools (detectConflicts, suggestSearches) | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Research facts |
 | Chat UI with streaming + tool results | ~1w | `[░░░░░░░░░░] 0% Not Started` | Tools |
+
+### Settings Page
+
+| Feature | ~Duration | Status | Depends On |
+|---------|-----------|--------|------------|
+| Settings shell + sidebar nav | ~0.5d | `[░░░░░░░░░░] 0% Not Started` | Phase 1 Auth |
+| Provider config API routes + hooks | ~1d | `[░░░░░░░░░░] 0% Not Started` | search_providers schema |
+| Worker status banner + provider cards | ~1d | `[░░░░░░░░░░] 0% Not Started` | Provider API |
+| Search Sources page | ~0.5d | `[░░░░░░░░░░] 0% Not Started` | Provider cards |
+| Appearance page (theme toggle) | ~0.25d | `[░░░░░░░░░░] 0% Not Started` | Shell |
+| Privacy page (living threshold, export) | ~0.5d | `[░░░░░░░░░░] 0% Not Started` | Shell |
+| Data page (backup, storage, cache mgmt) | ~1.5d | `[░░░░░░░░░░] 0% Not Started` | Shell |
 
 #### Risks
 - **FamilySearch rate limiting** — batch hint generation could trigger limits
