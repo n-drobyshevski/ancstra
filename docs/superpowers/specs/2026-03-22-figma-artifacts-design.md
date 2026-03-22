@@ -19,7 +19,7 @@ All markdown deliverables for Phase 0 are complete (user-flows.md, design-system
 1. Build each section as a standalone HTML page with SVG diagrams and styled specimens
 2. Preview in browser for iteration
 3. Capture into Figma via `generate_figma_design` MCP tool with `outputMode: existingFile`
-4. One capture per section (~20 content frames across 2 active pages + placeholder pages)
+4. One capture per section (~21 content frames across 2 active pages + placeholder pages)
 
 ---
 
@@ -55,11 +55,12 @@ All diagrams and specimens use the Ancstra design system palette:
 Ancstra Design
  0. Cover                    ← placeholder (title frame only)
  1. Research                 ← placeholder
- 2. User Flows               ← 6 flow diagram frames (ACTIVE)
+ 2. User Flows               ← 7 flow diagram frames (ACTIVE)
  3. Wireframes-Desktop       ← placeholder
  4. Wireframes-Mobile        ← placeholder
  5. Wireframes-Tablet        ← placeholder
  6. Design System            ← 14 frames: 6 foundation + 8 custom (ACTIVE)
+
  7. Hi-Fi Desktop            ← placeholder
  8. Hi-Fi Mobile             ← placeholder
  9. Hi-Fi Tablet             ← placeholder
@@ -69,19 +70,19 @@ Ancstra Design
 
 ---
 
-## Page 2: User Flows — 6 Frames
+## Page 2: User Flows — 7 Frames
 
 Scope: Happy paths + key decision branches. Error branches deferred to pass 2.
 
-### Frame 2.1: Add Person (Manual Entry) — ~1200x900
+### Frame 2.1: Add Person (Manual Entry) — ~1400x900
 
-Source: `docs/design/user-flows.md` Flow 1
+Source: `docs/design/user-flows.md` Flow 1 + Research entry path
 
 **Nodes:**
 ```
 [START]
-  → [Dashboard or Tree View]                    SCREEN
-  → <Global or Contextual?>                     DECISION
+  → [Dashboard, Tree View, or Research]         SCREEN
+  → <Entry path?>                               DECISION (3-way)
     → Global path:
       → [Click "Add Person" in sidebar]         ACTION
       → [/person/new — blank form]              SCREEN
@@ -92,6 +93,10 @@ Source: `docs/design/user-flows.md` Flow 1
       → <Search existing or Create new?>        DECISION
         → Search: [PersonSelect] → [Select] → [Confirm relationship]
         → Create: [/person/new pre-filled with context]
+    → Research path:
+      → [Research session — notes/URLs]         SCREEN
+      → [Click "Create person from findings"]   ACTION
+      → [/person/new pre-filled from research]  SCREEN
   → [Form validation passes]                    ACTION
   → [Person created]                            SCREEN /person/[id]
   → [Optional: "Add Relative" prompt]           ANNOTATION
@@ -218,6 +223,31 @@ Source: `docs/design/user-flows.md` Flow 6
 ```
 
 Three-branch decision tree, most complex flow.
+
+### Frame 2.7: Research Session — ~1200x800
+
+Source: New flow — research workspace lifecycle
+
+**Nodes:**
+```
+[START]
+  → [Click "Research" in sidebar]               ACTION
+  → [/research — session list]                  SCREEN
+  → <New or existing session?>                  DECISION
+    → New: [Create session — title + optional person tag]
+    → Existing: [Select session from list]
+  → [Research workspace]                        SCREEN
+    → [Paste URLs, transcriptions, notes]       ACTION
+    → [Tag findings to person]                  ACTION (optional)
+  → <Ready to create person?>                   DECISION
+    → Yes: [Click "Create person from findings"] ACTION
+      → [/person/new pre-filled from notes]     SCREEN
+      → [Save → link back to research session]
+    → No: [Continue researching / close]
+[END]
+```
+
+Research lifecycle — sessions, notes, tagging, and the bridge to person creation.
 
 ---
 
