@@ -8,6 +8,8 @@ import { WorkspaceTabs, type WorkspaceView } from './workspace-tabs';
 import { useSearchParams } from 'next/navigation';
 import { usePersonConflicts } from '@/lib/research/evidence-client';
 import { BoardTab } from '../board/board-tab';
+import { ConflictsTab } from '../conflicts/conflicts-tab';
+import { TimelineTab } from '../timeline/timeline-tab';
 
 interface PersonSummary {
   id: string;
@@ -80,16 +82,10 @@ function ShellInner({ person, children }: WorkspaceShellProps) {
           <>
             {activeView === 'board' && <BoardTab personId={person.id} />}
             {activeView === 'conflicts' && (
-              <div className="py-12 text-center text-sm text-muted-foreground">
-                {conflicts.length === 0
-                  ? 'No conflicts detected.'
-                  : `${conflicts.length} conflict(s) found.`}
-              </div>
+              <ConflictsTab personId={person.id} />
             )}
             {activeView === 'timeline' && (
-              <div className="py-12 text-center text-sm text-muted-foreground">
-                Timeline view coming soon.
-              </div>
+              <TimelineTab personId={person.id} />
             )}
           </>
         )}
