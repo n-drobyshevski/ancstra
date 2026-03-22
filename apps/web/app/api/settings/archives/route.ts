@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@/auth';
-import { createDb, researchItems } from '@ancstra/db';
-import { isNotNull, or, sql } from 'drizzle-orm';
+import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
+import { researchItems } from '@ancstra/db';
+import { isNotNull, or } from 'drizzle-orm';
 import { readdir, unlink, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 
@@ -24,35 +24,35 @@ async function clearDirectory(dirPath: string): Promise<number> {
 }
 
 export async function DELETE() {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  try {
+    const { familyDb } = await withAuth('settings:manage');
 
-  const archivePath = process.env.ARCHIVE_PATH || join(process.cwd(), 'data', 'archives');
-  const screenshotPath = process.env.SCREENSHOT_PATH || join(process.cwd(), 'data', 'screenshots');
+    const archivePath = process.env.ARCHIVE_PATH || join(process.cwd(), 'data', 'archives');
+    const screenshotPath = process.env.SCREENSHOT_PATH || join(process.cwd(), 'data', 'screenshots');
 
-  // Clear archive and screenshot files
-  const [archiveFreed, screenshotFreed] = await Promise.all([
-    clearDirectory(archivePath),
-    clearDirectory(screenshotPath),
-  ]);
+    // Clear archive and screenshot files
+    const [archiveFreed, screenshotFreed] = await Promise.all([
+      clearDirectory(archivePath),
+      clearDirectory(screenshotPath),
+    ]);
 
-  // Null out paths in research_items
-  const db = createDb();
-  db.update(researchItems)
-    .set({
-      archivedHtmlPath: null,
-      screenshotPath: null,
-      archivedAt: null,
-    })
-    .where(
-      or(
-        isNotNull(researchItems.archivedHtmlPath),
-        isNotNull(researchItems.screenshotPath),
+    // Null out paths in research_items
+    familyDb.update(researchItems)
+      .set({
+        archivedHtmlPath: null,
+        screenshotPath: null,
+        archivedAt: null,
+      })
+      .where(
+        or(
+          isNotNull(researchItems.archivedHtmlPath),
+          isNotNull(researchItems.screenshotPath),
+        )
       )
-    )
-    .run();
+      .run();
 
-  return NextResponse.json({ freedBytes: archiveFreed + screenshotFreed });
+    return NextResponse.json({ freedBytes: archiveFreed + screenshotFreed });
+  } catch (error) {
+    return handleAuthError(error);
+  }
 }

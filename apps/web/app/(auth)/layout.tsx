@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { auth } from '@/auth';
+import { getAuthContext } from '@/lib/auth/context';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/app-sidebar';
 import { AppHeader } from '@/components/app-header';
@@ -12,6 +13,10 @@ export default async function AuthLayout({
 }) {
   const session = await auth();
   if (!session) redirect('/login');
+
+  // Check if user has a family — if not, redirect to create one
+  const authContext = await getAuthContext();
+  if (!authContext) redirect('/create-family');
 
   return (
     <TooltipProvider>

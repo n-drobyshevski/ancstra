@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@/auth';
+import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
 import { stat, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 
@@ -31,25 +31,26 @@ async function getDirSize(dirPath: string): Promise<number> {
 }
 
 export async function GET() {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  try {
+    const { ctx } = await withAuth('settings:manage');
+
+    const dbPath = process.env.DATABASE_URL || join(process.cwd(), '..', '..', 'packages', 'db', 'data', ctx.dbFilename);
+    const archivePath = process.env.ARCHIVE_PATH || join(process.cwd(), 'data', 'archives');
+    const screenshotPath = process.env.SCREENSHOT_PATH || join(process.cwd(), 'data', 'screenshots');
+
+    const [database, archives, screenshots] = await Promise.all([
+      getFileSize(dbPath),
+      getDirSize(archivePath),
+      getDirSize(screenshotPath),
+    ]);
+
+    return NextResponse.json({
+      database,
+      archives,
+      screenshots,
+      total: database + archives + screenshots,
+    });
+  } catch (error) {
+    return handleAuthError(error);
   }
-
-  const dbPath = process.env.DATABASE_URL || join(process.cwd(), '..', '..', 'packages', 'db', 'ancstra.db');
-  const archivePath = process.env.ARCHIVE_PATH || join(process.cwd(), 'data', 'archives');
-  const screenshotPath = process.env.SCREENSHOT_PATH || join(process.cwd(), 'data', 'screenshots');
-
-  const [database, archives, screenshots] = await Promise.all([
-    getFileSize(dbPath),
-    getDirSize(archivePath),
-    getDirSize(screenshotPath),
-  ]);
-
-  return NextResponse.json({
-    database,
-    archives,
-    screenshots,
-    total: database + archives + screenshots,
-  });
 }

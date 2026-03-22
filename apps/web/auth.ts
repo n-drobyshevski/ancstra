@@ -1,35 +1,72 @@
 import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
-import { createDb, users } from '@ancstra/db';
+import Google from 'next-auth/providers/google';
+import Apple from 'next-auth/providers/apple';
+import { createCentralDb } from '@ancstra/db';
+import { centralSchema } from '@ancstra/db';
 import { eq } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
+import { AncstraAdapter } from '@ancstra/auth';
+import { linkOrCreateUser } from '@ancstra/auth';
+
+const centralDb = createCentralDb();
+
+// Build providers list dynamically — skip OAuth providers if env vars missing
+const providers: any[] = [
+  Credentials({
+    credentials: {
+      email: { label: 'Email', type: 'email' },
+      password: { label: 'Password', type: 'password' },
+    },
+    authorize: async (credentials) => {
+      const [user] = centralDb
+        .select()
+        .from(centralSchema.users)
+        .where(eq(centralSchema.users.email, credentials.email as string))
+        .all();
+      if (!user) return null;
+      if (!user.passwordHash) return null; // OAuth-only user
+      const valid = await bcrypt.compare(
+        credentials.password as string,
+        user.passwordHash
+      );
+      if (!valid) return null;
+      return { id: user.id, email: user.email, name: user.name };
+    },
+  }),
+];
+
+if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+  providers.push(Google({
+    clientId: process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+  }));
+}
+
+if (process.env.APPLE_CLIENT_ID && process.env.APPLE_CLIENT_SECRET) {
+  providers.push(Apple({
+    clientId: process.env.APPLE_CLIENT_ID,
+    clientSecret: process.env.APPLE_CLIENT_SECRET,
+  }));
+}
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  providers: [
-    Credentials({
-      credentials: {
-        email: { label: 'Email', type: 'email' },
-        password: { label: 'Password', type: 'password' },
-      },
-      authorize: async (credentials) => {
-        const db = createDb();
-        const [user] = await db
-          .select()
-          .from(users)
-          .where(eq(users.email, credentials.email as string));
-        if (!user) return null;
-        const valid = await bcrypt.compare(
-          credentials.password as string,
-          user.passwordHash
-        );
-        if (!valid) return null;
-        return { id: user.id, email: user.email, name: user.name };
-      },
-    }),
-  ],
+  adapter: AncstraAdapter(centralDb),
+  providers,
   session: { strategy: 'jwt' },
   pages: { signIn: '/login' },
   callbacks: {
-    authorized: ({ auth }) => !!auth,
+    async jwt({ token, user }) {
+      if (user) {
+        token.userId = user.id;
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      if (token.userId) {
+        session.user.id = token.userId as string;
+      }
+      return session;
+    },
   },
 });
