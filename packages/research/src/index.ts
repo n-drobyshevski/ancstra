@@ -30,3 +30,13 @@ export {
   deleteResearchItem,
 } from './items/queries.js';
 export type { CreateResearchItemInput, ResearchItemFilters } from './items/queries.js';
+
+// Research Facts CRUD
+export {
+  createFact,
+  getFactsByPerson,
+  getFactsByResearchItem,
+  updateFact,
+  deleteFact,
+} from './facts/queries.js';
+export type { CreateFactInput, UpdateFactInput } from './facts/queries.js';
