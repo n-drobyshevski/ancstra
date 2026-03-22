@@ -13,6 +13,7 @@ const PARTNER_GAP = 40;
 
 export interface PersonNodeData extends PersonListItem {
   label: string;
+  [key: string]: unknown;
 }
 
 export function treeDataToFlow(data: TreeData): {
