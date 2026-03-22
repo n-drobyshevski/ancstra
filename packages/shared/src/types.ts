@@ -128,3 +128,23 @@ export interface PersonDetail extends Person {
   children: PersonListItem[];
   events: Event[];
 }
+
+export interface FamilyRecord {
+  id: string;
+  partner1Id: string | null;
+  partner2Id: string | null;
+  relationshipType: 'married' | 'civil_union' | 'domestic_partner' | 'unmarried' | 'unknown';
+  validationStatus: 'confirmed' | 'proposed' | 'disputed';
+}
+
+export interface ChildLink {
+  familyId: string;
+  personId: string;
+  validationStatus: 'confirmed' | 'proposed' | 'disputed';
+}
+
+export interface TreeData {
+  persons: PersonListItem[];
+  families: FamilyRecord[];
+  childLinks: ChildLink[];
+}
