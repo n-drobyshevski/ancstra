@@ -22,6 +22,7 @@ const CREATE_TABLES_SQL = `
     db_filename TEXT NOT NULL,
     moderation_enabled INTEGER NOT NULL DEFAULT 0,
     max_members INTEGER NOT NULL DEFAULT 50,
+      monthly_ai_budget_usd REAL NOT NULL DEFAULT 10.0,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
   );
