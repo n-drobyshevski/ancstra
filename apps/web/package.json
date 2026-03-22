@@ -9,11 +9,14 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^1.2.0",
+    "@ancstra/ai": "workspace:^",
     "@ancstra/db": "workspace:^",
     "@ancstra/research": "workspace:^",
     "@ancstra/shared": "workspace:^",
     "@dagrejs/dagre": "^2.0.4",
     "@xyflow/react": "^12.10.1",
+    "ai": "^4.3.0",
     "bcryptjs": "^3.0.3",
     "cheerio": "^1.0.0",
     "class-variance-authority": "^0.7.1",
@@ -30,6 +33,7 @@
     "radix-ui": "^1.4.3",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "react-markdown": "^10.1.0",
     "shadcn": "^4.1.0",
     "sharp": "^0.33.0",
     "sonner": "^2.0.7",

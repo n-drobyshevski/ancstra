@@ -7,9 +7,11 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { WorkspaceTabs, type WorkspaceView } from './workspace-tabs';
 import { useSearchParams } from 'next/navigation';
 import { usePersonConflicts } from '@/lib/research/evidence-client';
+import { usePersonHints } from '@/lib/research/hints-client';
 import { BoardTab } from '../board/board-tab';
 import { ConflictsTab } from '../conflicts/conflicts-tab';
 import { TimelineTab } from '../timeline/timeline-tab';
+import { HintsPanel } from '../hints/hints-panel';
 
 interface PersonSummary {
   id: string;
@@ -42,6 +44,7 @@ function ShellInner({ person, children }: WorkspaceShellProps) {
   const searchParams = useSearchParams();
   const activeView = (searchParams.get('view') as WorkspaceView) || 'board';
   const { conflicts } = usePersonConflicts(person.id);
+  const { hints } = usePersonHints(person.id, 'pending');
   const dates = formatDates(person.birthDate, person.deathDate);
 
   return (
@@ -74,7 +77,7 @@ function ShellInner({ person, children }: WorkspaceShellProps) {
       </div>
 
       {/* Tabs */}
-      <WorkspaceTabs conflictCount={conflicts.length} />
+      <WorkspaceTabs conflictCount={conflicts.length} hintCount={hints.length} />
 
       {/* Tab content */}
       <div>
@@ -86,6 +89,17 @@ function ShellInner({ person, children }: WorkspaceShellProps) {
             )}
             {activeView === 'timeline' && (
               <TimelineTab personId={person.id} />
+            )}
+            {activeView === 'hints' && (
+              <HintsPanel
+                personId={person.id}
+                localPerson={{
+                  givenName: person.givenName,
+                  surname: person.surname,
+                  birthDate: person.birthDate,
+                  deathDate: person.deathDate,
+                }}
+              />
             )}
           </>
         )}
