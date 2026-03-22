@@ -69,7 +69,7 @@ export function ToolCallIndicator({
         )}
         <Icon className="size-3" />
         <span>{display.label}</span>
-        {(args || result) && (
+        {!!(args || result) && (
           expanded ? (
             <ChevronDown className="size-3" />
           ) : (
