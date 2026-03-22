@@ -8,12 +8,13 @@
 
 ## Current Focus
 
-> **Phase 1: Core Tree Builder — FTS5 Search + Cmd+K** — `[████████░░] 80% In Progress`
+> **Phase 1: Core Tree Builder — Named Layouts** — `[█████████░] 95% In Progress`
 >
-> Done: Person/family/event CRUD, tree viz (React Flow), GEDCOM import/export, source/citation management, person list, dark theme, 103 tests
+> Done: All CRUD, tree viz (iter 1+2), GEDCOM, sources, FTS5+Cmd+K, CI, PWA, sign-out — 111 tests
 >
-> Working on: FTS5 full-text search + Cmd+K command palette
+> Working on: Named layout management (DB persistence replacing localStorage)
 >
+> Next up: Phase 2 — AI features (FamilySearch integration, Claude-powered matching)
 > Next up: CI pipeline, PWA, tree viz iteration 2
 
 ---
@@ -139,20 +140,20 @@
 | Person list page + dashboard | ~0.25w | `[██████████] 100% Complete` | CRUD API |
 | Search filter (?q= LIKE) | ~0.25w | `[██████████] 100% Complete` | CRUD API |
 
-### Tree Visualization (Iteration 1 Complete)
+### Tree Visualization (Iteration 1+2 Complete)
 
 | Feature | ~Duration | Status | Depends On |
 |---------|-----------|--------|------------|
 | React Flow canvas + dagre layout | ~1.5w | `[██████████] 100% Complete` | Schema, CRUD API |
-| Custom PersonNode component | ~0.5w | `[██████████] 100% Complete` | Canvas |
-| Custom edge types (parent/partner) | ~0.5w | `[██████████] 100% Complete` | Canvas |
+| Custom PersonNode + edges | ~0.5w | `[██████████] 100% Complete` | Canvas |
 | Floating toolbar + context menus | ~0.5w | `[██████████] 100% Complete` | Canvas |
 | Detail panel (slide-out right) | ~0.5w | `[██████████] 100% Complete` | Canvas |
-| Position persistence (localStorage) | ~0.25w | `[██████████] 100% Complete` | Canvas |
-| Drag-from-palette + edge drawing | ~1w | `[░░░░░░░░░░] 0% Not Started` | Canvas |
-| Named layouts (DB persistence) | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Canvas |
+| Drag-from-palette (DraftPersonNode) | ~0.5w | `[██████████] 100% Complete` | Canvas |
+| Edge drawing (relationships on canvas) | ~0.5w | `[██████████] 100% Complete` | Canvas |
+| Search-to-focus (/tree?focus=) | ~0.25w | `[██████████] 100% Complete` | Canvas |
+| Named layouts (DB persistence) | ~0.5w | `[░░░░░░░░░░] 0% Starting` | Canvas |
 | Topola PDF/PNG/SVG export | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Canvas |
-| Search-to-focus + filter panel | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Canvas |
+| Filter panel (sex, generation, living) | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Canvas |
 
 ### GEDCOM (Complete)
 
@@ -179,7 +180,7 @@
 
 | Feature | ~Duration | Status | Depends On |
 |---------|-----------|--------|------------|
-| FTS5 search + Cmd+K command palette | ~1w | `[░░░░░░░░░░] 0% Starting` | Schema |
+| FTS5 search + Cmd+K command palette | ~1w | `[██████████] 100% Complete` | Schema |
 | Filter UI (sex, generation, living) | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | CRUD API |
 | Breadcrumb + recent history | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Canvas |
 
@@ -188,10 +189,10 @@
 | Feature | ~Duration | Status | Depends On |
 |---------|-----------|--------|------------|
 | Vitest + Testing Library setup | ~0.5w | `[██████████] 100% Complete` | Monorepo |
-| Unit + integration tests (103 tests) | ~1w | `[████████░░] 80% In Progress` | CRUD API, Parser |
+| Unit + integration tests (111 tests) | ~1w | `[█████████░] 90% In Progress` | CRUD API, Parser |
 | Performance baselines (bench suite) | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Schema, Canvas |
-| PWA setup (manifest, SW, offline) | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Monorepo |
-| CI pipeline (GitHub Actions) | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Tests |
+| PWA setup (manifest, SW, offline) | ~0.5w | `[██████████] 100% Complete` | Monorepo |
+| CI pipeline (GitHub Actions) | ~0.5w | `[██████████] 100% Complete` | Tests |
 | Accessible tree list view | ~0.5w | `[░░░░░░░░░░] 0% Not Started` | Canvas |
 | pino structured logging | ~0.25w | `[░░░░░░░░░░] 0% Not Started` | Monorepo |
 
