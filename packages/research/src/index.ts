@@ -17,3 +17,16 @@ export { ChroniclingAmericaProvider } from './providers/chronicling-america/prov
 export { FamilySearchProvider } from './providers/familysearch/provider.js';
 export { generateAuthUrl, exchangeCodeForTokens } from './providers/familysearch/auth.js';
 export type { FSTokens, FSPerson, FSSearchResponse } from './providers/familysearch/types.js';
+
+// Research Items CRUD
+export {
+  createResearchItem,
+  getResearchItem,
+  listResearchItems,
+  updateResearchItemStatus,
+  updateResearchItemNotes,
+  tagPersonToItem,
+  untagPersonFromItem,
+  deleteResearchItem,
+} from './items/queries.js';
+export type { CreateResearchItemInput, ResearchItemFilters } from './items/queries.js';
