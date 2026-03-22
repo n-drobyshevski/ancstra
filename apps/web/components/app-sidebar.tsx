@@ -11,7 +11,9 @@ import {
   Bookmark,
   Upload,
   Settings,
+  LogOut,
 } from 'lucide-react';
+import { signOut } from 'next-auth/react';
 import {
   Sidebar,
   SidebarContent,
@@ -81,6 +83,15 @@ export function AppSidebar() {
                 <Settings />
                 <span>Settings</span>
               </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              tooltip="Sign Out"
+              onClick={() => signOut({ callbackUrl: '/login' })}
+            >
+              <LogOut />
+              <span>Sign Out</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

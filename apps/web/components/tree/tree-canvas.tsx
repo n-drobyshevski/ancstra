@@ -169,10 +169,6 @@ function TreeCanvasInner({ treeData }: TreeCanvasProps) {
         setSelectedPerson(null);
         setContextMenu(null);
       }
-      if (e.key === '/' && !(e.target instanceof HTMLInputElement)) {
-        e.preventDefault();
-        // TODO: open search
-      }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);

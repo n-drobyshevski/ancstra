@@ -15,6 +15,77 @@ import type {
   FamilyRecord,
   ChildLink,
 } from '@ancstra/shared';
+import type BetterSqlite3 from 'better-sqlite3';
+
+// ---------------------------------------------------------------------------
+// Exported: FTS5 full-text search for persons
+// ---------------------------------------------------------------------------
+export function searchPersonsFts(
+  db: Database,
+  query: string,
+  limit: number = 10,
+): PersonListItem[] {
+  // Sanitize: strip FTS5 special characters
+  const sanitized = query.replace(/['"*()]/g, '').trim();
+  if (!sanitized) return [];
+
+  // Build FTS5 match expression: prefix each word with *
+  const matchExpr = sanitized
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => `${w}*`)
+    .join(' ');
+
+  if (!matchExpr) return [];
+
+  // Access the raw better-sqlite3 instance from Drizzle
+  const rawDb = (db as any).$client as BetterSqlite3.Database;
+
+  const rows = rawDb
+    .prepare(
+      `SELECT p.id, p.sex, p.is_living as isLiving, pn.given_name as givenName, pn.surname
+       FROM persons_fts
+       JOIN person_names pn ON pn.rowid = persons_fts.rowid
+       JOIN persons p ON p.id = pn.person_id
+       WHERE persons_fts MATCH ?
+         AND p.deleted_at IS NULL
+         AND pn.is_primary = 1
+       ORDER BY bm25(persons_fts)
+       LIMIT ?`,
+    )
+    .all(matchExpr, limit) as Array<{
+    id: string;
+    sex: string;
+    isLiving: number;
+    givenName: string;
+    surname: string;
+  }>;
+
+  // Fetch birth/death dates for each matched person
+  return rows.map((row): PersonListItem => {
+    const birthEvent = rawDb
+      .prepare(
+        `SELECT date_original FROM events WHERE person_id = ? AND event_type = 'birth' LIMIT 1`,
+      )
+      .get(row.id) as { date_original: string | null } | undefined;
+
+    const deathEvent = rawDb
+      .prepare(
+        `SELECT date_original FROM events WHERE person_id = ? AND event_type = 'death' LIMIT 1`,
+      )
+      .get(row.id) as { date_original: string | null } | undefined;
+
+    return {
+      id: row.id,
+      givenName: row.givenName,
+      surname: row.surname,
+      sex: row.sex as 'M' | 'F' | 'U',
+      isLiving: Boolean(row.isLiving),
+      birthDate: birthEvent?.date_original ?? null,
+      deathDate: deathEvent?.date_original ?? null,
+    };
+  });
+}
 
 // ---------------------------------------------------------------------------
 // Private helper: build a PersonListItem from a personId

@@ -4,6 +4,7 @@ import { createDb, persons, personNames, events } from '@ancstra/db';
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import { createPersonSchema } from '@/lib/validation';
 import { parseDateToSort } from '@ancstra/shared';
+import { searchPersonsFts } from '@/lib/queries';
 
 export async function POST(request: Request) {
   const session = await auth();
@@ -110,12 +111,16 @@ export async function GET(request: Request) {
 
   const db = createDb();
 
-  const whereClause = q
-    ? and(
-        isNull(persons.deletedAt),
-        sql`(${personNames.givenName} LIKE ${'%' + q + '%'} OR ${personNames.surname} LIKE ${'%' + q + '%'})`
-      )
-    : isNull(persons.deletedAt);
+  // When a search query is present, use FTS5 for ranked full-text search
+  if (q) {
+    const allResults = searchPersonsFts(db, q, 1000);
+    const total = allResults.length;
+    const items = allResults.slice(offset, offset + pageSize);
+    return NextResponse.json({ items, total, page, pageSize });
+  }
+
+  // Unfiltered paginated listing
+  const whereClause = isNull(persons.deletedAt);
 
   const rows = db
     .select({
@@ -135,18 +140,9 @@ export async function GET(request: Request) {
     .offset(offset)
     .all();
 
-  const countQuery = db
+  const [{ count }] = db
     .select({ count: sql<number>`count(*)` })
-    .from(persons);
-
-  if (q) {
-    countQuery.innerJoin(
-      personNames,
-      sql`${personNames.personId} = ${persons.id} AND ${personNames.isPrimary} = 1`
-    );
-  }
-
-  const [{ count }] = countQuery
+    .from(persons)
     .where(whereClause)
     .all();
 

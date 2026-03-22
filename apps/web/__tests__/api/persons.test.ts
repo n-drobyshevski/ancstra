@@ -5,6 +5,7 @@ import { eq, and, isNull, inArray, sql } from 'drizzle-orm';
 import * as schema from '@ancstra/db';
 import { parseDateToSort } from '@ancstra/shared';
 import { createPersonSchema } from '../../lib/validation';
+import { searchPersonsFts } from '../../lib/queries';
 
 const { persons, personNames, events, users } = schema;
 
@@ -62,6 +63,18 @@ beforeEach(() => {
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
+
+    CREATE VIRTUAL TABLE IF NOT EXISTS persons_fts USING fts5(given_name, surname, content=person_names, content_rowid=rowid);
+    CREATE TRIGGER IF NOT EXISTS persons_fts_ai AFTER INSERT ON person_names BEGIN
+      INSERT INTO persons_fts(rowid, given_name, surname) VALUES (new.rowid, new.given_name, new.surname);
+    END;
+    CREATE TRIGGER IF NOT EXISTS persons_fts_ad AFTER DELETE ON person_names BEGIN
+      INSERT INTO persons_fts(persons_fts, rowid, given_name, surname) VALUES ('delete', old.rowid, old.given_name, old.surname);
+    END;
+    CREATE TRIGGER IF NOT EXISTS persons_fts_au AFTER UPDATE ON person_names BEGIN
+      INSERT INTO persons_fts(persons_fts, rowid, given_name, surname) VALUES ('delete', old.rowid, old.given_name, old.surname);
+      INSERT INTO persons_fts(rowid, given_name, surname) VALUES (new.rowid, new.given_name, new.surname);
+    END;
   `);
 
   // Seed a test user
@@ -339,29 +352,32 @@ describe('Person CRUD (integration)', () => {
     expect(result).toHaveLength(0);
   });
 
-  it('filters persons by surname with LIKE search', () => {
+  it('filters persons by surname with FTS5 search', () => {
     createPerson({ givenName: 'Alice', surname: 'Smith', sex: 'F', isLiving: true });
     createPerson({ givenName: 'Bob', surname: 'Jones', sex: 'M', isLiving: true });
     createPerson({ givenName: 'Charlie', surname: 'Smith', sex: 'M', isLiving: true });
 
-    const smithRows = db.select({ id: persons.id, givenName: personNames.givenName })
-      .from(persons)
-      .innerJoin(personNames, sql`${personNames.personId} = ${persons.id} AND ${personNames.isPrimary} = 1`)
-      .where(and(isNull(persons.deletedAt), sql`(${personNames.surname} LIKE '%Smith%' OR ${personNames.givenName} LIKE '%Smith%')`))
-      .all();
+    const smithRows = searchPersonsFts(db as any,'Smith', 100);
     expect(smithRows).toHaveLength(2);
+    expect(smithRows.every((r) => r.surname === 'Smith')).toBe(true);
   });
 
-  it('filters persons by given name with LIKE search', () => {
+  it('filters persons by given name with FTS5 search', () => {
     createPerson({ givenName: 'Alice', surname: 'Smith', sex: 'F', isLiving: true });
     createPerson({ givenName: 'Bob', surname: 'Jones', sex: 'M', isLiving: true });
 
-    const aliceRows = db.select({ id: persons.id })
-      .from(persons)
-      .innerJoin(personNames, sql`${personNames.personId} = ${persons.id} AND ${personNames.isPrimary} = 1`)
-      .where(and(isNull(persons.deletedAt), sql`(${personNames.surname} LIKE '%Alice%' OR ${personNames.givenName} LIKE '%Alice%')`))
-      .all();
+    const aliceRows = searchPersonsFts(db as any,'Alice', 100);
     expect(aliceRows).toHaveLength(1);
+    expect(aliceRows[0].givenName).toBe('Alice');
+  });
+
+  it('FTS5 supports prefix matching', () => {
+    createPerson({ givenName: 'Alice', surname: 'Smith', sex: 'F', isLiving: true });
+    createPerson({ givenName: 'Bob', surname: 'Smithson', sex: 'M', isLiving: true });
+
+    // "Smi" should match both Smith and Smithson via prefix
+    const prefixRows = searchPersonsFts(db as any,'Smi', 100);
+    expect(prefixRows).toHaveLength(2);
   });
 
   it('soft-deleted persons are excluded from queries', () => {
