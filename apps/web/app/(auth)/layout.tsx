@@ -15,7 +15,7 @@ export default async function AuthLayout({
 
   return (
     <TooltipProvider>
-      <SidebarProvider>
+      <SidebarProvider defaultOpen={false}>
         <AppSidebar />
         <SidebarInset>
           <AppHeader />
