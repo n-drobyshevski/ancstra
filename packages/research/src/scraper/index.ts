@@ -9,3 +9,5 @@ export type {
 export { scrapeUrl } from './url-scraper';
 export { captureScreenshot } from './screenshot';
 export { archiveScrapeResult } from './archiver';
+export { RobotsChecker } from './robots';
+export { DomainRateLimiter } from './rate-limiter-domain';
