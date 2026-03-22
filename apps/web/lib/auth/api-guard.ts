@@ -28,15 +28,15 @@ export async function withAuth(permission: Permission) {
  * Perform an optimistic-locked update.
  * Returns 409 with current data if version conflicts.
  */
-export function withOptimisticLock(
+export async function withOptimisticLock(
   db: any,
   table: any,
   id: string,
   expectedVersion: number,
   updates: Record<string, unknown>,
-): { success: boolean; current?: any } {
+): Promise<{ success: boolean; current?: any }> {
   const now = new Date().toISOString();
-  const result = db
+  const result = await db
     .update(table)
     .set({
       ...updates,
@@ -46,8 +46,10 @@ export function withOptimisticLock(
     .where(and(eq(table.id, id), eq(table.version, expectedVersion)))
     .run();
 
-  if (result.changes === 0) {
-    const current = db.select().from(table).where(eq(table.id, id)).get();
+  // Handle both better-sqlite3 (result.changes) and libsql (result.rowsAffected) drivers
+  const rowsChanged = result.changes ?? result.rowsAffected ?? 0;
+  if (rowsChanged === 0) {
+    const current = await db.select().from(table).where(eq(table.id, id)).get();
     return { success: false, current };
   }
   return { success: true };

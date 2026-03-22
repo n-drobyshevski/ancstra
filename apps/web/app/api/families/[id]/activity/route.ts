@@ -18,7 +18,7 @@ export async function GET(
   const action = url.searchParams.get('action') || undefined;
   const userId = url.searchParams.get('userId') || undefined;
 
-  const feed = getActivityFeed(centralDb, { familyId, cursor, limit, action, userId });
+  const feed = await getActivityFeed(centralDb, { familyId, cursor, limit, action, userId });
 
   if (ctx.role === 'viewer') {
     // TODO: populate livingPersonIds from family DB when routes are fully integrated

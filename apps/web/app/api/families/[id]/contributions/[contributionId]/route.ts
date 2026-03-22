@@ -14,7 +14,7 @@ export async function POST(
   const body = await request.json();
   const familyDb = createFamilyDb(ctx.dbFilename);
 
-  const result = reviewContribution(familyDb, {
+  const result = await reviewContribution(familyDb, {
     contributionId,
     reviewerId: ctx.userId,
     action: body.action,

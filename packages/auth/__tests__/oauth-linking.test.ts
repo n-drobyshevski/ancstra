@@ -51,7 +51,7 @@ describe('linkOrCreateUser', () => {
     db = createTestDb();
   });
 
-  it('when email matches existing user: links oauth account and returns existing user', () => {
+  it('when email matches existing user: links oauth account and returns existing user', async () => {
     // Seed an existing user with name and avatar
     db.insert(centralSchema.users).values({
       id: 'existing-user-1',
@@ -64,7 +64,7 @@ describe('linkOrCreateUser', () => {
       updatedAt: '2025-01-01T00:00:00.000Z',
     }).run();
 
-    const result = linkOrCreateUser(db, {
+    const result = await linkOrCreateUser(db, {
       email: 'alice@example.com',
       name: 'Alice OAuth Name',
       avatarUrl: 'https://oauth.com/alice-new.jpg',
@@ -88,7 +88,7 @@ describe('linkOrCreateUser', () => {
     expect(oauthRows[0].accessToken).toBe('at-123');
   });
 
-  it('when email matches existing user with missing name/avatar: merges them', () => {
+  it('when email matches existing user with missing name/avatar: merges them', async () => {
     // Seed a user with empty-ish name and no avatar
     db.insert(centralSchema.users).values({
       id: 'existing-user-2',
@@ -101,7 +101,7 @@ describe('linkOrCreateUser', () => {
       updatedAt: '2025-01-01T00:00:00.000Z',
     }).run();
 
-    const result = linkOrCreateUser(db, {
+    const result = await linkOrCreateUser(db, {
       email: 'bob@example.com',
       name: 'Bob OAuth',
       avatarUrl: 'https://oauth.com/bob.jpg',
@@ -115,8 +115,8 @@ describe('linkOrCreateUser', () => {
     expect(result.avatarUrl).toBe('https://oauth.com/bob.jpg');
   });
 
-  it('when email is new: creates user with password_hash=null and oauth_accounts row', () => {
-    const result = linkOrCreateUser(db, {
+  it('when email is new: creates user with password_hash=null and oauth_accounts row', async () => {
+    const result = await linkOrCreateUser(db, {
       email: 'charlie@example.com',
       name: 'Charlie New',
       avatarUrl: 'https://oauth.com/charlie.jpg',
@@ -152,9 +152,9 @@ describe('linkOrCreateUser', () => {
     expect(oauthRows[0].expiresAt).toBe(1700000000);
   });
 
-  it('when Apple relay email: always creates new user (no auto-link)', () => {
+  it('when Apple relay email: always creates new user (no auto-link)', async () => {
     const newRelayEmail = 'def456@privaterelay.appleid.com';
-    const result = linkOrCreateUser(db, {
+    const result = await linkOrCreateUser(db, {
       email: newRelayEmail,
       name: 'New Apple User',
       provider: 'apple',
@@ -177,8 +177,8 @@ describe('linkOrCreateUser', () => {
     expect(oauthRows[0].provider).toBe('apple');
   });
 
-  it('when new user with no name provided: uses email prefix as name', () => {
-    const result = linkOrCreateUser(db, {
+  it('when new user with no name provided: uses email prefix as name', async () => {
+    const result = await linkOrCreateUser(db, {
       email: 'dave@example.com',
       provider: 'google',
       providerAccountId: 'google-abc',

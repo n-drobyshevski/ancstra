@@ -22,7 +22,7 @@ export interface Contribution {
   updatedAt: string;
 }
 
-export function submitContribution(
+export async function submitContribution(
   familyDb: FamilyDb,
   opts: {
     userId: string;
@@ -31,11 +31,11 @@ export function submitContribution(
     entityId?: string;
     payload: string;
   },
-): string {
+): Promise<string> {
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
 
-  familyDb
+  await familyDb
     .insert(pendingContributions)
     .values({
       id,
@@ -53,8 +53,8 @@ export function submitContribution(
   return id;
 }
 
-export function getPendingContributions(familyDb: FamilyDb): Contribution[] {
-  return familyDb
+export async function getPendingContributions(familyDb: FamilyDb): Promise<Contribution[]> {
+  return await familyDb
     .select()
     .from(pendingContributions)
     .where(eq(pendingContributions.status, 'pending'))
@@ -62,7 +62,7 @@ export function getPendingContributions(familyDb: FamilyDb): Contribution[] {
     .all();
 }
 
-export function reviewContribution(
+export async function reviewContribution(
   familyDb: FamilyDb,
   opts: {
     contributionId: string;
@@ -70,12 +70,12 @@ export function reviewContribution(
     action: 'approve' | 'reject';
     comment?: string;
   },
-): { success: boolean; alreadyReviewed?: boolean } {
+): Promise<{ success: boolean; alreadyReviewed?: boolean }> {
   const now = new Date().toISOString();
   const newStatus = opts.action === 'approve' ? 'approved' : 'rejected';
 
   // Atomic double-review guard: only update if still pending
-  const result = familyDb
+  const result = await familyDb
     .update(pendingContributions)
     .set({
       status: newStatus,
@@ -93,49 +93,51 @@ export function reviewContribution(
     .run();
 
   // If no rows changed, it was already reviewed
-  if (result.changes === 0) {
+  // Handle both better-sqlite3 (result.changes) and libsql (result.rowsAffected) drivers
+  const rowsChanged = (result as { changes?: number }).changes ?? (result as { rowsAffected?: number }).rowsAffected ?? 0;
+  if (rowsChanged === 0) {
     return { success: false, alreadyReviewed: true };
   }
 
   // On approve, apply the payload
   if (opts.action === 'approve') {
-    const contrib = familyDb
+    const contrib = await familyDb
       .select()
       .from(pendingContributions)
       .where(eq(pendingContributions.id, opts.contributionId))
       .get();
 
     if (contrib) {
-      applyContribution(familyDb, contrib);
+      await applyContribution(familyDb, contrib);
     }
   }
 
   return { success: true };
 }
 
-function applyContribution(
+async function applyContribution(
   familyDb: FamilyDb,
   contrib: Contribution,
-): void {
+): Promise<void> {
   const payload = JSON.parse(contrib.payload);
 
   if (contrib.entityType === 'person') {
     if (contrib.operation === 'create') {
-      applyPersonCreate(familyDb, payload, contrib.userId);
+      await applyPersonCreate(familyDb, payload, contrib.userId);
     }
     // Future: handle update and delete operations
   }
   // Future: handle other entity types (family, event, source, media)
 }
 
-function applyPersonCreate(
+async function applyPersonCreate(
   familyDb: FamilyDb,
   payload: Record<string, unknown>,
   createdBy: string,
-): void {
+): Promise<void> {
   const now = new Date().toISOString();
 
-  familyDb
+  await familyDb
     .insert(persons)
     .values({
       id: payload.id as string | undefined,

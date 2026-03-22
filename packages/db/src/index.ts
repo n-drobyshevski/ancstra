@@ -1,32 +1,45 @@
 import 'dotenv/config';
 import path from 'path';
 import os from 'os';
-import { drizzle } from 'drizzle-orm/better-sqlite3';
-import BetterSqlite3 from 'better-sqlite3';
+import { drizzle } from 'drizzle-orm/libsql';
+import { createClient } from '@libsql/client';
 import * as schema from './family-schema';
 import * as centralSchema from './central-schema';
 
+export function isWebMode(url?: string): boolean {
+  return (url || '').startsWith('libsql://');
+}
+
+function resolveUrl(url: string): { url: string; authToken?: string } {
+  if (url.startsWith('libsql://')) {
+    return { url, authToken: process.env.TURSO_AUTH_TOKEN };
+  }
+  if (url.startsWith('file:')) return { url };
+  const absPath = path.isAbsolute(url) ? url : path.resolve(url);
+  return { url: `file:${absPath}` };
+}
+
 export function createDb(url?: string) {
-  return drizzle({
-    connection: { source: url || process.env.DATABASE_URL || './ancstra.db' },
-    schema,
-  });
+  const dbUrl = url || process.env.DATABASE_URL || './ancstra.db';
+  const client = createClient(resolveUrl(dbUrl));
+  return drizzle({ client, schema });
 }
 
 export function createCentralDb(url?: string) {
-  const defaultPath = path.join(os.homedir(), '.ancstra', 'ancstra.sqlite');
-  return drizzle({
-    connection: { source: url || process.env.CENTRAL_DATABASE_URL || defaultPath },
-    schema: centralSchema,
-  });
+  const dbUrl = url || process.env.CENTRAL_DATABASE_URL || path.join(os.homedir(), '.ancstra', 'ancstra.sqlite');
+  const client = createClient(resolveUrl(dbUrl));
+  return drizzle({ client, schema: centralSchema });
 }
 
 export function createFamilyDb(dbFilename: string) {
-  const familiesDir = path.join(os.homedir(), '.ancstra', 'families');
-  return drizzle({
-    connection: { source: path.join(familiesDir, dbFilename) },
-    schema,
-  });
+  let dbUrl: string;
+  if (dbFilename.startsWith('libsql://') || dbFilename.startsWith('file:')) {
+    dbUrl = dbFilename;
+  } else {
+    dbUrl = path.join(os.homedir(), '.ancstra', 'families', dbFilename);
+  }
+  const client = createClient(resolveUrl(dbUrl));
+  return drizzle({ client, schema });
 }
 
 export type CentralDatabase = ReturnType<typeof createCentralDb>;
@@ -35,9 +48,18 @@ export type FamilyDatabase = ReturnType<typeof createFamilyDb>;
 /**
  * Initialise FTS5 full-text search on person_names.
  * Creates the virtual table, auto-sync triggers, and rebuilds the index.
+ * Only works in local mode (better-sqlite3); skipped for Turso/web mode.
  */
 export function initFts5(url?: string) {
   const dbPath = url || process.env.DATABASE_URL || './ancstra.db';
+  if (isWebMode(dbPath)) {
+    console.warn('FTS5 init skipped in web mode');
+    return;
+  }
+
+  // Dynamic require for local-only FTS5 init (better-sqlite3 is a dev/optional dependency)
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const BetterSqlite3 = require('better-sqlite3');
   const raw = new BetterSqlite3(dbPath);
 
   try {

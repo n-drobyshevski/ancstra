@@ -48,9 +48,9 @@ describe('moderation', () => {
   });
 
   describe('submitContribution', () => {
-    it('creates a pending_contributions row with status pending', () => {
+    it('creates a pending_contributions row with status pending', async () => {
       const payload = JSON.stringify({ sex: 'M', isLiving: true, privacyLevel: 'private' });
-      const id = submitContribution(db, {
+      const id = await submitContribution(db, {
         userId: 'user-1',
         operation: 'create',
         entityType: 'person',
@@ -68,8 +68,8 @@ describe('moderation', () => {
       expect(rows[0].payload).toBe(payload);
     });
 
-    it('stores entityId when provided', () => {
-      const id = submitContribution(db, {
+    it('stores entityId when provided', async () => {
+      const id = await submitContribution(db, {
         userId: 'user-1',
         operation: 'update',
         entityType: 'person',
@@ -83,16 +83,16 @@ describe('moderation', () => {
   });
 
   describe('getPendingContributions', () => {
-    it('returns all contributions with status pending ordered by createdAt', () => {
+    it('returns all contributions with status pending ordered by createdAt', async () => {
       // Insert contributions with different statuses
-      submitContribution(db, {
+      await submitContribution(db, {
         userId: 'user-1',
         operation: 'create',
         entityType: 'person',
         payload: JSON.stringify({ first: true }),
       });
 
-      const secondId = submitContribution(db, {
+      const secondId = await submitContribution(db, {
         userId: 'user-2',
         operation: 'create',
         entityType: 'person',
@@ -105,27 +105,27 @@ describe('moderation', () => {
         .where(eq(pendingContributions.id, secondId))
         .run();
 
-      submitContribution(db, {
+      await submitContribution(db, {
         userId: 'user-3',
         operation: 'create',
         entityType: 'event',
         payload: JSON.stringify({ third: true }),
       });
 
-      const pending = getPendingContributions(db);
+      const pending = await getPendingContributions(db);
       expect(pending).toHaveLength(2);
       expect(pending[0].userId).toBe('user-1');
       expect(pending[1].userId).toBe('user-3');
     });
 
-    it('returns empty array when no pending contributions', () => {
-      const pending = getPendingContributions(db);
+    it('returns empty array when no pending contributions', async () => {
+      const pending = await getPendingContributions(db);
       expect(pending).toHaveLength(0);
     });
   });
 
   describe('reviewContribution — approve', () => {
-    it('applies person payload, bumps version, and sets status to approved', () => {
+    it('applies person payload, bumps version, and sets status to approved', async () => {
       const personPayload = {
         id: 'new-person-1',
         sex: 'F',
@@ -134,14 +134,14 @@ describe('moderation', () => {
         notes: 'Test person',
       };
 
-      const contribId = submitContribution(db, {
+      const contribId = await submitContribution(db, {
         userId: 'user-1',
         operation: 'create',
         entityType: 'person',
         payload: JSON.stringify(personPayload),
       });
 
-      const result = reviewContribution(db, {
+      const result = await reviewContribution(db, {
         contributionId: contribId,
         reviewerId: 'admin-1',
         action: 'approve',
@@ -169,15 +169,15 @@ describe('moderation', () => {
   });
 
   describe('reviewContribution — reject', () => {
-    it('sets status to rejected and adds reviewer comment', () => {
-      const contribId = submitContribution(db, {
+    it('sets status to rejected and adds reviewer comment', async () => {
+      const contribId = await submitContribution(db, {
         userId: 'user-1',
         operation: 'create',
         entityType: 'person',
         payload: JSON.stringify({ id: 'person-x', sex: 'M' }),
       });
 
-      const result = reviewContribution(db, {
+      const result = await reviewContribution(db, {
         contributionId: contribId,
         reviewerId: 'admin-1',
         action: 'reject',
@@ -200,8 +200,8 @@ describe('moderation', () => {
   });
 
   describe('double-review guard', () => {
-    it('returns alreadyReviewed when contribution was already approved', () => {
-      const contribId = submitContribution(db, {
+    it('returns alreadyReviewed when contribution was already approved', async () => {
+      const contribId = await submitContribution(db, {
         userId: 'user-1',
         operation: 'create',
         entityType: 'person',
@@ -209,7 +209,7 @@ describe('moderation', () => {
       });
 
       // First review — approve
-      const first = reviewContribution(db, {
+      const first = await reviewContribution(db, {
         contributionId: contribId,
         reviewerId: 'admin-1',
         action: 'approve',
@@ -217,7 +217,7 @@ describe('moderation', () => {
       expect(first.success).toBe(true);
 
       // Second review — should be guarded
-      const second = reviewContribution(db, {
+      const second = await reviewContribution(db, {
         contributionId: contribId,
         reviewerId: 'admin-2',
         action: 'reject',
@@ -227,8 +227,8 @@ describe('moderation', () => {
       expect(second.alreadyReviewed).toBe(true);
     });
 
-    it('returns alreadyReviewed when contribution was already rejected', () => {
-      const contribId = submitContribution(db, {
+    it('returns alreadyReviewed when contribution was already rejected', async () => {
+      const contribId = await submitContribution(db, {
         userId: 'user-1',
         operation: 'create',
         entityType: 'person',
@@ -236,7 +236,7 @@ describe('moderation', () => {
       });
 
       // First review — reject
-      reviewContribution(db, {
+      await reviewContribution(db, {
         contributionId: contribId,
         reviewerId: 'admin-1',
         action: 'reject',
@@ -244,7 +244,7 @@ describe('moderation', () => {
       });
 
       // Second review — should be guarded
-      const second = reviewContribution(db, {
+      const second = await reviewContribution(db, {
         contributionId: contribId,
         reviewerId: 'admin-2',
         action: 'approve',

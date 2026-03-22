@@ -24,7 +24,7 @@ export async function createFamilyAction(
   }
 
   const centralDb = createCentralDb();
-  const { familyId } = createFamily(centralDb, {
+  const { familyId } = await createFamily(centralDb, {
     name: name.trim(),
     ownerId: session.user.id,
   });

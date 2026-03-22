@@ -12,7 +12,7 @@ export async function GET(
   requirePermission(ctx.role, 'contributions:review');
 
   const familyDb = createFamilyDb(ctx.dbFilename);
-  const contributions = getPendingContributions(familyDb);
+  const contributions = await getPendingContributions(familyDb);
 
   return NextResponse.json(contributions);
 }
