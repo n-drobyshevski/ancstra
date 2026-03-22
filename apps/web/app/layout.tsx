@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import { CommandPalette } from "@/components/command-palette";
+import { ServiceWorkerRegister } from "@/components/sw-register";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -33,6 +34,7 @@ export default function RootLayout({
             {children}
             <CommandPalette />
             <Toaster />
+            <ServiceWorkerRegister />
           </ThemeProvider>
         </body>
     </html>
