@@ -5,13 +5,16 @@ import { useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 
-export type WorkspaceView = 'board' | 'conflicts' | 'timeline' | 'hints';
+export type WorkspaceView = 'board' | 'matrix' | 'conflicts' | 'timeline' | 'canvas' | 'hints' | 'proof';
 
 const tabs: { value: WorkspaceView; label: string }[] = [
   { value: 'board', label: 'Board' },
+  { value: 'matrix', label: 'Matrix' },
   { value: 'conflicts', label: 'Conflicts' },
   { value: 'timeline', label: 'Timeline' },
+  { value: 'canvas', label: 'Canvas' },
   { value: 'hints', label: 'Hints' },
+  { value: 'proof', label: 'Proof Summary' },
 ];
 
 interface WorkspaceTabsProps {
