@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, index, unique } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, real, index, unique } from 'drizzle-orm/sqlite-core';
 
 // ==================== PERSONS ====================
 export const persons = sqliteTable('persons', {
@@ -175,6 +175,36 @@ export const pendingContributions = sqliteTable('pending_contributions', {
   updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
 }, (table) => [
   index('idx_pending_status').on(table.status),
+]);
+
+// ==================== BIOGRAPHIES (AI-generated) ====================
+export const biographies = sqliteTable('biographies', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  personId: text('person_id').notNull().references(() => persons.id, { onDelete: 'cascade' }),
+  tone: text('tone', { enum: ['formal', 'conversational', 'storytelling'] }).notNull(),
+  length: text('length', { enum: ['brief', 'standard', 'detailed'] }).notNull(),
+  focus: text('focus', { enum: ['life_overview', 'immigration', 'military', 'family_life', 'career'] }).notNull(),
+  content: text('content').notNull(),
+  model: text('model').notNull(),
+  inputTokens: integer('input_tokens'),
+  outputTokens: integer('output_tokens'),
+  costUsd: real('cost_usd'),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+}, (table) => [
+  unique('uq_bio_person_opts').on(table.personId, table.tone, table.length, table.focus),
+  index('idx_biographies_person').on(table.personId),
+]);
+
+// ==================== HISTORICAL CONTEXT (AI-generated) ====================
+export const historicalContext = sqliteTable('historical_context', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  personId: text('person_id').notNull().references(() => persons.id, { onDelete: 'cascade' }),
+  events: text('events').notNull(), // JSON array of { year, title, description, relevance }
+  model: text('model').notNull(),
+  costUsd: real('cost_usd'),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+}, (table) => [
+  unique('uq_hist_ctx_person').on(table.personId),
 ]);
 
 export * from './research-schema';

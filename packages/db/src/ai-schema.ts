@@ -10,7 +10,7 @@ export const aiUsage = sqliteTable('ai_usage', {
   outputTokens: integer('output_tokens').notNull(),
   costUsd: real('cost_usd').notNull(),
   taskType: text('task_type', {
-    enum: ['chat', 'extraction', 'analysis', 'citation'],
+    enum: ['chat', 'extraction', 'analysis', 'citation', 'biography', 'historical_context'],
   }).notNull(),
   sessionId: text('session_id'),
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
