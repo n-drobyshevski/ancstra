@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { createDb, persons, personNames, events } from '@ancstra/db';
-import { eq, isNull, sql } from 'drizzle-orm';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 import { createPersonSchema } from '@/lib/validation';
 import { parseDateToSort } from '@ancstra/shared';
 
@@ -106,8 +106,16 @@ export async function GET(request: Request) {
   const page = Math.max(1, parseInt(searchParams.get('page') ?? '1'));
   const pageSize = Math.min(100, Math.max(1, parseInt(searchParams.get('pageSize') ?? '20')));
   const offset = (page - 1) * pageSize;
+  const q = searchParams.get('q');
 
   const db = createDb();
+
+  const whereClause = q
+    ? and(
+        isNull(persons.deletedAt),
+        sql`(${personNames.givenName} LIKE ${'%' + q + '%'} OR ${personNames.surname} LIKE ${'%' + q + '%'})`
+      )
+    : isNull(persons.deletedAt);
 
   const rows = db
     .select({
@@ -122,15 +130,24 @@ export async function GET(request: Request) {
       personNames,
       sql`${personNames.personId} = ${persons.id} AND ${personNames.isPrimary} = 1`
     )
-    .where(isNull(persons.deletedAt))
+    .where(whereClause)
     .limit(pageSize)
     .offset(offset)
     .all();
 
-  const [{ count }] = db
+  const countQuery = db
     .select({ count: sql<number>`count(*)` })
-    .from(persons)
-    .where(isNull(persons.deletedAt))
+    .from(persons);
+
+  if (q) {
+    countQuery.innerJoin(
+      personNames,
+      sql`${personNames.personId} = ${persons.id} AND ${personNames.isPrimary} = 1`
+    );
+  }
+
+  const [{ count }] = countQuery
+    .where(whereClause)
     .all();
 
   // Add birth/death dates from events

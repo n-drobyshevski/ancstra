@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import Database from 'better-sqlite3';
-import { eq, and, isNull, inArray } from 'drizzle-orm';
+import { eq, and, isNull, inArray, sql } from 'drizzle-orm';
 import * as schema from '@ancstra/db';
 import { parseDateToSort } from '@ancstra/shared';
 import { createPersonSchema } from '../../lib/validation';
@@ -337,6 +337,31 @@ describe('Person CRUD (integration)', () => {
       .where(and(eq(persons.id, id), isNull(persons.deletedAt)))
       .all();
     expect(result).toHaveLength(0);
+  });
+
+  it('filters persons by surname with LIKE search', () => {
+    createPerson({ givenName: 'Alice', surname: 'Smith', sex: 'F', isLiving: true });
+    createPerson({ givenName: 'Bob', surname: 'Jones', sex: 'M', isLiving: true });
+    createPerson({ givenName: 'Charlie', surname: 'Smith', sex: 'M', isLiving: true });
+
+    const smithRows = db.select({ id: persons.id, givenName: personNames.givenName })
+      .from(persons)
+      .innerJoin(personNames, sql`${personNames.personId} = ${persons.id} AND ${personNames.isPrimary} = 1`)
+      .where(and(isNull(persons.deletedAt), sql`(${personNames.surname} LIKE '%Smith%' OR ${personNames.givenName} LIKE '%Smith%')`))
+      .all();
+    expect(smithRows).toHaveLength(2);
+  });
+
+  it('filters persons by given name with LIKE search', () => {
+    createPerson({ givenName: 'Alice', surname: 'Smith', sex: 'F', isLiving: true });
+    createPerson({ givenName: 'Bob', surname: 'Jones', sex: 'M', isLiving: true });
+
+    const aliceRows = db.select({ id: persons.id })
+      .from(persons)
+      .innerJoin(personNames, sql`${personNames.personId} = ${persons.id} AND ${personNames.isPrimary} = 1`)
+      .where(and(isNull(persons.deletedAt), sql`(${personNames.surname} LIKE '%Alice%' OR ${personNames.givenName} LIKE '%Alice%')`))
+      .all();
+    expect(aliceRows).toHaveLength(1);
   });
 
   it('soft-deleted persons are excluded from queries', () => {
