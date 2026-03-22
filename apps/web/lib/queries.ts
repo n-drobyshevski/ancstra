@@ -11,6 +11,9 @@ import type {
   PersonDetail,
   PersonListItem,
   Event as EventType,
+  TreeData,
+  FamilyRecord,
+  ChildLink,
 } from '@ancstra/shared';
 
 // ---------------------------------------------------------------------------
@@ -272,4 +275,81 @@ export function assemblePersonDetail(
     children: Array.from(childMap.values()),
     events: personEvents,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Exported: fetch all tree data (persons + families + child links)
+// ---------------------------------------------------------------------------
+export function getTreeData(db: Database): TreeData {
+  const personRows = db
+    .select({
+      id: persons.id,
+      sex: persons.sex,
+      isLiving: persons.isLiving,
+      givenName: personNames.givenName,
+      surname: personNames.surname,
+    })
+    .from(persons)
+    .innerJoin(
+      personNames,
+      and(eq(personNames.personId, persons.id), eq(personNames.isPrimary, true))
+    )
+    .where(isNull(persons.deletedAt))
+    .all();
+
+  const personIds = personRows.map((r) => r.id);
+  const birthDeathEvents = personIds.length > 0
+    ? db
+        .select({
+          personId: events.personId,
+          eventType: events.eventType,
+          dateOriginal: events.dateOriginal,
+        })
+        .from(events)
+        .where(
+          sql`${events.personId} IN (${sql.join(
+            personIds.map((id) => sql`${id}`),
+            sql`, `
+          )}) AND ${events.eventType} IN ('birth', 'death')`
+        )
+        .all()
+    : [];
+
+  const eventsByPerson = new Map<string, { birthDate?: string | null; deathDate?: string | null }>();
+  for (const ev of birthDeathEvents) {
+    if (!ev.personId) continue;
+    const entry = eventsByPerson.get(ev.personId) ?? {};
+    if (ev.eventType === 'birth') entry.birthDate = ev.dateOriginal;
+    if (ev.eventType === 'death') entry.deathDate = ev.dateOriginal;
+    eventsByPerson.set(ev.personId, entry);
+  }
+
+  const personsWithDates = personRows.map((r) => ({
+    ...r,
+    birthDate: eventsByPerson.get(r.id)?.birthDate ?? null,
+    deathDate: eventsByPerson.get(r.id)?.deathDate ?? null,
+  }));
+
+  const familyRows: FamilyRecord[] = db
+    .select({
+      id: families.id,
+      partner1Id: families.partner1Id,
+      partner2Id: families.partner2Id,
+      relationshipType: families.relationshipType,
+      validationStatus: families.validationStatus,
+    })
+    .from(families)
+    .where(isNull(families.deletedAt))
+    .all();
+
+  const childRows: ChildLink[] = db
+    .select({
+      familyId: children.familyId,
+      personId: children.personId,
+      validationStatus: children.validationStatus,
+    })
+    .from(children)
+    .all();
+
+  return { persons: personsWithDates, families: familyRows, childLinks: childRows };
 }
