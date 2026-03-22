@@ -1,6 +1,6 @@
 'use server';
 
-import { createDb, users } from '@ancstra/db';
+import { createCentralDb, centralSchema } from '@ancstra/db';
 import { eq } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 import { signUpSchema } from '@/lib/validation';
@@ -31,13 +31,13 @@ export async function signUp(
   }
 
   const { name, email, password } = validated.data;
-  const db = createDb();
+  const centralDb = createCentralDb();
 
   // Check if user already exists
-  const [existing] = db
+  const [existing] = centralDb
     .select()
-    .from(users)
-    .where(eq(users.email, email))
+    .from(centralSchema.users)
+    .where(eq(centralSchema.users.email, email))
     .all();
 
   if (existing) {
@@ -46,7 +46,7 @@ export async function signUp(
 
   const passwordHash = await bcrypt.hash(password, 10);
 
-  db.insert(users)
+  centralDb.insert(centralSchema.users)
     .values({ name, email, passwordHash })
     .run();
 
@@ -57,5 +57,5 @@ export async function signUp(
     redirect: false,
   });
 
-  redirect('/dashboard');
+  redirect('/create-family');
 }
