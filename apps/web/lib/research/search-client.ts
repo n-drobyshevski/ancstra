@@ -22,7 +22,7 @@ interface ResearchItemsResponse {
   }>;
 }
 
-export function useResearchSearch(query: string, enabled = true) {
+export function useResearchSearch(query: string, enabled = true, providers?: string) {
   const [data, setData] = useState<SearchResponse | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -44,7 +44,10 @@ export function useResearchSearch(query: string, enabled = true) {
     setIsLoading(true);
     setError(null);
 
-    fetch(`/api/research/search?q=${encodeURIComponent(query)}`, {
+    const params = new URLSearchParams({ q: query });
+    if (providers) params.set('providers', providers);
+
+    fetch(`/api/research/search?${params}`, {
       signal: controller.signal,
     })
       .then((res) => {
@@ -62,7 +65,7 @@ export function useResearchSearch(query: string, enabled = true) {
       });
 
     return () => controller.abort();
-  }, [query, enabled]);
+  }, [query, enabled, providers]);
 
   return { data, error, isLoading };
 }
