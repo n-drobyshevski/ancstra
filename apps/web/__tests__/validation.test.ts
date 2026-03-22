@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { createPersonSchema, signUpSchema } from '../lib/validation';
+import {
+  createPersonSchema,
+  signUpSchema,
+  updatePersonSchema,
+  createFamilySchema,
+  createEventSchema,
+} from '../lib/validation';
 
 describe('createPersonSchema', () => {
   it('accepts valid input', () => {
@@ -75,5 +81,38 @@ describe('signUpSchema', () => {
       password: 'short',
     });
     expect(result.success).toBe(false);
+  });
+});
+
+describe('updatePersonSchema', () => {
+  it('accepts partial update', () => {
+    expect(updatePersonSchema.safeParse({ givenName: 'Jane' }).success).toBe(true);
+  });
+  it('rejects empty object', () => {
+    expect(updatePersonSchema.safeParse({}).success).toBe(false);
+  });
+});
+
+describe('createFamilySchema', () => {
+  it('accepts two partners', () => {
+    expect(createFamilySchema.safeParse({ partner1Id: 'a', partner2Id: 'b' }).success).toBe(true);
+  });
+  it('accepts single partner', () => {
+    expect(createFamilySchema.safeParse({ partner1Id: 'a' }).success).toBe(true);
+  });
+  it('rejects no partners', () => {
+    expect(createFamilySchema.safeParse({}).success).toBe(false);
+  });
+});
+
+describe('createEventSchema', () => {
+  it('accepts valid event with personId', () => {
+    expect(createEventSchema.safeParse({ eventType: 'residence', personId: 'a' }).success).toBe(true);
+  });
+  it('rejects missing eventType', () => {
+    expect(createEventSchema.safeParse({ personId: 'a' }).success).toBe(false);
+  });
+  it('rejects missing personId and familyId', () => {
+    expect(createEventSchema.safeParse({ eventType: 'birth' }).success).toBe(false);
   });
 });
