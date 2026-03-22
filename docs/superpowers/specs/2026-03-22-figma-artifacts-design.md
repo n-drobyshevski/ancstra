@@ -19,7 +19,7 @@ All markdown deliverables for Phase 0 are complete (user-flows.md, design-system
 1. Build each section as a standalone HTML page with SVG diagrams and styled specimens
 2. Preview in browser for iteration
 3. Capture into Figma via `generate_figma_design` MCP tool with `outputMode: existingFile`
-4. One capture per section (12 content captures + placeholder pages)
+4. One capture per section (~20 content frames across 2 active pages + placeholder pages)
 
 ---
 
@@ -135,6 +135,7 @@ Source: `docs/design/user-flows.md` Flow 3
     → Drag node → position saved (debounced)
     → Minimap click → canvas jumps
     → Breadcrumb click → re-center
+    → Export dropdown → PDF | PNG | SVG
 [END]
 ```
 
@@ -222,6 +223,8 @@ Three-branch decision tree, most complex flow.
 
 ## Page 6: Design System — 14 Frames
 
+> Note: Frame numbers here (6.1-6.14) differ from `figma-design-sprint.md` because shadcn/ui base components (frame 6.8 in that plan) are deferred to pass 2. Custom components are renumbered contiguously as 6.7-6.14.
+
 ### Foundations (6 frames)
 
 #### Frame 6.1: Color Palette — ~1400x600
@@ -233,7 +236,7 @@ Light and dark mode side by side. Each swatch: 80x80px rounded rectangle with:
 - CSS variable name (e.g. `--primary`)
 - OKLCH value (e.g. `oklch(0.55 0.15 250)`)
 
-**Rows:** Primary (2), Secondary (2), Accent (2), Destructive (2), Surfaces (4), Text (2), Borders (3), Sidebar (3) = 20 swatches x 2 modes = 40 swatches total.
+**Rows:** Primary (2), Secondary (2), Accent (2), Destructive (2), Surfaces (4), Text (3: foreground, card-foreground, muted-foreground), Borders (3), Sidebar (3) = 21 swatches x 2 modes = 42 swatches total.
 
 #### Frame 6.2: Semantic Colors — ~1200x500
 
@@ -389,7 +392,7 @@ Source: `docs/design/component-inventory.md` Custom Component 8
 
 5 events with Lucide icons:
 - Birth (Baby) — 15 Mar 1845, Springfield, IL
-- Baptism (Cross) — 20 Mar 1845, First Baptist Church
+- Baptism (Church) — 20 Mar 1845, First Baptist Church
 - Marriage (Heart) — 12 Jun 1870, Chicago, IL — "to Mary Johnson"
 - Residence (House) — 1880, Cook County, IL — "Census record"
 - Death (Cross) — 23 Nov 1923, Chicago, IL
