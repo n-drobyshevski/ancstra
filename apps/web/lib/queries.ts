@@ -62,7 +62,7 @@ export function searchPersonsFts(
   }>;
 
   // Fetch birth/death dates for each matched person
-  return rows.map((row) => {
+  return rows.map((row): PersonListItem => {
     const birthEvent = rawDb
       .prepare(
         `SELECT date_original FROM events WHERE person_id = ? AND event_type = 'birth' LIMIT 1`,
@@ -79,7 +79,7 @@ export function searchPersonsFts(
       id: row.id,
       givenName: row.givenName,
       surname: row.surname,
-      sex: row.sex,
+      sex: row.sex as 'M' | 'F' | 'U',
       isLiving: Boolean(row.isLiving),
       birthDate: birthEvent?.date_original ?? null,
       deathDate: deathEvent?.date_original ?? null,

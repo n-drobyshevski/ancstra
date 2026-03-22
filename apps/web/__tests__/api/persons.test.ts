@@ -357,7 +357,7 @@ describe('Person CRUD (integration)', () => {
     createPerson({ givenName: 'Bob', surname: 'Jones', sex: 'M', isLiving: true });
     createPerson({ givenName: 'Charlie', surname: 'Smith', sex: 'M', isLiving: true });
 
-    const smithRows = searchPersonsFts(db, 'Smith', 100);
+    const smithRows = searchPersonsFts(db as any,'Smith', 100);
     expect(smithRows).toHaveLength(2);
     expect(smithRows.every((r) => r.surname === 'Smith')).toBe(true);
   });
@@ -366,7 +366,7 @@ describe('Person CRUD (integration)', () => {
     createPerson({ givenName: 'Alice', surname: 'Smith', sex: 'F', isLiving: true });
     createPerson({ givenName: 'Bob', surname: 'Jones', sex: 'M', isLiving: true });
 
-    const aliceRows = searchPersonsFts(db, 'Alice', 100);
+    const aliceRows = searchPersonsFts(db as any,'Alice', 100);
     expect(aliceRows).toHaveLength(1);
     expect(aliceRows[0].givenName).toBe('Alice');
   });
@@ -376,7 +376,7 @@ describe('Person CRUD (integration)', () => {
     createPerson({ givenName: 'Bob', surname: 'Smithson', sex: 'M', isLiving: true });
 
     // "Smi" should match both Smith and Smithson via prefix
-    const prefixRows = searchPersonsFts(db, 'Smi', 100);
+    const prefixRows = searchPersonsFts(db as any,'Smi', 100);
     expect(prefixRows).toHaveLength(2);
   });
 

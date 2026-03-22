@@ -178,7 +178,7 @@ describe('searchPersonsFts', () => {
     createPerson({ givenName: 'Bob', surname: 'Smith', sex: 'M', isLiving: true });
     createPerson({ givenName: 'Charlie', surname: 'Jones', sex: 'M', isLiving: true });
 
-    const results = searchPersonsFts(db, 'smith');
+    const results = searchPersonsFts(db as any, 'smith');
     expect(results).toHaveLength(2);
     expect(results.every((r) => r.surname === 'Smith')).toBe(true);
   });
@@ -188,7 +188,7 @@ describe('searchPersonsFts', () => {
     createPerson({ givenName: 'Jonathan', surname: 'Adams', sex: 'M', isLiving: true });
     createPerson({ givenName: 'Alice', surname: 'Walker', sex: 'F', isLiving: true });
 
-    const results = searchPersonsFts(db, 'jo');
+    const results = searchPersonsFts(db as any, 'jo');
     expect(results).toHaveLength(2);
     const names = results.map((r) => r.givenName).sort();
     expect(names).toEqual(['John', 'Jonathan']);
@@ -203,33 +203,33 @@ describe('searchPersonsFts', () => {
       .where(eq(persons.id, id))
       .run();
 
-    const results = searchPersonsFts(db, 'deleted');
+    const results = searchPersonsFts(db as any, 'deleted');
     expect(results).toHaveLength(0);
   });
 
   it('returns empty for no match', () => {
     createPerson({ givenName: 'Alice', surname: 'Smith', sex: 'F', isLiving: true });
 
-    const results = searchPersonsFts(db, 'zzzznotfound');
+    const results = searchPersonsFts(db as any, 'zzzznotfound');
     expect(results).toHaveLength(0);
   });
 
   it('returns empty for empty/special-char-only query', () => {
     createPerson({ givenName: 'Alice', surname: 'Smith', sex: 'F', isLiving: true });
 
-    expect(searchPersonsFts(db, '')).toHaveLength(0);
-    expect(searchPersonsFts(db, '***')).toHaveLength(0);
-    expect(searchPersonsFts(db, '"\'()')).toHaveLength(0);
+    expect(searchPersonsFts(db as any, '')).toHaveLength(0);
+    expect(searchPersonsFts(db as any, '***')).toHaveLength(0);
+    expect(searchPersonsFts(db as any, '"\'()')).toHaveLength(0);
   });
 
   it('auto-syncs on insert (FTS trigger fires)', () => {
     // Search before inserting - nothing found
-    expect(searchPersonsFts(db, 'newperson')).toHaveLength(0);
+    expect(searchPersonsFts(db as any, 'newperson')).toHaveLength(0);
 
     // Insert after FTS setup
     createPerson({ givenName: 'NewPerson', surname: 'Test', sex: 'M', isLiving: true });
 
-    const results = searchPersonsFts(db, 'newperson');
+    const results = searchPersonsFts(db as any, 'newperson');
     expect(results).toHaveLength(1);
     expect(results[0].givenName).toBe('NewPerson');
   });
@@ -244,7 +244,7 @@ describe('searchPersonsFts', () => {
       deathDate: '23 Nov 1923',
     });
 
-    const results = searchPersonsFts(db, 'john');
+    const results = searchPersonsFts(db as any, 'john');
     expect(results).toHaveLength(1);
     expect(results[0].birthDate).toBe('15 Mar 1845');
     expect(results[0].deathDate).toBe('23 Nov 1923');
