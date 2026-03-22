@@ -13,6 +13,7 @@
     "@ancstra/ai": "workspace:^",
     "@ancstra/auth": "workspace:*",
     "@ancstra/db": "workspace:^",
+    "@ancstra/export": "workspace:^",
     "@ancstra/matching": "workspace:^",
     "@ancstra/research": "workspace:^",
     "@ancstra/shared": "workspace:^",

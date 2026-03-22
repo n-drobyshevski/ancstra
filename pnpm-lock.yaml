@@ -29,6 +29,9 @@ importers:
       '@ancstra/db':
         specifier: workspace:^
         version: link:../../packages/db
+      '@ancstra/export':
+        specifier: workspace:^
+        version: link:../../packages/export
       '@ancstra/matching':
         specifier: workspace:^
         version: link:../../packages/matching
