@@ -151,37 +151,7 @@ export function applyDagreLayout(nodes: Node[], edges: Edge[]): Node[] {
   return positioned;
 }
 
-const LAYOUT_KEY = 'ancstra-tree-layout';
-
-export function savePositions(nodes: Node[]): void {
-  if (typeof window === 'undefined') return;
-  const positions: Record<string, { x: number; y: number }> = {};
-  for (const n of nodes) {
-    positions[n.id] = { x: n.position.x, y: n.position.y };
-  }
-  localStorage.setItem(LAYOUT_KEY, JSON.stringify(positions));
-}
-
-export function loadPositions(): Record<
-  string,
-  { x: number; y: number }
-> | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const stored = localStorage.getItem(LAYOUT_KEY);
-    if (!stored) return null;
-    return JSON.parse(stored);
-  } catch {
-    return null;
-  }
-}
-
-export function clearPositions(): void {
-  if (typeof window === 'undefined') return;
-  localStorage.removeItem(LAYOUT_KEY);
-}
-
-export function applyStoredPositions(
+export function applyPositionMap(
   nodes: Node[],
   positions: Record<string, { x: number; y: number }>,
 ): Node[] {
@@ -190,6 +160,17 @@ export function applyStoredPositions(
     if (stored) return { ...node, position: stored };
     return node;
   });
+}
+
+export function extractPositions(
+  nodes: Node[],
+): Record<string, { x: number; y: number }> {
+  const positions: Record<string, { x: number; y: number }> = {};
+  for (const n of nodes) {
+    if (n.type === 'draftPerson') continue;
+    positions[n.id] = { x: n.position.x, y: n.position.y };
+  }
+  return positions;
 }
 
 export function validateConnection(

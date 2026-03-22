@@ -203,3 +203,17 @@ export interface CreateCitationInput {
   familyId?: string;
   personNameId?: string;
 }
+
+export interface TreeLayout {
+  id: string;
+  name: string;
+  isDefault: boolean;
+  layoutData?: string;
+  updatedAt: string;
+}
+
+export interface CreateLayoutInput {
+  name: string;
+  layoutData: string;
+  isDefault?: boolean;
+}

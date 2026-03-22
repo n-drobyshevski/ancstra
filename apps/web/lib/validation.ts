@@ -129,3 +129,17 @@ export const createCitationSchema = z.object({
   (data) => data.personId || data.eventId || data.familyId || data.personNameId,
   { message: 'At least one entity link is required' }
 );
+
+export const createLayoutSchema = z.object({
+  name: z.string().min(1, 'Layout name is required'),
+  layoutData: z.string().min(2, 'Layout data is required'),
+  isDefault: z.boolean().optional(),
+});
+
+export const updateLayoutSchema = z.object({
+  name: z.string().min(1).optional(),
+  layoutData: z.string().min(2).optional(),
+}).refine(
+  (data) => Object.values(data).some((v) => v !== undefined),
+  { message: 'At least one field must be provided' }
+);
