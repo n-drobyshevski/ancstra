@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   Home,
+  Users,
   GitBranch,
   Search,
   BookOpen,
@@ -24,6 +25,7 @@ import {
 
 const navItems = [
   { title: 'Dashboard', href: '/dashboard', icon: Home },
+  { title: 'People', href: '/persons', icon: Users },
   { title: 'Tree', href: '/tree', icon: GitBranch },
   { title: 'Search', href: '/search', icon: Search },
   { title: 'Research', href: '/research', icon: BookOpen },
