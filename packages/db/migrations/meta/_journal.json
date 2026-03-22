@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1774149653625,
+      "tag": "0000_cuddly_boomerang",
+      "breakpoints": true
+    }
+  ]
+}
