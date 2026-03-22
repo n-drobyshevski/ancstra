@@ -11,6 +11,7 @@
     "db:seed": "tsx src/seed.ts"
   },
   "dependencies": {
+    "@libsql/client": "^0.17.2",
     "bcryptjs": "^3.0.3",
     "better-sqlite3": "^12.8.0",
     "dotenv": "^17.3.1",
