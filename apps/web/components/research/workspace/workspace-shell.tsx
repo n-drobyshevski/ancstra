@@ -13,6 +13,7 @@ import { ConflictsTab } from '../conflicts/conflicts-tab';
 import { TimelineTab } from '../timeline/timeline-tab';
 import { HintsPanel } from '../hints/hints-panel';
 import { MatrixTab } from '../matrix/matrix-tab';
+import { CanvasTab } from '../canvas/canvas-tab';
 import { ProofTab } from '../proof/proof-tab';
 
 interface PersonSummary {
@@ -97,6 +98,9 @@ function ShellInner({ person, children }: WorkspaceShellProps) {
             )}
             {activeView === 'timeline' && (
               <TimelineTab personId={person.id} />
+            )}
+            {activeView === 'canvas' && (
+              <CanvasTab personId={person.id} />
             )}
             {activeView === 'hints' && (
               <HintsPanel
