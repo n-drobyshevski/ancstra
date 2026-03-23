@@ -24,20 +24,43 @@ const providers: any[] = [
       password: { label: 'Password', type: 'password' },
     },
     authorize: async (credentials) => {
-      const users = await getCentralDb()
-        .select()
-        .from(centralSchema.users)
-        .where(eq(centralSchema.users.email, credentials.email as string))
-        .all();
-      const user = users[0];
-      if (!user) return null;
-      if (!user.passwordHash) return null; // OAuth-only user
-      const valid = await bcrypt.compare(
-        credentials.password as string,
-        user.passwordHash
-      );
-      if (!valid) return null;
-      return { id: user.id, email: user.email, name: user.name };
+      try {
+        const email = credentials?.email as string;
+        const password = credentials?.password as string;
+        console.log('[AUTH] Login attempt for:', email);
+
+        if (!email || !password) {
+          console.log('[AUTH] Missing email or password');
+          return null;
+        }
+
+        const db = getCentralDb();
+        const users = await db
+          .select()
+          .from(centralSchema.users)
+          .where(eq(centralSchema.users.email, email))
+          .all();
+
+        console.log('[AUTH] Found users:', users.length);
+        const user = users[0];
+        if (!user) {
+          console.log('[AUTH] No user found for email:', email);
+          return null;
+        }
+        if (!user.passwordHash) {
+          console.log('[AUTH] User has no password (OAuth-only)');
+          return null;
+        }
+
+        const valid = await bcrypt.compare(password, user.passwordHash);
+        console.log('[AUTH] Password valid:', valid);
+
+        if (!valid) return null;
+        return { id: user.id, email: user.email, name: user.name };
+      } catch (error) {
+        console.error('[AUTH] Error in authorize:', error);
+        return null;
+      }
     },
   }),
 ];
