@@ -102,9 +102,29 @@ export function initFts5(url?: string) {
   }
 }
 
+/**
+ * Set WAL mode and busy timeout for local SQLite databases.
+ * Only works in local mode (better-sqlite3); skipped for Turso/web mode.
+ */
+export function initLocalPragmas(url?: string) {
+  const dbPath = url || process.env.DATABASE_URL || './ancstra.db';
+  if (isWebMode(dbPath)) return;
+
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const BetterSqlite3 = require('better-sqlite3');
+  const raw = new BetterSqlite3(dbPath);
+  try {
+    raw.pragma('journal_mode = WAL');
+    raw.pragma('busy_timeout = 5000');
+  } finally {
+    raw.close();
+  }
+}
+
 export type Database = ReturnType<typeof createDb>;
 export * from './family-schema';
 export * as centralSchema from './central-schema';
 export * from './quality-queries';
 export { rebuildClosureTable, addChildToFamily, removeChildFromFamily } from './closure-table';
 export { rebuildAllSummaries, refreshSummary, refreshRelatedSummaries } from './person-summary';
+export { backupDatabase, pruneBackups, restoreDatabase } from './backup';
