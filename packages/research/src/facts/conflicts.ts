@@ -20,8 +20,8 @@ export const MULTI_VALUED_TYPES = ['residence', 'occupation', 'child_name', 'oth
  * Finds pairs of facts with the same fact_type but different values,
  * excluding multi-valued types where multiple values are expected.
  */
-export function detectConflicts(db: Database, personId: string): ConflictPair[] {
-  const rows = db.all<ConflictPair>(sql`
+export async function detectConflicts(db: Database, personId: string): Promise<ConflictPair[]> {
+  const rows = await db.all<ConflictPair>(sql`
     SELECT f1.fact_type AS factType,
            f1.fact_value AS valueA,
            f2.fact_value AS valueB,
@@ -46,13 +46,13 @@ export function detectConflicts(db: Database, personId: string): ConflictPair[] 
  * Resolve a conflict by setting the winner's confidence to 'high'
  * and the loser's confidence to 'disputed'.
  */
-export function resolveConflict(db: Database, winnerFactId: string, loserFactId: string): void {
-  db.update(researchFacts)
+export async function resolveConflict(db: Database, winnerFactId: string, loserFactId: string): Promise<void> {
+  await db.update(researchFacts)
     .set({ confidence: 'high', updatedAt: new Date().toISOString() })
     .where(eq(researchFacts.id, winnerFactId))
     .run();
 
-  db.update(researchFacts)
+  await db.update(researchFacts)
     .set({ confidence: 'disputed', updatedAt: new Date().toISOString() })
     .where(eq(researchFacts.id, loserFactId))
     .run();

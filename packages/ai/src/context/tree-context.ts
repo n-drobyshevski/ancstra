@@ -39,13 +39,13 @@ interface RawPersonRow {
  * Get basic stats about the tree: person count, generation count, earliest ancestor.
  */
 async function getTreeStats(db: Database): Promise<TreeStats> {
-  const countRows = db.all<{ cnt: number }>(
+  const countRows = await db.all<{ cnt: number }>(
     sql`SELECT COUNT(*) as cnt FROM persons WHERE deleted_at IS NULL`
   );
   const personCount = countRows[0]?.cnt ?? 0;
 
   // Find earliest ancestor by birth date
-  const earliestRows = db.all<{ given_name: string; surname: string; birth_date_sort: number | null }>(sql`
+  const earliestRows = await db.all<{ given_name: string; surname: string; birth_date_sort: number | null }>(sql`
     SELECT pn.given_name, pn.surname, e.date_sort as birth_date_sort
     FROM persons p
     JOIN person_names pn ON pn.person_id = p.id AND pn.is_primary = 1
@@ -64,7 +64,7 @@ async function getTreeStats(db: Database): Promise<TreeStats> {
     : null;
 
   // Count sourced persons (persons with at least one source citation)
-  const sourcedRows = db.all<{ cnt: number }>(sql`
+  const sourcedRows = await db.all<{ cnt: number }>(sql`
     SELECT COUNT(DISTINCT sc.person_id) as cnt
     FROM source_citations sc
     WHERE sc.person_id IS NOT NULL
@@ -73,7 +73,7 @@ async function getTreeStats(db: Database): Promise<TreeStats> {
   const sourcedPercentage = personCount > 0 ? Math.round((sourcedCount / personCount) * 100) : 0;
 
   // Estimate generation count from ancestor depth
-  const genRows = db.all<{ max_gen: number }>(sql`
+  const genRows = await db.all<{ max_gen: number }>(sql`
     WITH RECURSIVE ancestor_tree AS (
       SELECT p.id, 0 as gen
       FROM persons p
@@ -101,7 +101,7 @@ async function getTreeStats(db: Database): Promise<TreeStats> {
  * Find the root person (someone with no parents) or return focusPersonId.
  */
 async function findRootPerson(db: Database): Promise<string | null> {
-  const rows = db.all<{ id: string }>(sql`
+  const rows = await db.all<{ id: string }>(sql`
     SELECT p.id
     FROM persons p
     WHERE p.deleted_at IS NULL
@@ -117,7 +117,7 @@ async function findRootPerson(db: Database): Promise<string | null> {
  * Get ancestor line from a person up to maxGenerations.
  */
 async function getAncestors(db: Database, personId: string, maxGenerations: number): Promise<RawPersonRow[]> {
-  const rows = db.all<RawPersonRow>(sql`
+  const rows = await db.all<RawPersonRow>(sql`
     WITH RECURSIVE ancestor_tree AS (
       SELECT p.id, 0 as generation
       FROM persons p
@@ -154,7 +154,7 @@ async function identifyResearchGaps(db: Database): Promise<string[]> {
   const gaps: string[] = [];
 
   // Missing birth dates
-  const missingBirth = db.all<{ given_name: string; surname: string }>(sql`
+  const missingBirth = await db.all<{ given_name: string; surname: string }>(sql`
     SELECT pn.given_name, pn.surname
     FROM persons p
     JOIN person_names pn ON pn.person_id = p.id AND pn.is_primary = 1
@@ -169,7 +169,7 @@ async function identifyResearchGaps(db: Database): Promise<string[]> {
   }
 
   // Missing parents (no family as child)
-  const missingParents = db.all<{ given_name: string; surname: string }>(sql`
+  const missingParents = await db.all<{ given_name: string; surname: string }>(sql`
     SELECT pn.given_name, pn.surname
     FROM persons p
     JOIN person_names pn ON pn.person_id = p.id AND pn.is_primary = 1
@@ -190,7 +190,7 @@ async function identifyResearchGaps(db: Database): Promise<string[]> {
  * Get recent activity: last 5 persons created or updated.
  */
 async function getRecentActivity(db: Database): Promise<string[]> {
-  const rows = db.all<{ given_name: string; surname: string; updated_at: string }>(sql`
+  const rows = await db.all<{ given_name: string; surname: string; updated_at: string }>(sql`
     SELECT pn.given_name, pn.surname, p.updated_at
     FROM persons p
     JOIN person_names pn ON pn.person_id = p.id AND pn.is_primary = 1

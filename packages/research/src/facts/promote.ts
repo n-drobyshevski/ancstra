@@ -34,13 +34,14 @@ const PROVIDER_SOURCE_TYPE: Record<string, string> = {
  * Throws if the item doesn't exist or is already promoted.
  * Rolls back all changes if any step fails.
  */
-export function promoteToSource(db: Database, input: PromoteInput): PromoteResult {
+export async function promoteToSource(db: Database, input: PromoteInput): Promise<PromoteResult> {
   // 1. Fetch research item
-  const [item] = db
+  const items = await db
     .select()
     .from(researchItems)
     .where(eq(researchItems.id, input.researchItemId))
     .all();
+  const item = items[0];
 
   if (!item) {
     throw new Error(`Research item not found: ${input.researchItemId}`);
@@ -55,17 +56,17 @@ export function promoteToSource(db: Database, input: PromoteInput): PromoteResul
   const now = new Date().toISOString();
 
   // 2. Run entire promotion as a single transaction.
-  //    Drizzle's db.transaction() for better-sqlite3 is synchronous and
+  //    Drizzle's db.transaction() is async with libsql and
   //    automatically rolls back on thrown errors.
   let factsUpdated = 0;
 
-  (db as any).transaction((tx: any) => {
+  await (db as any).transaction(async (tx: any) => {
     // a. INSERT source
     const sourceType = item.providerId
       ? PROVIDER_SOURCE_TYPE[item.providerId] ?? 'online'
       : 'online';
 
-    tx.insert(sources)
+    await tx.insert(sources)
       .values({
         id: sourceId,
         title: item.title,
@@ -78,7 +79,7 @@ export function promoteToSource(db: Database, input: PromoteInput): PromoteResul
       .run();
 
     // b. INSERT source citation
-    tx.insert(sourceCitations)
+    await tx.insert(sourceCitations)
       .values({
         id: citationId,
         sourceId,
@@ -90,7 +91,7 @@ export function promoteToSource(db: Database, input: PromoteInput): PromoteResul
       .run();
 
     // c. UPDATE facts linked to this research item
-    const updateResult = tx.update(researchFacts)
+    const updateResult = await tx.update(researchFacts)
       .set({ sourceCitationId: citationId, updatedAt: now })
       .where(eq(researchFacts.researchItemId, input.researchItemId))
       .run();
@@ -98,7 +99,7 @@ export function promoteToSource(db: Database, input: PromoteInput): PromoteResul
     factsUpdated = updateResult.changes;
 
     // d. UPDATE research item status
-    tx.update(researchItems)
+    await tx.update(researchItems)
       .set({
         status: 'promoted' as const,
         promotedSourceId: sourceId,

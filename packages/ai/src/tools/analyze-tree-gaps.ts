@@ -23,7 +23,7 @@ export async function executeAnalyzeTreeGaps(
   let personIds: string[];
 
   if (personId) {
-    const ancestorRows = db.all<{ id: string }>(sql`
+    const ancestorRows = await db.all<{ id: string }>(sql`
       WITH RECURSIVE anc AS (
         SELECT p.id, 0 as gen
         FROM persons p WHERE p.id = ${personId} AND p.deleted_at IS NULL
@@ -40,7 +40,7 @@ export async function executeAnalyzeTreeGaps(
     `);
     personIds = ancestorRows.map(r => r.id);
   } else {
-    const allRows = db.all<{ id: string }>(sql`
+    const allRows = await db.all<{ id: string }>(sql`
       SELECT id FROM persons WHERE deleted_at IS NULL LIMIT 200
     `);
     personIds = allRows.map(r => r.id);
@@ -52,7 +52,7 @@ export async function executeAnalyzeTreeGaps(
 
   // Check each person for gaps
   for (const pid of personIds) {
-    const nameRows = db.all<{ given_name: string; surname: string }>(sql`
+    const nameRows = await db.all<{ given_name: string; surname: string }>(sql`
       SELECT given_name, surname FROM person_names
       WHERE person_id = ${pid} AND is_primary = 1
       LIMIT 1
@@ -61,7 +61,7 @@ export async function executeAnalyzeTreeGaps(
     const personName = `${nameRows[0].given_name} ${nameRows[0].surname}`;
 
     // Missing birth date
-    const birthRows = db.all<{ cnt: number }>(sql`
+    const birthRows = await db.all<{ cnt: number }>(sql`
       SELECT COUNT(*) as cnt FROM events
       WHERE person_id = ${pid} AND event_type = 'birth' AND date_sort IS NOT NULL
     `);
@@ -76,11 +76,11 @@ export async function executeAnalyzeTreeGaps(
     }
 
     // Missing death date (only for non-living persons)
-    const personRows = db.all<{ is_living: number }>(sql`
+    const personRows = await db.all<{ is_living: number }>(sql`
       SELECT is_living FROM persons WHERE id = ${pid}
     `);
     if (personRows[0] && !personRows[0].is_living) {
-      const deathRows = db.all<{ cnt: number }>(sql`
+      const deathRows = await db.all<{ cnt: number }>(sql`
         SELECT COUNT(*) as cnt FROM events
         WHERE person_id = ${pid} AND event_type = 'death' AND date_sort IS NOT NULL
       `);
@@ -96,7 +96,7 @@ export async function executeAnalyzeTreeGaps(
     }
 
     // Missing parents
-    const parentRows = db.all<{ cnt: number }>(sql`
+    const parentRows = await db.all<{ cnt: number }>(sql`
       SELECT COUNT(*) as cnt FROM children WHERE person_id = ${pid}
     `);
     if ((parentRows[0]?.cnt ?? 0) === 0) {
@@ -110,7 +110,7 @@ export async function executeAnalyzeTreeGaps(
     }
 
     // Missing source citations
-    const sourceRows = db.all<{ cnt: number }>(sql`
+    const sourceRows = await db.all<{ cnt: number }>(sql`
       SELECT COUNT(*) as cnt FROM source_citations WHERE person_id = ${pid}
     `);
     if ((sourceRows[0]?.cnt ?? 0) === 0) {

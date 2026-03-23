@@ -43,7 +43,7 @@ export async function recordUsage(db: Database, record: UsageRecord): Promise<vo
   const id = crypto.randomUUID();
   const createdAt = new Date().toISOString();
 
-  db.run(sql`
+  await db.run(sql`
     INSERT INTO ai_usage (id, user_id, model, input_tokens, output_tokens, cost_usd, task_type, session_id, created_at)
     VALUES (${id}, ${record.userId}, ${record.model}, ${record.inputTokens}, ${record.outputTokens}, ${costUsd}, ${record.taskType}, ${record.sessionId ?? null}, ${createdAt})
   `);
@@ -67,7 +67,7 @@ export async function checkBudget(
   const now = new Date();
   const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
 
-  const rows = db.all<{ total: number | null }>(sql`
+  const rows = await db.all<{ total: number | null }>(sql`
     SELECT SUM(cost_usd) as total
     FROM ai_usage
     WHERE created_at >= ${monthStart}
@@ -97,7 +97,7 @@ export async function getUsageStats(
   const now = new Date();
   const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
 
-  const rows = db.all<{ model: string; cnt: number; cost: number }>(sql`
+  const rows = await db.all<{ model: string; cnt: number; cost: number }>(sql`
     SELECT model, COUNT(*) as cnt, SUM(cost_usd) as cost
     FROM ai_usage
     WHERE created_at >= ${monthStart}
