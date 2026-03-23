@@ -1,0 +1,36 @@
+# Collaboration
+
+Share your family tree with relatives and collaborate on research together.
+
+## Roles
+
+Ancstra uses role-based access control with four levels:
+
+| Role | View Tree | Edit Persons | Manage Members | Delete Tree |
+|------|-----------|-------------|----------------|-------------|
+| **Viewer** | Yes | No | No | No |
+| **Editor** | Yes | Yes | No | No |
+| **Admin** | Yes | Yes | Yes | No |
+| **Owner** | Yes | Yes | Yes | Yes |
+
+- **Viewer** — read-only access. Living persons are automatically redacted.
+- **Editor** — can add and edit persons, events, sources, and relationships.
+- **Admin** — can invite/remove members and change roles (except owner).
+- **Owner** — full control. Each tree has exactly one owner.
+
+## Invitations
+
+1. Open **Settings > Members** on your tree
+2. Click **Invite** and enter the person's email address
+3. Choose a role (viewer, editor, or admin)
+4. The invitee receives an email with a link to join
+
+Pending invitations can be revoked before they are accepted.
+
+## Moderation Queue
+
+Edits made by editors can optionally go through a moderation queue. When enabled, an admin or owner must approve changes before they appear on the shared tree. This is useful for large collaborative projects where data quality matters.
+
+## Activity Feed
+
+The activity feed shows a chronological log of all changes to the tree — who added or edited a person, merged a record, or accepted a research suggestion. Filter by member or action type to find specific changes.

@@ -150,6 +150,7 @@ export function PendingInvites({ familyId }: PendingInvitesProps) {
                     size="icon"
                     onClick={() => handleCopyLink(invitation)}
                     title="Copy invite link"
+                    aria-label="Copy invite link"
                   >
                     {copiedId === invitation.id ? (
                       <Check className="size-4 text-green-600" />
@@ -164,6 +165,7 @@ export function PendingInvites({ familyId }: PendingInvitesProps) {
                     onClick={() => handleRevoke(invitation.id)}
                     disabled={revokingId === invitation.id}
                     title="Revoke invitation"
+                    aria-label="Revoke invitation"
                   >
                     {revokingId === invitation.id ? (
                       <Loader2 className="size-4 animate-spin" />

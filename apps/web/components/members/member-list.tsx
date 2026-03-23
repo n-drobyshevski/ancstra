@@ -211,6 +211,7 @@ export function MemberList({ familyId, currentUserId, currentRole }: MemberListP
                         size="icon"
                         className="text-destructive hover:text-destructive"
                         disabled={removingMember === member.userId}
+                        aria-label="Remove member"
                       >
                         {removingMember === member.userId ? (
                           <Loader2 className="size-4 animate-spin" />

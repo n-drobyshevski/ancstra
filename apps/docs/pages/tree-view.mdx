@@ -1,0 +1,33 @@
+# Tree View
+
+The tree view is an interactive canvas for exploring and navigating your family tree.
+
+## Canvas Navigation
+
+- **Pan:** Click and drag the background, or use arrow keys
+- **Zoom:** Scroll wheel, pinch gesture, or the +/- controls
+- **Select:** Click any person node to open their detail panel
+- **Fit to view:** Press `F` or click the fit button to center the entire tree
+
+## Layout
+
+Trees are rendered using a dagre-based hierarchical layout. The layout automatically arranges generations in rows with minimal edge crossings.
+
+### Named Layouts
+
+Save your preferred view configurations as named layouts. Each layout preserves zoom level, center position, and any active filters. Switch between layouts from the toolbar dropdown.
+
+## Search and Filters
+
+- **Search:** Use the search bar (`Ctrl+K`) to find any person by name, date, or place
+- **Filters:** Toggle filters for living persons, generation range, or specific surname lines
+- **Highlight:** Search results are highlighted on the canvas with the tree auto-panning to the first match
+
+## Export as Image
+
+Export the current canvas view as a PNG or SVG image:
+
+1. Adjust the view to frame the portion of the tree you want
+2. Click **Export** in the toolbar
+3. Choose PNG (raster) or SVG (vector)
+4. The exported image matches your current zoom and filter state

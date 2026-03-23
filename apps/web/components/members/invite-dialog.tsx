@@ -119,6 +119,7 @@ export function InviteDialog({ familyId }: InviteDialogProps) {
                   size="icon"
                   onClick={handleCopy}
                   className="shrink-0"
+                  aria-label="Copy invite link"
                 >
                   {copied ? (
                     <Check className="size-4 text-green-600" />

@@ -67,7 +67,7 @@ export function TreeDetailPanel({ person, treeData, onClose, onFocusNode }: Tree
             {person.isLiving && <Badge className="text-xs">Living</Badge>}
           </div>
         </div>
-        <Button variant="ghost" size="icon" className="size-8" onClick={onClose}><X className="size-4" /></Button>
+        <Button variant="ghost" size="icon" className="size-8" onClick={onClose} aria-label="Close detail panel"><X className="size-4" /></Button>
       </div>
 
       <div className="border-b p-4 space-y-1 text-sm">

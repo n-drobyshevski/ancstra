@@ -17,7 +17,7 @@ export function PersonPalette({ onClose }: PersonPaletteProps) {
     <div className="absolute top-0 left-0 z-20 h-full w-[250px] border-r bg-card p-4 space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-medium">Person Palette</h3>
-        <Button variant="ghost" size="icon" className="size-7" onClick={onClose}>
+        <Button variant="ghost" size="icon" className="size-7" onClick={onClose} aria-label="Close person palette">
           <X className="size-4" />
         </Button>
       </div>
