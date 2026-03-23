@@ -16,20 +16,20 @@ RUN pnpm install --frozen-lockfile --filter @ancstra/worker...
 
 # Build
 FROM base AS build
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/apps/worker/node_modules ./apps/worker/node_modules
-COPY --from=deps /app/packages/ ./packages/
+COPY --from=deps /app/ ./
 COPY tsconfig.json ./
+COPY packages/ packages/
 COPY apps/worker/ apps/worker/
 WORKDIR /app/apps/worker
 RUN pnpm build
+# Use pnpm deploy to create a self-contained output with all deps
+RUN pnpm deploy --filter @ancstra/worker --prod /app/deployed
 
 # Run
 FROM node:20-slim AS run
 WORKDIR /app
+COPY --from=build /app/deployed ./
 COPY --from=build /app/apps/worker/dist ./dist
-COPY --from=build /app/apps/worker/node_modules ./node_modules
-COPY --from=build /app/apps/worker/package.json ./
 
 EXPOSE 3001
 ENV NODE_ENV=production
