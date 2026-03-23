@@ -24,11 +24,12 @@ const providers: any[] = [
       password: { label: 'Password', type: 'password' },
     },
     authorize: async (credentials) => {
-      const [user] = centralDb
+      const users = await getCentralDb()
         .select()
         .from(centralSchema.users)
         .where(eq(centralSchema.users.email, credentials.email as string))
         .all();
+      const user = users[0];
       if (!user) return null;
       if (!user.passwordHash) return null; // OAuth-only user
       const valid = await bcrypt.compare(
