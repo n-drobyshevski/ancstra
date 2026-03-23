@@ -30,7 +30,7 @@ export function createGetResearchItemsTool(db: Database) {
           createdAt: item.createdAt,
           personIds: item.personIds,
         })),
-        totalCount: items.length as number,
+        totalCount: items.length,
       };
     },
   });
