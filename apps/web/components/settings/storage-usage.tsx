@@ -56,7 +56,7 @@ export function StorageUsage({ refreshKey }: { refreshKey?: number }) {
         </CardHeader>
         <CardContent className="space-y-3">
           <Skeleton className="h-3 w-full rounded-full" />
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {[1, 2, 3].map((i) => (
               <Skeleton key={i} className="h-12" />
             ))}
@@ -98,7 +98,7 @@ export function StorageUsage({ refreshKey }: { refreshKey?: number }) {
         </div>
 
         {/* Breakdown */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {categories.map(({ key, label, icon: Icon, color }) => (
             <div key={key} className="flex items-center gap-2">
               <div className={`size-2.5 rounded-full ${color}`} />
