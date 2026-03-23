@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "pnpm install",
-  "buildCommand": "pnpm --filter @ancstra/matching exec tsup src/index.ts --format esm --no-dts && pnpm --filter @ancstra/research exec tsup src/index.ts --format esm --no-dts && pnpm --filter @ancstra/ai exec tsup src/index.ts --format esm --no-dts && cd apps/web && pnpm build",
+  "buildCommand": "bash scripts/vercel-build.sh",
   "outputDirectory": "apps/web/.next"
 }
