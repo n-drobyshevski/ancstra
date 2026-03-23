@@ -14,3 +14,17 @@ test.describe('Authentication', () => {
     expect(page.url()).toContain('/login');
   });
 });
+
+test.describe('Security', () => {
+  test('unauthenticated API request returns 401', async ({ request }) => {
+    const response = await request.get('/api/persons');
+    expect(response.status()).toBe(401);
+  });
+
+  test('unauthenticated API POST returns 401', async ({ request }) => {
+    const response = await request.post('/api/persons', {
+      data: { givenName: 'Test', surname: 'User' },
+    });
+    expect(response.status()).toBe(401);
+  });
+});
