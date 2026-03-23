@@ -56,7 +56,8 @@ if (process.env.APPLE_CLIENT_ID && process.env.APPLE_CLIENT_SECRET) {
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  adapter: AncstraAdapter(getCentralDb()),
+  // Only use adapter at runtime (not during build — no DB available on Vercel build)
+  ...(process.env.CENTRAL_DATABASE_URL ? { adapter: AncstraAdapter(getCentralDb()) } : {}),
   providers,
   session: { strategy: 'jwt' },
   pages: { signIn: '/login' },
