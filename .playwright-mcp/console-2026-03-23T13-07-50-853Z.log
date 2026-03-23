@@ -1,0 +1,4 @@
+[     348ms] [ERROR] Manifest: Line: 1, column: 1, Syntax error. @ https://ancstra.vercel.app/manifest.webmanifest:0
+[     645ms] [ERROR] The script resource is behind a redirect, which is disallowed. @ :0
+[     679ms] [ERROR] Manifest: Line: 1, column: 1, Syntax error. @ https://ancstra.vercel.app/manifest.webmanifest:0
+[   15148ms] [ERROR] Error: An error occurred in the Server Components render. The specific message is omitted in production builds to avoid leaking sensitive details. A digest property is included on this error instance which may provide additional details about the nature of the error. @ https://ancstra.vercel.app/_next/static/chunks/0ywnus8erc6yh.js:49

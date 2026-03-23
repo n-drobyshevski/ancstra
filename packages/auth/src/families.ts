@@ -39,7 +39,8 @@ export async function createFamily(
   if (isWebMode(process.env.CENTRAL_DATABASE_URL)) {
     // Dynamic import to avoid loading Turso Platform API code in local mode
     const { createTursoDatabase, runFamilySchemaDDL } = await import('@ancstra/db/turso');
-    const { url } = await createTursoDatabase(`ancstra-family-${familyId}`);
+    const shortId = familyId.split('-')[0];
+    const { url } = await createTursoDatabase(`ancstra-fam-${shortId}`);
     dbFilename = url;
     await runFamilySchemaDDL(dbFilename);
   } else {

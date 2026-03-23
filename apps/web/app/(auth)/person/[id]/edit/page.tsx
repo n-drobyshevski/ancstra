@@ -1,8 +1,9 @@
 import { notFound } from 'next/navigation';
-import { createDb } from '@ancstra/db';
+import { createFamilyDb } from '@ancstra/db';
 import { assemblePersonDetail } from '@/lib/queries';
 import { PersonForm } from '@/components/person-form';
 import { EventList } from '@/components/event-list';
+import { getAuthContext } from '@/lib/auth/context';
 
 export default async function EditPersonPage({
   params,
@@ -10,7 +11,9 @@ export default async function EditPersonPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const db = createDb();
+  const authContext = await getAuthContext();
+  if (!authContext) return null;
+  const db = createFamilyDb(authContext.dbFilename);
   const person = await assemblePersonDetail(db, id);
   if (!person) notFound();
 

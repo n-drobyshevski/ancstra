@@ -1,6 +1,7 @@
-import { createDb } from '@ancstra/db';
+import { createFamilyDb } from '@ancstra/db';
 import { getTreeData } from '@/lib/queries';
 import { TreeCanvas } from '@/components/tree/tree-canvas';
+import { getAuthContext } from '@/lib/auth/context';
 
 export default async function TreePage({
   searchParams,
@@ -8,7 +9,9 @@ export default async function TreePage({
   searchParams: Promise<{ focus?: string }>;
 }) {
   const { focus } = await searchParams;
-  const db = createDb();
+  const authContext = await getAuthContext();
+  if (!authContext) return null;
+  const db = createFamilyDb(authContext.dbFilename);
   const treeData = await getTreeData(db);
 
   if (treeData.persons.length === 0) {

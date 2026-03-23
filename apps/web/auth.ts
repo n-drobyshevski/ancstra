@@ -24,19 +24,29 @@ const providers: any[] = [
       password: { label: 'Password', type: 'password' },
     },
     authorize: async (credentials) => {
-      const [user] = centralDb
-        .select()
-        .from(centralSchema.users)
-        .where(eq(centralSchema.users.email, credentials.email as string))
-        .all();
-      if (!user) return null;
-      if (!user.passwordHash) return null; // OAuth-only user
-      const valid = await bcrypt.compare(
-        credentials.password as string,
-        user.passwordHash
-      );
-      if (!valid) return null;
-      return { id: user.id, email: user.email, name: user.name };
+      try {
+        const email = credentials?.email as string;
+        const password = credentials?.password as string;
+
+        if (!email || !password) return null;
+
+        const db = getCentralDb();
+        const users = await db
+          .select()
+          .from(centralSchema.users)
+          .where(eq(centralSchema.users.email, email))
+          .all();
+
+        const user = users[0];
+        if (!user || !user.passwordHash) return null;
+
+        const valid = await bcrypt.compare(password, user.passwordHash);
+        if (!valid) return null;
+        return { id: user.id, email: user.email, name: user.name };
+      } catch (error) {
+        console.error('[AUTH] Error in authorize:', error);
+        return null;
+      }
     },
   }),
 ];

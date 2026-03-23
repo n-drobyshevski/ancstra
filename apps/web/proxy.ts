@@ -1,19 +1,17 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { getToken } from 'next-auth/jwt';
+import { auth } from './auth';
 
-export async function proxy(request: NextRequest) {
-  // Read the JWT session token directly (proxy runs in a separate context)
-  const token = await getToken({ req: request });
+export const proxy = auth((request) => {
+  const session = request.auth;
 
-  if (!token?.userId) {
-    // Not authenticated — redirect to login
+  if (!session?.user?.id) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
   // Pass user info via request headers to downstream routes
   const requestHeaders = new Headers(request.headers);
-  requestHeaders.set('x-user-id', token.userId as string);
+  requestHeaders.set('x-user-id', session.user.id);
 
   // Read active family from cookie or URL param
   const familyParam = request.nextUrl.searchParams.get('family');
@@ -39,12 +37,12 @@ export async function proxy(request: NextRequest) {
   }
 
   return response;
-}
+});
 
 // Only run proxy on protected routes
 export const config = {
   matcher: [
     // Match all paths EXCEPT public routes and static files
-    '/((?!login|signup|join|create-family|api/auth|_next/static|_next/image|favicon.ico).*)',
+    '/((?!login|signup|join|create-family|api/auth|api/debug|_next/static|_next/image|favicon.ico).*)',
   ],
 };
