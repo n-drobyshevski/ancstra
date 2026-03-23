@@ -4,14 +4,15 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ContributionQueue } from '@/components/moderation/contribution-queue';
 import { WelcomeCard } from '@/components/onboarding/welcome-card';
-import { createDb, persons, personNames, events } from '@ancstra/db';
+import { createFamilyDb, persons, personNames, events } from '@ancstra/db';
 import { eq, and, isNull, sql } from 'drizzle-orm';
 import { hasPermission } from '@ancstra/auth';
 import { getAuthContext } from '@/lib/auth/context';
 
 export default async function DashboardPage() {
-  const db = createDb();
   const authContext = await getAuthContext();
+  if (!authContext) return null;
+  const db = createFamilyDb(authContext.dbFilename);
   const canReview =
     authContext != null && hasPermission(authContext.role, 'contributions:review');
 

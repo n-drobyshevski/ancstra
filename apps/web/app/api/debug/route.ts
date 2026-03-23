@@ -6,15 +6,21 @@ export async function GET() {
   const results: Record<string, unknown> = {};
 
   try {
-    results.dbConfigured = !!process.env.CENTRAL_DATABASE_URL;
-
     const db = createCentralDb();
-
-    const tables = await db.all(sql`SELECT name FROM sqlite_master WHERE type='table' ORDER BY name`);
-    results.tables = (tables as any[]).map((t: any) => t.name);
 
     const users = await db.select().from(centralSchema.users).all();
     results.userCount = users.length;
+    results.users = users.map(u => ({ id: u.id.substring(0, 8), email: u.email }));
+
+    const families = await db.select().from(centralSchema.familyRegistry).all();
+    results.familyCount = families.length;
+    results.families = families.map(f => ({ id: f.id.substring(0, 8), name: f.name, dbFilename: f.dbFilename }));
+
+    const members = await db.select().from(centralSchema.familyMembers).all();
+    results.memberCount = members.length;
+    results.members = members.map(m => ({ userId: m.userId.substring(0, 8), familyId: m.familyId.substring(0, 8), role: m.role }));
+
+    results.envDatabaseUrl = process.env.DATABASE_URL?.substring(0, 30) || '(not set)';
 
     results.status = 'ok';
   } catch (error: any) {
