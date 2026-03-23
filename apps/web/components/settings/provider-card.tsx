@@ -317,7 +317,7 @@ export function ProviderCard({ provider, onUpdate }: ProviderCardProps) {
 
       <CardContent
         className={cn(
-          'flex items-center gap-3',
+          'flex flex-wrap items-center gap-3',
           !hasConfigSection && 'pt-0'
         )}
       >

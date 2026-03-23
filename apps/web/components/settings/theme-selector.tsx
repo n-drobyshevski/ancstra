@@ -20,7 +20,7 @@ export function ThemeSelector() {
       <p className="text-sm text-muted-foreground">
         Choose how Ancstra looks to you.
       </p>
-      <div className="flex gap-1 rounded-lg border border-input p-1 w-fit">
+      <div className="flex gap-1 rounded-lg border border-input p-1 w-full md:w-fit">
         {themes.map(({ value, label, icon: Icon }) => (
           <Button
             key={value}
