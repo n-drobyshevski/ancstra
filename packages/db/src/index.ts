@@ -107,3 +107,4 @@ export * from './family-schema';
 export * as centralSchema from './central-schema';
 export * from './quality-queries';
 export { rebuildClosureTable, addChildToFamily, removeChildFromFamily } from './closure-table';
+export { rebuildAllSummaries, refreshSummary, refreshRelatedSummaries } from './person-summary';
