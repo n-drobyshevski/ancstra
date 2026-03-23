@@ -14,7 +14,7 @@ export function createGetResearchItemsTool(db: Database) {
       status: z.enum(['draft', 'promoted', 'dismissed']).optional().describe('Filter by status'),
     }),
     execute: async ({ personId, status }) => {
-      const items = listResearchItems(db, {
+      const items = await listResearchItems(db, {
         personId,
         status,
       });
@@ -30,7 +30,7 @@ export function createGetResearchItemsTool(db: Database) {
           createdAt: item.createdAt,
           personIds: item.personIds,
         })),
-        totalCount: items.length,
+        totalCount: items.length as number,
       };
     },
   });
