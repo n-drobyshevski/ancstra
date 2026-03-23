@@ -5,19 +5,19 @@ import { usePathname } from 'next/navigation';
 import { Search, Palette, Shield, Database, Bot } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const navItems = [
-  { title: 'Search Sources', href: '/settings/sources', icon: Search },
-  { title: 'Appearance', href: '/settings/appearance', icon: Palette },
-  { title: 'Privacy', href: '/settings/privacy', icon: Shield },
-  { title: 'Data', href: '/settings/data', icon: Database },
-  { title: 'AI', href: '/settings/ai', icon: Bot },
+export const navItems = [
+  { title: 'Search Sources', subtitle: 'Genealogy databases & providers', href: '/settings/sources', icon: Search },
+  { title: 'Appearance', subtitle: 'Theme and display', href: '/settings/appearance', icon: Palette },
+  { title: 'Privacy', subtitle: 'Living persons & data handling', href: '/settings/privacy', icon: Shield },
+  { title: 'Data & Storage', subtitle: 'Backups, cache, archives', href: '/settings/data', icon: Database },
+  { title: 'AI', subtitle: 'Usage and budget', href: '/settings/ai', icon: Bot },
 ];
 
 export function SettingsNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="w-[200px] shrink-0 border-r border-border pr-4 space-y-1">
+    <nav className="hidden md:block w-[200px] shrink-0 border-r border-border pr-4 space-y-1">
       {navItems.map((item) => {
         const isActive = pathname.startsWith(item.href);
         return (
