@@ -27,12 +27,8 @@ const providers: any[] = [
       try {
         const email = credentials?.email as string;
         const password = credentials?.password as string;
-        console.log('[AUTH] Login attempt for:', email);
 
-        if (!email || !password) {
-          console.log('[AUTH] Missing email or password');
-          return null;
-        }
+        if (!email || !password) return null;
 
         const db = getCentralDb();
         const users = await db
@@ -41,20 +37,10 @@ const providers: any[] = [
           .where(eq(centralSchema.users.email, email))
           .all();
 
-        console.log('[AUTH] Found users:', users.length);
         const user = users[0];
-        if (!user) {
-          console.log('[AUTH] No user found for email:', email);
-          return null;
-        }
-        if (!user.passwordHash) {
-          console.log('[AUTH] User has no password (OAuth-only)');
-          return null;
-        }
+        if (!user || !user.passwordHash) return null;
 
         const valid = await bcrypt.compare(password, user.passwordHash);
-        console.log('[AUTH] Password valid:', valid);
-
         if (!valid) return null;
         return { id: user.id, email: user.email, name: user.name };
       } catch (error) {

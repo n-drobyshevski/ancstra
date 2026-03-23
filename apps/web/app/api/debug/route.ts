@@ -11,7 +11,7 @@ export async function GET() {
     const db = createCentralDb();
 
     const tables = await db.all(sql`SELECT name FROM sqlite_master WHERE type='table' ORDER BY name`);
-    results.tables = tables.map((t: any) => t.name);
+    results.tables = (tables as any[]).map((t: any) => t.name);
 
     const users = await db.select().from(centralSchema.users).all();
     results.userCount = users.length;
