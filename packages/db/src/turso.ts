@@ -365,6 +365,35 @@ CREATE TABLE IF NOT EXISTS relationship_justifications (
 );
 CREATE INDEX IF NOT EXISTS idx_justifications_family ON relationship_justifications(family_id);
 CREATE INDEX IF NOT EXISTS idx_justifications_child_link ON relationship_justifications(child_link_id);
+
+-- ==================== ANCESTOR PATHS (closure table) ====================
+CREATE TABLE IF NOT EXISTS ancestor_paths (
+  ancestor_id TEXT NOT NULL REFERENCES persons(id) ON DELETE CASCADE,
+  descendant_id TEXT NOT NULL REFERENCES persons(id) ON DELETE CASCADE,
+  depth INTEGER NOT NULL,
+  PRIMARY KEY (ancestor_id, descendant_id)
+);
+CREATE INDEX IF NOT EXISTS idx_ap_descendant ON ancestor_paths(descendant_id, depth);
+CREATE INDEX IF NOT EXISTS idx_ap_ancestor ON ancestor_paths(ancestor_id, depth);
+
+-- ==================== PERSON SUMMARY (denormalized display) ====================
+CREATE TABLE IF NOT EXISTS person_summary (
+  person_id TEXT PRIMARY KEY REFERENCES persons(id) ON DELETE CASCADE,
+  given_name TEXT NOT NULL DEFAULT '',
+  surname TEXT NOT NULL DEFAULT '',
+  sex TEXT NOT NULL,
+  is_living INTEGER NOT NULL,
+  birth_date TEXT,
+  death_date TEXT,
+  birth_date_sort INTEGER,
+  death_date_sort INTEGER,
+  birth_place TEXT,
+  death_place TEXT,
+  spouse_count INTEGER NOT NULL DEFAULT 0,
+  child_count INTEGER NOT NULL DEFAULT 0,
+  parent_count INTEGER NOT NULL DEFAULT 0,
+  updated_at TEXT NOT NULL
+);
 `;
 
 /**

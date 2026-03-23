@@ -15,10 +15,12 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "tsx src/seed.ts",
+    "bench": "vitest bench",
     "test": "vitest run",
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@ancstra/shared": "workspace:^",
     "@libsql/client": "^0.17.2",
     "bcryptjs": "^3.0.3",
     "better-sqlite3": "^12.8.0",

@@ -3,8 +3,11 @@ import path from 'path';
 import os from 'os';
 import { drizzle } from 'drizzle-orm/libsql';
 import { createClient } from '@libsql/client';
+import { createLogger } from '@ancstra/shared';
 import * as schema from './family-schema';
 import * as centralSchema from './central-schema';
+
+const log = createLogger('db');
 
 export function isWebMode(url?: string): boolean {
   return (url || '').startsWith('libsql://');
@@ -56,7 +59,7 @@ export type FamilyDatabase = ReturnType<typeof createFamilyDb>;
 export function initFts5(url?: string) {
   const dbPath = url || process.env.DATABASE_URL || './ancstra.db';
   if (isWebMode(dbPath)) {
-    console.warn('FTS5 init skipped in web mode');
+    log.info('FTS5 init skipped in web mode');
     return;
   }
 
@@ -102,7 +105,30 @@ export function initFts5(url?: string) {
   }
 }
 
+/**
+ * Set WAL mode and busy timeout for local SQLite databases.
+ * Only works in local mode (better-sqlite3); skipped for Turso/web mode.
+ */
+export function initLocalPragmas(url?: string) {
+  const dbPath = url || process.env.DATABASE_URL || './ancstra.db';
+  if (isWebMode(dbPath)) return;
+
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const BetterSqlite3 = require('better-sqlite3');
+  const raw = new BetterSqlite3(dbPath);
+  try {
+    raw.pragma('journal_mode = WAL');
+    raw.pragma('busy_timeout = 5000');
+    log.info('WAL mode and busy_timeout set');
+  } finally {
+    raw.close();
+  }
+}
+
 export type Database = ReturnType<typeof createDb>;
 export * from './family-schema';
 export * as centralSchema from './central-schema';
 export * from './quality-queries';
+export { rebuildClosureTable, addChildToFamily, removeChildFromFamily } from './closure-table';
+export { rebuildAllSummaries, refreshSummary, refreshRelatedSummaries } from './person-summary';
+export { backupDatabase, pruneBackups, restoreDatabase } from './backup';

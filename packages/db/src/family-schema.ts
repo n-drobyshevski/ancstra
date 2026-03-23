@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, real, index, unique } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, real, index, unique, primaryKey } from 'drizzle-orm/sqlite-core';
 
 // ==================== PERSONS ====================
 export const persons = sqliteTable('persons', {
@@ -206,6 +206,36 @@ export const historicalContext = sqliteTable('historical_context', {
 }, (table) => [
   unique('uq_hist_ctx_person').on(table.personId),
 ]);
+
+// ==================== ANCESTOR PATHS (closure table) ====================
+export const ancestorPaths = sqliteTable('ancestor_paths', {
+  ancestorId: text('ancestor_id').notNull().references(() => persons.id, { onDelete: 'cascade' }),
+  descendantId: text('descendant_id').notNull().references(() => persons.id, { onDelete: 'cascade' }),
+  depth: integer('depth').notNull(),
+}, (table) => [
+  index('idx_ap_descendant').on(table.descendantId, table.depth),
+  index('idx_ap_ancestor').on(table.ancestorId, table.depth),
+  primaryKey({ columns: [table.ancestorId, table.descendantId] }),
+]);
+
+// ==================== PERSON SUMMARY (denormalized display) ====================
+export const personSummary = sqliteTable('person_summary', {
+  personId: text('person_id').primaryKey().references(() => persons.id, { onDelete: 'cascade' }),
+  givenName: text('given_name').notNull().default(''),
+  surname: text('surname').notNull().default(''),
+  sex: text('sex').notNull(),
+  isLiving: integer('is_living', { mode: 'boolean' }).notNull(),
+  birthDate: text('birth_date'),
+  deathDate: text('death_date'),
+  birthDateSort: integer('birth_date_sort'),
+  deathDateSort: integer('death_date_sort'),
+  birthPlace: text('birth_place'),
+  deathPlace: text('death_place'),
+  spouseCount: integer('spouse_count').notNull().default(0),
+  childCount: integer('child_count').notNull().default(0),
+  parentCount: integer('parent_count').notNull().default(0),
+  updatedAt: text('updated_at').notNull(),
+});
 
 export * from './research-schema';
 export * from './ai-schema';

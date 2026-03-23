@@ -28,6 +28,8 @@ interface TreeToolbarProps {
   onRenameLayout: () => void;
   filterState: FilterState;
   onToggleFilter: (category: 'sex' | 'living', key: string) => void;
+  view: 'canvas' | 'table';
+  onToggleView: () => void;
 }
 
 export function TreeToolbar({
@@ -45,6 +47,8 @@ export function TreeToolbar({
   onRenameLayout,
   filterState,
   onToggleFilter,
+  view,
+  onToggleView,
 }: TreeToolbarProps) {
   return (
     <div className="absolute top-3 left-3 right-3 z-10 flex justify-between pointer-events-none">
@@ -162,6 +166,15 @@ export function TreeToolbar({
           onClick={() => onToggleFilter('living', 'deceased')}
         >
           Deceased
+        </Button>
+
+        <Button
+          variant="secondary"
+          size="sm"
+          className="shadow-sm"
+          onClick={onToggleView}
+        >
+          {view === 'canvas' ? 'Table View' : 'Canvas View'}
         </Button>
 
         <TreeExport />
