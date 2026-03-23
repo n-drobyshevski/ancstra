@@ -31,7 +31,7 @@ export async function backupDatabase(sourcePath: string, backupDir?: string): Pr
     db.close();
   }
 
-  log.info({ sourcePath, destPath }, 'Database backup completed');
+  log.info({ backupPath: destPath }, 'backup created');
   return destPath;
 }
 
@@ -71,7 +71,9 @@ export async function pruneBackups(backupDir: string, keep: number = 7): Promise
     for (const { file } of toDelete) {
       const fullPath = path.join(backupDir, file);
       fs.unlinkSync(fullPath);
-      log.debug({ fullPath }, 'Pruned old backup');
+    }
+    if (toDelete.length > 0) {
+      log.info({ deleted: toDelete.length }, 'old backups pruned');
     }
   }
 }

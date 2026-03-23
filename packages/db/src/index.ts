@@ -3,8 +3,11 @@ import path from 'path';
 import os from 'os';
 import { drizzle } from 'drizzle-orm/libsql';
 import { createClient } from '@libsql/client';
+import { createLogger } from '@ancstra/shared';
 import * as schema from './family-schema';
 import * as centralSchema from './central-schema';
+
+const log = createLogger('db');
 
 export function isWebMode(url?: string): boolean {
   return (url || '').startsWith('libsql://');
@@ -56,7 +59,7 @@ export type FamilyDatabase = ReturnType<typeof createFamilyDb>;
 export function initFts5(url?: string) {
   const dbPath = url || process.env.DATABASE_URL || './ancstra.db';
   if (isWebMode(dbPath)) {
-    console.warn('FTS5 init skipped in web mode');
+    log.info('FTS5 init skipped in web mode');
     return;
   }
 
@@ -116,6 +119,7 @@ export function initLocalPragmas(url?: string) {
   try {
     raw.pragma('journal_mode = WAL');
     raw.pragma('busy_timeout = 5000');
+    log.info('WAL mode and busy_timeout set');
   } finally {
     raw.close();
   }
