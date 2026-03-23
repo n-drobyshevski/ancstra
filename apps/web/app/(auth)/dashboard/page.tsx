@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ContributionQueue } from '@/components/moderation/contribution-queue';
 import { WelcomeCard } from '@/components/onboarding/welcome-card';
 import { createDb, persons, personNames, events } from '@ancstra/db';
-import { eq, isNull, sql } from 'drizzle-orm';
+import { eq, and, isNull, sql } from 'drizzle-orm';
 import { hasPermission } from '@ancstra/auth';
 import { getAuthContext } from '@/lib/auth/context';
 
@@ -28,7 +28,7 @@ export default async function DashboardPage() {
     .from(persons)
     .innerJoin(
       personNames,
-      sql`${personNames.personId} = ${persons.id} AND ${personNames.isPrimary} = 1`
+      and(eq(personNames.personId, persons.id), eq(personNames.isPrimary, true))
     )
     .where(isNull(persons.deletedAt))
     .orderBy(sql`${persons.createdAt} DESC`)
