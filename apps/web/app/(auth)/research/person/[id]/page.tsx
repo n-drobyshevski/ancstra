@@ -10,7 +10,7 @@ export default async function ResearchPersonPage({
 }) {
   const { id } = await params;
   const db = createDb();
-  const person = assemblePersonDetail(db, id);
+  const person = await assemblePersonDetail(db, id);
   if (!person) notFound();
 
   return (

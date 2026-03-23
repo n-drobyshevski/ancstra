@@ -22,7 +22,7 @@ export async function GET(request: Request) {
     }
 
     // Gather tree data
-    const { persons, families, childLinks } = getTreeData(familyDb);
+    const { persons, families, childLinks } = await getTreeData(familyDb);
     const allEvents = await familyDb.select().from(events).all();
 
     // Filter out living persons if requested

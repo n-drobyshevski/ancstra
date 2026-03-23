@@ -9,7 +9,7 @@ export default async function TreePage({
 }) {
   const { focus } = await searchParams;
   const db = createDb();
-  const treeData = getTreeData(db);
+  const treeData = await getTreeData(db);
 
   if (treeData.persons.length === 0) {
     return (

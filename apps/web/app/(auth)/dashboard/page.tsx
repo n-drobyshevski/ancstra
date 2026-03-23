@@ -16,7 +16,7 @@ export default async function DashboardPage() {
     authContext != null && hasPermission(authContext.role, 'contributions:review');
 
   // Fetch last 5 persons ordered by created_at desc
-  const recentRows = db
+  const recentRows = await db
     .select({
       id: persons.id,
       sex: persons.sex,
@@ -39,7 +39,7 @@ export default async function DashboardPage() {
   const recentIds = recentRows.map((r) => r.id);
   const birthEvents =
     recentIds.length > 0
-      ? db
+      ? await db
           .select({
             personId: events.personId,
             dateOriginal: events.dateOriginal,

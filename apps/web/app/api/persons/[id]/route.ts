@@ -53,7 +53,7 @@ export async function PUT(
 
     // Optimistic lock if version provided
     if (data.version !== undefined) {
-      const lock = withOptimisticLock(familyDb, persons, id, data.version, {
+      const lock = await withOptimisticLock(familyDb, persons, id, data.version, {
         sex: data.sex ?? existing.sex,
         isLiving: data.isLiving ?? existing.isLiving,
         notes: data.notes ?? existing.notes,
