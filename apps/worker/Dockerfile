@@ -24,4 +24,4 @@ COPY apps/worker/ apps/worker/
 WORKDIR /app/apps/worker
 EXPOSE 3001
 ENV NODE_ENV=production
-CMD ["./node_modules/.bin/tsx", "src/index.ts"]
+CMD ["/app/node_modules/.bin/tsx", "src/index.ts"]
