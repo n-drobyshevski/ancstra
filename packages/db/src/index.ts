@@ -106,3 +106,4 @@ export type Database = ReturnType<typeof createDb>;
 export * from './family-schema';
 export * as centralSchema from './central-schema';
 export * from './quality-queries';
+export { rebuildClosureTable, addChildToFamily, removeChildFromFamily } from './closure-table';
