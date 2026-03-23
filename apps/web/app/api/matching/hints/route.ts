@@ -39,7 +39,7 @@ export async function GET(request: Request) {
       conditions.push(eq(matchCandidates.matchStatus, status));
     }
 
-    const hints = familyDb
+    const hints = await familyDb
       .select()
       .from(matchCandidates)
       .where(and(...conditions))
@@ -67,13 +67,13 @@ export async function POST(request: Request) {
     }
 
     // Fetch person data
-    const person = familyDb.select().from(persons).where(eq(persons.id, personId)).get();
+    const person = await familyDb.select().from(persons).where(eq(persons.id, personId)).get();
     if (!person) {
       return NextResponse.json({ error: 'Person not found' }, { status: 404 });
     }
 
     // Fetch primary name
-    const name = familyDb
+    const name = await familyDb
       .select()
       .from(personNames)
       .where(eq(personNames.personId, personId))
@@ -85,7 +85,7 @@ export async function POST(request: Request) {
     }
 
     // Fetch birth/death events
-    const personEvents = familyDb
+    const personEvents = await familyDb
       .select()
       .from(events)
       .where(eq(events.personId, personId))
@@ -147,7 +147,7 @@ export async function POST(request: Request) {
 
       if (existing) {
         // Update score if changed
-        familyDb.update(matchCandidates)
+        await familyDb.update(matchCandidates)
           .set({
             matchScore: hint.matchScore,
             externalData: JSON.stringify({
@@ -160,7 +160,7 @@ export async function POST(request: Request) {
           .where(eq(matchCandidates.id, existing.id))
           .run();
       } else {
-        familyDb.insert(matchCandidates)
+        await familyDb.insert(matchCandidates)
           .values({
             personId,
             sourceSystem: hint.providerId,

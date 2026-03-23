@@ -47,7 +47,7 @@ export async function PATCH(request: Request, { params }: Params) {
     const centralDb = createCentralDb();
 
     // Get target member's current membership
-    const targetMember = centralDb
+    const targetMember = await centralDb
       .select()
       .from(centralSchema.familyMembers)
       .where(
@@ -77,14 +77,14 @@ export async function PATCH(request: Request, { params }: Params) {
     }
 
     // Update the role
-    centralDb
+    await centralDb
       .update(centralSchema.familyMembers)
       .set({ role: newRole })
       .where(eq(centralSchema.familyMembers.id, targetMember.id))
       .run();
 
     // Fetch updated member with user details
-    const updated = centralDb
+    const updated = await centralDb
       .select({
         id: centralSchema.familyMembers.id,
         userId: centralSchema.familyMembers.userId,
@@ -133,7 +133,7 @@ export async function DELETE(_request: Request, { params }: Params) {
     const centralDb = createCentralDb();
 
     // Get the target member
-    const targetMember = centralDb
+    const targetMember = await centralDb
       .select()
       .from(centralSchema.familyMembers)
       .where(
@@ -171,7 +171,7 @@ export async function DELETE(_request: Request, { params }: Params) {
     }
 
     // Deactivate in central DB
-    centralDb
+    await centralDb
       .update(centralSchema.familyMembers)
       .set({ isActive: 0 })
       .where(eq(centralSchema.familyMembers.id, targetMember.id))
@@ -180,7 +180,7 @@ export async function DELETE(_request: Request, { params }: Params) {
     // Remove from familyUserCache in the family DB
     try {
       const familyDb = createFamilyDb(ctx.dbFilename);
-      familyDb
+      await familyDb
         .delete(familyUserCache)
         .where(eq(familyUserCache.userId, targetUserId))
         .run();

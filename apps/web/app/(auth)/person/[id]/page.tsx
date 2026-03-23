@@ -10,7 +10,7 @@ export default async function PersonPage({
 }) {
   const { id } = await params;
   const db = createDb();
-  const person = assemblePersonDetail(db, id);
+  const person = await assemblePersonDetail(db, id);
   if (!person) notFound();
   return <PersonDetail person={person} />;
 }

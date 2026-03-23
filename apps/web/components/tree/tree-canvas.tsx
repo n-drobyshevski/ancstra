@@ -500,6 +500,7 @@ function TreeCanvasInner({ treeData, focusPersonId }: TreeCanvasProps) {
         className={`flex-1 transition-all ${selectedPerson ? 'mr-[400px]' : ''}`}
       >
         <ReactFlow
+          aria-label="Family tree"
           nodes={nodes}
           edges={filteredEdges}
           onNodesChange={handleNodesChange}

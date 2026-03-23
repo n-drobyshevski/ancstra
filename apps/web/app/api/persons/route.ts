@@ -25,9 +25,8 @@ export async function POST(request: Request) {
     const personId = crypto.randomUUID();
     const nameId = crypto.randomUUID();
 
-    // Drizzle + better-sqlite3 transactions are SYNCHRONOUS
-    familyDb.transaction((tx) => {
-      tx.insert(persons)
+    await familyDb.transaction(async (tx) => {
+      await tx.insert(persons)
         .values({
           id: personId,
           sex: data.sex,
@@ -39,7 +38,7 @@ export async function POST(request: Request) {
         })
         .run();
 
-      tx.insert(personNames)
+      await tx.insert(personNames)
         .values({
           id: nameId,
           personId,
@@ -52,7 +51,7 @@ export async function POST(request: Request) {
         .run();
 
       if (data.birthDate || data.birthPlace) {
-        tx.insert(events)
+        await tx.insert(events)
           .values({
             id: crypto.randomUUID(),
             personId,
@@ -67,7 +66,7 @@ export async function POST(request: Request) {
       }
 
       if (data.deathDate || data.deathPlace) {
-        tx.insert(events)
+        await tx.insert(events)
           .values({
             id: crypto.randomUUID(),
             personId,
@@ -109,7 +108,7 @@ export async function GET(request: Request) {
 
     // When a search query is present, use FTS5 for ranked full-text search
     if (q) {
-      const allResults = searchPersonsFts(familyDb, q, 1000);
+      const allResults = await searchPersonsFts(familyDb, q, 1000);
       const total = allResults.length;
       const items = allResults.slice(offset, offset + pageSize);
       return NextResponse.json({ items, total, page, pageSize });
@@ -118,7 +117,7 @@ export async function GET(request: Request) {
     // Unfiltered paginated listing
     const whereClause = isNull(persons.deletedAt);
 
-    const rows = familyDb
+    const rows = await familyDb
       .select({
         id: persons.id,
         sex: persons.sex,
@@ -136,7 +135,7 @@ export async function GET(request: Request) {
       .offset(offset)
       .all();
 
-    const [{ count }] = familyDb
+    const [{ count }] = await familyDb
       .select({ count: sql<number>`count(*)` })
       .from(persons)
       .where(whereClause)
@@ -146,7 +145,7 @@ export async function GET(request: Request) {
     const personIds = rows.map((r) => r.id);
     const birthDeathEvents =
       personIds.length > 0
-        ? familyDb
+        ? await familyDb
             .select({
               personId: events.personId,
               eventType: events.eventType,

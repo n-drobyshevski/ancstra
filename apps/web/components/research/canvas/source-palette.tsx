@@ -79,6 +79,7 @@ export function SourcePalette({
           size="icon"
           className="size-6"
           onClick={onClose}
+          aria-label="Close source palette"
         >
           <X className="size-3.5" />
         </Button>

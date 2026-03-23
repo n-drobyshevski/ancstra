@@ -13,7 +13,7 @@ export default async function QualityPage() {
   try {
     const ctx = await requireAuthContext();
     const familyDb = createFamilyDb(ctx.dbFilename);
-    const summary = getQualitySummary(familyDb);
+    const summary = await getQualitySummary(familyDb);
     metrics = summary.metrics;
 
     // Generation data would come from a future query; for now pass empty

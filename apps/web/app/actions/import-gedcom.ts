@@ -22,7 +22,7 @@ export async function previewGedcom(formData: FormData): Promise<GedcomPreview> 
   const data = mapGedcomToImport(ast);
 
   const db = createDb();
-  const [{ count }] = db
+  const [{ count }] = await db
     .select({ count: sql<number>`count(*)` })
     .from(persons)
     .where(isNull(persons.deletedAt))
@@ -54,10 +54,10 @@ export async function commitGedcomImport(
   const db = createDb();
   const now = new Date().toISOString();
 
-  db.transaction((tx) => {
+  await db.transaction(async (tx) => {
     // 1. Insert persons
     for (const p of data.persons) {
-      tx.insert(persons)
+      await tx.insert(persons)
         .values({
           id: p.id,
           sex: p.sex,
@@ -72,7 +72,7 @@ export async function commitGedcomImport(
 
     // 2. Insert person names
     for (const n of data.names) {
-      tx.insert(personNames)
+      await tx.insert(personNames)
         .values({
           id: n.id,
           personId: n.personId,
@@ -89,7 +89,7 @@ export async function commitGedcomImport(
 
     // 3. Insert families
     for (const f of data.families) {
-      tx.insert(families)
+      await tx.insert(families)
         .values({
           id: f.id,
           partner1Id: f.partner1Id,
@@ -103,7 +103,7 @@ export async function commitGedcomImport(
 
     // 4. Insert children (child links)
     for (const cl of data.childLinks) {
-      tx.insert(children)
+      await tx.insert(children)
         .values({
           id: crypto.randomUUID(),
           familyId: cl.familyId,
@@ -116,7 +116,7 @@ export async function commitGedcomImport(
 
     // 5. Insert events
     for (const e of data.events) {
-      tx.insert(events)
+      await tx.insert(events)
         .values({
           id: e.id,
           eventType: e.eventType,

@@ -21,7 +21,7 @@ export async function POST(request: Request) {
 
     // Check that provided person(s) exist and aren't soft-deleted
     if (data.partner1Id) {
-      const [p1] = familyDb
+      const [p1] = await familyDb
         .select({ id: persons.id })
         .from(persons)
         .where(and(eq(persons.id, data.partner1Id), isNull(persons.deletedAt)))
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     }
 
     if (data.partner2Id) {
-      const [p2] = familyDb
+      const [p2] = await familyDb
         .select({ id: persons.id })
         .from(persons)
         .where(and(eq(persons.id, data.partner2Id), isNull(persons.deletedAt)))
@@ -44,7 +44,7 @@ export async function POST(request: Request) {
 
     // Check no duplicate non-deleted family for this pair (both directions)
     if (data.partner1Id && data.partner2Id) {
-      const [existing] = familyDb
+      const [existing] = await familyDb
         .select({ id: families.id })
         .from(families)
         .where(
@@ -74,7 +74,7 @@ export async function POST(request: Request) {
     const now = new Date().toISOString();
     const familyId = crypto.randomUUID();
 
-    familyDb.insert(families)
+    await familyDb.insert(families)
       .values({
         id: familyId,
         partner1Id: data.partner1Id ?? null,
@@ -86,7 +86,7 @@ export async function POST(request: Request) {
       })
       .run();
 
-    const [created] = familyDb
+    const [created] = await familyDb
       .select()
       .from(families)
       .where(eq(families.id, familyId))

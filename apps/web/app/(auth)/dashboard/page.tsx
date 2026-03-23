@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ContributionQueue } from '@/components/moderation/contribution-queue';
+import { WelcomeCard } from '@/components/onboarding/welcome-card';
 import { createDb, persons, personNames, events } from '@ancstra/db';
 import { eq, isNull, sql } from 'drizzle-orm';
 import { hasPermission } from '@ancstra/auth';
@@ -15,7 +16,7 @@ export default async function DashboardPage() {
     authContext != null && hasPermission(authContext.role, 'contributions:review');
 
   // Fetch last 5 persons ordered by created_at desc
-  const recentRows = db
+  const recentRows = await db
     .select({
       id: persons.id,
       sex: persons.sex,
@@ -38,7 +39,7 @@ export default async function DashboardPage() {
   const recentIds = recentRows.map((r) => r.id);
   const birthEvents =
     recentIds.length > 0
-      ? db
+      ? await db
           .select({
             personId: events.personId,
             dateOriginal: events.dateOriginal,
@@ -67,6 +68,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      <WelcomeCard />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold">Welcome to Ancstra</h1>

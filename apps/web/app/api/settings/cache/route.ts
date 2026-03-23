@@ -8,14 +8,14 @@ export async function DELETE() {
     const { familyDb } = await withAuth('settings:manage');
 
     // Count dismissed items before deleting
-    const [{ count }] = familyDb
+    const [{ count }] = await familyDb
       .select({ count: sql<number>`count(*)` })
       .from(researchItems)
       .where(eq(researchItems.status, 'dismissed'))
       .all();
 
     // Delete dismissed research items
-    familyDb.delete(researchItems)
+    await familyDb.delete(researchItems)
       .where(eq(researchItems.status, 'dismissed'))
       .run();
 

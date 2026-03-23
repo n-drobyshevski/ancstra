@@ -21,7 +21,7 @@ export async function POST(request: Request) {
     const now = new Date().toISOString();
     const id = crypto.randomUUID();
 
-    familyDb.insert(sources)
+    await familyDb.insert(sources)
       .values({
         id,
         title: data.title,
@@ -38,7 +38,7 @@ export async function POST(request: Request) {
       })
       .run();
 
-    const [source] = familyDb
+    const [source] = await familyDb
       .select()
       .from(sources)
       .where(sql`${sources.id} = ${id}`)
@@ -64,7 +64,7 @@ export async function GET(request: Request) {
       ? sql`${sources.title} LIKE ${'%' + q + '%'}`
       : undefined;
 
-    const rows = familyDb
+    const rows = await familyDb
       .select()
       .from(sources)
       .where(whereClause)
@@ -73,12 +73,12 @@ export async function GET(request: Request) {
       .all();
 
     const countQuery = q
-      ? familyDb
+      ? await familyDb
           .select({ count: sql<number>`count(*)` })
           .from(sources)
           .where(sql`${sources.title} LIKE ${'%' + q + '%'}`)
           .all()
-      : familyDb
+      : await familyDb
           .select({ count: sql<number>`count(*)` })
           .from(sources)
           .all();
@@ -89,7 +89,7 @@ export async function GET(request: Request) {
     const sourceIds = rows.map((r) => r.id);
     const citationCounts =
       sourceIds.length > 0
-        ? familyDb
+        ? await familyDb
             .select({
               sourceId: sourceCitations.sourceId,
               count: sql<number>`count(*)`,

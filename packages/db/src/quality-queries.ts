@@ -1,4 +1,5 @@
-import type Database from 'better-sqlite3';
+import { sql } from 'drizzle-orm';
+import type { FamilyDatabase } from './index';
 
 export interface QualityMetric {
   label: string;
@@ -25,8 +26,16 @@ export interface PriorityPerson {
  * Get a summary of data quality metrics across all non-deleted persons.
  * Uses raw SQL for complex multi-table aggregations.
  */
-export function getQualitySummary(db: Database.Database): QualitySummary {
-  const row = db.prepare(`
+export async function getQualitySummary(db: FamilyDatabase): Promise<QualitySummary> {
+  const [row] = await db.all<{
+    total_persons: number;
+    with_name: number;
+    with_birth: number;
+    with_birth_place: number;
+    with_death: number;
+    non_living: number;
+    with_source: number;
+  }>(sql`
     SELECT
       COUNT(*) AS total_persons,
       SUM(CASE WHEN has_name = 1 THEN 1 ELSE 0 END) AS with_name,
@@ -65,15 +74,7 @@ export function getQualitySummary(db: Database.Database): QualitySummary {
       FROM persons p
       WHERE p.deleted_at IS NULL
     ) sub
-  `).get() as {
-    total_persons: number;
-    with_name: number;
-    with_birth: number;
-    with_birth_place: number;
-    with_death: number;
-    non_living: number;
-    with_source: number;
-  };
+  `);
 
   const total = row.total_persons;
   if (total === 0) {
@@ -121,24 +122,34 @@ export function getQualitySummary(db: Database.Database): QualitySummary {
  * Get persons sorted by lowest completeness score first (research priorities).
  * Score = (hasName * 20) + (hasBirth * 25) + (hasBirthPlace * 20) + (hasDeath * 15) + (hasSource * 20)
  */
-export function getPriorities(
-  db: Database.Database,
+export async function getPriorities(
+  db: FamilyDatabase,
   page = 1,
   pageSize = 20,
-): {
+): Promise<{
   persons: PriorityPerson[];
   total: number;
   page: number;
   pageSize: number;
-} {
+}> {
   const offset = (page - 1) * pageSize;
 
-  const countRow = db.prepare(`
+  const [countRow] = await db.all<{ cnt: number }>(sql`
     SELECT COUNT(*) AS cnt FROM persons WHERE deleted_at IS NULL
-  `).get() as { cnt: number };
+  `);
   const total = countRow.cnt;
 
-  const rows = db.prepare(`
+  const rows = await db.all<{
+    id: string;
+    given_name: string;
+    surname: string;
+    score: number;
+    missing_name: number;
+    missing_birth: number;
+    missing_birth_place: number;
+    missing_death: number;
+    missing_source: number;
+  }>(sql`
     SELECT
       p.id,
       COALESCE(pn.given_name, '') AS given_name,
@@ -186,18 +197,8 @@ export function getPriorities(
       ON pn.person_id = p.id AND pn.is_primary = 1
     WHERE p.deleted_at IS NULL
     ORDER BY score ASC, p.id ASC
-    LIMIT ? OFFSET ?
-  `).all(pageSize, offset) as Array<{
-    id: string;
-    given_name: string;
-    surname: string;
-    score: number;
-    missing_name: number;
-    missing_birth: number;
-    missing_birth_place: number;
-    missing_death: number;
-    missing_source: number;
-  }>;
+    LIMIT ${pageSize} OFFSET ${offset}
+  `);
 
   const persons: PriorityPerson[] = rows.map((r) => {
     const missingFields: string[] = [];

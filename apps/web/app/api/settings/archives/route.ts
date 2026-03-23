@@ -37,7 +37,7 @@ export async function DELETE() {
     ]);
 
     // Null out paths in research_items
-    familyDb.update(researchItems)
+    await familyDb.update(researchItems)
       .set({
         archivedHtmlPath: null,
         screenshotPath: null,

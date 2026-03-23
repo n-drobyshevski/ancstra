@@ -16,9 +16,9 @@ export async function exportGedcom(formData: FormData): Promise<string> {
   const mode = (formData.get('mode') as ExportMode) || 'full';
 
   const db = createDb();
-  const { persons, families, childLinks } = getTreeData(db);
+  const { persons, families, childLinks } = await getTreeData(db);
 
-  const allEvents = db.select().from(events).all();
+  const allEvents = await db.select().from(events).all();
 
   return serializeToGedcom({ persons, families, childLinks, events: allEvents }, mode);
 }

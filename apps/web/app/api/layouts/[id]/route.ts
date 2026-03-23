@@ -12,7 +12,7 @@ export async function GET(
     const { familyDb } = await withAuth('tree:view');
     const { id } = await params;
 
-    const [layout] = familyDb
+    const [layout] = await familyDb
       .select()
       .from(treeLayouts)
       .where(eq(treeLayouts.id, id))
@@ -48,7 +48,7 @@ export async function PUT(
     const data = parsed.data;
     const now = new Date().toISOString();
 
-    const [existing] = familyDb
+    const [existing] = await familyDb
       .select()
       .from(treeLayouts)
       .where(eq(treeLayouts.id, id))
@@ -62,12 +62,12 @@ export async function PUT(
     if (data.name !== undefined) updates.name = data.name;
     if (data.layoutData !== undefined) updates.layoutData = data.layoutData;
 
-    familyDb.update(treeLayouts)
+    await familyDb.update(treeLayouts)
       .set(updates)
       .where(eq(treeLayouts.id, id))
       .run();
 
-    const [updated] = familyDb
+    const [updated] = await familyDb
       .select()
       .from(treeLayouts)
       .where(eq(treeLayouts.id, id))
@@ -88,7 +88,7 @@ export async function DELETE(
 
     const { id } = await params;
 
-    const [existing] = familyDb
+    const [existing] = await familyDb
       .select()
       .from(treeLayouts)
       .where(eq(treeLayouts.id, id))
@@ -98,7 +98,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
-    familyDb.delete(treeLayouts)
+    await familyDb.delete(treeLayouts)
       .where(eq(treeLayouts.id, id))
       .run();
 

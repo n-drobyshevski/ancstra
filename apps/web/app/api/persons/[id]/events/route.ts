@@ -11,7 +11,7 @@ export async function GET(
     const { familyDb } = await withAuth('tree:view');
     const { id } = await params;
 
-    const personEvents = familyDb
+    const personEvents = await familyDb
       .select()
       .from(events)
       .where(eq(events.personId, id))

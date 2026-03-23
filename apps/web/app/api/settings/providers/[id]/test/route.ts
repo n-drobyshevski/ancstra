@@ -31,7 +31,7 @@ export async function POST(
 
     const { id } = await params;
 
-    const [provider] = familyDb
+    const [provider] = await familyDb
       .select()
       .from(searchProviders)
       .where(eq(searchProviders.id, id))
@@ -60,7 +60,7 @@ export async function POST(
         const responseTimeMs = Date.now() - start;
         const status: HealthStatus = res.ok ? 'healthy' : 'down';
 
-        familyDb.update(searchProviders)
+        await familyDb.update(searchProviders)
           .set({ healthStatus: status, lastHealthCheck: new Date().toISOString() })
           .where(eq(searchProviders.id, id))
           .run();
@@ -68,7 +68,7 @@ export async function POST(
         return NextResponse.json({ status, responseTimeMs });
       } catch {
         const responseTimeMs = Date.now() - start;
-        familyDb.update(searchProviders)
+        await familyDb.update(searchProviders)
           .set({ healthStatus: 'down', lastHealthCheck: new Date().toISOString() })
           .where(eq(searchProviders.id, id))
           .run();
@@ -106,7 +106,7 @@ export async function POST(
         });
         const responseTimeMs = Date.now() - start;
 
-        familyDb.update(searchProviders)
+        await familyDb.update(searchProviders)
           .set({ healthStatus: 'healthy', lastHealthCheck: new Date().toISOString() })
           .where(eq(searchProviders.id, id))
           .run();
@@ -114,7 +114,7 @@ export async function POST(
         return NextResponse.json({ status: 'healthy' as HealthStatus, responseTimeMs });
       } catch {
         const responseTimeMs = Date.now() - start;
-        familyDb.update(searchProviders)
+        await familyDb.update(searchProviders)
           .set({ healthStatus: 'down', lastHealthCheck: new Date().toISOString() })
           .where(eq(searchProviders.id, id))
           .run();
@@ -132,14 +132,14 @@ export async function POST(
         try {
           await fetch(provider.baseUrl, { signal: AbortSignal.timeout(5000) });
           const responseTimeMs = Date.now() - start;
-          familyDb.update(searchProviders)
+          await familyDb.update(searchProviders)
             .set({ healthStatus: 'healthy', lastHealthCheck: new Date().toISOString() })
             .where(eq(searchProviders.id, id))
             .run();
           return NextResponse.json({ status: 'healthy' as HealthStatus, responseTimeMs });
         } catch {
           const responseTimeMs = Date.now() - start;
-          familyDb.update(searchProviders)
+          await familyDb.update(searchProviders)
             .set({ healthStatus: 'down', lastHealthCheck: new Date().toISOString() })
             .where(eq(searchProviders.id, id))
             .run();
@@ -161,7 +161,7 @@ export async function POST(
       clearTimeout(timeout);
       const responseTimeMs = Date.now() - start;
 
-      familyDb.update(searchProviders)
+      await familyDb.update(searchProviders)
         .set({ healthStatus: status, lastHealthCheck: new Date().toISOString() })
         .where(eq(searchProviders.id, id))
         .run();
@@ -169,7 +169,7 @@ export async function POST(
       return NextResponse.json({ status, responseTimeMs });
     } catch {
       const responseTimeMs = Date.now() - start;
-      familyDb.update(searchProviders)
+      await familyDb.update(searchProviders)
         .set({ healthStatus: 'down', lastHealthCheck: new Date().toISOString() })
         .where(eq(searchProviders.id, id))
         .run();

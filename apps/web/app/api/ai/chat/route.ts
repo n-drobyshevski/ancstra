@@ -47,7 +47,7 @@ export async function POST(request: Request) {
     let monthlyLimit = parseFloat(process.env.AI_MONTHLY_BUDGET_USD ?? '10');
     try {
       const centralDb = createCentralDb();
-      const [family] = centralDb
+      const [family] = await centralDb
         .select({ budget: centralSchema.familyRegistry.monthlyAiBudgetUsd })
         .from(centralSchema.familyRegistry)
         .where(eq(centralSchema.familyRegistry.id, ctx.familyId))

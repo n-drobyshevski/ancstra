@@ -23,7 +23,7 @@ export async function PUT(
     }
 
     // Check event exists
-    const [existing] = familyDb
+    const [existing] = await familyDb
       .select()
       .from(events)
       .where(eq(events.id, id))
@@ -55,9 +55,9 @@ export async function PUT(
         : null;
     }
 
-    familyDb.update(events).set(updates).where(eq(events.id, id)).run();
+    await familyDb.update(events).set(updates).where(eq(events.id, id)).run();
 
-    const [updated] = familyDb
+    const [updated] = await familyDb
       .select()
       .from(events)
       .where(eq(events.id, id))
@@ -79,7 +79,7 @@ export async function DELETE(
     const { id } = await params;
 
     // Check event exists
-    const [existing] = familyDb
+    const [existing] = await familyDb
       .select()
       .from(events)
       .where(eq(events.id, id))
@@ -88,7 +88,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
-    familyDb.delete(events).where(eq(events.id, id)).run();
+    await familyDb.delete(events).where(eq(events.id, id)).run();
 
     return NextResponse.json({ success: true });
   } catch (error) {

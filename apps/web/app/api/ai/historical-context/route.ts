@@ -21,7 +21,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'personId required' }, { status: 400 });
     }
 
-    const cached = familyDb
+    const cached = await familyDb
       .select()
       .from(historicalContext)
       .where(eq(historicalContext.personId, personId))
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
     // Read budget limit from central DB
     let monthlyLimit = parseFloat(process.env.AI_MONTHLY_BUDGET_USD ?? '10');
     try {
-      const [family] = centralDb
+      const [family] = await centralDb
         .select({ budget: centralSchema.familyRegistry.monthlyAiBudgetUsd })
         .from(centralSchema.familyRegistry)
         .where(eq(centralSchema.familyRegistry.id, ctx.familyId))
@@ -75,12 +75,12 @@ export async function POST(request: Request) {
     }
 
     // Gather person data
-    const person = familyDb.select().from(persons).where(eq(persons.id, personId)).get();
+    const person = await familyDb.select().from(persons).where(eq(persons.id, personId)).get();
     if (!person) {
       return NextResponse.json({ error: 'Person not found' }, { status: 404 });
     }
 
-    const names = familyDb
+    const names = await familyDb
       .select()
       .from(personNames)
       .where(eq(personNames.personId, personId))
@@ -91,7 +91,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Person has no name records' }, { status: 400 });
     }
 
-    const personEvents = familyDb
+    const personEvents = await familyDb
       .select()
       .from(events)
       .where(eq(events.personId, personId))
@@ -146,7 +146,7 @@ export async function POST(request: Request) {
     const costUsd = calculateCost(modelName, usage.promptTokens, usage.completionTokens);
 
     // Cache in historicalContext table (INSERT OR REPLACE via unique constraint on personId)
-    familyDb
+    await familyDb
       .insert(historicalContext)
       .values({
         personId,

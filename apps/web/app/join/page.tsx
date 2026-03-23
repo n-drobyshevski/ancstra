@@ -32,7 +32,7 @@ export default async function JoinPage({
   const { invitation } = validation;
 
   // Get family name
-  const family = centralDb
+  const family = await centralDb
     .select()
     .from(centralSchema.familyRegistry)
     .where(eq(centralSchema.familyRegistry.id, invitation!.familyId))

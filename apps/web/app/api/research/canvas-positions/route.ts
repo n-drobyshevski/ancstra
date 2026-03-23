@@ -16,7 +16,7 @@ export async function GET(request: Request) {
       );
     }
 
-    const positions = familyDb
+    const positions = await familyDb
       .select()
       .from(researchCanvasPositions)
       .where(eq(researchCanvasPositions.personId, personId))
@@ -47,7 +47,7 @@ export async function PUT(request: Request) {
     type NodeType = 'research_item' | 'source' | 'note' | 'conflict';
 
     for (const pos of positions) {
-      familyDb.insert(researchCanvasPositions)
+      await familyDb.insert(researchCanvasPositions)
         .values({
           id: crypto.randomUUID(),
           personId,
@@ -91,7 +91,7 @@ export async function DELETE(request: Request) {
       );
     }
 
-    familyDb.delete(researchCanvasPositions)
+    await familyDb.delete(researchCanvasPositions)
       .where(
         and(
           eq(researchCanvasPositions.personId, personId),

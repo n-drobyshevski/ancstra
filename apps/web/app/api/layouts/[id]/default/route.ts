@@ -12,7 +12,7 @@ export async function PUT(
 
     const { id } = await params;
 
-    const [existing] = familyDb
+    const [existing] = await familyDb
       .select()
       .from(treeLayouts)
       .where(eq(treeLayouts.id, id))
@@ -22,13 +22,13 @@ export async function PUT(
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
-    familyDb.transaction((tx) => {
-      tx.update(treeLayouts)
+    await familyDb.transaction(async (tx) => {
+      await tx.update(treeLayouts)
         .set({ isDefault: false })
         .where(eq(treeLayouts.isDefault, true))
         .run();
 
-      tx.update(treeLayouts)
+      await tx.update(treeLayouts)
         .set({ isDefault: true })
         .where(eq(treeLayouts.id, id))
         .run();

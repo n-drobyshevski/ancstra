@@ -81,6 +81,7 @@ export function CanvasToolbar({
               size="icon"
               className="size-7"
               onClick={item.onClick}
+              aria-label={item.label}
             >
               <item.icon className="size-3.5" />
             </Button>

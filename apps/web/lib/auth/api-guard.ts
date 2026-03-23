@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs';
 import { requireAuthContext, type AuthContext } from './context';
 import {
   requirePermission,
@@ -78,5 +79,7 @@ export function handleAuthError(error: unknown): NextResponse {
   if (error instanceof Error && error.message.includes('Not authenticated')) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+  // Capture unexpected errors to Sentry before re-throwing
+  Sentry.captureException(error);
   throw error;
 }

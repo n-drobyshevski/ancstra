@@ -29,7 +29,7 @@ export async function PATCH(
       );
     }
 
-    const [existing] = familyDb
+    const [existing] = await familyDb
       .select()
       .from(searchProviders)
       .where(eq(searchProviders.id, id))
@@ -51,12 +51,12 @@ export async function PATCH(
       return NextResponse.json(existing);
     }
 
-    familyDb.update(searchProviders)
+    await familyDb.update(searchProviders)
       .set(updates)
       .where(eq(searchProviders.id, id))
       .run();
 
-    const [updated] = familyDb
+    const [updated] = await familyDb
       .select()
       .from(searchProviders)
       .where(eq(searchProviders.id, id))

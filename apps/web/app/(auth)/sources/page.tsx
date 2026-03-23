@@ -196,7 +196,7 @@ export default function SourcesPage() {
                         <TableCell>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="icon" className="size-8">
+                              <Button variant="ghost" size="icon" className="size-8" aria-label="Delete source">
                                 <Trash2 className="size-4" />
                               </Button>
                             </AlertDialogTrigger>
