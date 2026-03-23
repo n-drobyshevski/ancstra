@@ -38,7 +38,7 @@ export function PrivacySettings() {
   return (
     <div className="space-y-8">
       {/* Living Person Threshold */}
-      <div className="flex items-start justify-between gap-8">
+      <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between md:gap-8">
         <div className="space-y-1">
           <Label htmlFor="living-threshold">Living Person Threshold</Label>
           <p className="text-sm text-muted-foreground">
@@ -66,7 +66,7 @@ export function PrivacySettings() {
       </div>
 
       {/* Default Privacy Level */}
-      <div className="flex items-start justify-between gap-8">
+      <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between md:gap-8">
         <div className="space-y-1">
           <Label>Default Privacy Level</Label>
           <p className="text-sm text-muted-foreground">
@@ -75,7 +75,7 @@ export function PrivacySettings() {
             and Restricted limits access to editors and above.
           </p>
         </div>
-        <div className="flex gap-1 rounded-lg border border-input p-1 shrink-0">
+        <div className="flex gap-1 rounded-lg border border-input p-1 w-full md:w-fit shrink-0">
           {privacyLevels.map(({ value, label }) => (
             <Button
               key={value}

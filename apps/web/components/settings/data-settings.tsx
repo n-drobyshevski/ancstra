@@ -138,9 +138,10 @@ export function DataSettings({ onDataChanged }: DataSettingsProps) {
       {/* Backup & Restore */}
       <div className="space-y-3">
         <h3 className="text-sm font-medium">Backup & Restore</h3>
-        <div className="flex flex-wrap gap-3">
+        <div className="flex gap-2">
           <Button
             variant="outline"
+            className="flex-1"
             onClick={handleBackup}
             disabled={backupLoading}
           >
@@ -150,7 +151,7 @@ export function DataSettings({ onDataChanged }: DataSettingsProps) {
 
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="outline">
+              <Button variant="outline" className="flex-1">
                 <Upload className="size-4" data-icon="inline-start" />
                 Restore Backup
               </Button>
@@ -195,6 +196,7 @@ export function DataSettings({ onDataChanged }: DataSettingsProps) {
         </p>
         <Button
           variant="outline"
+          className="w-full md:w-auto"
           onClick={handleClearCache}
           disabled={cacheLoading}
         >
@@ -203,85 +205,79 @@ export function DataSettings({ onDataChanged }: DataSettingsProps) {
         </Button>
       </div>
 
-      {/* Clear Archives */}
-      <div className="space-y-3">
-        <h3 className="text-sm font-medium">Web Archives</h3>
-        <p className="text-sm text-muted-foreground">
-          Delete saved HTML archives and screenshots. Research items will remain
-          but their archive links will be removed.
-        </p>
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button variant="destructive" disabled={archiveLoading}>
-              <Archive className="size-4" data-icon="inline-start" />
-              {archiveLoading ? 'Clearing...' : 'Clear Web Archives'}
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Clear Web Archives</AlertDialogTitle>
-              <AlertDialogDescription>
-                This will permanently delete all saved HTML archives and
-                screenshots. Research items will be kept but their archive
-                references will be removed.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                variant="destructive"
-                onClick={handleClearArchives}
-              >
-                Delete Archives
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </div>
-
-      {/* Delete All Data */}
+      {/* Danger Zone */}
       <div className="space-y-3">
         <h3 className="text-sm font-medium text-destructive">Danger Zone</h3>
         <p className="text-sm text-muted-foreground">
           Permanently delete all cached data and web archives. This cannot be
           undone.
         </p>
-        <AlertDialog
-          onOpenChange={(open) => {
-            if (!open) setDeleteConfirmText('');
-          }}
-        >
-          <AlertDialogTrigger asChild>
-            <Button variant="destructive">
-              <AlertTriangle className="size-4" data-icon="inline-start" />
-              Delete All Data
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete All Data</AlertDialogTitle>
-              <AlertDialogDescription>
-                This will permanently delete all cached research items and web
-                archives. Type <strong>DELETE</strong> below to confirm.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <Input
-              placeholder="Type DELETE to confirm"
-              value={deleteConfirmText}
-              onChange={(e) => setDeleteConfirmText(e.target.value)}
-            />
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                variant="destructive"
-                disabled={deleteConfirmText !== 'DELETE'}
-                onClick={handleDeleteAll}
-              >
-                Delete Everything
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <div className="flex gap-2">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" className="flex-1" disabled={archiveLoading}>
+                <Archive className="size-4" data-icon="inline-start" />
+                {archiveLoading ? 'Clearing...' : 'Clear Web Archives'}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Clear Web Archives</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete all saved HTML archives and
+                  screenshots. Research items will be kept but their archive
+                  references will be removed.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  variant="destructive"
+                  onClick={handleClearArchives}
+                >
+                  Delete Archives
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          <AlertDialog
+            onOpenChange={(open) => {
+              if (!open) setDeleteConfirmText('');
+            }}
+          >
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" className="flex-1">
+                <AlertTriangle className="size-4" data-icon="inline-start" />
+                Delete All Data
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete All Data</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete all cached research items and web
+                  archives. Type <strong>DELETE</strong> below to confirm.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <Input
+                placeholder="Type DELETE to confirm"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+              />
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  variant="destructive"
+                  disabled={deleteConfirmText !== 'DELETE'}
+                  onClick={handleDeleteAll}
+                >
+                  Delete Everything
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
       </div>
     </div>
   );

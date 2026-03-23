@@ -5,6 +5,7 @@ import { WorkerStatus } from '@/components/settings/worker-status';
 import { ProviderCard } from '@/components/settings/provider-card';
 import { Button } from '@/components/ui/button';
 import { Loader2, RefreshCw } from 'lucide-react';
+import { SettingsMobileHeader } from '@/components/settings/settings-mobile-header';
 
 const CATEGORIES = [
   { id: 'databases', label: 'Databases', color: 'bg-emerald-500', providerIds: ['familysearch', 'nara', 'wikitree', 'openarchives'] },
@@ -19,6 +20,7 @@ export default function SearchSourcesPage() {
   if (isLoading) {
     return (
       <div className="space-y-6">
+        <SettingsMobileHeader title="Search Sources" />
         <div>
           <h2 className="text-lg font-semibold">Search Sources</h2>
           <p className="text-sm text-muted-foreground">
@@ -35,6 +37,7 @@ export default function SearchSourcesPage() {
   if (error) {
     return (
       <div className="space-y-6">
+        <SettingsMobileHeader title="Search Sources" />
         <div>
           <h2 className="text-lg font-semibold">Search Sources</h2>
           <p className="text-sm text-muted-foreground">
@@ -56,6 +59,7 @@ export default function SearchSourcesPage() {
 
   return (
     <div className="space-y-6 max-w-2xl">
+      <SettingsMobileHeader title="Search Sources" />
       <div>
         <h2 className="text-lg font-semibold">Search Sources</h2>
         <p className="text-sm text-muted-foreground">
