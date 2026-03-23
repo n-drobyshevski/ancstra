@@ -374,6 +374,6 @@ CREATE INDEX IF NOT EXISTS idx_justifications_child_link ON relationship_justifi
  */
 export async function runFamilySchemaDDL(dbUrl: string): Promise<void> {
   const httpsUrl = dbUrl.startsWith('libsql://') ? dbUrl.replace('libsql://', 'https://') : dbUrl;
-  const client = createClient({ url: httpsUrl, authToken: process.env.TURSO_AUTH_TOKEN });
+  const client = createClient({ url: httpsUrl, authToken: process.env.TURSO_AUTH_TOKEN?.trim() });
   await client.executeMultiple(FAMILY_SCHEMA_DDL);
 }

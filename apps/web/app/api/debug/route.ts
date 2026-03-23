@@ -1,29 +1,26 @@
 import { NextResponse } from 'next/server';
 import { createCentralDb, centralSchema } from '@ancstra/db';
-import { eq } from 'drizzle-orm';
-import bcrypt from 'bcryptjs';
+import { sql } from 'drizzle-orm';
 
 export async function GET() {
   const results: Record<string, unknown> = {};
 
   try {
-    results.envSet = !!process.env.CENTRAL_DATABASE_URL;
-    results.envPrefix = process.env.CENTRAL_DATABASE_URL?.substring(0, 30);
+    results.dbConfigured = !!process.env.CENTRAL_DATABASE_URL;
 
     const db = createCentralDb();
-    results.dbCreated = true;
+
+    const tables = await db.all(sql`SELECT name FROM sqlite_master WHERE type='table' ORDER BY name`);
+    results.tables = tables.map((t: any) => t.name);
 
     const users = await db.select().from(centralSchema.users).all();
     results.userCount = users.length;
-    results.users = users.map(u => ({ email: u.email, hasPassword: !!u.passwordHash }));
 
-    if (users.length > 0 && users[0].passwordHash) {
-      const valid = await bcrypt.compare('password', users[0].passwordHash);
-      results.passwordCheck = valid;
-    }
+    results.status = 'ok';
   } catch (error: any) {
+    results.status = 'error';
     results.error = error.message;
-    results.stack = error.stack?.split('\n').slice(0, 3);
+    results.cause = error.cause?.message;
   }
 
   return NextResponse.json(results);
