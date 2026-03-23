@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsup src/index.ts --format esm --no-splitting --external hono --external @hono/node-server --external jose --external better-sqlite3 --external drizzle-orm --external @libsql/client --external playwright --external sharp --external p-limit --external zod --external dotenv",
+    "build": "tsup",
     "start": "node dist/index.js",
     "test": "vitest run"
   },
