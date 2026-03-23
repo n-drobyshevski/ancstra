@@ -22,51 +22,50 @@ describe('ChroniclingAmericaProvider', () => {
     expect(provider.type).toBe('api');
   });
 
-  it('returns newspaper results', async () => {
-    const caResponse = {
-      totalItems: 1,
-      itemsPerPage: 20,
-      items: [
+  it('returns newspaper results from LOC collections API', async () => {
+    const locResponse = {
+      results: [
         {
-          id: '/lccn/sn83030214/1920-05-01/ed-1/seq-3/',
-          title: 'Springfield Daily News',
-          date: '19200501',
-          ocr_eng:
-            'John Smith was honored at the annual Springfield fair for his agricultural achievements.',
-          url: 'https://chroniclingamerica.loc.gov/lccn/sn83030214/1920-05-01/ed-1/seq-3/',
+          id: 'http://www.loc.gov/resource/sn83045555/1902-08-09/ed-1/?sp=9',
+          title: 'Deseret Evening News',
+          date: '1902-08-09',
+          description: [
+            'AND SMITH FAMILY GENEALOGY records from Topsfield.',
+          ],
+          image_url: [
+            'https://tile.loc.gov/image-services/iiif/service:ndnp:uuml:batch_uuml_nine_ver01/full/pct:6.25/0/default.jpg',
+          ],
         },
       ],
     };
 
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => caResponse,
+      json: async () => locResponse,
     });
 
-    const results = await provider.search({ freeText: 'John Smith' });
+    const results = await provider.search({ freeText: 'Smith genealogy' });
 
     expect(mockFetch).toHaveBeenCalledOnce();
     const url = mockFetch.mock.calls[0][0] as string;
-    expect(url).toContain(
-      'https://chroniclingamerica.loc.gov/search/pages/results/',
-    );
-    expect(url).toContain('andtext=John+Smith');
-    expect(url).toContain('format=json');
+    expect(url).toContain('https://www.loc.gov/collections/chronicling-america/');
+    expect(url).toContain('q=Smith+genealogy');
+    expect(url).toContain('fo=json');
 
     expect(results).toHaveLength(1);
     expect(results[0]).toMatchObject({
       providerId: 'chronicling_america',
-      externalId: '/lccn/sn83030214/1920-05-01/ed-1/seq-3/',
-      title: 'Springfield Daily News',
+      externalId: 'http://www.loc.gov/resource/sn83045555/1902-08-09/ed-1/?sp=9',
+      title: 'Deseret Evening News',
       recordType: 'newspaper',
-      url: 'https://chroniclingamerica.loc.gov/lccn/sn83030214/1920-05-01/ed-1/seq-3/',
     });
+    expect(results[0].snippet).toContain('SMITH FAMILY GENEALOGY');
   });
 
-  it('supports date range filtering', async () => {
+  it('supports date range filtering via date params', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ items: [] }),
+      json: async () => ({ results: [] }),
     });
 
     await provider.search({
@@ -76,9 +75,8 @@ describe('ChroniclingAmericaProvider', () => {
     });
 
     const url = mockFetch.mock.calls[0][0] as string;
-    expect(url).toContain('date1=1900');
-    expect(url).toContain('date2=1920');
-    expect(url).toContain('state=Illinois');
+    expect(url).toContain('dates=1900-1920');
+    expect(url).toContain('fa=location%3Aillinois');
   });
 
   it('returns empty array on API error', async () => {
@@ -101,7 +99,7 @@ describe('ChroniclingAmericaProvider', () => {
   it('health check returns healthy when API responds', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ items: [] }),
+      json: async () => ({ results: [] }),
     });
 
     const status = await provider.healthCheck();
