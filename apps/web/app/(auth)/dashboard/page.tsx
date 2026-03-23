@@ -26,11 +26,8 @@ export default async function DashboardPage() {
       createdAt: persons.createdAt,
     })
     .from(persons)
-    .innerJoin(
-      personNames,
-      and(eq(personNames.personId, persons.id), eq(personNames.isPrimary, true))!
-    )
-    .where(isNull(persons.deletedAt))
+    .innerJoin(personNames, eq(personNames.personId, persons.id))
+    .where(and(isNull(persons.deletedAt), eq(personNames.isPrimary, true)))
     .orderBy(sql`${persons.createdAt} DESC`)
     .limit(5)
     .all();
