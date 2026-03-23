@@ -45,6 +45,6 @@ export async function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     // Match all paths EXCEPT public routes and static files
-    '/((?!login|signup|join|create-family|api/auth|_next/static|_next/image|favicon.ico).*)',
+    '/((?!login|signup|join|create-family|api/auth|api/debug|_next/static|_next/image|favicon.ico).*)',
   ],
 };
