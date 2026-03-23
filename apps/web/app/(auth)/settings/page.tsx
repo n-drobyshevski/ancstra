@@ -1,5 +1,5 @@
-import { redirect } from 'next/navigation';
+import { SettingsMobileNav } from './settings-mobile-nav';
 
 export default function SettingsPage() {
-  redirect('/settings/sources');
+  return <SettingsMobileNav />;
 }
