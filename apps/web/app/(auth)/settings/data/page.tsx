@@ -3,12 +3,14 @@
 import { useState } from 'react';
 import { StorageUsage } from '@/components/settings/storage-usage';
 import { DataSettings } from '@/components/settings/data-settings';
+import { SettingsMobileHeader } from '@/components/settings/settings-mobile-header';
 
 export default function DataPage() {
   const [refreshKey, setRefreshKey] = useState(0);
 
   return (
     <div className="space-y-6">
+      <SettingsMobileHeader title="Data & Storage" />
       <div>
         <h2 className="text-lg font-semibold">Data & Storage</h2>
         <p className="text-sm text-muted-foreground">
