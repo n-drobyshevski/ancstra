@@ -26,6 +26,7 @@ export default async function DashboardPage() {
       createdAt: persons.createdAt,
     })
     .from(persons)
+    // @ts-expect-error -- libsql driver type mismatch with schema join conditions
     .innerJoin(personNames, eq(personNames.personId, persons.id))
     .where(and(isNull(persons.deletedAt), eq(personNames.isPrimary, true)))
     .orderBy(sql`${persons.createdAt} DESC`)
