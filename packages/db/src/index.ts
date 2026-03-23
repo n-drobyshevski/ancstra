@@ -12,7 +12,9 @@ export function isWebMode(url?: string): boolean {
 
 function resolveUrl(url: string): { url: string; authToken?: string } {
   if (url.startsWith('libsql://')) {
-    return { url, authToken: process.env.TURSO_AUTH_TOKEN };
+    // Use HTTPS transport for serverless compatibility (Vercel)
+    const httpsUrl = url.replace('libsql://', 'https://');
+    return { url: httpsUrl, authToken: process.env.TURSO_AUTH_TOKEN };
   }
   if (url.startsWith('file:')) return { url };
   const absPath = path.isAbsolute(url) ? url : path.resolve(url);
