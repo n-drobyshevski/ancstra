@@ -23,11 +23,9 @@ export async function searchPersonsFts(
   query: string,
   limit: number = 10,
 ): Promise<PersonListItem[]> {
-  // Sanitize: strip FTS5 special characters
   const sanitized = query.replace(/['"*()]/g, '').trim();
   if (!sanitized) return [];
 
-  // Build FTS5 match expression: prefix each word with *
   const matchExpr = sanitized
     .split(/\s+/)
     .filter(Boolean)
@@ -42,11 +40,16 @@ export async function searchPersonsFts(
     isLiving: number;
     givenName: string;
     surname: string;
+    birthDate: string | null;
+    deathDate: string | null;
   }>(sql`
-    SELECT p.id, p.sex, p.is_living as isLiving, pn.given_name as givenName, pn.surname
+    SELECT p.id, p.sex, p.is_living as isLiving,
+           pn.given_name as givenName, pn.surname,
+           ps.birth_date as birthDate, ps.death_date as deathDate
     FROM persons_fts
     JOIN person_names pn ON pn.rowid = persons_fts.rowid
     JOIN persons p ON p.id = pn.person_id
+    LEFT JOIN person_summary ps ON ps.person_id = p.id
     WHERE persons_fts MATCH ${matchExpr}
       AND p.deleted_at IS NULL
       AND pn.is_primary = 1
@@ -54,25 +57,14 @@ export async function searchPersonsFts(
     LIMIT ${limit}
   `);
 
-  // Fetch birth/death dates for each matched person
-  return Promise.all(rows.map(async (row): Promise<PersonListItem> => {
-    const [birthEvent] = await db.all<{ date_original: string | null }>(sql`
-      SELECT date_original FROM events WHERE person_id = ${row.id} AND event_type = 'birth' LIMIT 1
-    `);
-
-    const [deathEvent] = await db.all<{ date_original: string | null }>(sql`
-      SELECT date_original FROM events WHERE person_id = ${row.id} AND event_type = 'death' LIMIT 1
-    `);
-
-    return {
-      id: row.id,
-      givenName: row.givenName,
-      surname: row.surname,
-      sex: row.sex as 'M' | 'F' | 'U',
-      isLiving: Boolean(row.isLiving),
-      birthDate: birthEvent?.date_original ?? null,
-      deathDate: deathEvent?.date_original ?? null,
-    };
+  return rows.map((row): PersonListItem => ({
+    id: row.id,
+    givenName: row.givenName,
+    surname: row.surname,
+    sex: row.sex as 'M' | 'F' | 'U',
+    isLiving: Boolean(row.isLiving),
+    birthDate: row.birthDate ?? null,
+    deathDate: row.deathDate ?? null,
   }));
 }
 
@@ -341,53 +333,29 @@ export async function assemblePersonDetail(
 // Exported: fetch all tree data (persons + families + child links)
 // ---------------------------------------------------------------------------
 export async function getTreeData(db: Database): Promise<TreeData> {
-  const personRows = await db
-    .select({
-      id: persons.id,
-      sex: persons.sex,
-      isLiving: persons.isLiving,
-      givenName: personNames.givenName,
-      surname: personNames.surname,
-    })
-    .from(persons)
-    .innerJoin(
-      personNames,
-      and(eq(personNames.personId, persons.id), eq(personNames.isPrimary, true))
-    )
-    .where(isNull(persons.deletedAt))
-    .all();
-
-  const personIds = personRows.map((r) => r.id);
-  const birthDeathEvents = personIds.length > 0
-    ? await db
-        .select({
-          personId: events.personId,
-          eventType: events.eventType,
-          dateOriginal: events.dateOriginal,
-        })
-        .from(events)
-        .where(
-          sql`${events.personId} IN (${sql.join(
-            personIds.map((id) => sql`${id}`),
-            sql`, `
-          )}) AND ${events.eventType} IN ('birth', 'death')`
-        )
-        .all()
-    : [];
-
-  const eventsByPerson = new Map<string, { birthDate?: string | null; deathDate?: string | null }>();
-  for (const ev of birthDeathEvents) {
-    if (!ev.personId) continue;
-    const entry = eventsByPerson.get(ev.personId) ?? {};
-    if (ev.eventType === 'birth') entry.birthDate = ev.dateOriginal;
-    if (ev.eventType === 'death') entry.deathDate = ev.dateOriginal;
-    eventsByPerson.set(ev.personId, entry);
-  }
+  // Read directly from denormalized person_summary table
+  const personRows = await db.all<{
+    person_id: string;
+    given_name: string;
+    surname: string;
+    sex: string;
+    is_living: number;
+    birth_date: string | null;
+    death_date: string | null;
+  }>(sql`
+    SELECT person_id, given_name, surname, sex, is_living, birth_date, death_date
+    FROM person_summary
+    WHERE person_id NOT IN (SELECT id FROM persons WHERE deleted_at IS NOT NULL)
+  `);
 
   const personsWithDates = personRows.map((r) => ({
-    ...r,
-    birthDate: eventsByPerson.get(r.id)?.birthDate ?? null,
-    deathDate: eventsByPerson.get(r.id)?.deathDate ?? null,
+    id: r.person_id,
+    givenName: r.given_name,
+    surname: r.surname,
+    sex: r.sex as 'M' | 'F' | 'U',
+    isLiving: Boolean(r.is_living),
+    birthDate: r.birth_date,
+    deathDate: r.death_date,
   }));
 
   const familyRows: FamilyRecord[] = await db

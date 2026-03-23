@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { persons, families, children } from '@ancstra/db';
+import { persons, families, children, addChildToFamily, refreshRelatedSummaries } from '@ancstra/db';
 import { and, eq, isNull } from 'drizzle-orm';
 import { addChildSchema } from '@/lib/validation';
 import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
@@ -68,6 +68,10 @@ export async function POST(
         createdAt: new Date().toISOString(),
       })
       .run();
+
+    // Update closure table and person summaries
+    await addChildToFamily(familyDb, familyId, data.personId);
+    await refreshRelatedSummaries(familyDb, data.personId);
 
     return NextResponse.json({ success: true }, { status: 201 });
   } catch (error) {

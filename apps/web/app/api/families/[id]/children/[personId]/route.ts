@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { children } from '@ancstra/db';
+import { children, removeChildFromFamily, refreshRelatedSummaries } from '@ancstra/db';
 import { and, eq } from 'drizzle-orm';
 import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
 
@@ -25,6 +25,10 @@ export async function DELETE(
     await familyDb.delete(children)
       .where(and(eq(children.familyId, familyId), eq(children.personId, personId)))
       .run();
+
+    // Update closure table and person summaries
+    await removeChildFromFamily(familyDb, familyId, personId);
+    await refreshRelatedSummaries(familyDb, personId);
 
     return NextResponse.json({ success: true });
   } catch (error) {
