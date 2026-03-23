@@ -57,11 +57,12 @@ export default async function DashboardPage() {
     birthEvents.map((e) => [e.personId, e.dateOriginal])
   );
 
-  const totalPersons = db
+  const countRows = await db
     .select({ count: sql<number>`count(*)` })
     .from(persons)
     .where(isNull(persons.deletedAt))
-    .all()[0].count;
+    .all();
+  const totalPersons = countRows[0]?.count ?? 0;
 
   const sexLabel = { M: 'Male', F: 'Female', U: 'Unknown' } as const;
 
