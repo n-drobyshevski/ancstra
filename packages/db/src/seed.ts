@@ -29,7 +29,7 @@ async function seed() {
   const createdUsers: Array<{ id: string; email: string; name: string }> = [];
 
   for (const def of userDefs) {
-    const [user] = centralDb.insert(users).values({
+    const [user] = await centralDb.insert(users).values({
       email: def.email,
       passwordHash,
       name: def.name,
@@ -44,7 +44,7 @@ async function seed() {
   const familyId = crypto.randomUUID();
   const dbFilename = `family-${familyId}.sqlite`;
 
-  centralDb.insert(familyRegistry).values({
+  await centralDb.insert(familyRegistry).values({
     id: familyId,
     name: 'Smith Family Tree',
     ownerId: ownerUser.id,
@@ -61,7 +61,7 @@ async function seed() {
   ];
 
   for (const def of memberDefs) {
-    centralDb.insert(familyMembers).values({
+    await centralDb.insert(familyMembers).values({
       familyId,
       userId: def.userId,
       role: def.role,
@@ -80,20 +80,20 @@ async function seed() {
   ];
 
   for (const personData of samplePersons) {
-    const [person] = familyDb.insert(persons).values(personData).returning().all();
+    const [person] = await familyDb.insert(persons).values(personData).returning().all();
 
     if (personData.sex === 'M' && personData.notes) {
       // John Smith
-      familyDb.insert(personNames).values({
+      await familyDb.insert(personNames).values({
         personId: person.id, givenName: 'John', surname: 'Smith',
         nameType: 'birth', isPrimary: true,
       }).run();
-      familyDb.insert(events).values({
+      await familyDb.insert(events).values({
         personId: person.id, eventType: 'birth',
         dateOriginal: '15 Mar 1845', dateSort: 18450315,
         placeText: 'Springfield, Sangamon, Illinois, USA',
       }).run();
-      familyDb.insert(events).values({
+      await familyDb.insert(events).values({
         personId: person.id, eventType: 'death',
         dateOriginal: '23 Nov 1923', dateSort: 19231123,
         placeText: 'Chicago, Cook, Illinois, USA',
@@ -101,11 +101,11 @@ async function seed() {
       console.log(`Created person: John Smith`);
     } else if (personData.sex === 'F') {
       // Mary Johnson
-      familyDb.insert(personNames).values({
+      await familyDb.insert(personNames).values({
         personId: person.id, givenName: 'Mary', surname: 'Johnson',
         nameType: 'birth', isPrimary: true,
       }).run();
-      familyDb.insert(events).values({
+      await familyDb.insert(events).values({
         personId: person.id, eventType: 'birth',
         dateOriginal: '1850', dateSort: 18500101, dateModifier: 'about',
         placeText: 'Springfield, Illinois, USA',
@@ -113,11 +113,11 @@ async function seed() {
       console.log(`Created person: Mary Johnson`);
     } else {
       // William Smith Jr
-      familyDb.insert(personNames).values({
+      await familyDb.insert(personNames).values({
         personId: person.id, givenName: 'William', surname: 'Smith',
         suffix: 'Jr', nameType: 'birth', isPrimary: true,
       }).run();
-      familyDb.insert(events).values({
+      await familyDb.insert(events).values({
         personId: person.id, eventType: 'birth',
         dateOriginal: '1870', dateSort: 18700101, dateModifier: 'about',
       }).run();
@@ -127,7 +127,7 @@ async function seed() {
 
   // 6. Populate family_user_cache for all 4 users
   for (const user of createdUsers) {
-    familyDb.insert(familyUserCache).values({
+    await familyDb.insert(familyUserCache).values({
       userId: user.id,
       name: user.name,
       avatarUrl: null,
