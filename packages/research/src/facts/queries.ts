@@ -21,11 +21,11 @@ export interface UpdateFactInput {
   confidence?: 'high' | 'medium' | 'low' | 'disputed';
 }
 
-export function createFact(db: Database, input: CreateFactInput) {
+export async function createFact(db: Database, input: CreateFactInput) {
   const now = new Date().toISOString();
   const id = crypto.randomUUID();
 
-  db.insert(researchFacts)
+  await db.insert(researchFacts)
     .values({
       id,
       personId: input.personId,
@@ -41,17 +41,17 @@ export function createFact(db: Database, input: CreateFactInput) {
     })
     .run();
 
-  const [fact] = db
+  const facts = await db
     .select()
     .from(researchFacts)
     .where(eq(researchFacts.id, id))
     .all();
 
-  return fact;
+  return facts[0];
 }
 
-export function getFactsByPerson(db: Database, personId: string) {
-  return db
+export async function getFactsByPerson(db: Database, personId: string) {
+  return await db
     .select()
     .from(researchFacts)
     .where(eq(researchFacts.personId, personId))
@@ -59,8 +59,8 @@ export function getFactsByPerson(db: Database, personId: string) {
     .all();
 }
 
-export function getFactsByResearchItem(db: Database, researchItemId: string) {
-  return db
+export async function getFactsByResearchItem(db: Database, researchItemId: string) {
+  return await db
     .select()
     .from(researchFacts)
     .where(eq(researchFacts.researchItemId, researchItemId))
@@ -68,7 +68,7 @@ export function getFactsByResearchItem(db: Database, researchItemId: string) {
     .all();
 }
 
-export function updateFact(db: Database, factId: string, data: UpdateFactInput) {
+export async function updateFact(db: Database, factId: string, data: UpdateFactInput) {
   const updates: Record<string, unknown> = {
     updatedAt: new Date().toISOString(),
   };
@@ -76,22 +76,22 @@ export function updateFact(db: Database, factId: string, data: UpdateFactInput) 
   if (data.factValue !== undefined) updates.factValue = data.factValue;
   if (data.confidence !== undefined) updates.confidence = data.confidence;
 
-  db.update(researchFacts)
+  await db.update(researchFacts)
     .set(updates)
     .where(eq(researchFacts.id, factId))
     .run();
 
-  const [fact] = db
+  const facts = await db
     .select()
     .from(researchFacts)
     .where(eq(researchFacts.id, factId))
     .all();
 
-  return fact ?? null;
+  return facts[0] ?? null;
 }
 
-export function deleteFact(db: Database, factId: string) {
-  db.delete(researchFacts)
+export async function deleteFact(db: Database, factId: string) {
+  await db.delete(researchFacts)
     .where(eq(researchFacts.id, factId))
     .run();
 }

@@ -9,7 +9,12 @@ import bcrypt from 'bcryptjs';
 import { AncstraAdapter } from '@ancstra/auth';
 import { linkOrCreateUser } from '@ancstra/auth';
 
-const centralDb = createCentralDb();
+// Lazy init — don't create DB connection at import time (breaks Vercel build)
+let _centralDb: ReturnType<typeof createCentralDb> | null = null;
+function getCentralDb() {
+  if (!_centralDb) _centralDb = createCentralDb();
+  return _centralDb;
+}
 
 // Build providers list dynamically — skip OAuth providers if env vars missing
 const providers: any[] = [
@@ -51,7 +56,8 @@ if (process.env.APPLE_CLIENT_ID && process.env.APPLE_CLIENT_SECRET) {
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  adapter: AncstraAdapter(centralDb),
+  // Only use adapter at runtime (not during build — no DB available on Vercel build)
+  ...(process.env.CENTRAL_DATABASE_URL ? { adapter: AncstraAdapter(getCentralDb()) } : {}),
   providers,
   session: { strategy: 'jwt' },
   pages: { signIn: '/login' },

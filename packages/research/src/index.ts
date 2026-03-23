@@ -57,8 +57,10 @@ export type { CreateFactInput, UpdateFactInput } from './facts/queries';
 export { promoteToSource } from './facts/promote';
 export type { PromoteInput, PromoteResult } from './facts/promote';
 
-// Scraper types only — implementations use sharp/playwright and must be
-// imported directly by the worker (not through this barrel export)
+// Scraper
+export { scrapeUrl } from './scraper/url-scraper';
+export { captureScreenshot } from './scraper/screenshot';
+export { archiveScrapeResult } from './scraper/archiver';
 export type {
   ScrapeOptions,
   ScrapeResult,

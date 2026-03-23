@@ -28,14 +28,14 @@ export async function executeProposeRelationship(
   const { person1Id, person2Id, relationshipType, evidence, confidence, sourceRecordId } = params;
 
   // Validate both persons exist
-  const p1Rows = db.all<{ id: string }>(sql`
+  const p1Rows = await db.all<{ id: string }>(sql`
     SELECT id FROM persons WHERE id = ${person1Id} AND deleted_at IS NULL
   `);
   if (p1Rows.length === 0) {
     return { proposalId: '', status: 'pending', message: `Person ${person1Id} not found` };
   }
 
-  const p2Rows = db.all<{ id: string }>(sql`
+  const p2Rows = await db.all<{ id: string }>(sql`
     SELECT id FROM persons WHERE id = ${person2Id} AND deleted_at IS NULL
   `);
   if (p2Rows.length === 0) {
@@ -43,7 +43,7 @@ export async function executeProposeRelationship(
   }
 
   // Check for duplicate proposal
-  const existing = db.all<{ id: string }>(sql`
+  const existing = await db.all<{ id: string }>(sql`
     SELECT id FROM proposed_relationships
     WHERE person1_id = ${person1Id}
       AND person2_id = ${person2Id}
@@ -66,7 +66,7 @@ export async function executeProposeRelationship(
   const now = new Date().toISOString();
   const id = crypto.randomUUID();
 
-  db.insert(proposedRelationships)
+  await db.insert(proposedRelationships)
     .values({
       id,
       relationshipType,

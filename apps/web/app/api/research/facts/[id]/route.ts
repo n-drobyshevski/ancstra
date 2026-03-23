@@ -4,13 +4,13 @@ import { eq } from 'drizzle-orm';
 import { researchFacts, type FamilyDatabase } from '@ancstra/db';
 import { updateFact, deleteFact } from '@ancstra/research';
 
-function getFact(db: FamilyDatabase, id: string) {
-  const [fact] = await db
+async function getFact(db: FamilyDatabase, id: string) {
+  const facts = await db
     .select()
     .from(researchFacts)
     .where(eq(researchFacts.id, id))
     .all();
-  return fact ?? null;
+  return facts[0] ?? null;
 }
 
 export async function GET(

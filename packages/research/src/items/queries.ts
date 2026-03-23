@@ -21,11 +21,12 @@ export interface ResearchItemFilters {
   createdBy?: string;
 }
 
-export function createResearchItem(db: Database, input: CreateResearchItemInput) {
-  const now = new Date().toISOString();
+export async function createResearchItem(db: Database, input: CreateResearchItemInput) {
   const id = crypto.randomUUID();
+  const now = new Date().toISOString();
 
-  db.insert(researchItems)
+  await db
+    .insert(researchItems)
     .values({
       id,
       title: input.title,
@@ -43,25 +44,27 @@ export function createResearchItem(db: Database, input: CreateResearchItemInput)
     })
     .run();
 
-  const [item] = db
+  const items = await db
     .select()
     .from(researchItems)
     .where(eq(researchItems.id, id))
     .all();
 
+  const item = items[0];
   return { id: item.id, title: item.title, status: item.status, createdAt: item.createdAt };
 }
 
-export function getResearchItem(db: Database, id: string) {
-  const [item] = db
+export async function getResearchItem(db: Database, id: string) {
+  const items = await db
     .select()
     .from(researchItems)
     .where(eq(researchItems.id, id))
     .all();
 
+  const item = items[0];
   if (!item) return null;
 
-  const personRows = db
+  const personRows = await db
     .select({ personId: researchItemPersons.personId })
     .from(researchItemPersons)
     .where(eq(researchItemPersons.researchItemId, id))
@@ -73,7 +76,7 @@ export function getResearchItem(db: Database, id: string) {
   };
 }
 
-export function listResearchItems(db: Database, filters?: ResearchItemFilters) {
+export async function listResearchItems(db: Database, filters?: ResearchItemFilters) {
   const conditions = [];
 
   if (filters?.status) {
@@ -96,7 +99,7 @@ export function listResearchItems(db: Database, filters?: ResearchItemFilters) {
 
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-  const items = db
+  const items = await db
     .select()
     .from(researchItems)
     .where(whereClause)
@@ -107,7 +110,7 @@ export function listResearchItems(db: Database, filters?: ResearchItemFilters) {
   const itemIds = items.map((i) => i.id);
   const allPersonTags =
     itemIds.length > 0
-      ? db
+      ? await db
           .select()
           .from(researchItemPersons)
           .where(
@@ -132,32 +135,32 @@ export function listResearchItems(db: Database, filters?: ResearchItemFilters) {
   }));
 }
 
-export function updateResearchItemStatus(
+export async function updateResearchItemStatus(
   db: Database,
   id: string,
   status: 'draft' | 'promoted' | 'dismissed'
 ) {
-  db.update(researchItems)
+  await db.update(researchItems)
     .set({ status, updatedAt: new Date().toISOString() })
     .where(eq(researchItems.id, id))
     .run();
 }
 
-export function updateResearchItemNotes(db: Database, id: string, notes: string) {
-  db.update(researchItems)
+export async function updateResearchItemNotes(db: Database, id: string, notes: string) {
+  await db.update(researchItems)
     .set({ notes, updatedAt: new Date().toISOString() })
     .where(eq(researchItems.id, id))
     .run();
 }
 
-export function tagPersonToItem(db: Database, itemId: string, personId: string) {
-  db.insert(researchItemPersons)
+export async function tagPersonToItem(db: Database, itemId: string, personId: string) {
+  await db.insert(researchItemPersons)
     .values({ researchItemId: itemId, personId })
     .run();
 }
 
-export function untagPersonFromItem(db: Database, itemId: string, personId: string) {
-  db.delete(researchItemPersons)
+export async function untagPersonFromItem(db: Database, itemId: string, personId: string) {
+  await db.delete(researchItemPersons)
     .where(
       and(
         eq(researchItemPersons.researchItemId, itemId),
@@ -167,8 +170,8 @@ export function untagPersonFromItem(db: Database, itemId: string, personId: stri
     .run();
 }
 
-export function deleteResearchItem(db: Database, id: string) {
-  db.delete(researchItems)
+export async function deleteResearchItem(db: Database, id: string) {
+  await db.delete(researchItems)
     .where(eq(researchItems.id, id))
     .run();
 }

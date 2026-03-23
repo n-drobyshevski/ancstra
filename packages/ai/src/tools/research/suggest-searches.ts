@@ -21,7 +21,7 @@ export async function executeSuggestSearches(
   const suggestions: SearchSuggestion[] = [];
 
   // Get person info
-  const personRows = db.all<{
+  const personRows = await db.all<{
     given_name: string;
     surname: string;
     sex: string;
@@ -40,7 +40,7 @@ export async function executeSuggestSearches(
   const fullName = `${person.given_name} ${person.surname}`;
 
   // Get existing events
-  const eventRows = db.all<{
+  const eventRows = await db.all<{
     event_type: string;
     date_sort: number | null;
     place_text: string | null;
@@ -60,7 +60,7 @@ export async function executeSuggestSearches(
   const deathYear = deathEvent?.dateSort ? Math.floor(deathEvent.dateSort / 10000) : null;
 
   // Check existing research items to avoid suggesting duplicate searches
-  const existingQueries = db.all<{ search_query: string }>(sql`
+  const existingQueries = await db.all<{ search_query: string }>(sql`
     SELECT DISTINCT ri.search_query
     FROM research_items ri
     JOIN research_item_persons rip ON rip.research_item_id = ri.id
@@ -139,7 +139,7 @@ export async function executeSuggestSearches(
   }
 
   // Missing parents
-  const hasParents = db.all<{ cnt: number }>(sql`
+  const hasParents = await db.all<{ cnt: number }>(sql`
     SELECT COUNT(*) as cnt FROM children WHERE person_id = ${personId}
   `);
   if ((hasParents[0]?.cnt ?? 0) === 0) {

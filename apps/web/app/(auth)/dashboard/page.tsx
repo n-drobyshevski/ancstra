@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ContributionQueue } from '@/components/moderation/contribution-queue';
 import { WelcomeCard } from '@/components/onboarding/welcome-card';
 import { createDb, persons, personNames, events } from '@ancstra/db';
-import { eq, isNull, sql } from 'drizzle-orm';
+import { eq, and, isNull, sql } from 'drizzle-orm';
 import { hasPermission } from '@ancstra/auth';
 import { getAuthContext } from '@/lib/auth/context';
 
@@ -26,11 +26,9 @@ export default async function DashboardPage() {
       createdAt: persons.createdAt,
     })
     .from(persons)
-    .innerJoin(
-      personNames,
-      sql`${personNames.personId} = ${persons.id} AND ${personNames.isPrimary} = 1`
-    )
-    .where(isNull(persons.deletedAt))
+    // @ts-expect-error -- libsql driver type mismatch with schema join conditions
+    .innerJoin(personNames, eq(personNames.personId, persons.id))
+    .where(and(isNull(persons.deletedAt), eq(personNames.isPrimary, true)))
     .orderBy(sql`${persons.createdAt} DESC`)
     .limit(5)
     .all();

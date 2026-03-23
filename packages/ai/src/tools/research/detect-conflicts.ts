@@ -21,7 +21,7 @@ export async function executeDetectConflicts(
   db: Database,
   personId: string
 ): Promise<ConflictResult[]> {
-  const rawConflicts = detectConflictsQuery(db, personId);
+  const rawConflicts = await detectConflictsQuery(db, personId);
 
   // Group conflicts by factType
   const grouped = new Map<string, ConflictResult>();

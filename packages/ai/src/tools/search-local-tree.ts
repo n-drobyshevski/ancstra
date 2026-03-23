@@ -49,7 +49,7 @@ export async function executeSearchLocalTree(
 
   if (ftsTerms.length > 0) {
     const ftsQuery = ftsTerms.join(' ');
-    rows = db.all(sql`
+    rows = await db.all(sql`
       SELECT
         p.id,
         pn.given_name,
@@ -81,7 +81,7 @@ export async function executeSearchLocalTree(
       conditions.push(`birth_ev.place_text LIKE '%${birthPlace.replace(/'/g, "''")}%'`);
     }
 
-    rows = db.all(sql.raw(`
+    rows = await db.all(sql.raw(`
       SELECT
         p.id,
         pn.given_name,

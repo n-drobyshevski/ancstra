@@ -46,7 +46,7 @@ export async function executeComputeRelationship(
   person2Id: string
 ): Promise<RelationshipResult> {
   // Find all ancestors of person1 with generations
-  const ancestors1 = db.all<{ id: string; generation: number; given_name: string; surname: string }>(sql`
+  const ancestors1 = await db.all<{ id: string; generation: number; given_name: string; surname: string }>(sql`
     WITH RECURSIVE anc AS (
       SELECT p.id, 0 as generation
       FROM persons p WHERE p.id = ${person1Id} AND p.deleted_at IS NULL
@@ -65,7 +65,7 @@ export async function executeComputeRelationship(
   `);
 
   // Find all ancestors of person2 with generations
-  const ancestors2 = db.all<{ id: string; generation: number; given_name: string; surname: string }>(sql`
+  const ancestors2 = await db.all<{ id: string; generation: number; given_name: string; surname: string }>(sql`
     WITH RECURSIVE anc AS (
       SELECT p.id, 0 as generation
       FROM persons p WHERE p.id = ${person2Id} AND p.deleted_at IS NULL
