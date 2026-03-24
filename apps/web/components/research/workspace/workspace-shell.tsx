@@ -5,6 +5,7 @@ import { Search, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { WorkspaceTabs, type WorkspaceView } from './workspace-tabs';
+import { ResearchBreadcrumb } from '../breadcrumb';
 import { useSearchParams } from 'next/navigation';
 import { usePersonConflicts } from '@/lib/research/evidence-client';
 import { usePersonHints } from '@/lib/research/hints-client';
@@ -52,6 +53,9 @@ function ShellInner({ person, children }: WorkspaceShellProps) {
 
   return (
     <div className="space-y-6">
+      {/* Breadcrumb */}
+      <ResearchBreadcrumb personName={`${person.givenName} ${person.surname}`.trim()} />
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">

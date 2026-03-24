@@ -1,15 +1,14 @@
 'use client';
 
-import { useState, useCallback } from 'react';
-import { Search, Globe, Newspaper, BookOpen, Archive, Bookmark, FileText } from 'lucide-react';
-import { SearchBar } from './search-bar';
+import { useState, useCallback, useEffect } from 'react';
+import { Search, Globe, Newspaper, BookOpen, Archive, Bookmark, ChevronsRight } from 'lucide-react';
+import { ResearchInput } from './research-input';
 import { SearchResults } from './search-results';
 import { ResearchItemCard } from './research-item-card';
-import { UrlPasteInput } from './url-paste-input';
 import { TextPasteModal } from './text-paste-modal';
 import { SourceSelector } from './source-selector';
-import { Button } from '@/components/ui/button';
 import { useResearchSearch, useResearchItems } from '@/lib/research/search-client';
+import { cn } from '@/lib/utils';
 
 const EXAMPLE_SEARCHES = [
   'Maria Kowalski born 1885',
@@ -25,7 +24,12 @@ const PROVIDERS = [
   { icon: BookOpen, name: 'More sources', desc: 'coming soon' },
 ];
 
-export function ResearchHub() {
+interface ResearchHubProps {
+  onAskAi?: (prompt: string) => void;
+  onSearchContextChange?: (ctx: { query: string; topResults: { title: string; providerId: string }[] } | null) => void;
+}
+
+export function ResearchHub({ onAskAi, onSearchContextChange }: ResearchHubProps) {
   const [query, setQuery] = useState('');
   const [textModalOpen, setTextModalOpen] = useState(false);
   const [selectedProviders, setSelectedProviders] = useState<string[]>([]);
@@ -54,6 +58,33 @@ export function ResearchHub() {
     refetchItems();
   }, [refetchItems]);
 
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem('ancstra:sidebar-collapsed') === 'true';
+  });
+
+  const toggleSidebar = useCallback(() => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem('ancstra:sidebar-collapsed', String(next));
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!query || !searchData?.results) {
+      onSearchContextChange?.(null);
+      return;
+    }
+    onSearchContextChange?.({
+      query,
+      topResults: searchData.results.slice(0, 5).map((r) => ({
+        title: r.title,
+        providerId: r.providerId,
+      })),
+    });
+  }, [query, searchData, onSearchContextChange]);
+
   const hasResults = !!query && (searchData?.results?.length ?? 0) > 0;
   const hasItems = (itemsData?.items?.length ?? 0) > 0;
   const showEmptyState = !query && !searchLoading;
@@ -62,20 +93,12 @@ export function ResearchHub() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold">Research</h1>
+          <h1 className="text-xl font-bold">Research</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Search historical records across multiple sources
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setTextModalOpen(true)}
-          >
-            <FileText className="size-3.5" />
-            Paste Text
-          </Button>
           {hasItems && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Bookmark className="size-4" />
@@ -85,20 +108,16 @@ export function ResearchHub() {
         </div>
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row sm:gap-2">
         <div className="flex-1">
-          <SearchBar onSearch={handleSearch} />
+          <ResearchInput
+            onSearch={handleSearch}
+            onSaved={handleSaved}
+            onOpenTextModal={() => setTextModalOpen(true)}
+          />
         </div>
         <SourceSelector onSelectionChange={setSelectedProviders} />
       </div>
-
-      <div className="flex items-center gap-3">
-        <div className="h-px flex-1 bg-border" />
-        <span className="text-xs text-muted-foreground">or paste a URL</span>
-        <div className="h-px flex-1 bg-border" />
-      </div>
-
-      <UrlPasteInput onSaved={handleSaved} />
 
       <TextPasteModal
         open={textModalOpen}
@@ -120,7 +139,7 @@ export function ResearchHub() {
                   key={example}
                   type="button"
                   onClick={() => handleSearch(example)}
-                  className="group flex items-center gap-3 rounded-lg border border-border bg-card p-3 text-left text-sm transition-colors hover:border-primary/50 hover:bg-accent/50"
+                  className="group flex items-center gap-3 rounded-lg border border-border bg-card p-3 text-left text-sm transition-colors hover:border-accent/50 hover:bg-accent/10"
                 >
                   <Search className="size-4 shrink-0 text-muted-foreground group-hover:text-primary" />
                   <span className="text-foreground">{example}</span>
@@ -136,16 +155,18 @@ export function ResearchHub() {
             </h2>
             <div className="grid gap-3 sm:grid-cols-4">
               {PROVIDERS.map(({ icon: Icon, name, desc }) => (
-                <div
+                <button
+                  type="button"
                   key={name}
-                  className="flex flex-col items-center gap-2 rounded-lg border border-border bg-card p-4 text-center"
+                  onClick={() => handleSearch(name)}
+                  className="flex flex-col items-center gap-2 rounded-lg border border-border bg-card p-4 text-center transition-all hover:shadow-sm hover:border-primary/20 cursor-pointer"
                 >
                   <Icon className="size-5 text-muted-foreground" />
                   <div>
                     <p className="text-sm font-medium">{name}</p>
                     <p className="text-xs text-muted-foreground">{desc}</p>
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           </div>
@@ -188,40 +209,67 @@ export function ResearchHub() {
         </div>
       ) : (
         /* ── Active state: results + sidebar ── */
-        <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-          <div>
+        <div className={cn(
+          'grid gap-6',
+          !sidebarCollapsed ? 'lg:grid-cols-[1fr_320px]' : 'grid-cols-1'
+        )}>
+          <div className="relative">
+            {/* Collapsed sidebar badge */}
+            {sidebarCollapsed && (
+              <button
+                type="button"
+                onClick={toggleSidebar}
+                className="absolute -top-1 right-0 z-10 inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1 text-xs font-medium text-muted-foreground shadow-sm transition-colors hover:text-foreground"
+              >
+                <Bookmark className="size-3.5" />
+                {itemsData?.items.length ?? 0} saved
+              </button>
+            )}
             <SearchResults
               results={searchData?.results}
               isLoading={searchLoading}
               error={searchError}
               query={query}
               onSaved={handleSaved}
+              onAskAi={onAskAi}
             />
           </div>
 
-          <div className="space-y-3">
-            <h2 className="text-sm font-medium text-muted-foreground">
-              Saved Items {hasItems && <span className="text-foreground">({itemsData?.items.length})</span>}
-            </h2>
-            {itemsLoading ? (
-              <p className="text-sm text-muted-foreground">Loading...</p>
-            ) : !hasItems ? (
-              <div className="rounded-lg border border-dashed border-border p-4 text-center">
-                <Bookmark className="mx-auto size-5 text-muted-foreground mb-2" />
-                <p className="text-sm text-muted-foreground">
-                  Save search results to track them here.
-                </p>
+          {!sidebarCollapsed && (
+            <div className="hidden space-y-3 lg:block">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-medium text-muted-foreground">
+                  Saved Items <span className="text-foreground">({itemsData?.items.length ?? 0})</span>
+                </h2>
+                <button
+                  type="button"
+                  onClick={toggleSidebar}
+                  className="text-muted-foreground hover:text-foreground"
+                  aria-label="Collapse sidebar"
+                >
+                  <ChevronsRight className="size-4" />
+                </button>
               </div>
-            ) : (
-              itemsData?.items.map((item: any) => (
-                <ResearchItemCard
-                  key={item.id}
-                  item={item}
-                  onUpdated={handleSaved}
-                />
-              ))
-            )}
-          </div>
+              {itemsLoading ? (
+                <p className="text-sm text-muted-foreground">Loading...</p>
+              ) : !hasItems ? (
+                <div className="rounded-lg border border-dashed border-border p-4 text-center">
+                  <Bookmark className="mx-auto size-5 text-muted-foreground mb-2" />
+                  <p className="text-sm text-muted-foreground">
+                    Save search results to track them here.
+                  </p>
+                </div>
+              ) : (
+                itemsData?.items.map((item: any) => (
+                  <ResearchItemCard
+                    key={item.id}
+                    item={item}
+                    onUpdated={handleSaved}
+                  />
+                ))
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
