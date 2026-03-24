@@ -108,22 +108,22 @@ export function ItemHeader({ item, onStatusChange, onDeleted }: ItemHeaderProps)
 
   return (
     <div className="space-y-3">
-      {/* Badges */}
-      <div className="flex flex-wrap items-center gap-2">
-        {item.providerId && <ProviderBadge providerId={item.providerId} />}
-        <Badge variant="outline" className={statusConfig.className}>
-          {statusConfig.label}
-        </Badge>
-        <Badge variant="outline" className="text-xs">
-          {methodLabel}
-        </Badge>
-        <span className="text-xs text-muted-foreground">
-          {new Date(item.createdAt).toLocaleDateString()}
-        </span>
+      {/* Title + Badges */}
+      <div className="flex items-start justify-between gap-4">
+        <h1 className="text-xl font-bold">{item.title}</h1>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          {item.providerId && <ProviderBadge providerId={item.providerId} />}
+          <Badge variant="outline" className={statusConfig.className}>
+            {statusConfig.label}
+          </Badge>
+          <Badge variant="outline" className="text-xs">
+            {methodLabel}
+          </Badge>
+          <span className="text-xs text-muted-foreground">
+            {new Date(item.createdAt).toLocaleDateString()}
+          </span>
+        </div>
       </div>
-
-      {/* Title */}
-      <h1 className="text-xl font-bold">{item.title}</h1>
 
       {/* Actions */}
       <div className="flex flex-wrap items-center gap-2">
