@@ -129,17 +129,21 @@ export function ItemHeader({ item, onStatusChange, onDeleted }: ItemHeaderProps)
       <div className="flex flex-wrap items-center gap-2">
         {item.status === 'draft' && (
           <>
-            <Button
-              size="sm"
-              onClick={() => updateStatus('promoted')}
-              disabled={updating}
-              className="bg-accent text-accent-foreground hover:bg-accent/90"
-            >
-              Promote
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => updateStatus('dismissed')} disabled={updating}>
-              Dismiss
-            </Button>
+            <span title="Mark as a verified source for your research">
+              <Button
+                size="sm"
+                onClick={() => updateStatus('promoted')}
+                disabled={updating}
+                className="bg-accent text-accent-foreground hover:bg-accent/90"
+              >
+                Promote
+              </Button>
+            </span>
+            <span title="Hide this item — you can restore it later">
+              <Button size="sm" variant="outline" onClick={() => updateStatus('dismissed')} disabled={updating}>
+                Dismiss
+              </Button>
+            </span>
           </>
         )}
         {item.status === 'dismissed' && (
