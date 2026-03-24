@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { Loader2, ExternalLink, ClipboardPaste, X, RefreshCw, Bookmark, FileText, Globe } from 'lucide-react';
+import { Loader2, ExternalLink, ClipboardPaste, X, RefreshCw, Bookmark, FileText, Globe, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { ItemNotesEditor } from './item-notes-editor';
@@ -112,14 +112,19 @@ export function ItemContent({ item, onNotesChange, onRefresh, onScrapeJobStarted
   return (
     <div className="space-y-4">
       {/* Summary */}
-      <div className="rounded-lg border border-border/80 p-4">
-        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Summary</h3>
-        {item.snippet ? (
-          <p className="text-sm leading-relaxed text-foreground">{item.snippet}</p>
-        ) : (
-          <p className="text-sm text-muted-foreground">No summary available.</p>
-        )}
-      </div>
+      <details className="group rounded-lg border border-border/80" open>
+        <summary className="flex cursor-pointer items-center justify-between p-4 [&::-webkit-details-marker]:hidden">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Summary</h3>
+          <ChevronDown className="size-4 text-muted-foreground transition-transform group-open:rotate-180" />
+        </summary>
+        <div className="px-4 pb-4">
+          {item.snippet ? (
+            <p className="text-sm leading-relaxed text-foreground">{item.snippet}</p>
+          ) : (
+            <p className="text-sm text-muted-foreground">No summary available.</p>
+          )}
+        </div>
+      </details>
 
       {/* Content & Preview — tabbed */}
       <div className="rounded-lg border border-border/80 p-4">
