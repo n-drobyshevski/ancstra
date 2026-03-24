@@ -102,3 +102,21 @@ export const researchCanvasPositions = sqliteTable('research_canvas_positions', 
   unique('uq_canvas_person_node').on(table.personId, table.nodeType, table.nodeId),
   index('idx_canvas_positions_person').on(table.personId),
 ]);
+
+// ==================== SCRAPE JOBS ====================
+export const scrapeJobs = sqliteTable('scrape_jobs', {
+  id: text('id').primaryKey(),
+  itemId: text('item_id').notNull().references(() => researchItems.id),
+  url: text('url').notNull(),
+  status: text('status').notNull().default('pending'),
+  fullText: text('full_text'),
+  title: text('title'),
+  snippet: text('snippet'),
+  error: text('error'),
+  method: text('method'),
+  createdAt: text('created_at').notNull(),
+  completedAt: text('completed_at'),
+}, (table) => [
+  index('idx_scrape_jobs_item').on(table.itemId),
+  index('idx_scrape_jobs_status').on(table.status),
+]);

@@ -301,6 +301,23 @@ CREATE TABLE IF NOT EXISTS research_canvas_positions (
 );
 CREATE INDEX IF NOT EXISTS idx_canvas_positions_person ON research_canvas_positions(person_id);
 
+-- ==================== SCRAPE JOBS (research-schema) ====================
+CREATE TABLE IF NOT EXISTS scrape_jobs (
+  id TEXT PRIMARY KEY,
+  item_id TEXT NOT NULL REFERENCES research_items(id),
+  url TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  full_text TEXT,
+  title TEXT,
+  snippet TEXT,
+  error TEXT,
+  method TEXT,
+  created_at TEXT NOT NULL,
+  completed_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_scrape_jobs_item ON scrape_jobs(item_id);
+CREATE INDEX IF NOT EXISTS idx_scrape_jobs_status ON scrape_jobs(status);
+
 -- ==================== AI USAGE TRACKING (ai-schema) ====================
 CREATE TABLE IF NOT EXISTS ai_usage (
   id TEXT PRIMARY KEY,
