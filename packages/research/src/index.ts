@@ -37,11 +37,12 @@ export {
   listResearchItems,
   updateResearchItemStatus,
   updateResearchItemNotes,
+  updateResearchItemContent,
   tagPersonToItem,
   untagPersonFromItem,
   deleteResearchItem,
 } from './items/queries';
-export type { CreateResearchItemInput, ResearchItemFilters } from './items/queries';
+export type { CreateResearchItemInput, ResearchItemFilters, UpdateResearchItemContentInput } from './items/queries';
 
 // Research Facts CRUD
 export {
