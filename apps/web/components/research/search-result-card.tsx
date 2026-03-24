@@ -3,17 +3,19 @@
 import { useState } from 'react';
 import { ExternalLink, Plus } from 'lucide-react';
 import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ProviderBadge } from './provider-badge';
+import { ProviderBadge, getProviderConfig } from './provider-badge';
 import { toast } from 'sonner';
 import type { SearchResult } from '@ancstra/research';
 
 interface SearchResultCardProps {
   result: SearchResult;
   onSaved?: () => void;
+  onAskAi?: (prompt: string) => void;
 }
 
-export function SearchResultCard({ result, onSaved }: SearchResultCardProps) {
+export function SearchResultCard({ result, onSaved, onAskAi }: SearchResultCardProps) {
   const [saving, setSaving] = useState(false);
 
   async function handleSave() {
@@ -52,7 +54,7 @@ export function SearchResultCard({ result, onSaved }: SearchResultCardProps) {
       : result.snippet;
 
   return (
-    <Card size="sm">
+    <Card size="sm" className={`border-l-3 ${getProviderConfig(result.providerId).borderClass} transition-shadow hover:shadow-sm`}>
       <CardHeader>
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 space-y-1">
@@ -60,16 +62,16 @@ export function SearchResultCard({ result, onSaved }: SearchResultCardProps) {
             <h3 className="text-sm font-medium leading-snug">{result.title}</h3>
           </div>
           {result.relevanceScore != null && (
-            <div className="shrink-0 text-right">
-              <span className="text-xs text-muted-foreground">
-                {Math.round(result.relevanceScore * 100)}%
-              </span>
-              <div className="mt-0.5 h-1 w-12 overflow-hidden rounded-full bg-muted">
+            <div className="shrink-0 flex items-center gap-2">
+              <div className="h-1.5 w-16 overflow-hidden rounded-full bg-muted">
                 <div
                   className="h-full rounded-full bg-primary"
                   style={{ width: `${result.relevanceScore * 100}%` }}
                 />
               </div>
+              <span className="text-xs font-medium text-muted-foreground">
+                {Math.round(result.relevanceScore * 100)}%
+              </span>
             </div>
           )}
         </div>
@@ -77,30 +79,26 @@ export function SearchResultCard({ result, onSaved }: SearchResultCardProps) {
       <CardContent>
         <p className="text-sm text-muted-foreground">{snippet}</p>
         {result.extractedData && (
-          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+          <div className="mt-2 flex flex-wrap gap-1.5">
             {result.extractedData.name && (
-              <span>
-                <span className="font-medium text-foreground">Name:</span>{' '}
+              <Badge variant="outline" className="text-xs font-normal">
                 {result.extractedData.name}
-              </span>
+              </Badge>
             )}
             {result.extractedData.birthDate && (
-              <span>
-                <span className="font-medium text-foreground">Born:</span>{' '}
-                {result.extractedData.birthDate}
-              </span>
+              <Badge variant="outline" className="text-xs font-normal">
+                b. {result.extractedData.birthDate}
+              </Badge>
             )}
             {result.extractedData.deathDate && (
-              <span>
-                <span className="font-medium text-foreground">Died:</span>{' '}
-                {result.extractedData.deathDate}
-              </span>
+              <Badge variant="outline" className="text-xs font-normal">
+                d. {result.extractedData.deathDate}
+              </Badge>
             )}
             {result.extractedData.location && (
-              <span>
-                <span className="font-medium text-foreground">Location:</span>{' '}
+              <Badge variant="outline" className="text-xs font-normal">
                 {result.extractedData.location}
-              </span>
+              </Badge>
             )}
           </div>
         )}
