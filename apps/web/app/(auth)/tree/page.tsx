@@ -1,8 +1,8 @@
-import { createFamilyDb } from '@ancstra/db';
 import { getTreeData } from '@/lib/queries';
 import { TreeCanvas } from '@/components/tree/tree-canvas';
 import { TreeTableWrapper } from '@/components/tree/tree-table-wrapper';
 import { getAuthContext } from '@/lib/auth/context';
+import { getFamilyDb } from '@/lib/db';
 import type { TreeData } from '@ancstra/shared';
 
 function buildRelationships(treeData: TreeData) {
@@ -42,7 +42,7 @@ export default async function TreePage({
   const { focus, view } = await searchParams;
   const authContext = await getAuthContext();
   if (!authContext) return null;
-  const db = createFamilyDb(authContext.dbFilename);
+  const db = await getFamilyDb(authContext.dbFilename);
   const treeData = await getTreeData(db);
 
   if (treeData.persons.length === 0) {

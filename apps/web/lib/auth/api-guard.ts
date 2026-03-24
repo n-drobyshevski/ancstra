@@ -10,7 +10,7 @@ import {
   type Permission,
   type ActivityAction,
 } from '@ancstra/auth';
-import { createFamilyDb, createCentralDb } from '@ancstra/db';
+import { createFamilyDb, createCentralDb, ensureFamilySchema } from '@ancstra/db';
 import { eq, and } from 'drizzle-orm';
 
 /**
@@ -21,6 +21,7 @@ export async function withAuth(permission: Permission) {
   const ctx = await requireAuthContext();
   requirePermission(ctx.role, permission);
   const familyDb = createFamilyDb(ctx.dbFilename);
+  await ensureFamilySchema(familyDb, ctx.dbFilename);
   const centralDb = createCentralDb();
   return { ctx, familyDb, centralDb };
 }
