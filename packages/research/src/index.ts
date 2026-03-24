@@ -76,3 +76,13 @@ export {
   MULTI_VALUED_TYPES,
 } from './facts/conflicts';
 export type { ConflictPair } from './facts/conflicts';
+
+// Scrape Jobs
+export {
+  createScrapeJob,
+  getScrapeJob,
+  updateScrapeJob,
+  findActiveScrapeJob,
+  deleteStaleJobs,
+} from './items/scrape-jobs';
+export type { CreateScrapeJobInput } from './items/scrape-jobs';
