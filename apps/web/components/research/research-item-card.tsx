@@ -1,11 +1,13 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { Check, X, RotateCcw } from 'lucide-react';
 import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { STATUS_CONFIG } from '@/lib/research/constants';
 
 interface ResearchItem {
   id: string;
@@ -18,21 +20,6 @@ interface ResearchItem {
   createdAt: string;
   personIds: string[];
 }
-
-const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
-  draft: {
-    label: 'Draft',
-    className: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
-  },
-  promoted: {
-    label: 'Promoted',
-    className: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
-  },
-  dismissed: {
-    label: 'Dismissed',
-    className: 'bg-gray-100 text-gray-500 dark:bg-gray-800/30 dark:text-gray-400',
-  },
-};
 
 interface ResearchItemCardProps {
   item: ResearchItem;
@@ -78,7 +65,8 @@ export function ResearchItemCard({ item, onUpdated }: ResearchItemCardProps) {
       : item.snippet;
 
   return (
-    <Card size="sm" className="transition-shadow hover:shadow-sm">
+    <Link href={`/research/item/${item.id}`} className="block">
+      <Card size="sm" className="transition-shadow hover:shadow-sm">
       <CardHeader>
         <div className="flex items-start justify-between gap-2">
           <h4 className="text-sm font-medium leading-snug">{item.title}</h4>
@@ -98,7 +86,7 @@ export function ResearchItemCard({ item, onUpdated }: ResearchItemCardProps) {
             <Button
               size="sm"
               variant="outline"
-              onClick={() => updateStatus('promoted')}
+              onClick={(e) => { e.stopPropagation(); e.preventDefault(); updateStatus('promoted'); }}
               disabled={updating}
             >
               <Check className="size-3.5" />
@@ -107,7 +95,7 @@ export function ResearchItemCard({ item, onUpdated }: ResearchItemCardProps) {
             <Button
               size="sm"
               variant="ghost"
-              onClick={() => updateStatus('dismissed')}
+              onClick={(e) => { e.stopPropagation(); e.preventDefault(); updateStatus('dismissed'); }}
               disabled={updating}
             >
               <X className="size-3.5" />
@@ -119,7 +107,7 @@ export function ResearchItemCard({ item, onUpdated }: ResearchItemCardProps) {
           <Button
             size="sm"
             variant="outline"
-            onClick={() => updateStatus('draft')}
+            onClick={(e) => { e.stopPropagation(); e.preventDefault(); updateStatus('draft'); }}
             disabled={updating}
           >
             <RotateCcw className="size-3.5" />
@@ -128,5 +116,6 @@ export function ResearchItemCard({ item, onUpdated }: ResearchItemCardProps) {
         )}
       </CardFooter>
     </Card>
+    </Link>
   );
 }
