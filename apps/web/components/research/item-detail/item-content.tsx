@@ -15,21 +15,46 @@ interface ItemContentProps {
     url: string | null;
   };
   onNotesChange: (notes: string) => void;
+  onRefresh: () => Promise<{ fullText: string | null } | null>;
+  onScrapeJobStarted: (jobId: string) => void;
+  scrapeJobStatus: string | null;
 }
 
-export function ItemContent({ item, onNotesChange }: ItemContentProps) {
+export function ItemContent({ item, onNotesChange, onRefresh, onScrapeJobStarted, scrapeJobStatus }: ItemContentProps) {
   const [expanded, setExpanded] = useState(false);
-  const { scrape, isLoading: scraping } = useScrapeUrl();
-  const [scraped, setScraped] = useState(false);
+  const { scrape, isLoading: scraping, error } = useScrapeUrl();
+  const [scrapeAttempted, setScrapeAttempted] = useState(false);
+  const [scrapeFailed, setScrapeFailed] = useState(false);
 
   const handleScrape = useCallback(async () => {
     if (!item.url) return;
-    const result = await scrape(item.url);
-    if (result) {
-      setScraped(true);
-      window.location.reload();
+    setScrapeFailed(false);
+    const result = await scrape(item.url, { itemId: item.id });
+    if (!result) {
+      setScrapeAttempted(true);
+      setScrapeFailed(true);
+      return;
     }
-  }, [item.url, scrape]);
+
+    if (result.jobId) {
+      // Worker path — hand off to polling
+      onScrapeJobStarted(result.jobId);
+      return;
+    }
+
+    // Fallback path — check inline result
+    setScrapeAttempted(true);
+    if (result.status === 'completed') {
+      const updated = await onRefresh();
+      if (!updated?.fullText) {
+        setScrapeFailed(true);
+      }
+    } else {
+      setScrapeFailed(true);
+    }
+  }, [item.url, item.id, scrape, onRefresh, onScrapeJobStarted]);
+
+  const isActivelyScraping = scraping || scrapeJobStatus === 'pending' || scrapeJobStatus === 'processing';
 
   const fullTextPreview = item.fullText
     ? item.fullText.length > 200
@@ -71,23 +96,34 @@ export function ItemContent({ item, onNotesChange }: ItemContentProps) {
         ) : (
           <div className="text-center">
             <p className="text-sm text-muted-foreground">No full text available.</p>
-            {item.url && !scraped && (
-              <Button
-                size="sm"
-                variant="outline"
-                className="mt-2"
-                onClick={handleScrape}
-                disabled={scraping}
-              >
-                {scraping ? (
-                  <>
-                    <Loader2 className="size-3.5 animate-spin" />
-                    Scraping...
-                  </>
-                ) : (
-                  'Scrape URL'
+            {item.url && (
+              <>
+                {scrapeFailed && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {error?.message ?? 'Could not extract text from this page. The site may require JavaScript or block automated access.'}
+                    {' '}
+                    <a href="/settings" className="text-primary hover:underline">Configure scrape worker</a>
+                  </p>
                 )}
-              </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="mt-2"
+                  onClick={handleScrape}
+                  disabled={isActivelyScraping}
+                >
+                  {isActivelyScraping ? (
+                    <>
+                      <Loader2 className="size-3.5 animate-spin" />
+                      Scraping...
+                    </>
+                  ) : scrapeAttempted ? (
+                    'Retry Scrape'
+                  ) : (
+                    'Scrape URL'
+                  )}
+                </Button>
+              </>
             )}
           </div>
         )}
