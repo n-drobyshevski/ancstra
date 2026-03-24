@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { Loader2, ExternalLink, ClipboardPaste, X, RefreshCw, Bookmark } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ItemNotesEditor } from './item-notes-editor';
@@ -84,9 +84,15 @@ export function ItemContent({ item, onNotesChange, onRefresh, onScrapeJobStarted
 
   const isActivelyScraping = scraping || scrapeJobStatus === 'pending' || scrapeJobStatus === 'processing';
 
-  const bookmarkletHref = typeof window !== 'undefined'
-    ? `javascript:void(function(){var f=document.createElement('form');f.method='POST';f.action='${window.location.origin}/api/research/bookmarklet';f.target='_blank';var t=document.createElement('input');t.type='hidden';t.name='text';t.value=document.body.innerText;f.appendChild(t);var u=document.createElement('input');u.type='hidden';u.name='url';u.value=location.href;f.appendChild(u);var n=document.createElement('input');n.type='hidden';n.name='title';n.value=document.title;f.appendChild(n);document.body.appendChild(f);f.submit();document.body.removeChild(f)}())`
-    : '#';
+  const bookmarkletRef = useRef<HTMLAnchorElement>(null);
+  useEffect(() => {
+    if (bookmarkletRef.current) {
+      // Set via DOM directly — React 19 blocks javascript: URLs in JSX
+      bookmarkletRef.current.setAttribute('href',
+        `javascript:void(function(){var f=document.createElement('form');f.method='POST';f.action='${window.location.origin}/api/research/bookmarklet';f.target='_blank';var t=document.createElement('input');t.type='hidden';t.name='text';t.value=document.body.innerText;f.appendChild(t);var u=document.createElement('input');u.type='hidden';u.name='url';u.value=location.href;f.appendChild(u);var n=document.createElement('input');n.type='hidden';n.name='title';n.value=document.title;f.appendChild(n);document.body.appendChild(f);f.submit();document.body.removeChild(f)}())`
+      );
+    }
+  }, []);
 
   const fullTextPreview = item.fullText
     ? item.fullText.length > 200
@@ -291,9 +297,9 @@ export function ItemContent({ item, onNotesChange, onRefresh, onScrapeJobStarted
               <Bookmark className="size-3.5 shrink-0 text-muted-foreground" />
               <p className="text-xs text-muted-foreground">
                 Drag this to your bookmark bar:{' '}
-                {/* eslint-disable-next-line no-script-url */}
                 <a
-                  href={bookmarkletHref}
+                  ref={bookmarkletRef}
+                  href="#"
                   className="inline-flex items-center gap-1 rounded bg-background px-2 py-0.5 font-medium text-primary ring-1 ring-border hover:ring-primary"
                   onClick={(e) => { e.preventDefault(); alert('Drag this link to your bookmark bar. Then click it on any page to send its text to Ancstra.'); }}
                 >

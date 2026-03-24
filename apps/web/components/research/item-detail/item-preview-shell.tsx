@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronRight, ExternalLink, Plus, Sparkles, Loader2 } from 'lucide-react';
+import { ArrowLeft, ChevronRight, ExternalLink, Plus, Sparkles, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -113,6 +113,10 @@ export function ItemPreviewShell({ result }: ItemPreviewShellProps) {
 
         {/* Actions */}
         <div className="flex flex-wrap items-center gap-2">
+          <Button size="sm" variant="outline" onClick={() => router.back()}>
+            <ArrowLeft className="size-3.5" />
+            Back to Research
+          </Button>
           <Button
             size="sm"
             onClick={handleSave}

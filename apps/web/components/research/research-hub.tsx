@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Search, Globe, Newspaper, BookOpen, Archive, Bookmark, ChevronsRight } from 'lucide-react';
 import { ResearchInput } from './research-input';
 import { SearchResults } from './search-results';
@@ -30,7 +31,8 @@ interface ResearchHubProps {
 }
 
 export function ResearchHub({ onAskAi, onSearchContextChange }: ResearchHubProps) {
-  const [query, setQuery] = useState('');
+  const searchParams = useSearchParams();
+  const [query, setQuery] = useState(() => searchParams.get('q') ?? '');
   const [textModalOpen, setTextModalOpen] = useState(false);
   const [selectedProviders, setSelectedProviders] = useState<string[]>([]);
 
@@ -52,6 +54,14 @@ export function ResearchHub({ onAskAi, onSearchContextChange }: ResearchHubProps
 
   const handleSearch = useCallback((q: string) => {
     setQuery(q);
+    // Sync to URL without triggering Next.js navigation
+    const url = new URL(window.location.href);
+    if (q) {
+      url.searchParams.set('q', q);
+    } else {
+      url.searchParams.delete('q');
+    }
+    window.history.replaceState(null, '', url.toString());
   }, []);
 
   const handleSaved = useCallback(() => {
@@ -114,6 +124,7 @@ export function ResearchHub({ onAskAi, onSearchContextChange }: ResearchHubProps
             onSearch={handleSearch}
             onSaved={handleSaved}
             onOpenTextModal={() => setTextModalOpen(true)}
+            externalQuery={query}
           />
         </div>
         <SourceSelector onSelectionChange={setSelectedProviders} />
@@ -206,6 +217,24 @@ export function ResearchHub({ onAskAi, onSearchContextChange }: ResearchHubProps
               </div>
             </div>
           </div>
+
+          {/* Saved items in empty state */}
+          {hasItems && (
+            <div className="mx-auto max-w-2xl space-y-4">
+              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                Saved Items ({itemsData?.items.length})
+              </h2>
+              <div className="space-y-3">
+                {itemsData?.items.map((item: any) => (
+                  <ResearchItemCard
+                    key={item.id}
+                    item={item}
+                    onUpdated={handleSaved}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         /* ── Active state: results + sidebar ── */

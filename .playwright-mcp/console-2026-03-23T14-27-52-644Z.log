@@ -1,0 +1,19 @@
+[     616ms] [ERROR] Manifest: Line: 1, column: 1, Syntax error. @ http://localhost:3000/manifest.webmanifest:0
+[     740ms] [ERROR] Manifest: Line: 1, column: 1, Syntax error. @ http://localhost:3000/manifest.webmanifest:0
+[   41459ms] Error: Failed query: select "persons"."id", "persons"."sex", "persons"."is_living", "person_names"."given_name", "person_names"."surname" from "persons" inner join "person_names" on ("person_names"."person_id" = "persons"."id" and "person_names"."is_primary" = ?) where "persons"."deleted_at" is null
+params: 1
+    at LibSQLPreparedQuery.queryWithCache (about://React/Server/D:%5Cprojects%5Cancstra%5C.worktrees%5Csettings-mobile-heroicons%5Capps%5Cweb%5C.next%5Cdev%5Cserver%5Cchunks%5Cssr%5C0fg___pnpm_0ggtbyi._.js?66:8325:23)
+    at  LibSQLPreparedQuery.values (about://React/Server/D:%5Cprojects%5Cancstra%5C.worktrees%5Csettings-mobile-heroicons%5Capps%5Cweb%5C.next%5Cdev%5Cserver%5Cchunks%5Cssr%5C0fg___pnpm_0ggtbyi._.js?67:8667:16)
+    at  LibSQLPreparedQuery.all (about://React/Server/D:%5Cprojects%5Cancstra%5C.worktrees%5Csettings-mobile-heroicons%5Capps%5Cweb%5C.next%5Cdev%5Cserver%5Cchunks%5Cssr%5C0fg___pnpm_0ggtbyi._.js?68:8615:22)
+    at  getTreeData (about://React/Server/D:%5Cprojects%5Cancstra%5C.worktrees%5Csettings-mobile-heroicons%5Capps%5Cweb%5C.next%5Cdev%5Cserver%5Cchunks%5Cssr%5C%5Broot-of-the-server%5D__0_nux-w._.js?69:244:24)
+    at  TreePage (about://React/Server/D:%5Cprojects%5Cancstra%5C.worktrees%5Csettings-mobile-heroicons%5Capps%5Cweb%5C.next%5Cdev%5Cserver%5Cchunks%5Cssr%5C%5Broot-of-the-server%5D__0_nux-w._.js?70:356:22)
+    at resolveErrorDev (http://localhost:3000/_next/static/chunks/13j9_next_dist_compiled_react-server-dom-turbopack_0xs8deh._.js:1920:150)
+    at processFullStringRow (http://localhost:3000/_next/static/chunks/13j9_next_dist_compiled_react-server-dom-turbopack_0xs8deh._.js:2435:29)
+    at processFullBinaryRow (http://localhost:3000/_next/static/chunks/13j9_next_dist_compiled_react-server-dom-turbopack_0xs8deh._.js:2394:9)
+    at processBinaryChunk (http://localhost:3000/_next/static/chunks/13j9_next_dist_compiled_react-server-dom-turbopack_0xs8deh._.js:2503:221)
+    at progress (http://localhost:3000/_next/static/chunks/13j9_next_dist_compiled_react-server-dom-turbopack_0xs8deh._.js:2690:13)
+[   44534ms] [WARNING] The resource http://localhost:3000/_next/static/chunks/0s_z_%40xyflow_react_dist_style_0cfve65.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/tree:0
+[  103075ms] [ERROR] Manifest: Line: 1, column: 1, Syntax error. @ http://localhost:3000/manifest.webmanifest:0
+[  103191ms] [ERROR] Manifest: Line: 1, column: 1, Syntax error. @ http://localhost:3000/manifest.webmanifest:0
+[  126988ms] [ERROR] Manifest: Line: 1, column: 1, Syntax error. @ http://localhost:3000/manifest.webmanifest:0
+[  127098ms] [ERROR] Manifest: Line: 1, column: 1, Syntax error. @ http://localhost:3000/manifest.webmanifest:0

@@ -14,6 +14,7 @@ interface ResearchInputProps {
   onSaved?: () => void;
   onOpenTextModal?: () => void;
   placeholder?: string;
+  externalQuery?: string;
 }
 
 export function ResearchInput({
@@ -21,10 +22,16 @@ export function ResearchInput({
   onSaved,
   onOpenTextModal,
   placeholder = 'Search records or paste a URL...',
+  externalQuery,
 }: ResearchInputProps) {
   const [value, setValue] = useState('');
   const [isUrlMode, setIsUrlMode] = useState(false);
   const { scrape, status, result, error, isLoading } = useScrapeUrl();
+
+  // Sync external query (e.g. from example search clicks)
+  useEffect(() => {
+    if (externalQuery != null) setValue(externalQuery);
+  }, [externalQuery]);
 
   // Auto-detect URL vs search
   useEffect(() => {
@@ -32,13 +39,10 @@ export function ResearchInput({
     setIsUrlMode(URL_REGEX.test(trimmed));
   }, [value]);
 
-  // Debounced search (only when not in URL mode)
-  useEffect(() => {
+  // Submit search on Enter or button click
+  const handleSubmitSearch = useCallback(() => {
     if (isUrlMode) return;
-    const timer = setTimeout(() => {
-      onSearch(value.trim());
-    }, 300);
-    return () => clearTimeout(timer);
+    onSearch(value.trim());
   }, [value, isUrlMode, onSearch]);
 
   const handleScrape = useCallback(async () => {
@@ -65,13 +69,14 @@ export function ResearchInput({
         <Input
           value={value}
           onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') handleSubmitSearch(); }}
           placeholder={placeholder}
           className="pl-9 pr-24"
           disabled={isLoading}
           aria-label="Search records or paste a URL"
         />
         <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
-          {hasValue ? (
+          {hasValue && (
             <button
               type="button"
               onClick={handleClear}
@@ -81,7 +86,18 @@ export function ResearchInput({
             >
               <X className="size-4" />
             </button>
-          ) : (
+          )}
+          {hasValue && !isUrlMode ? (
+            <button
+              type="button"
+              onClick={handleSubmitSearch}
+              className="rounded-md bg-primary px-2.5 py-0.5 text-[11px] font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+              disabled={isLoading}
+              aria-label="Search"
+            >
+              Search
+            </button>
+          ) : !hasValue ? (
             <button
               type="button"
               onClick={onOpenTextModal}
@@ -91,7 +107,7 @@ export function ResearchInput({
               <FileText className="mr-1 inline size-3" />
               Paste Text
             </button>
-          )}
+          ) : null}
         </div>
       </div>
 

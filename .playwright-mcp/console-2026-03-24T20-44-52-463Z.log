@@ -1,0 +1,48 @@
+[    1654ms] [ERROR] Manifest: Line: 1, column: 1, Syntax error. @ http://localhost:3000/manifest.webmanifest:0
+[    2270ms] [ERROR] Manifest: Line: 1, column: 1, Syntax error. @ http://localhost:3000/manifest.webmanifest:0
+[    2394ms] Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <Suspense name="2c8a9346-c..." fallback={<Fragment>}>
+      <HTTPAccessFallbackBoundary notFound={undefined} forbidden={undefined} unauthorized={undefined}>
+        <RedirectBoundary>
+          <RedirectErrorBoundary router={{...}}>
+            <InnerLayoutRouter url="/research/..." tree={[...]} params={{id:"2c8a93..."}} cacheNode={{rsc:{...}, ...}} ...>
+              <SegmentViewNode type="page" pagePath="(auth)/res...">
+                <SegmentTrieNode>
+                <ResearchItemPage>
+                  <ItemDetailShell item={{id:"2c8a93...", ...}}>
+                    <div className="space-y-6">
+                      <ItemHeader>
+                      <div className="grid gap-6...">
+                        <ItemContent item={{id:"2c8a93...", ...}} onNotesChange={function handleNotesChange} ...>
+                          <div className="space-y-4">
+                            <div>
+                            <div>
+                            <div className="rounded-lg...">
+                              <div>
++                             <div className="mt-3 flex items-center gap-2 rounded-md bg-muted/40 px-3 py-2">
+                            ...
+                        ...
+              ...
+            ...
+
+    at throwOnHydrationMismatch (http://localhost:3000/_next/static/chunks/0kit_next_dist_compiled_react-dom_0ctbhl9._.js:3318:56)
+    at beginWork (http://localhost:3000/_next/static/chunks/0kit_next_dist_compiled_react-dom_0ctbhl9._.js:6758:918)
+    at runWithFiberInDEV (http://localhost:3000/_next/static/chunks/0kit_next_dist_compiled_react-dom_0ctbhl9._.js:965:74)
+    at performUnitOfWork (http://localhost:3000/_next/static/chunks/0kit_next_dist_compiled_react-dom_0ctbhl9._.js:9555:97)
+    at workLoopConcurrentByScheduler (http://localhost:3000/_next/static/chunks/0kit_next_dist_compiled_react-dom_0ctbhl9._.js:9551:58)
+    at renderRootConcurrent (http://localhost:3000/_next/static/chunks/0kit_next_dist_compiled_react-dom_0ctbhl9._.js:9534:71)
+    at performWorkOnRoot (http://localhost:3000/_next/static/chunks/0kit_next_dist_compiled_react-dom_0ctbhl9._.js:9061:150)
+    at performWorkOnRootViaSchedulerTask (http://localhost:3000/_next/static/chunks/0kit_next_dist_compiled_react-dom_0ctbhl9._.js:10255:9)
+    at MessagePort.performWorkUntilDeadline (http://localhost:3000/_next/static/chunks/0kit_next_dist_compiled_0iuxy_s._.js:3168:64)
