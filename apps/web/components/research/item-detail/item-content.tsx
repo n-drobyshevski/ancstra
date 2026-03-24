@@ -300,6 +300,7 @@ export function ItemContent({ item, onNotesChange, onRefresh, onScrapeJobStarted
                 <a
                   ref={bookmarkletRef}
                   href="#"
+                  suppressHydrationWarning
                   className="inline-flex items-center gap-1 rounded bg-background px-2 py-0.5 font-medium text-primary ring-1 ring-border hover:ring-primary"
                   onClick={(e) => { e.preventDefault(); alert('Drag this link to your bookmark bar. Then click it on any page to send its text to Ancstra.'); }}
                 >
