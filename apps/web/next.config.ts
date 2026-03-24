@@ -10,19 +10,24 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withSentryConfig(nextConfig, {
-  org: process.env.SENTRY_ORG,
-  project: process.env.SENTRY_PROJECT,
+// Skip Sentry wrapper in local dev to avoid proxy compilation hang
+const isDev = process.env.NODE_ENV === 'development';
 
-  // Source map upload auth token
-  authToken: process.env.SENTRY_AUTH_TOKEN,
+export default isDev
+  ? nextConfig
+  : withSentryConfig(nextConfig, {
+      org: process.env.SENTRY_ORG,
+      project: process.env.SENTRY_PROJECT,
 
-  // Upload wider set of client source files for better stack traces
-  widenClientFileUpload: true,
+      // Source map upload auth token
+      authToken: process.env.SENTRY_AUTH_TOKEN,
 
-  // Proxy route to bypass ad-blockers
-  tunnelRoute: '/monitoring',
+      // Upload wider set of client source files for better stack traces
+      widenClientFileUpload: true,
 
-  // Suppress non-CI output
-  silent: !process.env.CI,
-});
+      // Proxy route to bypass ad-blockers
+      tunnelRoute: '/monitoring',
+
+      // Suppress non-CI output
+      silent: !process.env.CI,
+    });
