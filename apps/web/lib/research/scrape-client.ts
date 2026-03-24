@@ -4,33 +4,37 @@ import { useState, useCallback, useRef } from 'react';
 
 type ScrapeStatus = 'idle' | 'scraping' | 'done' | 'error';
 
-interface ScrapeResult {
-  id: string;
-  title: string;
-  status: string;
-  createdAt: string;
+interface ScrapeResponse {
+  // Worker path
+  jobId?: string;
+  // Fallback/common fields
+  itemId?: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  fullText?: string | null;
+  error?: string;
 }
 
 interface ScrapeOptions {
+  itemId?: string;
   extractEntities?: boolean;
   personId?: string;
 }
 
 interface UseScrapeUrlReturn {
-  scrape: (url: string, opts?: ScrapeOptions) => Promise<ScrapeResult | null>;
+  scrape: (url: string, opts?: ScrapeOptions) => Promise<ScrapeResponse | null>;
   status: ScrapeStatus;
-  result: ScrapeResult | null;
+  result: ScrapeResponse | null;
   error: Error | null;
   isLoading: boolean;
 }
 
 export function useScrapeUrl(): UseScrapeUrlReturn {
   const [status, setStatus] = useState<ScrapeStatus>('idle');
-  const [result, setResult] = useState<ScrapeResult | null>(null);
+  const [result, setResult] = useState<ScrapeResponse | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
-  const scrape = useCallback(async (url: string, opts?: ScrapeOptions): Promise<ScrapeResult | null> => {
+  const scrape = useCallback(async (url: string, opts?: ScrapeOptions): Promise<ScrapeResponse | null> => {
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -45,6 +49,7 @@ export function useScrapeUrl(): UseScrapeUrlReturn {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           url,
+          itemId: opts?.itemId,
           extractEntities: opts?.extractEntities,
           personId: opts?.personId,
         }),
@@ -56,7 +61,7 @@ export function useScrapeUrl(): UseScrapeUrlReturn {
         throw new Error(body.error ?? `Scrape failed (${res.status})`);
       }
 
-      const data: ScrapeResult = await res.json();
+      const data: ScrapeResponse = await res.json();
       setResult(data);
       setStatus('done');
       return data;
