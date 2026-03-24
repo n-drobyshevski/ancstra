@@ -4,9 +4,11 @@ import { scrapeUrlJob } from '../jobs/scrape-url';
 import { scrapeBatchJob } from '../jobs/scrape-batch';
 
 const scrapeUrlSchema = z.object({
+  jobId: z.string(),
+  itemId: z.string(),
   url: z.string().url('Invalid URL'),
+  dbFilename: z.string().min(1, 'dbFilename required'),
   extractEntities: z.boolean().optional(),
-  personId: z.string().optional(),
 });
 
 const scrape = new Hono();
@@ -27,10 +29,10 @@ scrape.post('/jobs/scrape-url', async (c) => {
     );
   }
 
-  const jobId = crypto.randomUUID();
+  const { jobId, itemId, url, dbFilename, extractEntities } = parsed.data;
 
   // Fire-and-forget: run job in background
-  scrapeUrlJob({ jobId, ...parsed.data }).catch((err) => {
+  scrapeUrlJob({ jobId, itemId, url, dbFilename, extractEntities }).catch((err) => {
     console.error(`Scrape job ${jobId} failed:`, err);
   });
 

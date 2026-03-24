@@ -7,10 +7,14 @@ settings:
 importers:
 
   .:
+    dependencies:
+      '@sentry/nextjs':
+        specifier: '10'
+        version: 10.45.0(@opentelemetry/context-async-hooks@2.6.0)(@opentelemetry/core@2.6.0)(@opentelemetry/sdk-trace-base@2.6.0)(next@16.2.1)(react@19.2.4)(webpack@5.105.4)
     devDependencies:
       next:
         specifier: ^16.0.0
-        version: 16.2.1(react-dom@19.2.4)(react@19.2.4)
+        version: 16.2.1(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(react-dom@19.2.4)(react@19.2.4)
       turbo:
         specifier: latest
         version: 2.8.20
@@ -22,7 +26,7 @@ importers:
     dependencies:
       next:
         specifier: ^15.3.0
-        version: 15.5.14(react-dom@19.2.4)(react@19.2.4)
+        version: 15.5.14(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(react-dom@19.2.4)(react@19.2.4)
       nextra:
         specifier: ^4.2.16
         version: 4.6.1(next@15.5.14)(react-dom@19.2.4)(react@19.2.4)(typescript@5.9.3)
@@ -91,7 +95,7 @@ importers:
         version: 1.1.1(@types/react-dom@19.2.3)(@types/react@19.2.14)(react-dom@19.2.4)(react@19.2.4)
       drizzle-orm:
         specifier: ^0.45.1
-        version: 0.45.1(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.13)(better-sqlite3@12.8.0)
+        version: 0.45.1(@libsql/client@0.17.2)(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.13)(better-sqlite3@12.8.0)
       html-to-image:
         specifier: 1.11.11
         version: 1.11.11
@@ -192,6 +196,9 @@ importers:
 
   apps/worker:
     dependencies:
+      '@ancstra/db':
+        specifier: workspace:^
+        version: link:../../packages/db
       '@ancstra/research':
         specifier: workspace:^
         version: link:../../packages/research
@@ -203,7 +210,7 @@ importers:
         version: 12.8.0
       drizzle-orm:
         specifier: ^0.45.1
-        version: 0.45.1(@libsql/client@0.17.2)(@types/better-sqlite3@7.6.13)(better-sqlite3@12.8.0)
+        version: 0.45.1(@libsql/client@0.17.2)(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.13)(better-sqlite3@12.8.0)
       hono:
         specifier: ^4.7.0
         version: 4.12.8
@@ -261,7 +268,7 @@ importers:
         version: 4.3.19(react@19.2.4)(zod@3.25.76)
       drizzle-orm:
         specifier: ^0.45.1
-        version: 0.45.1(@libsql/client@0.17.2)(@types/better-sqlite3@7.6.13)(better-sqlite3@12.8.0)
+        version: 0.45.1(@libsql/client@0.17.2)(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.13)(better-sqlite3@12.8.0)
       zod:
         specifier: ^3.24.0
         version: 3.25.76
@@ -289,7 +296,7 @@ importers:
         version: link:../db
       drizzle-orm:
         specifier: ^0.45.1
-        version: 0.45.1(@libsql/client@0.17.2)(@types/better-sqlite3@7.6.13)(better-sqlite3@12.8.0)
+        version: 0.45.1(@libsql/client@0.17.2)(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.13)(better-sqlite3@12.8.0)
     devDependencies:
       '@types/better-sqlite3':
         specifier: ^7.6.13
@@ -309,6 +316,9 @@ importers:
 
   packages/db:
     dependencies:
+      '@ancstra/shared':
+        specifier: workspace:^
+        version: link:../shared
       '@libsql/client':
         specifier: ^0.17.2
         version: 0.17.2
@@ -323,7 +333,7 @@ importers:
         version: 17.3.1
       drizzle-orm:
         specifier: ^0.45.1
-        version: 0.45.1(@libsql/client@0.17.2)(@types/better-sqlite3@7.6.13)(better-sqlite3@12.8.0)
+        version: 0.45.1(@libsql/client@0.17.2)(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.13)(better-sqlite3@12.8.0)
     devDependencies:
       '@types/bcryptjs':
         specifier: ^3.0.0
@@ -342,7 +352,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^4.1.0
-        version: 4.1.0(vite@8.0.1)
+        version: 4.1.0(@opentelemetry/api@1.9.0)(vite@8.0.1)
 
   packages/export:
     dependencies:
@@ -382,7 +392,7 @@ importers:
         version: 1.2.0
       drizzle-orm:
         specifier: ^0.45.1
-        version: 0.45.1(@libsql/client@0.17.2)(@types/better-sqlite3@7.6.13)(better-sqlite3@12.8.0)
+        version: 0.45.1(@libsql/client@0.17.2)(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.13)(better-sqlite3@12.8.0)
       sharp:
         specifier: ^0.33.0
         version: 0.33.5
@@ -2654,7 +2664,6 @@ packages:
 
   /@next/env@16.2.1:
     resolution: {integrity: sha512-n8P/HCkIWW+gVal2Z8XqXJ6aB3J0tuM29OcHpCsobWlChH/SITBs1DFBk/HajgrwDkqqBXPbuUuzgDvUekREPg==}
-    dev: true
 
   /@next/env@16.2.1-canary.4:
     resolution: {integrity: sha512-3pnp1A01b9jzWphuUQnlkx/1eUKHRa9dH4WumlU9KEstWz8KRMLXEBSAIrT1uLBx5bnQPt/VLDXTvEEbWqajrg==}
@@ -2681,7 +2690,6 @@ packages:
     cpu: [arm64]
     os: [darwin]
     requiresBuild: true
-    dev: true
     optional: true
 
   /@next/swc-darwin-arm64@16.2.1-canary.4:
@@ -2708,7 +2716,6 @@ packages:
     cpu: [x64]
     os: [darwin]
     requiresBuild: true
-    dev: true
     optional: true
 
   /@next/swc-darwin-x64@16.2.1-canary.4:
@@ -2735,7 +2742,6 @@ packages:
     cpu: [arm64]
     os: [linux]
     requiresBuild: true
-    dev: true
     optional: true
 
   /@next/swc-linux-arm64-gnu@16.2.1-canary.4:
@@ -2762,7 +2768,6 @@ packages:
     cpu: [arm64]
     os: [linux]
     requiresBuild: true
-    dev: true
     optional: true
 
   /@next/swc-linux-arm64-musl@16.2.1-canary.4:
@@ -2789,7 +2794,6 @@ packages:
     cpu: [x64]
     os: [linux]
     requiresBuild: true
-    dev: true
     optional: true
 
   /@next/swc-linux-x64-gnu@16.2.1-canary.4:
@@ -2816,7 +2820,6 @@ packages:
     cpu: [x64]
     os: [linux]
     requiresBuild: true
-    dev: true
     optional: true
 
   /@next/swc-linux-x64-musl@16.2.1-canary.4:
@@ -2843,7 +2846,6 @@ packages:
     cpu: [arm64]
     os: [win32]
     requiresBuild: true
-    dev: true
     optional: true
 
   /@next/swc-win32-arm64-msvc@16.2.1-canary.4:
@@ -2870,7 +2872,6 @@ packages:
     cpu: [x64]
     os: [win32]
     requiresBuild: true
-    dev: true
     optional: true
 
   /@next/swc-win32-x64-msvc@16.2.1-canary.4:
@@ -5335,6 +5336,36 @@ packages:
   /@sentry/core@10.45.0:
     resolution: {integrity: sha512-s69UXxvefeQxuZ5nY7/THtTrIEvJxNVCp3ns4kwoCw1qMpgpvn/296WCKVmM7MiwnaAdzEKnAvLAwaxZc2nM7Q==}
     engines: {node: '>=18'}
+    dev: false
+
+  /@sentry/nextjs@10.45.0(@opentelemetry/context-async-hooks@2.6.0)(@opentelemetry/core@2.6.0)(@opentelemetry/sdk-trace-base@2.6.0)(next@16.2.1)(react@19.2.4)(webpack@5.105.4):
+    resolution: {integrity: sha512-4LE+UvnfdOYyG8YEb/9TWaJQzMPuGLlph/iqowvsMdxaW6la+mvADiuzNTXly4QfsjeD3KIb7dKlGTqiVV0Ttw==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      next: ^13.2.0 || ^14.0 || ^15.0.0-rc.0 || ^16.0.0-0
+    dependencies:
+      '@opentelemetry/api': 1.9.0
+      '@opentelemetry/semantic-conventions': 1.40.0
+      '@rollup/plugin-commonjs': 28.0.1(rollup@4.60.0)
+      '@sentry-internal/browser-utils': 10.45.0
+      '@sentry/bundler-plugin-core': 5.1.1
+      '@sentry/core': 10.45.0
+      '@sentry/node': 10.45.0
+      '@sentry/opentelemetry': 10.45.0(@opentelemetry/api@1.9.0)(@opentelemetry/context-async-hooks@2.6.0)(@opentelemetry/core@2.6.0)(@opentelemetry/sdk-trace-base@2.6.0)(@opentelemetry/semantic-conventions@1.40.0)
+      '@sentry/react': 10.45.0(react@19.2.4)
+      '@sentry/vercel-edge': 10.45.0
+      '@sentry/webpack-plugin': 5.1.1(webpack@5.105.4)
+      next: 16.2.1(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(react-dom@19.2.4)(react@19.2.4)
+      rollup: 4.60.0
+      stacktrace-parser: 0.1.11
+    transitivePeerDependencies:
+      - '@opentelemetry/context-async-hooks'
+      - '@opentelemetry/core'
+      - '@opentelemetry/sdk-trace-base'
+      - encoding
+      - react
+      - supports-color
+      - webpack
     dev: false
 
   /@sentry/nextjs@10.45.0(@opentelemetry/context-async-hooks@2.6.0)(@opentelemetry/core@2.6.0)(@opentelemetry/sdk-trace-base@2.6.0)(next@16.2.1-canary.4)(react@19.2.4)(webpack@5.105.4):
@@ -8607,7 +8638,7 @@ packages:
       tsx: 4.21.0
     dev: true
 
-  /drizzle-orm@0.45.1(@libsql/client@0.17.2)(@types/better-sqlite3@7.6.13)(better-sqlite3@12.8.0):
+  /drizzle-orm@0.45.1(@libsql/client@0.17.2)(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.13)(better-sqlite3@12.8.0):
     resolution: {integrity: sha512-Te0FOdKIistGNPMq2jscdqngBRfBpC8uMFVwqjf6gtTVJHIQ/dosgV/CLBU2N4ZJBsXL5savCba9b0YJskKdcA==}
     peerDependencies:
       '@aws-sdk/client-rds-data': '>=3'
@@ -8700,102 +8731,6 @@ packages:
         optional: true
     dependencies:
       '@libsql/client': 0.17.2
-      '@types/better-sqlite3': 7.6.13
-      better-sqlite3: 12.8.0
-    dev: false
-
-  /drizzle-orm@0.45.1(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.13)(better-sqlite3@12.8.0):
-    resolution: {integrity: sha512-Te0FOdKIistGNPMq2jscdqngBRfBpC8uMFVwqjf6gtTVJHIQ/dosgV/CLBU2N4ZJBsXL5savCba9b0YJskKdcA==}
-    peerDependencies:
-      '@aws-sdk/client-rds-data': '>=3'
-      '@cloudflare/workers-types': '>=4'
-      '@electric-sql/pglite': '>=0.2.0'
-      '@libsql/client': '>=0.10.0'
-      '@libsql/client-wasm': '>=0.10.0'
-      '@neondatabase/serverless': '>=0.10.0'
-      '@op-engineering/op-sqlite': '>=2'
-      '@opentelemetry/api': ^1.4.1
-      '@planetscale/database': '>=1.13'
-      '@prisma/client': '*'
-      '@tidbcloud/serverless': '*'
-      '@types/better-sqlite3': '*'
-      '@types/pg': '*'
-      '@types/sql.js': '*'
-      '@upstash/redis': '>=1.34.7'
-      '@vercel/postgres': '>=0.8.0'
-      '@xata.io/client': '*'
-      better-sqlite3: '>=7'
-      bun-types: '*'
-      expo-sqlite: '>=14.0.0'
-      gel: '>=2'
-      knex: '*'
-      kysely: '*'
-      mysql2: '>=2'
-      pg: '>=8'
-      postgres: '>=3'
-      prisma: '*'
-      sql.js: '>=1'
-      sqlite3: '>=5'
-    peerDependenciesMeta:
-      '@aws-sdk/client-rds-data':
-        optional: true
-      '@cloudflare/workers-types':
-        optional: true
-      '@electric-sql/pglite':
-        optional: true
-      '@libsql/client':
-        optional: true
-      '@libsql/client-wasm':
-        optional: true
-      '@neondatabase/serverless':
-        optional: true
-      '@op-engineering/op-sqlite':
-        optional: true
-      '@opentelemetry/api':
-        optional: true
-      '@planetscale/database':
-        optional: true
-      '@prisma/client':
-        optional: true
-      '@tidbcloud/serverless':
-        optional: true
-      '@types/better-sqlite3':
-        optional: true
-      '@types/pg':
-        optional: true
-      '@types/sql.js':
-        optional: true
-      '@upstash/redis':
-        optional: true
-      '@vercel/postgres':
-        optional: true
-      '@xata.io/client':
-        optional: true
-      better-sqlite3:
-        optional: true
-      bun-types:
-        optional: true
-      expo-sqlite:
-        optional: true
-      gel:
-        optional: true
-      knex:
-        optional: true
-      kysely:
-        optional: true
-      mysql2:
-        optional: true
-      pg:
-        optional: true
-      postgres:
-        optional: true
-      prisma:
-        optional: true
-      sql.js:
-        optional: true
-      sqlite3:
-        optional: true
-    dependencies:
       '@opentelemetry/api': 1.9.0
       '@types/better-sqlite3': 7.6.13
       better-sqlite3: 12.8.0
@@ -12343,7 +12278,7 @@ packages:
         optional: true
     dependencies:
       '@auth/core': 0.41.0
-      next: 16.2.1(react-dom@19.2.4)(react@19.2.4)
+      next: 16.2.1(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(react-dom@19.2.4)(react@19.2.4)
       react: 19.2.4
     dev: true
 
@@ -12378,7 +12313,7 @@ packages:
       react-dom: 19.2.4(react@19.2.4)
     dev: false
 
-  /next@15.5.14(react-dom@19.2.4)(react@19.2.4):
+  /next@15.5.14(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(react-dom@19.2.4)(react@19.2.4):
     resolution: {integrity: sha512-M6S+4JyRjmKic2Ssm7jHUPkE6YUJ6lv4507jprsSZLulubz0ihO2E+S4zmQK3JZ2ov81JrugukKU4Tz0ivgqqQ==}
     engines: {node: ^18.18.0 || ^19.8.0 || >= 20.0.0}
     hasBin: true
@@ -12400,6 +12335,7 @@ packages:
         optional: true
     dependencies:
       '@next/env': 15.5.14
+      '@opentelemetry/api': 1.9.0
       '@swc/helpers': 0.5.15
       caniuse-lite: 1.0.30001780
       postcss: 8.4.31
@@ -12421,7 +12357,7 @@ packages:
       - babel-plugin-macros
     dev: false
 
-  /next@16.2.1(react-dom@19.2.4)(react@19.2.4):
+  /next@16.2.1(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(react-dom@19.2.4)(react@19.2.4):
     resolution: {integrity: sha512-VaChzNL7o9rbfdt60HUj8tev4m6d7iC1igAy157526+cJlXOQu5LzsBXNT+xaJnTP/k+utSX5vMv7m0G+zKH+Q==}
     engines: {node: '>=20.9.0'}
     hasBin: true
@@ -12443,6 +12379,7 @@ packages:
         optional: true
     dependencies:
       '@next/env': 16.2.1
+      '@opentelemetry/api': 1.9.0
       '@swc/helpers': 0.5.15
       baseline-browser-mapping: 2.10.10
       caniuse-lite: 1.0.30001780
@@ -12463,7 +12400,6 @@ packages:
     transitivePeerDependencies:
       - '@babel/core'
       - babel-plugin-macros
-    dev: true
 
   /next@16.2.1-canary.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(react-dom@19.2.4)(react@19.2.4):
     resolution: {integrity: sha512-h6aal7sPezB3ewScsp8utwXTVf5GVMEbRLtry5Jg/MuiThkFunEYZepoNa+sc04zbEDQdpN8NQpIAn6+8ldO1A==}
@@ -12520,7 +12456,7 @@ packages:
     dependencies:
       '@headlessui/react': 2.2.9(react-dom@19.2.4)(react@19.2.4)
       clsx: 2.1.1
-      next: 15.5.14(react-dom@19.2.4)(react@19.2.4)
+      next: 15.5.14(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(react-dom@19.2.4)(react@19.2.4)
       next-themes: 0.4.6(react-dom@19.2.4)(react@19.2.4)
       nextra: 4.6.1(next@15.5.14)(react-dom@19.2.4)(react@19.2.4)(typescript@5.9.3)
       react: 19.2.4
@@ -12562,7 +12498,7 @@ packages:
       mdast-util-gfm: 3.1.0
       mdast-util-to-hast: 13.2.1
       negotiator: 1.0.0
-      next: 15.5.14(react-dom@19.2.4)(react@19.2.4)
+      next: 15.5.14(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(react-dom@19.2.4)(react@19.2.4)
       react: 19.2.4
       react-compiler-runtime: 19.1.0-rc.3(react@19.2.4)
       react-dom: 19.2.4(react@19.2.4)
@@ -16150,7 +16086,7 @@ packages:
       - msw
     dev: true
 
-  /vitest@4.1.0(vite@8.0.1):
+  /vitest@4.1.0(@opentelemetry/api@1.9.0)(vite@8.0.1):
     resolution: {integrity: sha512-YbDrMF9jM2Lqc++2530UourxZHmkKLxrs4+mYhEwqWS97WJ7wOYEkcr+QfRgJ3PW9wz3odRijLZjHEaRLTNbqw==}
     engines: {node: ^20.0.0 || ^22.0.0 || >=24.0.0}
     hasBin: true
@@ -16185,6 +16121,7 @@ packages:
       jsdom:
         optional: true
     dependencies:
+      '@opentelemetry/api': 1.9.0
       '@vitest/expect': 4.1.0
       '@vitest/mocker': 4.1.0(vite@8.0.1)
       '@vitest/pretty-format': 4.1.0

@@ -153,6 +153,28 @@ export async function updateResearchItemNotes(db: Database, id: string, notes: s
     .run();
 }
 
+export interface UpdateResearchItemContentInput {
+  title?: string;
+  snippet?: string | null;
+  fullText?: string | null;
+}
+
+export async function updateResearchItemContent(
+  db: Database,
+  id: string,
+  input: UpdateResearchItemContentInput
+) {
+  const fields: Record<string, unknown> = { updatedAt: new Date().toISOString() };
+  if (input.title !== undefined) fields.title = input.title;
+  if (input.snippet !== undefined) fields.snippet = input.snippet;
+  if (input.fullText !== undefined) fields.fullText = input.fullText;
+
+  await db.update(researchItems)
+    .set(fields as any)
+    .where(eq(researchItems.id, id))
+    .run();
+}
+
 export async function tagPersonToItem(db: Database, itemId: string, personId: string) {
   await db.insert(researchItemPersons)
     .values({ researchItemId: itemId, personId })

@@ -1,15 +1,16 @@
 import { NextResponse } from 'next/server';
 import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
-import { createResearchItem } from '@ancstra/research';
+import { createResearchItem, getResearchItem, updateResearchItemContent, createScrapeJob, findActiveScrapeJob } from '@ancstra/research';
 import { z } from 'zod';
 
 const requestSchema = z.object({
   url: z.string().url('Invalid URL'),
+  itemId: z.string().optional(),
   extractEntities: z.boolean().optional(),
   personId: z.string().optional(),
 });
 
-async function fetchTitleAndSnippet(url: string): Promise<{ title: string; snippet?: string }> {
+async function fetchPageContent(url: string): Promise<{ title: string; snippet?: string; fullText?: string }> {
   const pageRes = await fetch(url, {
     headers: {
       'User-Agent': 'Ancstra/1.0 (genealogy research tool)',
@@ -20,6 +21,7 @@ async function fetchTitleAndSnippet(url: string): Promise<{ title: string; snipp
 
   let title = new URL(url).hostname;
   let snippet: string | undefined;
+  let fullText: string | undefined;
 
   if (pageRes.ok) {
     const html = await pageRes.text();
@@ -35,9 +37,29 @@ async function fetchTitleAndSnippet(url: string): Promise<{ title: string; snipp
     if (descMatch?.[1]) {
       snippet = descMatch[1].trim().slice(0, 500);
     }
+
+    // Extract text content by stripping tags
+    const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+    if (bodyMatch?.[1]) {
+      const body = bodyMatch[1]
+        .replace(/<script[\s\S]*?<\/script>/gi, '')
+        .replace(/<style[\s\S]*?<\/style>/gi, '')
+        .replace(/<nav[\s\S]*?<\/nav>/gi, '')
+        .replace(/<footer[\s\S]*?<\/footer>/gi, '')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/\s+/g, ' ')
+        .trim();
+      if (body.length > 50) {
+        fullText = body.slice(0, 50_000);
+      }
+    }
   }
 
-  return { title, snippet };
+  return { title, snippet, fullText };
 }
 
 export async function POST(request: Request) {
@@ -54,7 +76,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { url, extractEntities } = parsed.data;
+    const { url, itemId, extractEntities } = parsed.data;
 
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
       return NextResponse.json(
@@ -63,30 +85,56 @@ export async function POST(request: Request) {
       );
     }
 
+    // If itemId provided, verify it exists
+    if (itemId) {
+      const existing = await getResearchItem(familyDb, itemId);
+      if (!existing) {
+        return NextResponse.json({ error: 'Item not found' }, { status: 404 });
+      }
+    }
+
     // Dispatch to worker for full Playwright scrape if available
     const workerUrl = process.env['WORKER_URL'];
-    if (workerUrl) {
+    if (workerUrl && itemId) {
+      // Duplicate guard: check for existing active job
+      const existingJob = await findActiveScrapeJob(familyDb, itemId);
+      if (existingJob) {
+        return NextResponse.json({
+          jobId: existingJob.id,
+          itemId,
+          status: existingJob.status,
+        });
+      }
+
       try {
+        const jobId = crypto.randomUUID();
+
+        // Create job row BEFORE dispatching to worker
+        await createScrapeJob(familyDb, {
+          id: jobId,
+          itemId,
+          url,
+          method: 'playwright',
+        });
+
         const workerRes = await fetch(`${workerUrl}/jobs/scrape-url`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url, extractEntities }),
+          body: JSON.stringify({
+            jobId,
+            itemId,
+            url,
+            dbFilename: ctx.dbFilename,
+            extractEntities,
+          }),
           signal: AbortSignal.timeout(5_000),
         });
 
         if (workerRes.ok) {
-          const { jobId } = await workerRes.json() as { jobId: string };
-
-          // Use hostname as title to avoid double-fetching the target URL
-          const item = createResearchItem(familyDb, {
-            title: new URL(url).hostname,
-            url,
-            discoveryMethod: 'paste_url',
-            createdBy: ctx.userId,
-          });
-
-          return NextResponse.json({ ...item, workerJobId: jobId }, { status: 201 });
+          return NextResponse.json({ jobId, itemId, status: 'pending' });
         }
+
+        // Worker rejected — clean up and fall through
       } catch {
         // Worker unavailable — fall through to fetch-based extraction
       }
@@ -94,21 +142,32 @@ export async function POST(request: Request) {
 
     // Fallback: simple fetch extraction
     try {
-      const { title, snippet } = await fetchTitleAndSnippet(url);
+      const { title, snippet, fullText } = await fetchPageContent(url);
 
-      const item = createResearchItem(familyDb, {
+      if (itemId) {
+        // Update existing item with scraped content
+        await updateResearchItemContent(familyDb, itemId, { title, snippet, fullText });
+        const updated = await getResearchItem(familyDb, itemId);
+        return NextResponse.json({ itemId, status: 'completed', fullText: updated?.fullText ?? null });
+      }
+
+      const item = await createResearchItem(familyDb, {
         title,
         url,
         snippet,
+        fullText,
         discoveryMethod: 'paste_url',
         createdBy: ctx.userId,
       });
 
       return NextResponse.json(item, { status: 201 });
     } catch {
-      // Even if fetch fails, still save the URL
+      // Even if fetch fails, still save the URL (only for new items)
+      if (itemId) {
+        return NextResponse.json({ itemId, status: 'failed', error: 'Failed to scrape URL' }, { status: 502 });
+      }
       try {
-        const item = createResearchItem(familyDb, {
+        const item = await createResearchItem(familyDb, {
           title: new URL(url).hostname,
           url,
           discoveryMethod: 'paste_url',
