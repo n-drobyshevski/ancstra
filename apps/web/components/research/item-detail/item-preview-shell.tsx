@@ -172,33 +172,36 @@ export function ItemPreviewShell({ result }: ItemPreviewShellProps) {
           </div>
 
           {/* Source Page & Extracted Text — reusable tabbed viewer */}
-          <ContentViewer url={result.url} fullText={null}>
-            {/* Save prompt */}
-            <div className="mt-4 rounded-lg border border-dashed border-primary/30 bg-primary/5 p-6 text-center">
-              <p className="text-sm font-medium text-foreground">Save this item to unlock more features</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Extract facts, add notes, link to people in your tree, and archive the full text.
-              </p>
-              <Button
-                size="sm"
-                onClick={handleSave}
-                disabled={saving}
-                className="mt-3 bg-accent text-accent-foreground hover:bg-accent/90"
-              >
-                {saving ? (
-                  <>
-                    <Loader2 className="size-3.5 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Plus className="size-3.5" />
-                    Save to Research
-                  </>
-                )}
-              </Button>
-            </div>
-          </ContentViewer>
+          <ContentViewer
+            url={result.url}
+            fullText={null}
+            emptyState={
+              <div className="rounded-lg border border-dashed border-primary/30 bg-primary/5 p-6 text-center">
+                <p className="text-sm font-medium text-foreground">Save this item to unlock more features</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Extract facts, add notes, link to people in your tree, and archive the full text.
+                </p>
+                <Button
+                  size="sm"
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="mt-3 bg-accent text-accent-foreground hover:bg-accent/90"
+                >
+                  {saving ? (
+                    <>
+                      <Loader2 className="size-3.5 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="size-3.5" />
+                      Save to Research
+                    </>
+                  )}
+                </Button>
+              </div>
+            }
+          />
         </div>
 
         {/* Sidebar */}
