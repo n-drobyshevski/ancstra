@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { Search, Globe, Newspaper, BookOpen, Archive, Bookmark } from 'lucide-react';
+import { Search, Globe, Newspaper, BookOpen, Archive, Bookmark, ChevronsRight } from 'lucide-react';
 import { ResearchInput } from './research-input';
 import { SearchResults } from './search-results';
 import { ResearchItemCard } from './research-item-card';
 import { TextPasteModal } from './text-paste-modal';
 import { SourceSelector } from './source-selector';
 import { useResearchSearch, useResearchItems } from '@/lib/research/search-client';
+import { cn } from '@/lib/utils';
 
 const EXAMPLE_SEARCHES = [
   'Maria Kowalski born 1885',
@@ -51,6 +52,19 @@ export function ResearchHub() {
   const handleSaved = useCallback(() => {
     refetchItems();
   }, [refetchItems]);
+
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem('ancstra:sidebar-collapsed') === 'true';
+  });
+
+  const toggleSidebar = useCallback(() => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem('ancstra:sidebar-collapsed', String(next));
+      return next;
+    });
+  }, []);
 
   const hasResults = !!query && (searchData?.results?.length ?? 0) > 0;
   const hasItems = (itemsData?.items?.length ?? 0) > 0;
@@ -176,8 +190,22 @@ export function ResearchHub() {
         </div>
       ) : (
         /* ── Active state: results + sidebar ── */
-        <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-          <div>
+        <div className={cn(
+          'grid gap-6',
+          hasItems && !sidebarCollapsed ? 'lg:grid-cols-[1fr_320px]' : 'grid-cols-1'
+        )}>
+          <div className="relative">
+            {/* Collapsed sidebar badge */}
+            {hasItems && sidebarCollapsed && (
+              <button
+                type="button"
+                onClick={toggleSidebar}
+                className="absolute -top-1 right-0 z-10 inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1 text-xs font-medium text-muted-foreground shadow-sm transition-colors hover:text-foreground"
+              >
+                <Bookmark className="size-3.5" />
+                {itemsData?.items.length} saved
+              </button>
+            )}
             <SearchResults
               results={searchData?.results}
               isLoading={searchLoading}
@@ -187,29 +215,34 @@ export function ResearchHub() {
             />
           </div>
 
-          <div className="space-y-3">
-            <h2 className="text-sm font-medium text-muted-foreground">
-              Saved Items {hasItems && <span className="text-foreground">({itemsData?.items.length})</span>}
-            </h2>
-            {itemsLoading ? (
-              <p className="text-sm text-muted-foreground">Loading...</p>
-            ) : !hasItems ? (
-              <div className="rounded-lg border border-dashed border-border p-4 text-center">
-                <Bookmark className="mx-auto size-5 text-muted-foreground mb-2" />
-                <p className="text-sm text-muted-foreground">
-                  Save search results to track them here.
-                </p>
+          {hasItems && !sidebarCollapsed && (
+            <div className="hidden space-y-3 lg:block">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-medium text-muted-foreground">
+                  Saved Items <span className="text-foreground">({itemsData?.items.length})</span>
+                </h2>
+                <button
+                  type="button"
+                  onClick={toggleSidebar}
+                  className="text-muted-foreground hover:text-foreground"
+                  aria-label="Collapse sidebar"
+                >
+                  <ChevronsRight className="size-4" />
+                </button>
               </div>
-            ) : (
-              itemsData?.items.map((item: any) => (
-                <ResearchItemCard
-                  key={item.id}
-                  item={item}
-                  onUpdated={handleSaved}
-                />
-              ))
-            )}
-          </div>
+              {itemsLoading ? (
+                <p className="text-sm text-muted-foreground">Loading...</p>
+              ) : (
+                itemsData?.items.map((item: any) => (
+                  <ResearchItemCard
+                    key={item.id}
+                    item={item}
+                    onUpdated={handleSaved}
+                  />
+                ))
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
