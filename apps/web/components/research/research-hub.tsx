@@ -211,18 +211,18 @@ export function ResearchHub({ onAskAi, onSearchContextChange }: ResearchHubProps
         /* ── Active state: results + sidebar ── */
         <div className={cn(
           'grid gap-6',
-          hasItems && !sidebarCollapsed ? 'lg:grid-cols-[1fr_320px]' : 'grid-cols-1'
+          !sidebarCollapsed ? 'lg:grid-cols-[1fr_320px]' : 'grid-cols-1'
         )}>
           <div className="relative">
             {/* Collapsed sidebar badge */}
-            {hasItems && sidebarCollapsed && (
+            {sidebarCollapsed && (
               <button
                 type="button"
                 onClick={toggleSidebar}
                 className="absolute -top-1 right-0 z-10 inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1 text-xs font-medium text-muted-foreground shadow-sm transition-colors hover:text-foreground"
               >
                 <Bookmark className="size-3.5" />
-                {itemsData?.items.length} saved
+                {itemsData?.items.length ?? 0} saved
               </button>
             )}
             <SearchResults
@@ -235,11 +235,11 @@ export function ResearchHub({ onAskAi, onSearchContextChange }: ResearchHubProps
             />
           </div>
 
-          {hasItems && !sidebarCollapsed && (
+          {!sidebarCollapsed && (
             <div className="hidden space-y-3 lg:block">
               <div className="flex items-center justify-between">
                 <h2 className="text-sm font-medium text-muted-foreground">
-                  Saved Items <span className="text-foreground">({itemsData?.items.length})</span>
+                  Saved Items <span className="text-foreground">({itemsData?.items.length ?? 0})</span>
                 </h2>
                 <button
                   type="button"
@@ -252,6 +252,13 @@ export function ResearchHub({ onAskAi, onSearchContextChange }: ResearchHubProps
               </div>
               {itemsLoading ? (
                 <p className="text-sm text-muted-foreground">Loading...</p>
+              ) : !hasItems ? (
+                <div className="rounded-lg border border-dashed border-border p-4 text-center">
+                  <Bookmark className="mx-auto size-5 text-muted-foreground mb-2" />
+                  <p className="text-sm text-muted-foreground">
+                    Save search results to track them here.
+                  </p>
+                </div>
               ) : (
                 itemsData?.items.map((item: any) => (
                   <ResearchItemCard
