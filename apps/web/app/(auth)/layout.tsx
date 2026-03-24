@@ -5,6 +5,7 @@ import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/app-sidebar';
 import { AppHeader } from '@/components/app-header';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { HeaderProvider } from '@/lib/header-context';
 
 export default async function AuthLayout({
   children,
@@ -20,13 +21,15 @@ export default async function AuthLayout({
 
   return (
     <TooltipProvider>
-      <SidebarProvider defaultOpen={false}>
-        <AppSidebar />
-        <SidebarInset>
-          <AppHeader />
-          <div className="flex-1 p-6">{children}</div>
-        </SidebarInset>
-      </SidebarProvider>
+      <HeaderProvider>
+        <SidebarProvider defaultOpen={false}>
+          <AppSidebar />
+          <SidebarInset>
+            <AppHeader />
+            <div className="flex-1 p-6">{children}</div>
+          </SidebarInset>
+        </SidebarProvider>
+      </HeaderProvider>
     </TooltipProvider>
   );
 }
