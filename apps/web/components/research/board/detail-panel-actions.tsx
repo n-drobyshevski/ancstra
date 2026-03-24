@@ -57,23 +57,27 @@ export function DetailPanelActions({
 
       {status === 'draft' && (
         <div className="flex flex-col gap-1.5">
-          <Button
-            size="sm"
-            onClick={() => updateStatus('promoted')}
-            disabled={updating}
-          >
-            <Check className="size-3.5" />
-            Promote to Source
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => updateStatus('dismissed')}
-            disabled={updating}
-          >
-            <X className="size-3.5" />
-            Dismiss
-          </Button>
+          <span title="Mark as a verified source for your research">
+            <Button
+              size="sm"
+              onClick={() => updateStatus('promoted')}
+              disabled={updating}
+            >
+              <Check className="size-3.5" />
+              Promote to Source
+            </Button>
+          </span>
+          <span title="Hide this item — you can restore it later">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => updateStatus('dismissed')}
+              disabled={updating}
+            >
+              <X className="size-3.5" />
+              Dismiss
+            </Button>
+          </span>
           {url && (
             <Button size="sm" variant="ghost" asChild>
               <a href={url} target="_blank" rel="noopener noreferrer">

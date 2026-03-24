@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ChevronRight, ExternalLink, Sparkles, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useHeaderContent } from '@/lib/header-context';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -75,18 +76,15 @@ export function ItemHeader({ item, onStatusChange, onDeleted }: ItemHeaderProps)
     }
   }
 
+  const { setHeaderContent } = useHeaderContent();
   const statusConfig = STATUS_CONFIG[item.status] ?? STATUS_CONFIG.draft;
   const methodLabel = DISCOVERY_METHOD_LABELS[item.discoveryMethod] ?? item.discoveryMethod;
 
-  const askAiPrompt = `Tell me more about this record: "${item.title}"${
-    item.providerId ? ` from ${item.providerId}` : ''
-  }${item.url ? `. URL: ${item.url}` : ''}`;
-
-  return (
-    <div className="space-y-3">
-      {/* Breadcrumb */}
+  // Push breadcrumb into the app header bar
+  useEffect(() => {
+    setHeaderContent(
       <nav aria-label="Breadcrumb">
-        <ol className="flex items-center gap-1 text-xs">
+        <ol className="flex items-center gap-1 text-sm">
           <li>
             <Link href="/research" className="text-muted-foreground transition-colors hover:text-primary">
               Research
@@ -96,45 +94,56 @@ export function ItemHeader({ item, onStatusChange, onDeleted }: ItemHeaderProps)
             <ChevronRight className="size-3 text-muted-foreground" />
           </li>
           <li aria-current="page">
-            <span className="max-w-[200px] truncate font-medium text-foreground sm:max-w-none">
-              {item.title}
-            </span>
+            <span className="truncate font-medium text-foreground">{item.title}</span>
           </li>
         </ol>
       </nav>
+    );
+    return () => setHeaderContent(null);
+  }, [item.title, setHeaderContent]);
 
-      {/* Badges */}
-      <div className="flex flex-wrap items-center gap-2">
-        {item.providerId && <ProviderBadge providerId={item.providerId} />}
-        <Badge variant="outline" className={statusConfig.className}>
-          {statusConfig.label}
-        </Badge>
-        <Badge variant="outline" className="text-xs">
-          {methodLabel}
-        </Badge>
-        <span className="text-xs text-muted-foreground">
-          {new Date(item.createdAt).toLocaleDateString()}
-        </span>
+  const askAiPrompt = `Tell me more about this record: "${item.title}"${
+    item.providerId ? ` from ${item.providerId}` : ''
+  }${item.url ? `. URL: ${item.url}` : ''}`;
+
+  return (
+    <div className="space-y-3">
+      {/* Title + Badges */}
+      <div className="flex items-start justify-between gap-4">
+        <h1 className="text-xl font-bold">{item.title}</h1>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          {item.providerId && <ProviderBadge providerId={item.providerId} />}
+          <Badge variant="outline" className={statusConfig.className}>
+            {statusConfig.label}
+          </Badge>
+          <Badge variant="outline" className="text-xs">
+            {methodLabel}
+          </Badge>
+          <span className="text-xs text-muted-foreground">
+            {new Date(item.createdAt).toLocaleDateString()}
+          </span>
+        </div>
       </div>
-
-      {/* Title */}
-      <h1 className="text-xl font-bold">{item.title}</h1>
 
       {/* Actions */}
       <div className="flex flex-wrap items-center gap-2">
         {item.status === 'draft' && (
           <>
-            <Button
-              size="sm"
-              onClick={() => updateStatus('promoted')}
-              disabled={updating}
-              className="bg-accent text-accent-foreground hover:bg-accent/90"
-            >
-              Promote
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => updateStatus('dismissed')} disabled={updating}>
-              Dismiss
-            </Button>
+            <span title="Mark as a verified source for your research">
+              <Button
+                size="sm"
+                onClick={() => updateStatus('promoted')}
+                disabled={updating}
+                className="bg-accent text-accent-foreground hover:bg-accent/90"
+              >
+                Promote
+              </Button>
+            </span>
+            <span title="Hide this item — you can restore it later">
+              <Button size="sm" variant="outline" onClick={() => updateStatus('dismissed')} disabled={updating}>
+                Dismiss
+              </Button>
+            </span>
           </>
         )}
         {item.status === 'dismissed' && (

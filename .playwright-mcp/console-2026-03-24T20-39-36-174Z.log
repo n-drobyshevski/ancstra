@@ -1,0 +1,7 @@
+[     123ms] [ERROR] Failed to load resource: net::ERR_NAME_NOT_RESOLVED @ https://www.googletagmanager.com/gtm.js?id=GTM-N7J37T8M:0
+[   13720ms] Error: React has blocked a javascript: URL as a security precaution.
+    at <anonymous>:1:7
+[   26150ms] Error: React has blocked a javascript: URL as a security precaution.
+    at <anonymous>:1:7
+[  300511ms] Error: React has blocked a javascript: URL as a security precaution.
+    at <anonymous>:1:7

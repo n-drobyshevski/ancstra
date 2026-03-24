@@ -83,24 +83,28 @@ export function ResearchItemCard({ item, onUpdated }: ResearchItemCardProps) {
       <CardFooter className="flex gap-1">
         {item.status === 'draft' && (
           <>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={(e) => { e.stopPropagation(); e.preventDefault(); updateStatus('promoted'); }}
-              disabled={updating}
-            >
-              <Check className="size-3.5" />
-              Promote
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={(e) => { e.stopPropagation(); e.preventDefault(); updateStatus('dismissed'); }}
-              disabled={updating}
-            >
-              <X className="size-3.5" />
-              Dismiss
-            </Button>
+            <span title="Mark as a verified source for your research">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={(e) => { e.stopPropagation(); e.preventDefault(); updateStatus('promoted'); }}
+                disabled={updating}
+              >
+                <Check className="size-3.5" />
+                Promote
+              </Button>
+            </span>
+            <span title="Hide this item — you can restore it later">
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={(e) => { e.stopPropagation(); e.preventDefault(); updateStatus('dismissed'); }}
+                disabled={updating}
+              >
+                <X className="size-3.5" />
+                Dismiss
+              </Button>
+            </span>
           </>
         )}
         {item.status === 'dismissed' && (

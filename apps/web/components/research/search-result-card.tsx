@@ -2,10 +2,18 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { ExternalLink, Plus, Sparkles } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { ExternalLink, Plus, Sparkles, Eye, Copy, ClipboardCopy } from 'lucide-react';
 import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu';
 import { ProviderBadge, getProviderConfig } from './provider-badge';
 import { toast } from 'sonner';
 import type { SearchResult } from '@ancstra/research';
@@ -33,6 +41,7 @@ interface SearchResultCardProps {
 
 export function SearchResultCard({ result, onSaved, onAskAi }: SearchResultCardProps) {
   const [saving, setSaving] = useState(false);
+  const router = useRouter();
 
   async function handleSave() {
     setSaving(true);
@@ -69,88 +78,156 @@ export function SearchResultCard({ result, onSaved, onAskAi }: SearchResultCardP
       ? result.snippet.slice(0, 200) + '...'
       : result.snippet;
 
+  const previewUrl = buildPreviewUrl(result);
+  const providerConfig = getProviderConfig(result.providerId);
+
   return (
-    <Link href={buildPreviewUrl(result)} className="block">
-    <Card size="sm" className={`border-l-3 ${getProviderConfig(result.providerId).borderClass} transition-shadow hover:shadow-sm`}>
-      <CardHeader>
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0 space-y-1">
-            <ProviderBadge providerId={result.providerId} />
-            <h3 className="text-sm font-medium leading-snug">{result.title}</h3>
-          </div>
-          {result.relevanceScore != null && (
-            <div className="shrink-0 flex items-center gap-2">
-              <div className="h-1.5 w-16 overflow-hidden rounded-full bg-muted">
-                <div
-                  className="h-full rounded-full bg-primary"
-                  style={{ width: `${result.relevanceScore * 100}%` }}
-                />
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <Link href={previewUrl} className="block">
+          <Card size="sm" className={`border-l-3 ${providerConfig.borderClass} transition-shadow hover:shadow-sm`}>
+            <CardHeader>
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 space-y-1">
+                  <ProviderBadge providerId={result.providerId} />
+                  <h3 className="text-sm font-medium leading-snug">{result.title}</h3>
+                </div>
+                {result.relevanceScore != null && (
+                  <div className="shrink-0 flex items-center gap-2">
+                    <div className="h-1.5 w-16 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full bg-primary"
+                        style={{ width: `${result.relevanceScore * 100}%` }}
+                      />
+                    </div>
+                    <span className="text-xs font-medium text-muted-foreground">
+                      {Math.round(result.relevanceScore * 100)}%
+                    </span>
+                  </div>
+                )}
               </div>
-              <span className="text-xs font-medium text-muted-foreground">
-                {Math.round(result.relevanceScore * 100)}%
-              </span>
-            </div>
-          )}
-        </div>
-      </CardHeader>
-      <CardContent>
-        <p className="text-sm text-muted-foreground">{snippet}</p>
-        {result.extractedData && (
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {result.extractedData.name && (
-              <Badge variant="outline" className="text-xs font-normal">
-                {result.extractedData.name}
-              </Badge>
-            )}
-            {result.extractedData.birthDate && (
-              <Badge variant="outline" className="text-xs font-normal">
-                b. {result.extractedData.birthDate}
-              </Badge>
-            )}
-            {result.extractedData.deathDate && (
-              <Badge variant="outline" className="text-xs font-normal">
-                d. {result.extractedData.deathDate}
-              </Badge>
-            )}
-            {result.extractedData.location && (
-              <Badge variant="outline" className="text-xs font-normal">
-                {result.extractedData.location}
-              </Badge>
-            )}
-          </div>
-        )}
-      </CardContent>
-      <CardFooter className="flex gap-2">
-        <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); e.preventDefault(); handleSave(); }} disabled={saving}>
-          <Plus className="size-3.5" />
-          {saving ? 'Saving...' : 'Save'}
-        </Button>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">{snippet}</p>
+              {result.extractedData && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {result.extractedData.name && (
+                    <Badge variant="outline" className="text-xs font-normal">
+                      {result.extractedData.name}
+                    </Badge>
+                  )}
+                  {result.extractedData.birthDate && (
+                    <Badge variant="outline" className="text-xs font-normal">
+                      b. {result.extractedData.birthDate}
+                    </Badge>
+                  )}
+                  {result.extractedData.deathDate && (
+                    <Badge variant="outline" className="text-xs font-normal">
+                      d. {result.extractedData.deathDate}
+                    </Badge>
+                  )}
+                  {result.extractedData.location && (
+                    <Badge variant="outline" className="text-xs font-normal">
+                      {result.extractedData.location}
+                    </Badge>
+                  )}
+                </div>
+              )}
+            </CardContent>
+            <CardFooter className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); e.preventDefault(); handleSave(); }} disabled={saving}>
+                <Plus className="size-3.5" />
+                {saving ? 'Saving...' : 'Save'}
+              </Button>
+              {result.url && (
+                <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); e.preventDefault(); window.open(result.url, '_blank', 'noopener,noreferrer'); }}>
+                  <ExternalLink className="size-3.5" />
+                  View
+                </Button>
+              )}
+              {onAskAi && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    onAskAi(
+                      `Tell me more about this record: "${result.title}" from ${providerConfig.label}. URL: ${result.url}. Snippet: ${result.snippet}`
+                    );
+                  }}
+                >
+                  <Sparkles className="size-3.5" />
+                  Ask AI
+                </Button>
+              )}
+            </CardFooter>
+          </Card>
+        </Link>
+      </ContextMenuTrigger>
+
+      <ContextMenuContent className="w-52">
+        <ContextMenuItem
+          onSelect={() => router.push(previewUrl)}
+        >
+          <Eye className="size-4" />
+          Open Preview
+        </ContextMenuItem>
+
+        <ContextMenuItem
+          onSelect={handleSave}
+          disabled={saving}
+        >
+          <Plus className="size-4" />
+          {saving ? 'Saving...' : 'Save to Research'}
+        </ContextMenuItem>
+
         {result.url && (
-          <Button size="sm" variant="ghost" asChild>
-            <a href={result.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
-              <ExternalLink className="size-3.5" />
-              View
-            </a>
-          </Button>
+          <ContextMenuItem
+            onSelect={() => window.open(result.url, '_blank', 'noopener,noreferrer')}
+          >
+            <ExternalLink className="size-4" />
+            Open Source
+          </ContextMenuItem>
         )}
+
         {onAskAi && (
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={(e) => {
-              e.stopPropagation();
-              e.preventDefault();
+          <ContextMenuItem
+            onSelect={() =>
               onAskAi(
-                `Tell me more about this record: "${result.title}" from ${getProviderConfig(result.providerId).label}. URL: ${result.url}. Snippet: ${result.snippet}`
-              );
+                `Tell me more about this record: "${result.title}" from ${providerConfig.label}. URL: ${result.url}. Snippet: ${result.snippet}`
+              )
+            }
+          >
+            <Sparkles className="size-4" />
+            Ask AI
+          </ContextMenuItem>
+        )}
+
+        <ContextMenuSeparator />
+
+        <ContextMenuItem
+          onSelect={() => {
+            navigator.clipboard.writeText(result.title);
+            toast.success('Title copied');
+          }}
+        >
+          <Copy className="size-4" />
+          Copy Title
+        </ContextMenuItem>
+
+        {result.url && (
+          <ContextMenuItem
+            onSelect={() => {
+              navigator.clipboard.writeText(result.url!);
+              toast.success('URL copied');
             }}
           >
-            <Sparkles className="size-3.5" />
-            Ask AI
-          </Button>
+            <ClipboardCopy className="size-4" />
+            Copy URL
+          </ContextMenuItem>
         )}
-      </CardFooter>
-    </Card>
-    </Link>
+      </ContextMenuContent>
+    </ContextMenu>
   );
 }

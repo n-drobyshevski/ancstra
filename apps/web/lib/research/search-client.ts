@@ -22,8 +22,20 @@ interface ResearchItemsResponse {
   }>;
 }
 
+// ── Module-level caches (survive component unmount/remount) ──
+
+const searchCache = new Map<string, SearchResponse>();
+const itemsCache = { data: null as ResearchItemsResponse | null };
+
+function searchCacheKey(query: string, providers?: string) {
+  return `${query}||${providers ?? ''}`;
+}
+
 export function useResearchSearch(query: string, enabled = true, providers?: string) {
-  const [data, setData] = useState<SearchResponse | null>(null);
+  const key = searchCacheKey(query, providers);
+  const cached = enabled && query ? searchCache.get(key) : null;
+
+  const [data, setData] = useState<SearchResponse | null>(cached ?? null);
   const [error, setError] = useState<Error | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
@@ -31,6 +43,15 @@ export function useResearchSearch(query: string, enabled = true, providers?: str
   useEffect(() => {
     if (!enabled || !query) {
       setData(null);
+      setError(null);
+      setIsLoading(false);
+      return;
+    }
+
+    // If we have a cache hit, use it and skip fetching
+    const cachedResult = searchCache.get(key);
+    if (cachedResult) {
+      setData(cachedResult);
       setError(null);
       setIsLoading(false);
       return;
@@ -55,6 +76,7 @@ export function useResearchSearch(query: string, enabled = true, providers?: str
         return res.json();
       })
       .then((json: SearchResponse) => {
+        searchCache.set(key, json);
         setData(json);
         setIsLoading(false);
       })
@@ -65,15 +87,15 @@ export function useResearchSearch(query: string, enabled = true, providers?: str
       });
 
     return () => controller.abort();
-  }, [query, enabled, providers]);
+  }, [query, enabled, providers, key]);
 
   return { data, error, isLoading };
 }
 
 export function useResearchItems(status?: string) {
-  const [data, setData] = useState<ResearchItemsResponse | null>(null);
+  const [data, setData] = useState<ResearchItemsResponse | null>(itemsCache.data);
   const [error, setError] = useState<Error | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!itemsCache.data);
 
   const fetchItems = useCallback(async () => {
     setIsLoading(true);
@@ -82,6 +104,7 @@ export function useResearchItems(status?: string) {
       const res = await fetch(`/api/research/items${params}`);
       if (!res.ok) throw new Error(`Failed to load items (${res.status})`);
       const json: ResearchItemsResponse = await res.json();
+      itemsCache.data = json;
       setData(json);
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Failed to load items'));
@@ -91,6 +114,11 @@ export function useResearchItems(status?: string) {
   }, [status]);
 
   useEffect(() => {
+    // If we have cached items, show them immediately but still refresh in background
+    if (itemsCache.data) {
+      setData(itemsCache.data);
+      setIsLoading(false);
+    }
     fetchItems();
   }, [fetchItems]);
 
