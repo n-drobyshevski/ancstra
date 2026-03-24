@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useCallback, Suspense } from 'react';
+import { useState, useCallback, useEffect, Suspense } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Search, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ResearchHub } from './research-hub';
@@ -18,10 +19,13 @@ const tabs: { value: ResearchView; label: string; icon: typeof Search }[] = [
   { value: 'chat', label: 'AI Chat', icon: Sparkles },
 ];
 
-export function ResearchLayout() {
+function ResearchLayoutInner() {
   const [activeView, setActiveView] = useState<ResearchView>('search');
   const [pendingAiPrompt, setPendingAiPrompt] = useState<string | null>(null);
   const [searchContext, setSearchContext] = useState<SearchContext | null>(null);
+
+  const searchParams = useSearchParams();
+  const router = useRouter();
 
   const handleAskAi = useCallback((prompt: string) => {
     setPendingAiPrompt(prompt);
@@ -31,6 +35,20 @@ export function ResearchLayout() {
   const handlePromptConsumed = useCallback(() => {
     setPendingAiPrompt(null);
   }, []);
+
+  // Read ?askAi= param on mount (from item detail "Ask AI" button)
+  useEffect(() => {
+    const askAi = searchParams.get('askAi');
+    if (askAi) {
+      setPendingAiPrompt(askAi);
+      setActiveView('chat');
+      // Clean the URL
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete('askAi');
+      const qs = params.toString();
+      router.replace(qs ? `?${qs}` : '/research');
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps — only on mount
 
   return (
     <div className="flex h-full flex-col">
@@ -83,5 +101,13 @@ export function ResearchLayout() {
         )}
       </div>
     </div>
+  );
+}
+
+export function ResearchLayout() {
+  return (
+    <Suspense>
+      <ResearchLayoutInner />
+    </Suspense>
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { ExternalLink, Plus, Sparkles } from 'lucide-react';
 import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -8,6 +9,21 @@ import { Button } from '@/components/ui/button';
 import { ProviderBadge, getProviderConfig } from './provider-badge';
 import { toast } from 'sonner';
 import type { SearchResult } from '@ancstra/research';
+
+function buildPreviewUrl(result: SearchResult): string {
+  const params = new URLSearchParams();
+  params.set('title', result.title);
+  if (result.url) params.set('url', result.url);
+  if (result.snippet) params.set('snippet', result.snippet);
+  if (result.providerId) params.set('providerId', result.providerId);
+  if (result.externalId) params.set('externalId', result.externalId);
+  if (result.relevanceScore != null) params.set('relevanceScore', String(result.relevanceScore));
+  if (result.extractedData?.name) params.set('extractedName', result.extractedData.name);
+  if (result.extractedData?.birthDate) params.set('extractedBirthDate', result.extractedData.birthDate);
+  if (result.extractedData?.deathDate) params.set('extractedDeathDate', result.extractedData.deathDate);
+  if (result.extractedData?.location) params.set('extractedLocation', result.extractedData.location);
+  return `/research/item/preview?${params.toString()}`;
+}
 
 interface SearchResultCardProps {
   result: SearchResult;
@@ -54,6 +70,7 @@ export function SearchResultCard({ result, onSaved, onAskAi }: SearchResultCardP
       : result.snippet;
 
   return (
+    <Link href={buildPreviewUrl(result)} className="block">
     <Card size="sm" className={`border-l-3 ${getProviderConfig(result.providerId).borderClass} transition-shadow hover:shadow-sm`}>
       <CardHeader>
         <div className="flex items-start justify-between gap-2">
@@ -104,13 +121,13 @@ export function SearchResultCard({ result, onSaved, onAskAi }: SearchResultCardP
         )}
       </CardContent>
       <CardFooter className="flex gap-2">
-        <Button size="sm" variant="outline" onClick={handleSave} disabled={saving}>
+        <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); e.preventDefault(); handleSave(); }} disabled={saving}>
           <Plus className="size-3.5" />
           {saving ? 'Saving...' : 'Save'}
         </Button>
         {result.url && (
           <Button size="sm" variant="ghost" asChild>
-            <a href={result.url} target="_blank" rel="noopener noreferrer">
+            <a href={result.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
               <ExternalLink className="size-3.5" />
               View
             </a>
@@ -120,11 +137,13 @@ export function SearchResultCard({ result, onSaved, onAskAi }: SearchResultCardP
           <Button
             size="sm"
             variant="ghost"
-            onClick={() =>
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
               onAskAi(
                 `Tell me more about this record: "${result.title}" from ${getProviderConfig(result.providerId).label}. URL: ${result.url}. Snippet: ${result.snippet}`
-              )
-            }
+              );
+            }}
           >
             <Sparkles className="size-3.5" />
             Ask AI
@@ -132,5 +151,6 @@ export function SearchResultCard({ result, onSaved, onAskAi }: SearchResultCardP
         )}
       </CardFooter>
     </Card>
+    </Link>
   );
 }

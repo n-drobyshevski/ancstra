@@ -22,11 +22,11 @@ export async function GET(request: Request) {
     }
 
     if (personId) {
-      const facts = getFactsByPerson(familyDb, personId);
+      const facts = await getFactsByPerson(familyDb, personId);
       return NextResponse.json({ facts });
     }
 
-    const facts = getFactsByResearchItem(familyDb, researchItemId!);
+    const facts = await getFactsByResearchItem(familyDb, researchItemId!);
     return NextResponse.json({ facts });
   } catch (err) {
     try { return handleAuthError(err); } catch { /* not an auth error */ }
@@ -48,7 +48,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const result = createFact(familyDb, body);
+    const result = await createFact(familyDb, body);
 
     return NextResponse.json(result, { status: 201 });
   } catch (err) {

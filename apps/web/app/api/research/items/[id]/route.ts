@@ -14,7 +14,7 @@ export async function GET(
   try {
     const { familyDb } = await withAuth('ai:research');
     const { id } = await params;
-    const item = getResearchItem(familyDb, id);
+    const item = await getResearchItem(familyDb, id);
 
     if (!item) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
@@ -50,11 +50,11 @@ export async function PATCH(
           { status: 400 }
         );
       }
-      updateResearchItemStatus(familyDb, id, body.status);
+      await updateResearchItemStatus(familyDb, id, body.status);
     }
 
     if (body.notes !== undefined) {
-      updateResearchItemNotes(familyDb, id, body.notes);
+      await updateResearchItemNotes(familyDb, id, body.notes);
     }
 
     const updated = getResearchItem(familyDb, id);
@@ -79,7 +79,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
-    deleteResearchItem(familyDb, id);
+    await deleteResearchItem(familyDb, id);
     return NextResponse.json({ success: true });
   } catch (err) {
     try { return handleAuthError(err); } catch { /* not an auth error */ }

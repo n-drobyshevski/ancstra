@@ -17,7 +17,7 @@ export async function GET(request: Request) {
     if (status) filters.status = status;
     if (personId) filters.personId = personId;
 
-    const items = listResearchItems(familyDb, Object.keys(filters).length > 0 ? filters : undefined);
+    const items = await listResearchItems(familyDb, Object.keys(filters).length > 0 ? filters : undefined);
 
     return NextResponse.json({ items });
   } catch (err) {
@@ -40,7 +40,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const result = createResearchItem(familyDb, {
+    const result = await createResearchItem(familyDb, {
       ...body,
       createdBy: ctx.userId,
     });
