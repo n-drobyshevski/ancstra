@@ -1,12 +1,46 @@
-import { NextResponse } from 'next/server';
 import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
 import {
   createResearchItem,
-  getResearchItem,
   updateResearchItemContent,
 } from '@ancstra/research';
 import { researchItems } from '@ancstra/db';
 import { eq } from 'drizzle-orm';
+import sanitizeHtml from 'sanitize-html';
+
+const ALLOWED_TAGS = [
+  'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+  'p', 'br', 'hr',
+  'ul', 'ol', 'li',
+  'a', 'strong', 'em', 'b', 'i', 'u', 's',
+  'blockquote', 'pre', 'code',
+  'table', 'thead', 'tbody', 'tr', 'th', 'td',
+  'dl', 'dt', 'dd',
+  'figure', 'figcaption',
+  'span', 'div', 'section', 'article',
+];
+
+function sanitize(html: string): string {
+  return sanitizeHtml(html, {
+    allowedTags: ALLOWED_TAGS,
+    allowedAttributes: {
+      a: ['href', 'title'],
+      td: ['colspan', 'rowspan'],
+      th: ['colspan', 'rowspan'],
+    },
+    allowedSchemes: ['http', 'https'],
+    transformTags: {
+      // Strip class/style from all divs/spans but keep the tag
+      div: sanitizeHtml.simpleTransform('div', {}),
+      span: sanitizeHtml.simpleTransform('span', {}),
+    },
+  }).trim();
+}
+
+function stripToPlainText(html: string): string {
+  return sanitizeHtml(html, { allowedTags: [], allowedAttributes: {} })
+    .replace(/\s+/g, ' ')
+    .trim();
+}
 
 export async function POST(request: Request) {
   try {
@@ -14,18 +48,25 @@ export async function POST(request: Request) {
 
     const formData = await request.formData();
     const url = formData.get('url') as string | null;
+    const rawHtml = formData.get('html') as string | null;
     const text = formData.get('text') as string | null;
     const title = formData.get('title') as string | null;
 
-    if (!text?.trim()) {
-      return new Response(bookmarkletPage('No text received.', null), {
+    const content = rawHtml?.trim() || text?.trim();
+    if (!content) {
+      return new Response(bookmarkletPage('No content received.', null), {
         headers: { 'Content-Type': 'text/html' },
       });
     }
 
-    const fullText = text.trim().slice(0, 50_000);
+    // Sanitize HTML content, or use plain text as-is
+    const fullText = rawHtml
+      ? sanitize(content).slice(0, 100_000)
+      : content.slice(0, 50_000);
+
     const pageTitle = title?.trim() || (url ? new URL(url).hostname : 'Bookmarklet capture');
-    const snippet = fullText.length > 300 ? fullText.slice(0, 297) + '...' : fullText;
+    const plainText = rawHtml ? stripToPlainText(content) : content;
+    const snippet = plainText.length > 300 ? plainText.slice(0, 297) + '...' : plainText;
 
     // Try to find existing item by URL
     let itemId: string | null = null;
@@ -41,14 +82,12 @@ export async function POST(request: Request) {
     }
 
     if (itemId) {
-      // Update existing item
       await updateResearchItemContent(familyDb, itemId, {
         title: pageTitle,
         snippet,
         fullText,
       });
     } else {
-      // Create new item
       const item = await createResearchItem(familyDb, {
         title: pageTitle,
         url: url ?? undefined,
@@ -61,7 +100,7 @@ export async function POST(request: Request) {
     }
 
     const redirectUrl = `/research/item/${itemId}`;
-    return new Response(bookmarkletPage('Text saved successfully!', redirectUrl), {
+    return new Response(bookmarkletPage('Content saved!', redirectUrl), {
       headers: { 'Content-Type': 'text/html' },
     });
   } catch (err) {

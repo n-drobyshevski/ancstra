@@ -87,14 +87,41 @@ export function ItemContent({ item, onNotesChange, onRefresh, onScrapeJobStarted
   const bookmarkletRef = useRef<HTMLAnchorElement>(null);
   useEffect(() => {
     if (bookmarkletRef.current) {
-      // Set via DOM directly — React 19 blocks javascript: URLs in JSX
-      bookmarkletRef.current.setAttribute('href',
-        `javascript:void(function(){var f=document.createElement('form');f.method='POST';f.action='${window.location.origin}/api/research/bookmarklet';f.target='_blank';var t=document.createElement('input');t.type='hidden';t.name='text';t.value=document.body.innerText;f.appendChild(t);var u=document.createElement('input');u.type='hidden';u.name='url';u.value=location.href;f.appendChild(u);var n=document.createElement('input');n.type='hidden';n.name='title';n.value=document.title;f.appendChild(n);document.body.appendChild(f);f.submit();document.body.removeChild(f)}())`
-      );
+      // Bookmarklet: grabs HTML from main/article/body, strips scripts/styles/nav,
+      // then POSTs as form data. Set via DOM — React 19 blocks javascript: URLs in JSX.
+      const code = [
+        'var e=document.querySelector("main,article,[role=main]")||document.body',
+        'var c=e.cloneNode(true)',
+        '"script,style,nav,footer,header,aside,iframe,noscript,.nav,.footer,.header,.sidebar".split(",").forEach(function(s){c.querySelectorAll(s).forEach(function(n){n.remove()})})',
+        'var f=document.createElement("form")',
+        'f.method="POST"',
+        `f.action="${window.location.origin}/api/research/bookmarklet"`,
+        'f.target="_blank"',
+        'var h=document.createElement("textarea")',
+        'h.name="html"',
+        'h.value=c.innerHTML',
+        'f.appendChild(h)',
+        'var u=document.createElement("input")',
+        'u.type="hidden"',
+        'u.name="url"',
+        'u.value=location.href',
+        'f.appendChild(u)',
+        'var n=document.createElement("input")',
+        'n.type="hidden"',
+        'n.name="title"',
+        'n.value=document.title',
+        'f.appendChild(n)',
+        'document.body.appendChild(f)',
+        'f.submit()',
+        'document.body.removeChild(f)',
+      ].join(';');
+      bookmarkletRef.current.setAttribute('href', `javascript:void(function(){${code}}())`);
     }
   }, []);
 
-  const fullTextPreview = item.fullText
+  const isHtml = item.fullText ? /<[a-z][\s\S]*>/i.test(item.fullText) : false;
+
+  const fullTextPreview = item.fullText && !isHtml
     ? item.fullText.length > 200
       ? item.fullText.slice(0, 200) + '...'
       : item.fullText
@@ -117,9 +144,17 @@ export function ItemContent({ item, onNotesChange, onRefresh, onScrapeJobStarted
         <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Full Text</h3>
         {item.fullText ? (
           <>
-            <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
-              {expanded ? item.fullText : fullTextPreview}
-            </p>
+            {isHtml ? (
+              // HTML content is sanitized server-side via sanitize-html before storage
+              <div
+                className={`prose prose-sm max-w-none text-muted-foreground prose-headings:text-foreground prose-a:text-primary ${expanded ? '' : 'max-h-48 overflow-hidden'}`}
+                dangerouslySetInnerHTML={{ __html: expanded ? item.fullText : item.fullText }}
+              />
+            ) : (
+              <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
+                {expanded ? item.fullText : fullTextPreview}
+              </p>
+            )}
             {item.fullText.length > 200 && (
               <button
                 type="button"
