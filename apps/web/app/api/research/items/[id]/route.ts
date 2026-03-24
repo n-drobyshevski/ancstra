@@ -4,6 +4,7 @@ import {
   getResearchItem,
   updateResearchItemStatus,
   updateResearchItemNotes,
+  updateResearchItemContent,
   deleteResearchItem,
 } from '@ancstra/research';
 
@@ -55,6 +56,10 @@ export async function PATCH(
 
     if (body.notes !== undefined) {
       await updateResearchItemNotes(familyDb, id, body.notes);
+    }
+
+    if (body.fullText !== undefined) {
+      await updateResearchItemContent(familyDb, id, { fullText: body.fullText });
     }
 
     const updated = getResearchItem(familyDb, id);
