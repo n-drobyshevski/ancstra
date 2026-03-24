@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef } from 'react';
-import { Loader2, ExternalLink, ClipboardPaste, X, RefreshCw } from 'lucide-react';
+import { Loader2, ExternalLink, ClipboardPaste, X, RefreshCw, Bookmark } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ItemNotesEditor } from './item-notes-editor';
 import { useScrapeUrl } from '@/lib/research/scrape-client';
@@ -83,6 +83,10 @@ export function ItemContent({ item, onNotesChange, onRefresh, onScrapeJobStarted
   }, [pasteText, item.id, onRefresh]);
 
   const isActivelyScraping = scraping || scrapeJobStatus === 'pending' || scrapeJobStatus === 'processing';
+
+  const bookmarkletHref = typeof window !== 'undefined'
+    ? `javascript:void(function(){var f=document.createElement('form');f.method='POST';f.action='${window.location.origin}/api/research/bookmarklet';f.target='_blank';var t=document.createElement('input');t.type='hidden';t.name='text';t.value=document.body.innerText;f.appendChild(t);var u=document.createElement('input');u.type='hidden';u.name='url';u.value=location.href;f.appendChild(u);var n=document.createElement('input');n.type='hidden';n.name='title';n.value=document.title;f.appendChild(n);document.body.appendChild(f);f.submit();document.body.removeChild(f)}())`
+    : '#';
 
   const fullTextPreview = item.fullText
     ? item.fullText.length > 200
@@ -280,6 +284,24 @@ export function ItemContent({ item, onNotesChange, onRefresh, onScrapeJobStarted
                   onError={() => setIframeBlocked(true)}
                 />
               )}
+            </div>
+          )}
+          {/* Bookmarklet install hint */}
+          {!item.fullText && (
+            <div className="mt-3 flex items-center gap-2 rounded-md bg-muted/40 px-3 py-2">
+              <Bookmark className="size-3.5 shrink-0 text-muted-foreground" />
+              <p className="text-xs text-muted-foreground">
+                Drag this to your bookmark bar:{' '}
+                {/* eslint-disable-next-line no-script-url */}
+                <a
+                  href={bookmarkletHref}
+                  className="inline-flex items-center gap-1 rounded bg-background px-2 py-0.5 font-medium text-primary ring-1 ring-border hover:ring-primary"
+                  onClick={(e) => { e.preventDefault(); alert('Drag this link to your bookmark bar. Then click it on any page to send its text to Ancstra.'); }}
+                >
+                  Send to Ancstra
+                </a>
+                {' '} — then click it on any page to capture its text.
+              </p>
             </div>
           )}
         </div>
