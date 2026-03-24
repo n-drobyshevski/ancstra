@@ -1,12 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ArrowLeft, ChevronRight, ExternalLink, Plus, Sparkles, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ProviderBadge, getProviderConfig } from '../provider-badge';
+import { ContentViewer } from './content-viewer';
+import { useHeaderContent } from '@/lib/header-context';
 import { toast } from 'sonner';
 
 interface PreviewResult {
@@ -29,6 +31,29 @@ interface ItemPreviewShellProps {
 export function ItemPreviewShell({ result }: ItemPreviewShellProps) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
+  const { setHeaderContent } = useHeaderContent();
+
+  // Push breadcrumb into the app header bar
+  useEffect(() => {
+    setHeaderContent(
+      <nav aria-label="Breadcrumb">
+        <ol className="flex items-center gap-1 text-sm">
+          <li>
+            <Link href="/research" className="text-muted-foreground transition-colors hover:text-primary">
+              Research
+            </Link>
+          </li>
+          <li aria-hidden="true">
+            <ChevronRight className="size-3 text-muted-foreground" />
+          </li>
+          <li aria-current="page">
+            <span className="truncate font-medium text-foreground">{result.title}</span>
+          </li>
+        </ol>
+      </nav>
+    );
+    return () => setHeaderContent(null);
+  }, [result.title, setHeaderContent]);
 
   async function handleSave() {
     setSaving(true);
@@ -68,48 +93,28 @@ export function ItemPreviewShell({ result }: ItemPreviewShellProps) {
 
   return (
     <div className="space-y-6">
-      {/* Breadcrumb */}
-      <nav aria-label="Breadcrumb">
-        <ol className="flex items-center gap-1 text-xs">
-          <li>
-            <Link href="/research" className="text-muted-foreground transition-colors hover:text-primary">
-              Research
-            </Link>
-          </li>
-          <li aria-hidden="true">
-            <ChevronRight className="size-3 text-muted-foreground" />
-          </li>
-          <li aria-current="page">
-            <span className="max-w-[200px] truncate font-medium text-foreground sm:max-w-none">
-              {result.title}
-            </span>
-          </li>
-        </ol>
-      </nav>
-
-      {/* Header */}
+      {/* Title + Badges */}
       <div className="space-y-3">
-        {/* Badges */}
-        <div className="flex flex-wrap items-center gap-2">
-          {result.providerId && <ProviderBadge providerId={result.providerId} />}
-          <Badge variant="outline" className="text-xs">Preview</Badge>
-          {result.relevanceScore != null && (
-            <div className="flex items-center gap-1.5">
-              <div className="h-1.5 w-12 overflow-hidden rounded-full bg-muted">
-                <div
-                  className="h-full rounded-full bg-primary"
-                  style={{ width: `${result.relevanceScore * 100}%` }}
-                />
+        <div className="flex items-start justify-between gap-4">
+          <h1 className="text-xl font-bold">{result.title}</h1>
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            {result.providerId && <ProviderBadge providerId={result.providerId} />}
+            <Badge variant="outline" className="text-xs">Preview</Badge>
+            {result.relevanceScore != null && (
+              <div className="flex items-center gap-1.5">
+                <div className="h-1.5 w-12 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full bg-primary"
+                    style={{ width: `${result.relevanceScore * 100}%` }}
+                  />
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  {Math.round(result.relevanceScore * 100)}% match
+                </span>
               </div>
-              <span className="text-xs text-muted-foreground">
-                {Math.round(result.relevanceScore * 100)}% match
-              </span>
-            </div>
-          )}
+            )}
+          </div>
         </div>
-
-        {/* Title */}
-        <h1 className="text-xl font-bold">{result.title}</h1>
 
         {/* Actions */}
         <div className="flex flex-wrap items-center gap-2">
@@ -156,7 +161,7 @@ export function ItemPreviewShell({ result }: ItemPreviewShellProps) {
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         {/* Main column */}
         <div className="space-y-4">
-          {/* Snippet */}
+          {/* Summary */}
           <div className="rounded-lg border border-border/80 p-4">
             <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Summary</h3>
             {result.snippet ? (
@@ -166,31 +171,34 @@ export function ItemPreviewShell({ result }: ItemPreviewShellProps) {
             )}
           </div>
 
-          {/* Save prompt */}
-          <div className="rounded-lg border border-dashed border-primary/30 bg-primary/5 p-6 text-center">
-            <p className="text-sm font-medium text-foreground">Save this item to unlock more features</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Extract facts, add notes, link to people in your tree, and archive the full text.
-            </p>
-            <Button
-              size="sm"
-              onClick={handleSave}
-              disabled={saving}
-              className="mt-3 bg-accent text-accent-foreground hover:bg-accent/90"
-            >
-              {saving ? (
-                <>
-                  <Loader2 className="size-3.5 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Plus className="size-3.5" />
-                  Save to Research
-                </>
-              )}
-            </Button>
-          </div>
+          {/* Source Page & Extracted Text — reusable tabbed viewer */}
+          <ContentViewer url={result.url} fullText={null}>
+            {/* Save prompt */}
+            <div className="mt-4 rounded-lg border border-dashed border-primary/30 bg-primary/5 p-6 text-center">
+              <p className="text-sm font-medium text-foreground">Save this item to unlock more features</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Extract facts, add notes, link to people in your tree, and archive the full text.
+              </p>
+              <Button
+                size="sm"
+                onClick={handleSave}
+                disabled={saving}
+                className="mt-3 bg-accent text-accent-foreground hover:bg-accent/90"
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="size-3.5 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="size-3.5" />
+                    Save to Research
+                  </>
+                )}
+              </Button>
+            </div>
+          </ContentViewer>
         </div>
 
         {/* Sidebar */}
