@@ -78,7 +78,7 @@ export function ResearchItemCard({ item, onUpdated }: ResearchItemCardProps) {
       : item.snippet;
 
   return (
-    <Card size="sm">
+    <Card size="sm" className="transition-shadow hover:shadow-sm">
       <CardHeader>
         <div className="flex items-start justify-between gap-2">
           <h4 className="text-sm font-medium leading-snug">{item.title}</h4>

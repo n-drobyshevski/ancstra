@@ -62,7 +62,7 @@ export function ResearchHub() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold">Research</h1>
+          <h1 className="text-xl font-bold">Research</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Search historical records across multiple sources
           </p>
@@ -120,7 +120,7 @@ export function ResearchHub() {
                   key={example}
                   type="button"
                   onClick={() => handleSearch(example)}
-                  className="group flex items-center gap-3 rounded-lg border border-border bg-card p-3 text-left text-sm transition-colors hover:border-primary/50 hover:bg-accent/50"
+                  className="group flex items-center gap-3 rounded-lg border border-border bg-card p-3 text-left text-sm transition-colors hover:border-accent/50 hover:bg-accent/10"
                 >
                   <Search className="size-4 shrink-0 text-muted-foreground group-hover:text-primary" />
                   <span className="text-foreground">{example}</span>
@@ -136,16 +136,18 @@ export function ResearchHub() {
             </h2>
             <div className="grid gap-3 sm:grid-cols-4">
               {PROVIDERS.map(({ icon: Icon, name, desc }) => (
-                <div
+                <button
+                  type="button"
                   key={name}
-                  className="flex flex-col items-center gap-2 rounded-lg border border-border bg-card p-4 text-center"
+                  onClick={() => handleSearch(name)}
+                  className="flex flex-col items-center gap-2 rounded-lg border border-border bg-card p-4 text-center transition-all hover:shadow-sm hover:border-primary/20 cursor-pointer"
                 >
                   <Icon className="size-5 text-muted-foreground" />
                   <div>
                     <p className="text-sm font-medium">{name}</p>
                     <p className="text-xs text-muted-foreground">{desc}</p>
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           </div>
