@@ -287,8 +287,7 @@ export function ItemContent({ item, onNotesChange, onRefresh, onScrapeJobStarted
             </div>
           )}
           {/* Bookmarklet install hint */}
-          {!item.fullText && (
-            <div className="mt-3 flex items-center gap-2 rounded-md bg-muted/40 px-3 py-2">
+          <div className="mt-3 flex items-center gap-2 rounded-md bg-muted/40 px-3 py-2">
               <Bookmark className="size-3.5 shrink-0 text-muted-foreground" />
               <p className="text-xs text-muted-foreground">
                 Drag this to your bookmark bar:{' '}
@@ -302,8 +301,7 @@ export function ItemContent({ item, onNotesChange, onRefresh, onScrapeJobStarted
                 </a>
                 {' '} — then click it on any page to capture its text.
               </p>
-            </div>
-          )}
+          </div>
         </div>
       )}
 
