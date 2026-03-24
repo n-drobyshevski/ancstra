@@ -87,33 +87,17 @@ export function ItemContent({ item, onNotesChange, onRefresh, onScrapeJobStarted
   const bookmarkletRef = useRef<HTMLAnchorElement>(null);
   useEffect(() => {
     if (bookmarkletRef.current) {
-      // Bookmarklet: grabs HTML from main/article/body, strips scripts/styles/nav,
-      // then POSTs as form data. Set via DOM — React 19 blocks javascript: URLs in JSX.
+      // Bookmarklet: grabs HTML from main/article/body, strips junk tags,
+      // opens a receiver page on Ancstra (same-origin GET = cookies sent),
+      // then sends data via postMessage. Set via DOM — React 19 blocks javascript: URLs.
+      const origin = window.location.origin;
       const code = [
         'var e=document.querySelector("main,article,[role=main]")||document.body',
         'var c=e.cloneNode(true)',
         '"script,style,nav,footer,header,aside,iframe,noscript,.nav,.footer,.header,.sidebar".split(",").forEach(function(s){c.querySelectorAll(s).forEach(function(n){n.remove()})})',
-        'var f=document.createElement("form")',
-        'f.method="POST"',
-        `f.action="${window.location.origin}/api/research/bookmarklet"`,
-        'f.target="_blank"',
-        'var h=document.createElement("textarea")',
-        'h.name="html"',
-        'h.value=c.innerHTML',
-        'f.appendChild(h)',
-        'var u=document.createElement("input")',
-        'u.type="hidden"',
-        'u.name="url"',
-        'u.value=location.href',
-        'f.appendChild(u)',
-        'var n=document.createElement("input")',
-        'n.type="hidden"',
-        'n.name="title"',
-        'n.value=document.title',
-        'f.appendChild(n)',
-        'document.body.appendChild(f)',
-        'f.submit()',
-        'document.body.removeChild(f)',
+        `var w=window.open("${origin}/research/bookmarklet-receiver","_blank")`,
+        'var d={type:"ancstra-bookmarklet",html:c.innerHTML,url:location.href,title:document.title}',
+        'setTimeout(function(){w.postMessage(d,"*")},2000)',
       ].join(';');
       bookmarkletRef.current.setAttribute('href', `javascript:void(function(){${code}}())`);
     }
