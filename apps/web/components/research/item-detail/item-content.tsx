@@ -90,9 +90,16 @@ export function ItemContent({ item, onNotesChange, onRefresh, onScrapeJobStarted
     if (bookmarkletRef.current) {
       const origin = window.location.origin;
       const code = [
-        'var e=document.querySelector("main,article,[role=main]")||document.body',
+        // Find best content area — try specific selectors, fall back to body
+        'var s="main,article,[role=main],#content,.content,#main-content,.main-content,[itemprop=mainEntity],[itemtype*=Person],[itemtype*=Article],.profile,.memorial,.biography,.record-detail"',
+        'var e=document.querySelector(s)||document.body',
         'var c=e.cloneNode(true)',
-        '"script,style,nav,footer,header,aside,iframe,noscript,.nav,.footer,.header,.sidebar".split(",").forEach(function(s){c.querySelectorAll(s).forEach(function(n){n.remove()})})',
+        // Strip UI chrome aggressively
+        'var r="script,style,link,nav,footer,header,aside,iframe,noscript,form,button,input,select,textarea,label,svg,[role=navigation],[role=banner],[role=dialog],[role=alertdialog],[role=search],.nav,.footer,.header,.sidebar,.modal,.dialog,.login,.signup,.cookie,.banner,.toolbar,.menu,.dropdown,.ad,.advertisement,.social-share,.share,.popup,.overlay,.toast,#cookie-banner,.gdpr,.consent"',
+        'r.split(",").forEach(function(s){c.querySelectorAll(s).forEach(function(n){n.remove()})})',
+        // Also remove hidden elements
+        'c.querySelectorAll("[style*=\\"display:none\\"],.hidden,.d-none,[aria-hidden=true]").forEach(function(n){n.remove()})',
+        // Open receiver and send
         `var w=window.open("${origin}/research/bookmarklet-receiver","_blank")`,
         'var d={type:"ancstra-bookmarklet",html:c.innerHTML,url:location.href,title:document.title}',
         'setTimeout(function(){w.postMessage(d,"*")},2000)',
@@ -123,19 +130,19 @@ export function ItemContent({ item, onNotesChange, onRefresh, onScrapeJobStarted
 
       {/* Content & Preview — tabbed */}
       <div className="rounded-lg border border-border/80 p-4">
-        <Tabs defaultValue="content">
+        <Tabs defaultValue={item.url ? 'preview' : 'content'} onValueChange={(v) => { if (v === 'preview' && !showPreview) setShowPreview(true); }}>
           <div className="mb-3 flex items-center justify-between">
             <TabsList>
-              <TabsTrigger value="content">
-                <FileText className="size-3.5" />
-                Content
-              </TabsTrigger>
               {item.url && (
                 <TabsTrigger value="preview">
                   <Globe className="size-3.5" />
-                  Preview
+                  Source Page
                 </TabsTrigger>
               )}
+              <TabsTrigger value="content">
+                <FileText className="size-3.5" />
+                Extracted Text
+              </TabsTrigger>
             </TabsList>
 
             {/* Actions — always visible */}
@@ -157,10 +164,12 @@ export function ItemContent({ item, onNotesChange, onRefresh, onScrapeJobStarted
             {item.fullText ? (
               <>
                 {isHtml ? (
-                  // HTML content is sanitized server-side via sanitize-html before storage
-                  <div
-                    className={`prose prose-sm max-w-none text-muted-foreground prose-headings:text-foreground prose-a:text-primary ${expanded ? '' : 'max-h-48 overflow-hidden'}`}
-                    dangerouslySetInnerHTML={{ __html: item.fullText }}
+                  // Render sanitized HTML in a sandboxed iframe for visual fidelity
+                  <iframe
+                    srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{font-family:system-ui,-apple-system,sans-serif;font-size:14px;line-height:1.6;color:#333;margin:0;padding:16px;max-width:100%}img{max-width:100%;height:auto;border-radius:4px}a{color:#4f46e5}table{border-collapse:collapse;width:100%}td,th{border:1px solid #e5e7eb;padding:6px 10px;text-align:left}h1,h2,h3,h4{margin:0.8em 0 0.4em}p{margin:0.4em 0}ul,ol{padding-left:1.5em}.hidden,[style*="display:none"],[style*="display: none"]{display:none!important}</style></head><body>${item.fullText}</body></html>`}
+                    title="Extracted content"
+                    className={`w-full rounded-md border border-border ${expanded ? 'h-[70vh]' : 'h-64'}`}
+                    sandbox="allow-same-origin"
                   />
                 ) : (
                   <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
