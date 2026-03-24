@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef } from 'react';
-import { Loader2, ExternalLink, ClipboardPaste, X } from 'lucide-react';
+import { Loader2, ExternalLink, ClipboardPaste, X, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ItemNotesEditor } from './item-notes-editor';
 import { useScrapeUrl } from '@/lib/research/scrape-client';
@@ -28,6 +28,7 @@ export function ItemContent({ item, onNotesChange, onRefresh, onScrapeJobStarted
   const [scrapeFailed, setScrapeFailed] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [iframeBlocked, setIframeBlocked] = useState(false);
+  const [iframeKey, setIframeKey] = useState(0);
   const [showPasteArea, setShowPasteArea] = useState(false);
   const [pasteText, setPasteText] = useState('');
   const [saving, setSaving] = useState(false);
@@ -219,9 +220,18 @@ export function ItemContent({ item, onNotesChange, onRefresh, onScrapeJobStarted
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Page Preview</h3>
             <div className="flex items-center gap-2">
-              {!showPreview && (
+              {!showPreview ? (
                 <Button size="sm" variant="ghost" onClick={() => setShowPreview(true)}>
                   Load Preview
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => { setIframeBlocked(false); setIframeKey((k) => k + 1); }}
+                >
+                  <RefreshCw className="size-3.5" />
+                  Retry
                 </Button>
               )}
               <a
@@ -238,7 +248,7 @@ export function ItemContent({ item, onNotesChange, onRefresh, onScrapeJobStarted
           {showPreview && (
             <div className="mt-3">
               {iframeBlocked ? (
-                <div className="flex h-48 items-center justify-center rounded-md border border-dashed border-border bg-muted/30">
+                <div className="flex h-48 flex-col items-center justify-center gap-2 rounded-md border border-dashed border-border bg-muted/30">
                   <p className="text-sm text-muted-foreground">
                     This site cannot be previewed inline.{' '}
                     <a
@@ -251,9 +261,18 @@ export function ItemContent({ item, onNotesChange, onRefresh, onScrapeJobStarted
                     </a>
                     {' '}and use Paste Text above.
                   </p>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => { setIframeBlocked(false); setIframeKey((k) => k + 1); }}
+                  >
+                    <RefreshCw className="size-3.5" />
+                    Retry Preview
+                  </Button>
                 </div>
               ) : (
                 <iframe
+                  key={iframeKey}
                   src={item.url}
                   title="Page preview"
                   className="h-96 w-full rounded-md border border-border"
