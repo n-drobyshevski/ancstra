@@ -23,7 +23,6 @@ interface ItemContentProps {
 }
 
 export function ItemContent({ item, onNotesChange, onRefresh, onScrapeJobStarted, scrapeJobStatus }: ItemContentProps) {
-  const [expanded, setExpanded] = useState(false);
   const { scrape, isLoading: scraping, error } = useScrapeUrl();
   const [scrapeAttempted, setScrapeAttempted] = useState(false);
   const [scrapeFailed, setScrapeFailed] = useState(false);
@@ -110,12 +109,6 @@ export function ItemContent({ item, onNotesChange, onRefresh, onScrapeJobStarted
 
   const isHtml = item.fullText ? /<[a-z][\s\S]*>/i.test(item.fullText) : false;
 
-  const fullTextPreview = item.fullText && !isHtml
-    ? item.fullText.length > 200
-      ? item.fullText.slice(0, 200) + '...'
-      : item.fullText
-    : null;
-
   return (
     <div className="space-y-4">
       {/* Summary */}
@@ -168,23 +161,15 @@ export function ItemContent({ item, onNotesChange, onRefresh, onScrapeJobStarted
                   <iframe
                     srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{font-family:system-ui,-apple-system,sans-serif;font-size:14px;line-height:1.6;color:#333;margin:0;padding:16px;max-width:100%}img{max-width:100%;height:auto;border-radius:4px}a{color:#4f46e5}table{border-collapse:collapse;width:100%}td,th{border:1px solid #e5e7eb;padding:6px 10px;text-align:left}h1,h2,h3,h4{margin:0.8em 0 0.4em}p{margin:0.4em 0}ul,ol{padding-left:1.5em}.hidden,[style*="display:none"],[style*="display: none"]{display:none!important}</style></head><body>${item.fullText}</body></html>`}
                     title="Extracted content"
-                    className={`w-full rounded-md border border-border ${expanded ? 'h-[70vh]' : 'h-64'}`}
+                    className="h-80 min-h-32 w-full resize-y overflow-auto rounded-md border border-border"
                     sandbox="allow-same-origin"
                   />
                 ) : (
-                  <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
-                    {expanded ? item.fullText : fullTextPreview}
-                  </p>
-                )}
-                {item.fullText.length > 200 && (
-                  <button
-                    type="button"
-                    onClick={() => setExpanded(!expanded)}
-                    className="mt-2 text-sm text-primary hover:underline"
-                    aria-expanded={expanded}
-                  >
-                    {expanded ? 'Show less' : 'Show more'}
-                  </button>
+                  <div className="h-48 min-h-20 resize-y overflow-auto rounded-md border border-border p-3">
+                    <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
+                      {item.fullText}
+                    </p>
+                  </div>
                 )}
               </>
             ) : (
@@ -334,7 +319,7 @@ export function ItemContent({ item, onNotesChange, onRefresh, onScrapeJobStarted
                         key={iframeKey}
                         src={item.url}
                         title="Page preview"
-                        className="h-[28rem] w-full rounded-md border border-border"
+                        className="h-[28rem] min-h-32 w-full resize-y overflow-auto rounded-md border border-border"
                         sandbox="allow-scripts allow-same-origin"
                         onError={() => setIframeBlocked(true)}
                       />
