@@ -53,7 +53,7 @@ export function WorkspaceTabs({ conflictCount = 0, hintCount = 0 }: WorkspaceTab
             'relative inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors',
             'hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
             activeView === tab.value
-              ? 'text-foreground after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-primary'
+              ? 'text-foreground after:absolute after:inset-x-0 after:bottom-0 after:h-[2.5px] after:rounded-full after:bg-primary'
               : 'text-muted-foreground',
           )}
         >
