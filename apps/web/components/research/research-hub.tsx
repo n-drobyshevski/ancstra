@@ -1,14 +1,12 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { Search, Globe, Newspaper, BookOpen, Archive, Bookmark, FileText } from 'lucide-react';
-import { SearchBar } from './search-bar';
+import { Search, Globe, Newspaper, BookOpen, Archive, Bookmark } from 'lucide-react';
+import { ResearchInput } from './research-input';
 import { SearchResults } from './search-results';
 import { ResearchItemCard } from './research-item-card';
-import { UrlPasteInput } from './url-paste-input';
 import { TextPasteModal } from './text-paste-modal';
 import { SourceSelector } from './source-selector';
-import { Button } from '@/components/ui/button';
 import { useResearchSearch, useResearchItems } from '@/lib/research/search-client';
 
 const EXAMPLE_SEARCHES = [
@@ -68,14 +66,6 @@ export function ResearchHub() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setTextModalOpen(true)}
-          >
-            <FileText className="size-3.5" />
-            Paste Text
-          </Button>
           {hasItems && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Bookmark className="size-4" />
@@ -85,20 +75,16 @@ export function ResearchHub() {
         </div>
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row sm:gap-2">
         <div className="flex-1">
-          <SearchBar onSearch={handleSearch} />
+          <ResearchInput
+            onSearch={handleSearch}
+            onSaved={handleSaved}
+            onOpenTextModal={() => setTextModalOpen(true)}
+          />
         </div>
         <SourceSelector onSelectionChange={setSelectedProviders} />
       </div>
-
-      <div className="flex items-center gap-3">
-        <div className="h-px flex-1 bg-border" />
-        <span className="text-xs text-muted-foreground">or paste a URL</span>
-        <div className="h-px flex-1 bg-border" />
-      </div>
-
-      <UrlPasteInput onSaved={handleSaved} />
 
       <TextPasteModal
         open={textModalOpen}
