@@ -24,9 +24,12 @@ const STARTER_PROMPTS = [
 
 interface ChatPanelProps {
   focusPersonId?: string;
+  initialPrompt?: string | null;
+  onPromptConsumed?: () => void;
+  searchContext?: { query: string; topResults: { title: string; providerId: string }[] } | null;
 }
 
-export function ChatPanel({ focusPersonId }: ChatPanelProps) {
+export function ChatPanel({ focusPersonId, initialPrompt, onPromptConsumed, searchContext }: ChatPanelProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -42,7 +45,12 @@ export function ChatPanel({ focusPersonId }: ChatPanelProps) {
     append,
   } = useChat({
     api: '/api/ai/chat',
-    body: { focusPersonId },
+    body: {
+      focusPersonId,
+      ...(searchContext && {
+        searchContext: `User was searching for: "${searchContext.query}". Top results: ${searchContext.topResults.map((r) => `${r.title} (${r.providerId})`).join(', ')}`,
+      }),
+    },
   });
 
   // Auto-scroll to bottom on new messages
@@ -51,6 +59,14 @@ export function ChatPanel({ focusPersonId }: ChatPanelProps) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
+
+  // Auto-send initial prompt from "Ask AI" button
+  useEffect(() => {
+    if (initialPrompt) {
+      append({ role: 'user', content: initialPrompt });
+      onPromptConsumed?.();
+    }
+  }, [initialPrompt]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Handle enter to submit (shift+enter for newline)
   const handleKeyDown = useCallback(

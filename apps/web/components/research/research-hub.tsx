@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Search, Globe, Newspaper, BookOpen, Archive, Bookmark, ChevronsRight } from 'lucide-react';
 import { ResearchInput } from './research-input';
 import { SearchResults } from './search-results';
@@ -24,7 +24,12 @@ const PROVIDERS = [
   { icon: BookOpen, name: 'More sources', desc: 'coming soon' },
 ];
 
-export function ResearchHub() {
+interface ResearchHubProps {
+  onAskAi?: (prompt: string) => void;
+  onSearchContextChange?: (ctx: { query: string; topResults: { title: string; providerId: string }[] } | null) => void;
+}
+
+export function ResearchHub({ onAskAi, onSearchContextChange }: ResearchHubProps) {
   const [query, setQuery] = useState('');
   const [textModalOpen, setTextModalOpen] = useState(false);
   const [selectedProviders, setSelectedProviders] = useState<string[]>([]);
@@ -65,6 +70,20 @@ export function ResearchHub() {
       return next;
     });
   }, []);
+
+  useEffect(() => {
+    if (!query || !searchData?.results) {
+      onSearchContextChange?.(null);
+      return;
+    }
+    onSearchContextChange?.({
+      query,
+      topResults: searchData.results.slice(0, 5).map((r) => ({
+        title: r.title,
+        providerId: r.providerId,
+      })),
+    });
+  }, [query, searchData, onSearchContextChange]);
 
   const hasResults = !!query && (searchData?.results?.length ?? 0) > 0;
   const hasItems = (itemsData?.items?.length ?? 0) > 0;
@@ -212,6 +231,7 @@ export function ResearchHub() {
               error={searchError}
               query={query}
               onSaved={handleSaved}
+              onAskAi={onAskAi}
             />
           </div>
 

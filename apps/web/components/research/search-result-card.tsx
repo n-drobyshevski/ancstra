@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ExternalLink, Plus } from 'lucide-react';
+import { ExternalLink, Plus, Sparkles } from 'lucide-react';
 import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -114,6 +114,20 @@ export function SearchResultCard({ result, onSaved, onAskAi }: SearchResultCardP
               <ExternalLink className="size-3.5" />
               View
             </a>
+          </Button>
+        )}
+        {onAskAi && (
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() =>
+              onAskAi(
+                `Tell me more about this record: "${result.title}" from ${getProviderConfig(result.providerId).label}. URL: ${result.url}. Snippet: ${result.snippet}`
+              )
+            }
+          >
+            <Sparkles className="size-3.5" />
+            Ask AI
           </Button>
         )}
       </CardFooter>
