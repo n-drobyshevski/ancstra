@@ -131,3 +131,29 @@ export async function promoteToCitation(researchItemId: string, _personId: strin
 
   return res.json();
 }
+
+// ---------------------------------------------------------------------------
+// useResearchItemFacts — fetch /api/research/facts?researchItemId=...
+// ---------------------------------------------------------------------------
+export function useResearchItemFacts(researchItemId: string) {
+  const { data, isLoading, error, refetch } = useFetchData<{
+    facts: Array<{
+      id: string;
+      personId: string;
+      researchItemId: string | null;
+      factType: string;
+      factValue: string;
+      factDateSort: number | null;
+      confidence: string;
+      notes: string | null;
+      createdAt: string;
+    }>;
+  }>(`/api/research/facts?researchItemId=${researchItemId}`);
+
+  return {
+    facts: data?.facts ?? [],
+    isLoading,
+    error,
+    refetch,
+  };
+}
