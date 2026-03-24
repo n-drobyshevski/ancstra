@@ -215,7 +215,7 @@ export function ItemContent({ item, onNotesChange, onRefresh, onScrapeJobStarted
       </div>
 
       {/* Page Preview */}
-      {item.url && !item.fullText && (
+      {item.url && (
         <div className="rounded-lg border border-border/80 p-4">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Page Preview</h3>
