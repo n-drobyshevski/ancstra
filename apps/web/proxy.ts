@@ -43,6 +43,6 @@ export const proxy = auth((request) => {
 export const config = {
   matcher: [
     // Match all paths EXCEPT public routes and static files
-    '/((?!login|signup|join|create-family|api/auth|api/debug|_next/static|_next/image|favicon.ico).*)',
+    '/((?!login|signup|join|create-family|api/auth|api/debug|monitoring|_next/static|_next/image|favicon.ico).*)',
   ],
 };

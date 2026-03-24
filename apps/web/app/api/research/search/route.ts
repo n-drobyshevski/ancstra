@@ -5,6 +5,7 @@ import {
   MockProvider,
   NARAProvider,
   ChroniclingAmericaProvider,
+  createWebSearchProvider,
 } from '@ancstra/research';
 import type { SearchRequest } from '@ancstra/research';
 
@@ -18,6 +19,11 @@ function buildRegistry(providerIds?: string[]): ProviderRegistry {
 
   registry.register(new NARAProvider());
   registry.register(new ChroniclingAmericaProvider());
+
+  const webSearch = createWebSearchProvider();
+  if (webSearch) {
+    registry.register(webSearch);
+  }
 
   // If specific providers requested, disable all others
   if (providerIds && providerIds.length > 0) {

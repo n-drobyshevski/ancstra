@@ -95,9 +95,9 @@ export async function executeSuggestSearches(
   }
 
   // Census records if US-based and birth year is known
-  if (birthYear && birthEvent?.place?.toLowerCase().includes('us') ||
+  if (birthYear && (birthEvent?.place?.toLowerCase().includes('us') ||
       birthEvent?.place?.toLowerCase().includes('united states') ||
-      birthEvent?.place?.toLowerCase().includes('america')) {
+      birthEvent?.place?.toLowerCase().includes('america'))) {
     // Suggest census years the person would have been alive for
     const censusYears = [1850, 1860, 1870, 1880, 1900, 1910, 1920, 1930, 1940, 1950];
     for (const year of censusYears) {

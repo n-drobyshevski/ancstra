@@ -7,7 +7,7 @@ import type {
 } from '../types';
 import { RateLimiter } from '../rate-limiter';
 
-const NARA_API_BASE = 'https://catalog.archives.gov/api/v1';
+const NARA_API_BASE = 'https://catalog.archives.gov/api/v2/records/search';
 
 interface NaraDigitalObject {
   objectUrl?: string;
@@ -21,17 +21,20 @@ interface NaraItem {
   };
 }
 
-interface NaraResultEntry {
-  naId: string;
-  description?: {
-    item?: NaraItem;
+interface NaraHit {
+  _id: string;
+  _source?: {
+    description?: {
+      item?: NaraItem;
+    };
   };
 }
 
-interface NaraApiResponse {
-  opaResponse?: {
-    results?: {
-      result?: NaraResultEntry[];
+interface NaraV2Response {
+  body?: {
+    hits?: {
+      total?: number;
+      hits?: NaraHit[];
     };
   };
 }
@@ -42,38 +45,48 @@ export class NARAProvider implements SearchProvider {
   readonly type: ProviderType = 'api';
 
   private limiter = new RateLimiter(30);
+  private apiKey: string | undefined;
+
+  constructor() {
+    this.apiKey = process.env['NARA_API_KEY'];
+  }
 
   async search(query: SearchRequest): Promise<SearchResult[]> {
+    if (!this.apiKey) return [];
+
     try {
       const q = this.buildQueryString(query);
       if (!q) return [];
 
-      const rows = query.limit ?? 20;
+      const limit = query.limit ?? 20;
       const params = new URLSearchParams({
         q,
-        resultTypes: 'item',
-        rows: String(rows),
+        limit: String(limit),
       });
 
       await this.limiter.acquire();
-      const res = await fetch(`${NARA_API_BASE}?${params.toString()}`);
+      const res = await fetch(`${NARA_API_BASE}?${params.toString()}`, {
+        headers: { 'x-api-key': this.apiKey },
+      });
       if (!res.ok) return [];
 
-      const data = (await res.json()) as NaraApiResponse;
-      const entries = data.opaResponse?.results?.result ?? [];
+      const data = (await res.json()) as NaraV2Response;
+      const hits = data.body?.hits?.hits ?? [];
 
-      return entries.map((entry) => this.mapResult(entry));
+      return hits.map((hit) => this.mapResult(hit));
     } catch {
       return [];
     }
   }
 
   async healthCheck(): Promise<HealthStatus> {
+    if (!this.apiKey) return 'down';
+
     try {
       await this.limiter.acquire();
-      const res = await fetch(
-        `${NARA_API_BASE}?q=test&resultTypes=item&rows=1`,
-      );
+      const res = await fetch(`${NARA_API_BASE}?q=test&limit=1`, {
+        headers: { 'x-api-key': this.apiKey },
+      });
       return res.ok ? 'healthy' : 'down';
     } catch {
       return 'down';
@@ -88,17 +101,17 @@ export class NARAProvider implements SearchProvider {
     return parts.join(' ').trim();
   }
 
-  private mapResult(entry: NaraResultEntry): SearchResult {
-    const item = entry.description?.item;
+  private mapResult(hit: NaraHit): SearchResult {
+    const item = hit._source?.description?.item;
     const thumbnail =
       item?.digitalObjectArray?.digitalObject?.[0]?.objectUrl;
 
     return {
       providerId: this.id,
-      externalId: String(entry.naId),
+      externalId: String(hit._id),
       title: item?.title ?? 'Untitled Record',
       snippet: item?.scopeAndContentNote ?? '',
-      url: `https://catalog.archives.gov/id/${entry.naId}`,
+      url: `https://catalog.archives.gov/id/${hit._id}`,
       ...(thumbnail ? { thumbnailUrl: thumbnail } : {}),
     };
   }

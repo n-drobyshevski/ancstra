@@ -8,19 +8,19 @@ import type {
 import { RateLimiter } from '../rate-limiter';
 
 const CA_API_BASE =
-  'https://chroniclingamerica.loc.gov/search/pages/results/';
+  'https://www.loc.gov/collections/chronicling-america/';
 
-interface CaItem {
+interface LocItem {
   id?: string;
   title?: string;
   date?: string;
-  ocr_eng?: string;
-  url?: string;
+  description?: string[];
+  image_url?: string[];
+  location?: string[];
 }
 
-interface CaApiResponse {
-  totalItems?: number;
-  items?: CaItem[];
+interface LocApiResponse {
+  results?: LocItem[];
 }
 
 export class ChroniclingAmericaProvider implements SearchProvider {
@@ -36,27 +36,24 @@ export class ChroniclingAmericaProvider implements SearchProvider {
       if (!searchText) return [];
 
       const params = new URLSearchParams({
-        andtext: searchText,
-        format: 'json',
-        page: '1',
+        q: searchText,
+        fo: 'json',
+        c: String(query.limit ?? 20),
       });
 
-      if (query.dateRange?.start) {
-        params.set('date1', String(query.dateRange.start));
-      }
-      if (query.dateRange?.end) {
-        params.set('date2', String(query.dateRange.end));
+      if (query.dateRange?.start && query.dateRange?.end) {
+        params.set('dates', `${query.dateRange.start}-${query.dateRange.end}`);
       }
       if (query.location) {
-        params.set('state', query.location);
+        params.set('fa', `location:${query.location.toLowerCase()}`);
       }
 
       await this.limiter.acquire();
       const res = await fetch(`${CA_API_BASE}?${params.toString()}`);
       if (!res.ok) return [];
 
-      const data = (await res.json()) as CaApiResponse;
-      const items = data.items ?? [];
+      const data = (await res.json()) as LocApiResponse;
+      const items = data.results ?? [];
 
       return items.map((item) => this.mapResult(item));
     } catch {
@@ -67,9 +64,7 @@ export class ChroniclingAmericaProvider implements SearchProvider {
   async healthCheck(): Promise<HealthStatus> {
     try {
       await this.limiter.acquire();
-      const res = await fetch(
-        `${CA_API_BASE}?andtext=test&format=json&page=1`,
-      );
+      const res = await fetch(`${CA_API_BASE}?q=test&fo=json&c=1`);
       return res.ok ? 'healthy' : 'down';
     } catch {
       return 'down';
@@ -84,9 +79,9 @@ export class ChroniclingAmericaProvider implements SearchProvider {
     return parts.join(' ').trim();
   }
 
-  private mapResult(item: CaItem): SearchResult {
-    const snippet = item.ocr_eng
-      ? item.ocr_eng.slice(0, 300)
+  private mapResult(item: LocItem): SearchResult {
+    const snippet = item.description?.[0]
+      ? item.description[0].slice(0, 300)
       : '';
 
     return {
@@ -94,9 +89,7 @@ export class ChroniclingAmericaProvider implements SearchProvider {
       externalId: item.id ?? '',
       title: item.title ?? 'Untitled Newspaper Page',
       snippet,
-      url:
-        item.url ??
-        `https://chroniclingamerica.loc.gov${item.id ?? ''}`,
+      url: item.id ?? 'https://www.loc.gov/collections/chronicling-america/',
       recordType: 'newspaper',
     };
   }

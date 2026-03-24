@@ -8,6 +8,7 @@ import {
   FamilySearchProvider,
   WikiTreeProvider,
   WebSearchProvider,
+  createWebSearchProvider,
   type HealthStatus,
 } from '@ancstra/research';
 
@@ -21,6 +22,11 @@ function buildRegistry(): ProviderRegistry {
   registry.register(new NARAProvider());
   registry.register(new ChroniclingAmericaProvider());
   registry.register(new WikiTreeProvider());
+
+  const webSearch = createWebSearchProvider();
+  if (webSearch) {
+    registry.register(webSearch);
+  }
 
   // FamilySearch needs a token — skip if not configured
   // FindAGrave and Geneanet are scraper-based — check worker instead
@@ -76,11 +82,6 @@ export async function GET() {
       results['_worker'] = 'unknown';
       results['findagrave'] = 'unknown';
       results['geneanet'] = 'unknown';
-    }
-
-    // Web search depends on config
-    if (!process.env.SEARXNG_URL && !process.env.BRAVE_API_KEY) {
-      results['web_search'] = 'unknown';
     }
 
     return NextResponse.json({ statuses: results, checkedAt: new Date().toISOString() });

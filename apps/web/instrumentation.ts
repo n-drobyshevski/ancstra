@@ -1,5 +1,4 @@
-import { type Instrumentation } from 'next';
-import { captureRequestError } from '@sentry/nextjs';
+import * as Sentry from '@sentry/nextjs';
 
 export async function register() {
   if (process.env.NEXT_RUNTIME === 'nodejs') {
@@ -7,12 +6,9 @@ export async function register() {
   }
 
   if (process.env.NEXT_RUNTIME === 'edge') {
-    await import('./sentry.server.config');
+    await import('./sentry.edge.config');
   }
 }
 
-export const onRequestError: Instrumentation.onRequestError = (
-  ...args
-) => {
-  captureRequestError(...args);
-};
+// Automatically captures all unhandled server-side request errors
+export const onRequestError = Sentry.captureRequestError;

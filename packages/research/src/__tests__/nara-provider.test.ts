@@ -6,13 +6,16 @@ vi.stubGlobal('fetch', mockFetch);
 
 describe('NARAProvider', () => {
   let provider: NARAProvider;
+  const originalEnv = process.env;
 
   beforeEach(() => {
+    process.env = { ...originalEnv, NARA_API_KEY: 'test-key-123' };
     provider = new NARAProvider();
     mockFetch.mockReset();
   });
 
   afterEach(() => {
+    process.env = originalEnv;
     vi.restoreAllMocks();
   });
 
@@ -22,31 +25,36 @@ describe('NARAProvider', () => {
     expect(provider.type).toBe('api');
   });
 
-  it('returns mapped results from NARA API response', async () => {
-    const naraResponse = {
-      opaResponse: {
-        results: {
-          result: [
+  it('returns mapped results from NARA v2 API response', async () => {
+    const naraV2Response = {
+      body: {
+        hits: {
+          total: 2,
+          hits: [
             {
-              naId: '12345',
-              description: {
-                item: {
-                  title: 'Census Record for Smith Family',
-                  scopeAndContentNote: 'Records of the Smith family in 1940 census.',
-                  digitalObjectArray: {
-                    digitalObject: [
-                      { objectUrl: 'https://catalog.archives.gov/media/12345.jpg' },
-                    ],
+              _id: '12345',
+              _source: {
+                description: {
+                  item: {
+                    title: 'Census Record for Smith Family',
+                    scopeAndContentNote: 'Records of the Smith family in 1940 census.',
+                    digitalObjectArray: {
+                      digitalObject: [
+                        { objectUrl: 'https://catalog.archives.gov/media/12345.jpg' },
+                      ],
+                    },
                   },
                 },
               },
             },
             {
-              naId: '67890',
-              description: {
-                item: {
-                  title: 'Immigration Record — Johnson',
-                  scopeAndContentNote: 'Passenger manifest for Johnson.',
+              _id: '67890',
+              _source: {
+                description: {
+                  item: {
+                    title: 'Immigration Record — Johnson',
+                    scopeAndContentNote: 'Passenger manifest for Johnson.',
+                  },
                 },
               },
             },
@@ -57,17 +65,20 @@ describe('NARAProvider', () => {
 
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => naraResponse,
+      json: async () => naraV2Response,
     });
 
     const results = await provider.search({ surname: 'Smith', limit: 10 });
 
     expect(mockFetch).toHaveBeenCalledOnce();
     const url = mockFetch.mock.calls[0][0] as string;
-    expect(url).toContain('https://catalog.archives.gov/api/v1');
+    expect(url).toContain('https://catalog.archives.gov/api/v2/records/search');
     expect(url).toContain('q=Smith');
-    expect(url).toContain('resultTypes=item');
-    expect(url).toContain('rows=10');
+    expect(url).toContain('limit=10');
+
+    // Verify x-api-key header
+    const fetchOpts = mockFetch.mock.calls[0][1] as RequestInit;
+    expect(fetchOpts.headers).toMatchObject({ 'x-api-key': 'test-key-123' });
 
     expect(results).toHaveLength(2);
     expect(results[0]).toMatchObject({
@@ -81,6 +92,14 @@ describe('NARAProvider', () => {
       'https://catalog.archives.gov/media/12345.jpg',
     );
     expect(results[1].thumbnailUrl).toBeUndefined();
+  });
+
+  it('returns empty array when no API key configured', async () => {
+    delete process.env['NARA_API_KEY'];
+    const noKeyProvider = new NARAProvider();
+    const results = await noKeyProvider.search({ surname: 'Smith' });
+    expect(results).toEqual([]);
+    expect(mockFetch).not.toHaveBeenCalled();
   });
 
   it('returns empty array on API error', async () => {
@@ -104,7 +123,7 @@ describe('NARAProvider', () => {
   it('health check returns healthy when API responds', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ opaResponse: { results: { result: [] } } }),
+      json: async () => ({ body: { hits: { total: 0, hits: [] } } }),
     });
 
     const status = await provider.healthCheck();
@@ -115,6 +134,13 @@ describe('NARAProvider', () => {
     mockFetch.mockRejectedValueOnce(new Error('Network error'));
 
     const status = await provider.healthCheck();
+    expect(status).toBe('down');
+  });
+
+  it('health check returns down when no API key', async () => {
+    delete process.env['NARA_API_KEY'];
+    const noKeyProvider = new NARAProvider();
+    const status = await noKeyProvider.healthCheck();
     expect(status).toBe('down');
   });
 });
