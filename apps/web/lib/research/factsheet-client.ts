@@ -158,6 +158,32 @@ export function useFactsheetDuplicates(factsheetId: string | null, enabled: bool
 }
 
 // ---------------------------------------------------------------------------
+// useAllFactsheets — fetch /api/research/factsheets?include=counts (all persons)
+// ---------------------------------------------------------------------------
+
+export interface FactsheetWithCounts extends Factsheet {
+  factCount: number;
+  linkCount: number;
+  conflictCount: number;
+  isUnanchored: boolean;
+}
+
+export function useAllFactsheets() {
+  const { data, isLoading, error, refetch } = useFetchData<{
+    factsheets: FactsheetWithCounts[];
+  }>('/api/research/factsheets?include=counts');
+  return { factsheets: data?.factsheets ?? [], isLoading, error, refetch };
+}
+
+export function useFactsheetCount() {
+  const { factsheets } = useAllFactsheets();
+  const count = factsheets.filter(
+    (fs) => fs.status === 'draft' || fs.status === 'ready'
+  ).length;
+  return { count };
+}
+
+// ---------------------------------------------------------------------------
 // useInbox — fetch /api/research/inbox
 // ---------------------------------------------------------------------------
 export function useInbox() {

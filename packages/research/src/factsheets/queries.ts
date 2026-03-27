@@ -87,6 +87,87 @@ export async function listFactsheets(db: Database, filters: FactsheetFilters = {
   return rows;
 }
 
+export interface FactsheetWithCounts {
+  id: string;
+  title: string;
+  entityType: 'person' | 'couple' | 'family_unit';
+  status: 'draft' | 'ready' | 'promoted' | 'merged' | 'dismissed';
+  notes: string | null;
+  promotedPersonId: string | null;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  factCount: number;
+  linkCount: number;
+  conflictCount: number;
+  isUnanchored: boolean;
+}
+
+export async function listFactsheetsWithCounts(
+  db: Database,
+  filters: FactsheetFilters = {}
+): Promise<FactsheetWithCounts[]> {
+  const rows = await listFactsheets(db, filters);
+  if (rows.length === 0) return [];
+
+  const ids = rows.map((r: any) => r.id as string);
+  const idList = ids.map((id: string) => `'${id.replace(/'/g, "''")}'`).join(',');
+
+  // Batch-fetch fact counts per factsheet
+  const factCountRows = await db.all<{ factsheetId: string; cnt: number }>(sql`
+    SELECT factsheet_id AS factsheetId, COUNT(*) AS cnt
+    FROM research_facts
+    WHERE factsheet_id IN (${sql.raw(idList)})
+    GROUP BY factsheet_id
+  `);
+  const factCountMap = new Map<string, number>(
+    factCountRows.map((r) => [r.factsheetId, r.cnt])
+  );
+
+  // Batch-fetch link counts per factsheet (from + to directions)
+  const linkCountRows = await db.all<{ factsheetId: string; cnt: number }>(sql`
+    SELECT factsheet_id, COUNT(*) AS cnt FROM (
+      SELECT from_factsheet_id AS factsheet_id FROM factsheet_links
+        WHERE from_factsheet_id IN (${sql.raw(idList)})
+      UNION ALL
+      SELECT to_factsheet_id AS factsheet_id FROM factsheet_links
+        WHERE to_factsheet_id IN (${sql.raw(idList)})
+    ) GROUP BY factsheet_id
+  `);
+  const linkCountMap = new Map<string, number>(
+    linkCountRows.map((r) => [r.factsheet_id, r.cnt])
+  );
+
+  // Batch-fetch anchored factsheet IDs (have at least one fact with non-null person_id)
+  const anchoredRows = await db.all<{ factsheetId: string }>(sql`
+    SELECT DISTINCT factsheet_id AS factsheetId
+    FROM research_facts
+    WHERE factsheet_id IN (${sql.raw(idList)})
+      AND person_id IS NOT NULL
+  `);
+  const anchoredSet = new Set<string>(anchoredRows.map((r) => r.factsheetId));
+
+  // Batch-fetch conflict counts — facts with accepted = null grouped by factsheet
+  const conflictRows = await db.all<{ factsheetId: string; cnt: number }>(sql`
+    SELECT factsheet_id AS factsheetId, COUNT(*) AS cnt
+    FROM research_facts
+    WHERE factsheet_id IN (${sql.raw(idList)})
+      AND accepted IS NULL
+    GROUP BY factsheet_id
+  `);
+  const conflictMap = new Map<string, number>(
+    conflictRows.map((r) => [r.factsheetId, r.cnt])
+  );
+
+  return rows.map((r: any) => ({
+    ...r,
+    factCount: factCountMap.get(r.id) ?? 0,
+    linkCount: linkCountMap.get(r.id) ?? 0,
+    conflictCount: conflictMap.get(r.id) ?? 0,
+    isUnanchored: !anchoredSet.has(r.id),
+  }));
+}
+
 export async function updateFactsheet(db: Database, id: string, data: UpdateFactsheetInput) {
   const updates: Record<string, unknown> = {
     updatedAt: new Date().toISOString(),

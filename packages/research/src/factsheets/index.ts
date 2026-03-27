@@ -2,12 +2,13 @@ export {
   createFactsheet,
   getFactsheet,
   listFactsheets,
+  listFactsheetsWithCounts,
   updateFactsheet,
   deleteFactsheet,
   assignFactToFactsheet,
   removeFactFromFactsheet,
 } from './queries';
-export type { CreateFactsheetInput, UpdateFactsheetInput, FactsheetFilters } from './queries';
+export type { CreateFactsheetInput, UpdateFactsheetInput, FactsheetFilters, FactsheetWithCounts } from './queries';
 
 export {
   createFactsheetLink,
