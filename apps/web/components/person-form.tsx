@@ -2,12 +2,14 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { ArrowLeft } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import { createRelatedPerson } from '@/app/actions/create-related-person';
 import type { PersonDetail } from '@ancstra/shared';
@@ -56,6 +58,9 @@ function PersonFormInner({ person }: PersonFormProps) {
     }
     return 'U';
   }
+
+  const [sex, setSex] = useState(getDefaultSex());
+  const [isLiving, setIsLiving] = useState(person?.isLiving ?? true);
 
   // Handle edit mode submit (PUT)
   async function handleEditSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -149,8 +154,6 @@ function PersonFormInner({ person }: PersonFormProps) {
     router.push(`/persons/${created.id}`);
   }
 
-  const defaultSex = getDefaultSex();
-
   // Relation context uses server action via form action
   const formProps = isRelationContext
     ? { action: createRelatedPerson }
@@ -163,144 +166,213 @@ function PersonFormInner({ person }: PersonFormProps) {
     relation === 'child' ? 'child' : relation;
 
   return (
-    <Card>
-      <CardContent className="pt-6">
-        {isRelationContext && (
-          <div className="mb-4 rounded-md border border-primary/20 bg-primary/5 px-4 py-3 text-sm">
-            Creating <strong>{relationLabel}</strong> of{' '}
-            <strong>{targetPersonName ?? 'loading...'}</strong>
-          </div>
-        )}
+    <>
+      {/* Mobile header with back arrow */}
+      <div className="mb-3 flex items-center gap-2 md:hidden">
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="-ml-1 rounded-md p-1.5 hover:bg-muted"
+          aria-label="Go back"
+        >
+          <ArrowLeft className="size-4" />
+        </button>
+        <h1 className="text-base font-semibold">
+          {isEditMode ? `Edit ${person.givenName} ${person.surname}` : 'Add New Person'}
+        </h1>
+      </div>
 
-        <form {...formProps} className="space-y-4">
-          {/* Hidden fields for server action relation context */}
+      <Card>
+        <CardContent className="pt-6">
+          {/* Relation context banner — keep as-is */}
           {isRelationContext && (
-            <>
-              <input type="hidden" name="relation" value={relation} />
-              <input type="hidden" name="ofPersonId" value={ofPersonId} />
-            </>
+            <div className="mb-4 rounded-md border border-primary/20 bg-primary/5 px-4 py-3 text-sm">
+              Creating <strong>{relationLabel}</strong> of{' '}
+              <strong>{targetPersonName ?? 'loading...'}</strong>
+            </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="givenName">Given Name *</Label>
-              <Input
-                id="givenName"
-                name="givenName"
-                required
-                defaultValue={person?.givenName ?? ''}
-              />
-              {errors.givenName && (
-                <p className="text-sm text-destructive">{errors.givenName}</p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="surname">Surname *</Label>
-              <Input
-                id="surname"
-                name="surname"
-                required
-                defaultValue={person?.surname ?? ''}
-              />
-              {errors.surname && (
-                <p className="text-sm text-destructive">{errors.surname}</p>
-              )}
-            </div>
-          </div>
+          <form id="person-form" {...formProps} className="space-y-4">
+            {/* Hidden fields for server action relation context */}
+            {isRelationContext && (
+              <>
+                <input type="hidden" name="relation" value={relation} />
+                <input type="hidden" name="ofPersonId" value={ofPersonId} />
+              </>
+            )}
 
-          <div className="space-y-2">
-            <Label htmlFor="sex">Sex *</Label>
-            <select
-              id="sex"
-              name="sex"
-              defaultValue={defaultSex}
-              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            {/* Names — responsive grid */}
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="givenName">Given Name <span className="text-destructive">*</span></Label>
+                <Input
+                  id="givenName"
+                  name="givenName"
+                  required
+                  defaultValue={person?.givenName ?? ''}
+                  className="h-10 md:h-8"
+                />
+                {errors.givenName && (
+                  <p className="text-sm text-destructive">{errors.givenName}</p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="surname">Surname <span className="text-destructive">*</span></Label>
+                <Input
+                  id="surname"
+                  name="surname"
+                  required
+                  defaultValue={person?.surname ?? ''}
+                  className="h-10 md:h-8"
+                />
+                {errors.surname && (
+                  <p className="text-sm text-destructive">{errors.surname}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Sex — segmented control */}
+            <div className="space-y-2">
+              <Label>Sex <span className="text-destructive">*</span></Label>
+              <input type="hidden" name="sex" value={sex} />
+              <div
+                role="radiogroup"
+                aria-label="Sex"
+                className="inline-flex w-full overflow-hidden rounded-lg border border-border md:w-auto"
+              >
+                {(['M', 'F', 'U'] as const).map((value) => {
+                  const label = value === 'M' ? 'Male' : value === 'F' ? 'Female' : 'Unknown';
+                  const isActive = sex === value;
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      role="radio"
+                      aria-checked={isActive}
+                      onClick={() => setSex(value)}
+                      className={`flex-1 px-4 py-1.5 text-sm font-medium transition-colors md:flex-none ${
+                        isActive
+                          ? 'bg-primary text-primary-foreground'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Living toggle */}
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="isLiving"
+                name="isLiving"
+                checked={isLiving}
+                onCheckedChange={setIsLiving}
+              />
+              <Label htmlFor="isLiving">Living Person</Label>
+            </div>
+
+            {/* Birth date/place — responsive grid */}
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="birthDate">Birth Date</Label>
+                <Input
+                  id="birthDate"
+                  name="birthDate"
+                  placeholder="e.g. 15 Mar 1845"
+                  defaultValue={person?.birthDate ?? ''}
+                  className="h-10 md:h-8"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="birthPlace">Birth Place</Label>
+                <Input
+                  id="birthPlace"
+                  name="birthPlace"
+                  placeholder="e.g. Springfield, IL"
+                  defaultValue={person?.birthPlace ?? ''}
+                  className="h-10 md:h-8"
+                />
+              </div>
+            </div>
+
+            {/* Death date/place — dimmed when living */}
+            <div
+              className={`grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4 transition-opacity duration-200 ${
+                isLiving ? 'opacity-40 pointer-events-none' : ''
+              }`}
+              aria-disabled={isLiving}
             >
-              <option value="M">Male</option>
-              <option value="F">Female</option>
-              <option value="U">Unknown</option>
-            </select>
-          </div>
+              <div className="space-y-2">
+                <Label htmlFor="deathDate">Death Date</Label>
+                <Input
+                  id="deathDate"
+                  name="deathDate"
+                  placeholder="e.g. 23 Nov 1923"
+                  defaultValue={person?.deathDate ?? ''}
+                  disabled={isLiving}
+                  className="h-10 md:h-8"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="deathPlace">Death Place</Label>
+                <Input
+                  id="deathPlace"
+                  name="deathPlace"
+                  placeholder="e.g. Chicago, IL"
+                  defaultValue={person?.deathPlace ?? ''}
+                  disabled={isLiving}
+                  className="h-10 md:h-8"
+                />
+              </div>
+            </div>
 
-          <div className="grid grid-cols-2 gap-4">
+            <Separator />
+
+            {/* Notes */}
             <div className="space-y-2">
-              <Label htmlFor="birthDate">Birth Date</Label>
-              <Input
-                id="birthDate"
-                name="birthDate"
-                placeholder="15 Mar 1845"
-                defaultValue={person?.birthDate ?? ''}
+              <Label htmlFor="notes">Notes</Label>
+              <Textarea
+                id="notes"
+                name="notes"
+                rows={3}
+                defaultValue={person?.notes ?? ''}
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="birthPlace">Birth Place</Label>
-              <Input
-                id="birthPlace"
-                name="birthPlace"
-                placeholder="Springfield, IL"
-                defaultValue={person?.birthPlace ?? ''}
-              />
+
+            {/* Desktop: inline buttons */}
+            <div className="hidden gap-2 md:flex">
+              <Button type="submit" disabled={loading}>
+                {loading ? 'Saving...' : isEditMode ? 'Save Changes' : 'Save Person'}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => router.back()}
+              >
+                Cancel
+              </Button>
             </div>
-          </div>
+          </form>
+        </CardContent>
+      </Card>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="deathDate">Death Date</Label>
-              <Input
-                id="deathDate"
-                name="deathDate"
-                placeholder="23 Nov 1923"
-                defaultValue={person?.deathDate ?? ''}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="deathPlace">Death Place</Label>
-              <Input
-                id="deathPlace"
-                name="deathPlace"
-                defaultValue={person?.deathPlace ?? ''}
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <Switch
-              id="isLiving"
-              name="isLiving"
-              defaultChecked={person?.isLiving ?? false}
-            />
-            <Label htmlFor="isLiving">Living Person</Label>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="notes">Notes</Label>
-            <Textarea
-              id="notes"
-              name="notes"
-              rows={3}
-              defaultValue={person?.notes ?? ''}
-            />
-          </div>
-
-          <div className="flex gap-2">
-            <Button type="submit" disabled={loading}>
-              {loading
-                ? 'Saving...'
-                : isEditMode
-                  ? 'Save Changes'
-                  : 'Save Person'}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => router.back()}
-            >
-              Cancel
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+      {/* Mobile: sticky save bar */}
+      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background px-4 pb-[env(safe-area-inset-bottom,0px)] pt-2 shadow-lg md:hidden">
+        <Button
+          type="submit"
+          form="person-form"
+          disabled={loading}
+          className="w-full"
+        >
+          {loading ? 'Saving...' : isEditMode ? 'Save Changes' : 'Save Person'}
+        </Button>
+      </div>
+    </>
   );
 }
 
