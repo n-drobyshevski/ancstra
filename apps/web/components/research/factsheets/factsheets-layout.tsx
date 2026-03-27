@@ -68,7 +68,7 @@ export function FactsheetsLayout() {
   }, [refetchList, refetchDetail]);
 
   return (
-    <div className="grid h-[calc(100vh-4rem)] grid-cols-1 md:grid-cols-[280px_1fr] overflow-hidden rounded-lg border border-border">
+    <div className="grid h-[calc(100vh-5rem)] grid-cols-1 md:grid-cols-[280px_1fr] overflow-hidden rounded-lg border border-border">
       <FactsheetSidebar
         factsheets={factsheets}
         selectedId={selectedId}
@@ -114,7 +114,7 @@ export function FactsheetsLayout() {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto">
+        <div className={`flex-1 ${view === 'graph' ? 'overflow-hidden' : 'overflow-y-auto'}`}>
           {view === 'detail' && detail ? (
             <FactsheetDetail
               detail={detail}
