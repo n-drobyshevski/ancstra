@@ -13,6 +13,9 @@ const PARTNER_GAP = 40;
 
 export interface PersonNodeData extends PersonListItem {
   label: string;
+  qualityScore?: number;
+  missingFields?: string[];
+  showGaps?: boolean;
   [key: string]: unknown;
 }
 
