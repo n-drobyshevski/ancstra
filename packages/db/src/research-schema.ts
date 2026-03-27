@@ -59,6 +59,49 @@ export const researchItemPersons = sqliteTable('research_item_persons', {
   index('idx_research_item_persons_person').on(table.personId),
 ]);
 
+// ==================== FACTSHEETS (Working Hypotheses) ====================
+export const factsheets = sqliteTable('factsheets', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  title: text('title').notNull(),
+  entityType: text('entity_type', {
+    enum: ['person', 'couple', 'family_unit'],
+  }).notNull().default('person'),
+  status: text('status', {
+    enum: ['draft', 'ready', 'promoted', 'merged', 'dismissed'],
+  }).notNull().default('draft'),
+  notes: text('notes'),
+  promotedPersonId: text('promoted_person_id').references(() => persons.id),
+  promotedAt: text('promoted_at'),
+  createdBy: text('created_by').notNull(),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
+}, (table) => [
+  index('idx_factsheets_status').on(table.status),
+  index('idx_factsheets_created_by').on(table.createdBy),
+  index('idx_factsheets_promoted_person').on(table.promotedPersonId),
+]);
+
+// ==================== FACTSHEET LINKS (Relationship Graph) ====================
+export const factsheetLinks = sqliteTable('factsheet_links', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  fromFactsheetId: text('from_factsheet_id').notNull().references(() => factsheets.id, { onDelete: 'cascade' }),
+  toFactsheetId: text('to_factsheet_id').notNull().references(() => factsheets.id, { onDelete: 'cascade' }),
+  relationshipType: text('relationship_type', {
+    enum: ['parent_child', 'spouse', 'sibling'],
+  }).notNull(),
+  sourceFactId: text('source_fact_id'),  // FK to research_facts (defined below)
+  // Directionality: for parent_child, from=parent, to=child
+  // For spouse/sibling, order is arbitrary
+  confidence: text('confidence', {
+    enum: ['high', 'medium', 'low'],
+  }).notNull().default('medium'),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+}, (table) => [
+  index('idx_factsheet_links_from').on(table.fromFactsheetId),
+  index('idx_factsheet_links_to').on(table.toFactsheetId),
+  unique('uq_factsheet_links').on(table.fromFactsheetId, table.toFactsheetId, table.relationshipType),
+]);
+
 // ==================== RESEARCH FACTS ====================
 export const researchFacts = sqliteTable('research_facts', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -75,6 +118,8 @@ export const researchFacts = sqliteTable('research_facts', {
   factDateSort: integer('fact_date_sort'),
   researchItemId: text('research_item_id').references(() => researchItems.id),
   sourceCitationId: text('source_citation_id').references(() => sourceCitations.id),
+  factsheetId: text('factsheet_id').references(() => factsheets.id),
+  accepted: integer('accepted', { mode: 'boolean' }),  // null=unresolved, true=accepted, false=rejected
   confidence: text('confidence', {
     enum: ['high', 'medium', 'low', 'disputed'],
   }).notNull().default('medium'),
@@ -86,6 +131,7 @@ export const researchFacts = sqliteTable('research_facts', {
 }, (table) => [
   index('idx_research_facts_person').on(table.personId),
   index('idx_research_facts_person_type').on(table.personId, table.factType),
+  index('idx_research_facts_factsheet').on(table.factsheetId),
 ]);
 
 // ==================== RESEARCH CANVAS POSITIONS ====================

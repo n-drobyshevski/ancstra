@@ -2,12 +2,15 @@
 
 import { useState, useCallback, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Search, Sparkles } from 'lucide-react';
+import { Search, Sparkles, Inbox } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ResearchHub } from './research-hub';
 import { ChatPanel } from './chat-panel';
+import { InboxTab } from './inbox/inbox-tab';
+import { useInboxCount } from '@/lib/research/factsheet-client';
+import { Badge } from '@/components/ui/badge';
 
-type ResearchView = 'search' | 'chat';
+type ResearchView = 'search' | 'chat' | 'inbox';
 
 interface SearchContext {
   query: string;
@@ -17,12 +20,14 @@ interface SearchContext {
 const tabs: { value: ResearchView; label: string; icon: typeof Search }[] = [
   { value: 'search', label: 'Search', icon: Search },
   { value: 'chat', label: 'AI Chat', icon: Sparkles },
+  { value: 'inbox', label: 'Inbox', icon: Inbox },
 ];
 
 function ResearchLayoutInner() {
   const [activeView, setActiveView] = useState<ResearchView>('search');
   const [pendingAiPrompt, setPendingAiPrompt] = useState<string | null>(null);
   const [searchContext, setSearchContext] = useState<SearchContext | null>(null);
+  const { count: inboxCount } = useInboxCount();
 
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -70,6 +75,11 @@ function ResearchLayoutInner() {
             >
               <Icon className="size-3.5" />
               {tab.label}
+              {tab.value === 'inbox' && inboxCount > 0 && (
+                <Badge className="ml-1 h-4 min-w-4 px-1 text-[10px] bg-amber-500/20 text-amber-500">
+                  {inboxCount}
+                </Badge>
+              )}
             </button>
           );
         })}
@@ -77,14 +87,15 @@ function ResearchLayoutInner() {
 
       {/* Content */}
       <div className="flex-1 overflow-hidden">
-        {activeView === 'search' ? (
+        {activeView === 'search' && (
           <div className="h-full overflow-y-auto p-6">
             <ResearchHub
               onAskAi={handleAskAi}
               onSearchContextChange={setSearchContext}
             />
           </div>
-        ) : (
+        )}
+        {activeView === 'chat' && (
           <Suspense
             fallback={
               <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
@@ -98,6 +109,11 @@ function ResearchLayoutInner() {
               searchContext={searchContext}
             />
           </Suspense>
+        )}
+        {activeView === 'inbox' && (
+          <div className="h-full overflow-y-auto p-6">
+            <InboxTab />
+          </div>
         )}
       </div>
     </div>

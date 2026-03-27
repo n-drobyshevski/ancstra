@@ -41,6 +41,8 @@ export {
   tagPersonToItem,
   untagPersonFromItem,
   deleteResearchItem,
+  listUnanchoredItems,
+  getUnanchoredCount,
 } from './items/queries';
 export type { CreateResearchItemInput, ResearchItemFilters, UpdateResearchItemContentInput } from './items/queries';
 
@@ -77,6 +79,40 @@ export {
   MULTI_VALUED_TYPES,
 } from './facts/conflicts';
 export type { ConflictPair } from './facts/conflicts';
+
+// Factsheets
+export {
+  createFactsheet,
+  getFactsheet,
+  listFactsheets,
+  updateFactsheet,
+  deleteFactsheet,
+  assignFactToFactsheet,
+  removeFactFromFactsheet,
+  createFactsheetLink,
+  getFactsheetLinks,
+  deleteFactsheetLink,
+  getFactsheetCluster,
+  suggestFactsheetLinks,
+  detectFactsheetConflicts,
+  resolveFactsheetConflict,
+  isFactsheetPromotable,
+  checkDuplicates,
+  promoteSingleFactsheet,
+  promoteFactsheetCluster,
+} from './factsheets';
+export type {
+  CreateFactsheetInput,
+  UpdateFactsheetInput,
+  FactsheetFilters,
+  CreateFactsheetLinkInput,
+  FactsheetConflict,
+  PromotabilityResult,
+  DuplicateMatch,
+  PromoteSingleInput,
+  PromoteSingleResult,
+  PromoteClusterResult,
+} from './factsheets';
 
 // Scrape Jobs
 export {

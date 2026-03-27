@@ -1,8 +1,8 @@
 import { notFound } from 'next/navigation';
-import { createFamilyDb } from '@ancstra/db';
 import { getResearchItem } from '@ancstra/research';
 import { ItemDetailShell } from '@/components/research/item-detail/item-detail-shell';
 import { getAuthContext } from '@/lib/auth/context';
+import { getFamilyDb } from '@/lib/db';
 
 export default async function ResearchItemPage({
   params,
@@ -12,7 +12,7 @@ export default async function ResearchItemPage({
   const { id } = await params;
   const authContext = await getAuthContext();
   if (!authContext) return null;
-  const db = createFamilyDb(authContext.dbFilename);
+  const db = await getFamilyDb(authContext.dbFilename);
   const item = await getResearchItem(db, id);
   if (!item) notFound();
 

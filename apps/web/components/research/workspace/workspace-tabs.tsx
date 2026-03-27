@@ -10,12 +10,13 @@ import {
   PenTool,
   BookOpen,
   FileText,
+  Layers,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 
-export type WorkspaceView = 'board' | 'matrix' | 'conflicts' | 'timeline' | 'canvas' | 'hints' | 'proof';
+export type WorkspaceView = 'board' | 'matrix' | 'conflicts' | 'timeline' | 'canvas' | 'hints' | 'proof' | 'factsheets';
 
 const tabs: { value: WorkspaceView; label: string; icon: LucideIcon }[] = [
   { value: 'board', label: 'Board', icon: LayoutGrid },
@@ -25,14 +26,16 @@ const tabs: { value: WorkspaceView; label: string; icon: LucideIcon }[] = [
   { value: 'canvas', label: 'Canvas', icon: PenTool },
   { value: 'hints', label: 'Hints', icon: BookOpen },
   { value: 'proof', label: 'Proof', icon: FileText },
+  { value: 'factsheets', label: 'Factsheets', icon: Layers },
 ];
 
 interface WorkspaceTabsProps {
   conflictCount?: number;
   hintCount?: number;
+  factsheetCount?: number;
 }
 
-export function WorkspaceTabs({ conflictCount = 0, hintCount = 0 }: WorkspaceTabsProps) {
+export function WorkspaceTabs({ conflictCount = 0, hintCount = 0, factsheetCount = 0 }: WorkspaceTabsProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -138,6 +141,11 @@ export function WorkspaceTabs({ conflictCount = 0, hintCount = 0 }: WorkspaceTab
               {tab.value === 'hints' && hintCount > 0 && (
                 <Badge variant="secondary" className="ml-1 h-4 min-w-4 px-1 text-[10px]">
                   {hintCount}
+                </Badge>
+              )}
+              {tab.value === 'factsheets' && factsheetCount > 0 && (
+                <Badge className="ml-1 h-4 min-w-4 px-1 text-[10px] bg-muted text-muted-foreground">
+                  {factsheetCount}
                 </Badge>
               )}
             </button>

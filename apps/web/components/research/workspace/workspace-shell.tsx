@@ -16,6 +16,8 @@ import { HintsPanel } from '../hints/hints-panel';
 import { MatrixTab } from '../matrix/matrix-tab';
 import { CanvasTab } from '../canvas/canvas-tab';
 import { ProofTab } from '../proof/proof-tab';
+import { FactsheetsTab } from '../factsheets/factsheets-tab';
+import { useFactsheets } from '@/lib/research/factsheet-client';
 
 interface PersonSummary {
   id: string;
@@ -49,6 +51,8 @@ function ShellInner({ person, children }: WorkspaceShellProps) {
   const activeView = (searchParams.get('view') as WorkspaceView) || 'board';
   const { conflicts } = usePersonConflicts(person.id);
   const { hints } = usePersonHints(person.id, 'pending');
+  const { factsheets } = useFactsheets(person.id);
+  const activeFactsheetCount = factsheets.filter(f => f.status !== 'dismissed').length;
   const dates = formatDates(person.birthDate, person.deathDate);
 
   return (
@@ -84,7 +88,11 @@ function ShellInner({ person, children }: WorkspaceShellProps) {
       </div>
 
       {/* Tabs */}
-      <WorkspaceTabs conflictCount={conflicts.length} hintCount={hints.length} />
+      <WorkspaceTabs
+        conflictCount={conflicts.length}
+        hintCount={hints.length}
+        factsheetCount={activeFactsheetCount}
+      />
 
       {/* Tab content */}
       <div>
@@ -122,6 +130,9 @@ function ShellInner({ person, children }: WorkspaceShellProps) {
                 personId={person.id}
                 personName={`${person.givenName} ${person.surname}`.trim()}
               />
+            )}
+            {activeView === 'factsheets' && (
+              <FactsheetsTab personId={person.id} />
             )}
           </>
         )}

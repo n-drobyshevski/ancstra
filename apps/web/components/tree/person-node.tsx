@@ -34,7 +34,7 @@ function PersonNodeComponent({ data, selected }: NodeProps<PersonNodeType>) {
           >
             {initials}
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <div className="truncate text-[13px] font-semibold text-foreground">
               {data.givenName} {data.surname}
             </div>
@@ -43,6 +43,9 @@ function PersonNodeComponent({ data, selected }: NodeProps<PersonNodeType>) {
             )}
             {data.deathDate && (
               <div className="text-[11px] text-muted-foreground">d. {data.deathDate}</div>
+            )}
+            {!data.birthDate && !data.deathDate && (
+              <div className="text-[11px] text-amber-500/80">no dates</div>
             )}
           </div>
         </div>

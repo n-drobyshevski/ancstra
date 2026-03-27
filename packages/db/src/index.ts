@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import path from 'path';
 import os from 'os';
+import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/libsql';
 import { createClient } from '@libsql/client';
 import { createLogger } from '@ancstra/shared';
@@ -46,6 +47,96 @@ export function createFamilyDb(dbFilename: string) {
   }
   const client = createClient(resolveUrl(dbUrl));
   return drizzle({ client, schema });
+}
+
+const _ensuredDbs = new Set<string>();
+
+/**
+ * Ensure critical denormalized tables exist in a family database.
+ * Safe to call on every request — uses IF NOT EXISTS and caches per process.
+ * Needed because these tables were added after initial migrations.
+ */
+export async function ensureFamilySchema(db: FamilyDatabase, dbKey?: string): Promise<void> {
+  if (dbKey && _ensuredDbs.has(dbKey)) return;
+
+  await db.run(sql`
+    CREATE TABLE IF NOT EXISTS ancestor_paths (
+      ancestor_id TEXT NOT NULL REFERENCES persons(id) ON DELETE CASCADE,
+      descendant_id TEXT NOT NULL REFERENCES persons(id) ON DELETE CASCADE,
+      depth INTEGER NOT NULL,
+      PRIMARY KEY (ancestor_id, descendant_id)
+    )
+  `);
+  await db.run(sql`CREATE INDEX IF NOT EXISTS idx_ap_descendant ON ancestor_paths(descendant_id, depth)`);
+  await db.run(sql`CREATE INDEX IF NOT EXISTS idx_ap_ancestor ON ancestor_paths(ancestor_id, depth)`);
+
+  await db.run(sql`
+    CREATE TABLE IF NOT EXISTS factsheets (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      entity_type TEXT NOT NULL DEFAULT 'person'
+        CHECK (entity_type IN ('person', 'couple', 'family_unit')),
+      status TEXT NOT NULL DEFAULT 'draft'
+        CHECK (status IN ('draft', 'ready', 'promoted', 'merged', 'dismissed')),
+      notes TEXT,
+      promoted_person_id TEXT REFERENCES persons(id),
+      promoted_at TEXT,
+      created_by TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )
+  `);
+  await db.run(sql`CREATE INDEX IF NOT EXISTS idx_factsheets_status ON factsheets(status)`);
+  await db.run(sql`CREATE INDEX IF NOT EXISTS idx_factsheets_created_by ON factsheets(created_by)`);
+
+  await db.run(sql`
+    CREATE TABLE IF NOT EXISTS factsheet_links (
+      id TEXT PRIMARY KEY,
+      from_factsheet_id TEXT NOT NULL REFERENCES factsheets(id) ON DELETE CASCADE,
+      to_factsheet_id TEXT NOT NULL REFERENCES factsheets(id) ON DELETE CASCADE,
+      relationship_type TEXT NOT NULL
+        CHECK (relationship_type IN ('parent_child', 'spouse', 'sibling')),
+      source_fact_id TEXT,
+      confidence TEXT NOT NULL DEFAULT 'medium'
+        CHECK (confidence IN ('high', 'medium', 'low')),
+      created_at TEXT NOT NULL
+    )
+  `);
+  await db.run(sql`CREATE INDEX IF NOT EXISTS idx_factsheet_links_from ON factsheet_links(from_factsheet_id)`);
+  await db.run(sql`CREATE INDEX IF NOT EXISTS idx_factsheet_links_to ON factsheet_links(to_factsheet_id)`);
+
+  // Add factsheet columns to research_facts if not present
+  try {
+    await db.run(sql`ALTER TABLE research_facts ADD COLUMN factsheet_id TEXT REFERENCES factsheets(id)`);
+  } catch { /* column already exists */ }
+  try {
+    await db.run(sql`ALTER TABLE research_facts ADD COLUMN accepted INTEGER`);
+  } catch { /* column already exists */ }
+  try {
+    await db.run(sql`CREATE INDEX IF NOT EXISTS idx_research_facts_factsheet ON research_facts(factsheet_id)`);
+  } catch { /* index already exists */ }
+
+  await db.run(sql`
+    CREATE TABLE IF NOT EXISTS person_summary (
+      person_id TEXT PRIMARY KEY REFERENCES persons(id) ON DELETE CASCADE,
+      given_name TEXT NOT NULL DEFAULT '',
+      surname TEXT NOT NULL DEFAULT '',
+      sex TEXT NOT NULL,
+      is_living INTEGER NOT NULL,
+      birth_date TEXT,
+      death_date TEXT,
+      birth_date_sort INTEGER,
+      death_date_sort INTEGER,
+      birth_place TEXT,
+      death_place TEXT,
+      spouse_count INTEGER NOT NULL DEFAULT 0,
+      child_count INTEGER NOT NULL DEFAULT 0,
+      parent_count INTEGER NOT NULL DEFAULT 0,
+      updated_at TEXT NOT NULL
+    )
+  `);
+
+  if (dbKey) _ensuredDbs.add(dbKey);
 }
 
 export type CentralDatabase = ReturnType<typeof createCentralDb>;

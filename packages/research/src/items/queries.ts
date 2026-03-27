@@ -197,3 +197,48 @@ export async function deleteResearchItem(db: Database, id: string) {
     .where(eq(researchItems.id, id))
     .run();
 }
+
+/**
+ * List research items not linked to any person (unanchored inbox).
+ */
+export async function listUnanchoredItems(db: Database, opts?: { limit?: number; offset?: number }) {
+  const limit = opts?.limit ?? 50;
+  const offset = opts?.offset ?? 0;
+
+  return await db.all<{
+    id: string;
+    title: string;
+    url: string | null;
+    snippet: string | null;
+    status: string;
+    discoveryMethod: string;
+    createdAt: string;
+  }>(sql`
+    SELECT ri.id, ri.title, ri.url, ri.snippet, ri.status,
+           ri.discovery_method as discoveryMethod, ri.created_at as createdAt
+    FROM research_items ri
+    WHERE ri.status = 'draft'
+      AND NOT EXISTS (
+        SELECT 1 FROM research_item_persons rip
+        WHERE rip.research_item_id = ri.id
+      )
+    ORDER BY ri.created_at DESC
+    LIMIT ${limit} OFFSET ${offset}
+  `);
+}
+
+/**
+ * Count unanchored research items (for inbox badge).
+ */
+export async function getUnanchoredCount(db: Database): Promise<number> {
+  const rows = await db.all<{ count: number }>(sql`
+    SELECT COUNT(*) as count
+    FROM research_items ri
+    WHERE ri.status = 'draft'
+      AND NOT EXISTS (
+        SELECT 1 FROM research_item_persons rip
+        WHERE rip.research_item_id = ri.id
+      )
+  `);
+  return rows[0]?.count ?? 0;
+}

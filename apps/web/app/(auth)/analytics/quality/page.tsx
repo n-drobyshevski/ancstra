@@ -3,8 +3,8 @@ import { CompletenessChart } from '@/components/quality/completeness-chart';
 import { MissingDataChart } from '@/components/quality/missing-data-chart';
 import { PriorityTable } from '@/components/quality/priority-table';
 import { getQualitySummary } from '@ancstra/db';
-import { createFamilyDb } from '@ancstra/db';
 import { requireAuthContext } from '@/lib/auth/context';
+import { getFamilyDb } from '@/lib/db';
 
 export default async function QualityPage() {
   let generationData: { generation: number; avgScore: number }[] = [];
@@ -12,7 +12,7 @@ export default async function QualityPage() {
 
   try {
     const ctx = await requireAuthContext();
-    const familyDb = createFamilyDb(ctx.dbFilename);
+    const familyDb = await getFamilyDb(ctx.dbFilename);
     const summary = await getQualitySummary(familyDb);
     metrics = summary.metrics;
 
