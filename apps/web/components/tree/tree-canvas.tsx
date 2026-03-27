@@ -82,14 +82,14 @@ function TreeCanvasInner({ treeData, focusPersonId }: TreeCanvasProps) {
       for (const n of prev) {
         if (n.type !== 'draftPerson') posMap[n.id] = n.position;
       }
-      const laid = applyDagreLayout(rawNodes, rawEdges);
+      const laid = applyDagreLayout(rawNodes, rawEdges, showGaps ? 82 : undefined);
       return laid.map((n) => ({
         ...n,
         position: posMap[n.id] ?? n.position,
       }));
     });
     setEdges(rawEdges);
-  }, [treeData, rawNodes, rawEdges, setNodes, setEdges]);
+  }, [treeData, rawNodes, rawEdges, setNodes, setEdges, showGaps]);
 
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [selectedPerson, setSelectedPerson] =
