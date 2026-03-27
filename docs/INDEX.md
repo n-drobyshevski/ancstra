@@ -18,6 +18,8 @@
 | AI Research Assistant | [spec](specs/ai-research-assistant.md) | 2 | design | Not Started |
 | Record Matching | [spec](specs/record-matching.md) | 2 | design | Not Started |
 | Research Workspace | [spec](superpowers/specs/2026-03-22-research-workspace-design.md) | 2 | approved | Not Started |
+| Research → Tree Pipeline | [spec](superpowers/specs/2026-03-26-research-to-tree-pipeline-design.md) | 2 | approved | Complete |
+| Factsheet UI Components | [spec](superpowers/specs/2026-03-27-factsheet-ui-components-design.md) | 2 | approved | Complete |
 | Document Processing | [spec](specs/document-processing.md) | 3 | design | Not Started |
 | Photo Analysis | [spec](specs/photo-analysis.md) | Post-launch | design | Not Started |
 | DNA Integration | [spec](specs/dna-integration.md) | Post-launch | design | Not Started |

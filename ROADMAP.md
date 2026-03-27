@@ -2,15 +2,16 @@
 
 > **Living status tracker.** Updated as features complete. For detailed task breakdowns, see individual phase docs.
 >
-> Last updated: 2026-03-23
+> Last updated: 2026-03-26
 
 ---
 
 ## Current Focus
 
-> **Phase 1 Complete** | **Phase 5: AI Polish & Export** — `[████████░░] 85% In Progress`
+> **Phase 1 Complete** | **Phase 2: Factsheet Pipeline** — next up | **Phase 5: AI Polish & Export** — `[████████░░] 85% In Progress`
 >
 > Phase 1 closed: closure table, person_summary, WAL/backup, benchmarks, accessible table view, pino logging all done.
+> Phase 2 next: Factsheet pipeline (Research → Tree core workflow) — facts → factsheets → promotion → tree.
 > Phase 5 remaining: GEDCOM 7.0 serializer, pagination, query timing logs.
 > Phase 3 (Document/OCR) is the largest untouched block before launch.
 
@@ -302,7 +303,45 @@
 | Members page (/settings/members) | `[██████████] 100% Complete` |
 | Mobile-responsive settings (all sub-pages) | `[██████████] 100% Complete` |
 
+### Factsheet Pipeline (Research → Tree) — Complete
+
+> [Spec](docs/superpowers/specs/2026-03-26-research-to-tree-pipeline-design.md) — Core workflow: facts → factsheets → promotion → tree
+
+| Feature | Status |
+|---------|--------|
+| `factsheets` + `factsheet_links` schema + migration | `[██████████] 100% Complete` |
+| `research_facts` additions (factsheet_id, accepted columns) | `[██████████] 100% Complete` |
+| Factsheet CRUD queries (packages/research) | `[██████████] 100% Complete` |
+| Factsheet links (graph edges + cluster traversal) | `[██████████] 100% Complete` |
+| Factsheet link suggestions (from relationship facts) | `[██████████] 100% Complete` |
+| Conflict resolution on factsheets (accepted/rejected facts) | `[██████████] 100% Complete` |
+| Factsheet promotability validation | `[██████████] 100% Complete` |
+| Duplicate detection at promotion (matching engine) | `[██████████] 100% Complete` |
+| Single factsheet → person promotion engine | `[██████████] 100% Complete` |
+| Family unit promotion (cluster → persons + relationships) | `[██████████] 100% Complete` |
+| Merge into existing person (factsheet → existing) | `[██████████] 100% Complete` |
+| Factsheet API routes (CRUD, links, conflicts, promote, duplicates) | `[██████████] 100% Complete` |
+| Unanchored research inbox (query + API) | `[██████████] 100% Complete` |
+
+### Factsheet UI Components — Complete
+
+> [Spec](docs/superpowers/specs/2026-03-27-factsheet-ui-components-design.md) — UI for factsheet management
+
+| Feature | Status |
+|---------|--------|
+| Factsheet data hooks + mutations (factsheet-client.ts) | `[██████████] 100% Complete` |
+| Factsheet status constants | `[██████████] 100% Complete` |
+| Workspace tab wiring (factsheets) | `[██████████] 100% Complete` |
+| Factsheet card + list + create form | `[██████████] 100% Complete` |
+| Fact row + facts section (with conflict resolution) | `[██████████] 100% Complete` |
+| Factsheet links section | `[██████████] 100% Complete` |
+| Progressive promote accordion (3-step) | `[██████████] 100% Complete` |
+| Factsheet detail + full tab assembly | `[██████████] 100% Complete` |
+| Inbox tab (research hub) | `[██████████] 100% Complete` |
+
 #### Remaining Phase 2 Items (5 items)
+
+**Other:**
 1. Geneanet provider (scraper-based)
 2. OpenArchives provider (OAI-PMH)
 3. Matrix tab (full-width spreadsheet + conclusions)
@@ -701,6 +740,12 @@ Phase 1 Complete --> FamilySearch OAuth --> FS Search --> Hints Pipeline
                  |                   +-> NARA + Chronicling   |
                  |                                            |
                  +-> Matching Engine ---+--------------------+
+                 |
+                 +-> Research Items + Facts --> Factsheets --> Promotion Engine
+                                       |            |              |
+                                       |-> Conflict Resolution     |-> Single Promote
+                                       |-> Factsheet Links/Graph   |-> Family Unit Promote
+                                       +-> Inbox (unanchored)      +-> Merge into Existing
 
 Phase 3 Media --> OCR Pipeline --> Entity Extraction --> Auto-Linking
             |
@@ -721,3 +766,5 @@ Module 5: DNA Parsing --> Module 6: Segments --> Module 7: Tree Integration
 | 2026-03-22 | Phase 0 deep breakdown: Figma deliverables, 12 design decisions, exit gates. |
 | 2026-03-23 | **Major update**: Roadmap fully reconciled with actual codebase state. Phase 1 updated to 90% (was 15%). Phase 2 items updated from 0% to actual status (~80% complete). Phase 5 updated to 85% (was 10%). Phase 6 updated to 70% (was 0%). Added codebase summary section with package/test breakdown. Added worktree tracking. Corrected test count and API route count. |
 | 2026-03-23 | **Phase 1 complete**: All 6 remaining items implemented — closure table (84x faster than CTE), person_summary (6x faster tree loading), WAL/backup, benchmarks, accessible tree table view, pino logging. Stale worktrees cleaned up. |
+| 2026-03-26 | **Factsheet pipeline spec approved**: Core Research → Tree workflow designed. New concepts: factsheets (working hypotheses), factsheet graph (relationship edges), conflict resolution, duplicate detection at promotion, family unit promotion, unanchored inbox. Two paths (quick add + research) sharing one data model. 13 new items added to Phase 2. |
+| 2026-03-27 | **Factsheet pipeline + UI complete**: Backend (schema, queries, API routes, promotion engine) and frontend (factsheets tab in workspace, inbox tab in research hub, 12 new components) all implemented. Unified promotion pathway — all promotes route through factsheets. |
