@@ -16,9 +16,10 @@ interface ContextMenuProps {
   edgeChildId?: string;
   persons: PersonListItem[];
   onClose: () => void;
+  onDeleteEdge?: (edgeId: string) => void;
 }
 
-export function TreeContextMenu({ x, y, type, nodeId, edgeId, edgeType, edgeFamilyId, edgeChildId, persons, onClose }: ContextMenuProps) {
+export function TreeContextMenu({ x, y, type, nodeId, edgeId, edgeType, edgeFamilyId, edgeChildId, persons, onClose, onDeleteEdge }: ContextMenuProps) {
   const router = useRouter();
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -66,17 +67,17 @@ export function TreeContextMenu({ x, y, type, nodeId, edgeId, edgeType, edgeFami
         try {
           if (edgeType === 'partner' && edgeFamilyId) {
             const res = await fetch(`/api/families/${edgeFamilyId}`, { method: 'DELETE' });
-            if (!res.ok) { toast.error('Failed to delete relationship'); onClose(); return; }
+            if (!res.ok && res.status !== 404) { toast.error('Failed to delete relationship'); onClose(); return; }
           } else if (edgeType === 'parentChild' && edgeFamilyId && edgeChildId) {
             const res = await fetch(`/api/families/${edgeFamilyId}/children/${edgeChildId}`, { method: 'DELETE' });
-            if (!res.ok) { toast.error('Failed to unlink child'); onClose(); return; }
+            if (!res.ok && res.status !== 404) { toast.error('Failed to unlink child'); onClose(); return; }
           } else {
             toast.error('Cannot determine relationship type');
             onClose();
             return;
           }
           toast.success('Relationship deleted');
-          router.refresh();
+          if (edgeId && onDeleteEdge) onDeleteEdge(edgeId);
         } catch { toast.error('Network error'); }
         onClose();
       },
