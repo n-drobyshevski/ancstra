@@ -16,7 +16,7 @@ export async function GET(request: Request) {
       );
     }
 
-    const conflicts = detectConflicts(familyDb, personId);
+    const conflicts = await detectConflicts(familyDb, personId);
 
     return NextResponse.json({ conflicts });
   } catch (err) {

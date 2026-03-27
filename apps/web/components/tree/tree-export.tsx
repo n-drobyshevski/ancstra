@@ -3,7 +3,6 @@
 import { useCallback, useState } from 'react';
 import { useReactFlow, getNodesBounds, getViewportForBounds } from '@xyflow/react';
 import { toPng, toSvg } from 'html-to-image';
-import { jsPDF } from 'jspdf';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -130,6 +129,7 @@ export function TreeExport() {
         },
       });
 
+      const { jsPDF } = await import('jspdf');
       const pdf = new jsPDF({
         orientation: 'landscape',
         unit: 'px',

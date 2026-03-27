@@ -1,8 +1,13 @@
 'use client';
 
 import { Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { ChevronRight } from 'lucide-react';
+import { useSearchParams, usePathname } from 'next/navigation';
+import {
+  ChevronRight,
+  UserPen, LayoutGrid, Table2, GitCompareArrows, Clock,
+  PenTool, BookOpen, FileText, Layers, BookMarked, Quote,
+  type LucideIcon,
+} from 'lucide-react';
 import Link from 'next/link';
 import type { WorkspaceView } from './workspace/workspace-tabs';
 
@@ -20,12 +25,20 @@ const VIEW_LABELS: Record<WorkspaceView, string> = {
   citations: 'Citations',
 };
 
+const VIEW_ICONS: Record<WorkspaceView, LucideIcon> = {
+  record: UserPen, board: LayoutGrid, matrix: Table2,
+  conflicts: GitCompareArrows, timeline: Clock, canvas: PenTool,
+  hints: BookOpen, proof: FileText, factsheets: Layers,
+  biography: BookMarked, citations: Quote,
+};
+
 interface ResearchBreadcrumbProps {
   personName: string;
 }
 
 function BreadcrumbInner({ personName }: ResearchBreadcrumbProps) {
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const view = (searchParams.get('view') as WorkspaceView) || 'record';
   const viewLabel = VIEW_LABELS[view] ?? 'Record';
 
@@ -34,24 +47,28 @@ function BreadcrumbInner({ personName }: ResearchBreadcrumbProps) {
       <ol className="flex items-center gap-1 text-xs">
         <li>
           <Link
-            href="/research"
+            href="/persons"
             className="text-muted-foreground transition-colors hover:text-primary"
           >
-            Research
+            People
           </Link>
         </li>
         <li aria-hidden="true">
           <ChevronRight className="size-3 text-muted-foreground" />
         </li>
         <li>
-          <span className="max-w-[120px] truncate text-muted-foreground sm:max-w-none">
+          <Link
+            href={pathname}
+            className="max-w-[120px] truncate text-muted-foreground transition-colors hover:text-primary sm:max-w-none"
+          >
             {personName}
-          </span>
+          </Link>
         </li>
         <li aria-hidden="true">
           <ChevronRight className="size-3 text-muted-foreground" />
         </li>
-        <li aria-current="page">
+        <li aria-current="page" className="inline-flex items-center gap-1">
+          {(() => { const Icon = VIEW_ICONS[view]; return Icon ? <Icon className="size-3 text-primary/70" /> : null; })()}
           <span className="font-medium text-foreground">{viewLabel}</span>
         </li>
       </ol>

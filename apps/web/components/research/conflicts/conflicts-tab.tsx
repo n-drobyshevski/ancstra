@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, GitCompareArrows } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   usePersonConflicts,
@@ -56,7 +56,7 @@ export function ConflictsTab({ personId }: ConflictsTabProps) {
   // Empty state
   if (conflicts.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+      <div className="flex flex-col items-center justify-center py-16 text-muted-foreground animate-fade-slide-in">
         <CheckCircle2 className="mb-3 size-10 text-green-500" />
         <p className="text-sm font-medium">No conflicts detected</p>
         <p className="mt-1 text-xs">
@@ -75,9 +75,14 @@ export function ConflictsTab({ personId }: ConflictsTabProps) {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-medium text-muted-foreground">
-          {totalCount} conflict{totalCount !== 1 ? 's' : ''} detected
-        </h2>
+        <div className="flex items-center gap-2">
+          <span className="flex size-5 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+            <GitCompareArrows className="size-3" />
+          </span>
+          <h2 className="text-sm font-medium text-muted-foreground">
+            {totalCount} conflict{totalCount !== 1 ? 's' : ''} detected
+          </h2>
+        </div>
       </div>
 
       {conflicts.map((group) => {
@@ -87,7 +92,7 @@ export function ConflictsTab({ personId }: ConflictsTabProps) {
         if (!first || rest.length === 0) return null;
 
         return (
-          <div key={group.factType} className="space-y-3">
+          <div key={group.factType} className="space-y-3 animate-fade-slide-in">
             {rest.map((other) => {
               const factA: ConflictFact = {
                 id: first.id,

@@ -1,0 +1,201 @@
+# How Ancstra Works
+
+Ancstra follows a structured pipeline to turn raw genealogical records into a verified family tree. Every piece of information flows through five stages before it becomes part of your tree.
+
+```
+Discovery → Enrichment → Review → Promotion → Tree
+```
+
+This guide walks through each stage so you understand how your research becomes a trusted, sourced family history.
+
+---
+
+## Discovering Records
+
+Research starts with finding records. Ancstra gives you five ways to bring records into your workspace:
+
+### Provider Search
+
+Search across genealogy providers directly from the Research hub. Supported providers include FamilySearch, NARA, ChroniclingAmerica, WikiTree, and FindAGrave. Results appear as cards — click **Save** to add any result to your research items.
+
+### URL Scrape
+
+Paste a URL into the research input and Ancstra will fetch the page content. For JavaScript-heavy sites, a background worker renders the page with a real browser before extracting text. You can track scrape progress in real time.
+
+### Text Paste
+
+Found something in a book, email, or PDF? Paste the raw text directly. Ancstra stores it as a research item ready for fact extraction.
+
+### Bookmarklet
+
+Install the Ancstra bookmarklet in your browser. When you find a useful page on any genealogy site, click the bookmarklet to send the page content straight to your workspace — no copy-paste needed.
+
+### AI Suggestions
+
+The AI research assistant can suggest records to investigate based on gaps in your existing data. (Coming soon.)
+
+All five methods create a **research item** with a status of **Draft**. Draft items are your working inbox — nothing touches your tree until you say so.
+
+---
+
+## Working with Evidence
+
+Once you have research items, the next step is extracting useful information and connecting it to the people in your tree.
+
+### Tagging Items to Persons
+
+A research item on its own is just a document. To make it useful, tag it to one or more persons in your tree. This links the item to that person's evidence workspace, where you can analyze it alongside other records.
+
+### Extracting Facts
+
+Facts are the structured claims you pull out of a research item — a birth date, a place of death, an occupation. Ancstra supports 17 fact types:
+
+- **Identity:** name
+- **Life events:** birth date, birth place, death date, death place
+- **Family:** marriage date, marriage place, parent name, spouse name, child name
+- **Context:** residence, occupation, immigration, military service, religion, ethnicity
+- **Other:** free-form facts
+
+You can enter facts manually, or use **AI extraction** to have Claude read the document text and return structured facts automatically. Each fact tracks its extraction method and confidence level.
+
+### The Evidence Workspace
+
+Every person has a dedicated evidence workspace with seven tabs:
+
+| Tab | Purpose |
+|-----|---------|
+| **Board** | Three-panel layout: item list, fact matrix, and detail panel with promote/dismiss actions |
+| **Matrix** | Full-width crosstab of fact types × research items, with a conclusion column you can fill in |
+| **Conflicts** | Pairwise display of contradicting facts with resolution actions |
+| **Timeline** | Chronological view of all facts with dates |
+| **Canvas** | Visual free-form canvas for arranging items, sources, and notes spatially |
+| **Hints** | AI-generated match candidates from external providers, scored by similarity |
+| **Proof** | Structured proof summary exportable for documentation |
+
+---
+
+## Reviewing and Resolving Conflicts
+
+When multiple records describe the same person, they often disagree. One census says born 1842, another says 1844. Ancstra detects these conflicts automatically.
+
+### How Conflicts Are Detected
+
+Any time two research items contain facts of the same type but with different values for the same person, Ancstra flags a conflict. Multi-valued fact types like residence, occupation, and child name are excluded — a person can have more than one of those.
+
+### Resolving Conflicts
+
+On the Conflicts tab, each conflict appears as a side-by-side comparison. You have three options:
+
+- **Accept A** — marks fact A as high confidence, fact B as disputed
+- **Accept B** — the reverse
+- **Mark Both Disputed** — flags both for further investigation
+
+The Matrix tab also highlights conflict rows in red so you can spot disagreements at a glance.
+
+### Dismissing Items
+
+If a research item turns out to be irrelevant or a false match, click **Dismiss**. Dismissed items move out of your active workspace but are not deleted — you can **Restore** them at any time.
+
+---
+
+## Promoting to Sources
+
+Promotion is the key transition in Ancstra. It converts a research item from your working draft into a formal, citable source in your family tree.
+
+### What Promotion Does
+
+When you promote a research item, Ancstra runs a single atomic transaction that:
+
+1. Creates a **source** record — the research item becomes a formal genealogical source
+2. Creates a **source citation** — links the source to the person you are researching
+3. Updates all **facts** from that item — each fact now carries a source citation reference
+4. Marks the research item as **Promoted** — it can no longer be re-promoted or accidentally modified
+
+After promotion, every fact from that item is backed by a citable source. This is what makes your tree evidence-based rather than anecdotal.
+
+### When to Promote
+
+Promote an item when you are confident it is:
+- **Relevant** — it describes the person you think it does
+- **Accurate** — the facts extracted from it are correct
+- **Sourced** — you have enough citation detail to find the original record again
+
+There is no rush to promote. Items can stay as drafts while you gather more evidence and resolve conflicts.
+
+---
+
+## Building Your Tree
+
+With sourced evidence in hand, you can build out your family tree with confidence.
+
+### Creating Persons
+
+Three ways to add a person:
+
+- **Full form** — navigate to the person creation page and fill in name, sex, dates, places, and notes
+- **Inline on the canvas** — drag a new person token from the palette onto the tree canvas for a quick-add with just name and sex
+- **GEDCOM import** — upload a `.ged` file to bulk-import persons, families, and events. GEDCOM imports are auto-trusted and marked as confirmed.
+
+### Connecting Persons
+
+Relationships in Ancstra are built through **families** (partner links) and **children** (parent-child links).
+
+**From the person form:** When creating a new person, you can specify the relationship context — "Add as father of…", "Add as spouse of…", "Add as child of…". Ancstra creates both the person and the relationship in one step.
+
+**From the tree canvas:** Drag between person nodes to create connections. Drag between the side handles to create a spouse link; drag between top/bottom handles to create a parent-child link.
+
+**From the context menu:** Right-click any person on the tree to access "Add Father", "Add Mother", "Add Spouse", or "Add Child".
+
+### Relationship Types
+
+| Category | Options |
+|----------|---------|
+| **Partner** | Married, Civil Union, Domestic Partner, Unmarried, Unknown |
+| **Parent-Child** | Biological, Adopted, Foster, Step, Unknown |
+
+### Visual Indicators
+
+The tree canvas uses edge styles to show relationship status:
+
+- **Solid line** — confirmed relationship
+- **Dashed blue line** — proposed (awaiting validation)
+- **Dashed amber line** — disputed (under review)
+
+---
+
+## AI Research Assistant
+
+The AI assistant helps you discover connections, but it never modifies your tree directly. This is a core safety principle in Ancstra.
+
+### Proposed Relationships
+
+When the AI finds evidence suggesting two people are related, it creates a **proposed relationship** — a suggestion that sits in a review queue. Each proposal includes:
+
+- The two persons involved
+- The relationship type (parent-child, partner, or sibling)
+- A confidence score (0–100%)
+- The evidence text justifying the suggestion
+
+You review each proposal and either **validate** it (which creates a confirmed relationship in your tree) or **reject** it (with an optional reason).
+
+### Hints
+
+The matching pipeline scores external records against your existing persons using name similarity, date matching, and place matching. Results appear on the Hints tab of the evidence workspace with a match score.
+
+For each hint you can:
+- **Accept** — worth investigating further
+- **Reject** — not a match
+- **Maybe** — save for later
+
+Accepting a hint does not create a source automatically — it signals that you should go look at the actual record and create a research item from it.
+
+### The Trust Boundary
+
+Ancstra enforces a strict boundary between AI suggestions and your confirmed tree:
+
+- AI discoveries land in staging tables (`proposed_relationships`, `match_candidates`)
+- They are **never** written directly to your family or children records
+- Only your explicit approval moves a proposal into the confirmed tree
+- GEDCOM imports bypass this pipeline because they represent your own prior work
+
+This means your tree only contains relationships you have personally reviewed and accepted.

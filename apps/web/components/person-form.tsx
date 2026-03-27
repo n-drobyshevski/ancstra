@@ -100,7 +100,7 @@ function PersonFormInner({ person }: PersonFormProps) {
     }
 
     toast.success('Changes saved');
-    router.push(`/person/${person.id}`);
+    router.push(`/persons/${person.id}`);
   }
 
   // Handle standard create submit (POST)
@@ -146,7 +146,7 @@ function PersonFormInner({ person }: PersonFormProps) {
 
     const created = await res.json();
     toast.success(`${body.givenName} ${body.surname} created`);
-    router.push(`/person/${created.id}`);
+    router.push(`/persons/${created.id}`);
   }
 
   const defaultSex = getDefaultSex();

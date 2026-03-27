@@ -38,13 +38,23 @@ importers:
         version: 4.6.1(next@15.5.14)(react-dom@19.2.4)(react@19.2.4)(typescript@5.9.3)
       nextra-theme-docs:
         specifier: ^4.2.16
-        version: 4.6.1(next@15.5.14)(nextra@4.6.1)(react-dom@19.2.4)(react@19.2.4)
+        version: 4.6.1(@types/react@19.2.14)(next@15.5.14)(nextra@4.6.1)(react-dom@19.2.4)(react@19.2.4)
       react:
         specifier: ^19.0.0
         version: 19.2.4
       react-dom:
         specifier: ^19.0.0
         version: 19.2.4(react@19.2.4)
+    devDependencies:
+      '@types/node':
+        specifier: ^22
+        version: 22.19.15
+      '@types/react':
+        specifier: ^19
+        version: 19.2.14
+      typescript:
+        specifier: ^5
+        version: 5.9.3
 
   apps/web:
     dependencies:
@@ -6273,7 +6283,7 @@ packages:
   /@types/tap@14.10.3:
     resolution: {integrity: sha512-pdibkMTqKxznrLTFRVJdv/zQ8AAvHe9puqiBt9Mp+hrBgs0ZqCsjCj2e6ez8+p39oapyVp491xxw09E732g1Qw==}
     dependencies:
-      '@types/node': 20.19.37
+      '@types/node': 22.19.15
     dev: false
 
   /@types/tedious@4.0.14:
@@ -6307,7 +6317,7 @@ packages:
   /@types/ws@8.18.1:
     resolution: {integrity: sha512-ThVF6DCVhA8kUGy+aazFQ4kXQ7E1Ty7A3ypFOe0IcJV8O/M511G99AW24irKrW56Wt44yG9+ij8FaqoBGkuBXg==}
     dependencies:
-      '@types/node': 20.19.37
+      '@types/node': 22.19.15
     dev: false
 
   /@typescript-eslint/eslint-plugin@8.57.1(@typescript-eslint/parser@8.57.1)(eslint@9.39.4)(typescript@5.9.3):
@@ -12473,7 +12483,7 @@ packages:
       - babel-plugin-macros
     dev: false
 
-  /nextra-theme-docs@4.6.1(next@15.5.14)(nextra@4.6.1)(react-dom@19.2.4)(react@19.2.4):
+  /nextra-theme-docs@4.6.1(@types/react@19.2.14)(next@15.5.14)(nextra@4.6.1)(react-dom@19.2.4)(react@19.2.4):
     resolution: {integrity: sha512-u5Hh8erVcGOXO1FVrwYBgrEjyzdYQY0k/iAhLd8RofKp+Bru3fyLy9V9W34mfJ0KHKHjv/ldlDTlb4KlL4eIuQ==}
     peerDependencies:
       next: '>=14'
@@ -12491,7 +12501,7 @@ packages:
       react-dom: 19.2.4(react@19.2.4)
       scroll-into-view-if-needed: 3.1.0
       zod: 4.3.6
-      zustand: 5.0.12(react@19.2.4)
+      zustand: 5.0.12(@types/react@19.2.14)(react@19.2.4)
     transitivePeerDependencies:
       - '@types/react'
       - immer
@@ -16575,7 +16585,7 @@ packages:
       use-sync-external-store: 1.6.0(react@19.2.4)
     dev: false
 
-  /zustand@5.0.12(react@19.2.4):
+  /zustand@5.0.12(@types/react@19.2.14)(react@19.2.4):
     resolution: {integrity: sha512-i77ae3aZq4dhMlRhJVCYgMLKuSiZAaUPAct2AksxQ+gOtimhGMdXljRT21P5BNpeT4kXlLIckvkPM029OljD7g==}
     engines: {node: '>=12.20.0'}
     peerDependencies:
@@ -16593,6 +16603,7 @@ packages:
       use-sync-external-store:
         optional: true
     dependencies:
+      '@types/react': 19.2.14
       react: 19.2.4
     dev: false
 

@@ -3,6 +3,7 @@
 import { createDb, persons, personNames, families, children, events } from '@ancstra/db';
 import { isNull, sql } from 'drizzle-orm';
 import { auth } from '@/auth';
+import { updateTag } from 'next/cache';
 import { parseGedcomFile } from '@/lib/gedcom/parse';
 import { mapGedcomToImport } from '@/lib/gedcom/mapper';
 import type { GedcomPreview } from '@/lib/gedcom/types';
@@ -134,6 +135,9 @@ export async function commitGedcomImport(
     }
   });
 
+  updateTag('persons');
+  updateTag('tree-data');
+  updateTag('dashboard');
   return {
     imported: {
       persons: data.persons.length,

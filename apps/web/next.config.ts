@@ -2,6 +2,27 @@ import { withSentryConfig } from '@sentry/nextjs';
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
+  cacheComponents: true,
+  cacheLife: {
+    // Genealogy data changes infrequently — invalidated on mutation
+    genealogy: {
+      stale: 300,        // 5 min client-side
+      revalidate: 3600,  // 1 hour server refresh
+      expire: 86400,     // 1 day expiry
+    },
+    // Tree data — large payload, changes only via mutations
+    tree: {
+      stale: 300,        // 5 min
+      revalidate: 1800,  // 30 min
+      expire: 86400,     // 1 day
+    },
+    // Dashboard — shows recent activity, needs to be fresher
+    dashboard: {
+      stale: 60,         // 1 min
+      revalidate: 300,   // 5 min
+      expire: 3600,      // 1 hour
+    },
+  },
   typescript: {
     // Skip type checking during build — the libsql driver migration
     // introduced type mismatches between drizzle-orm/libsql and schema types.

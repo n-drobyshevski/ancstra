@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { children, removeChildFromFamily, refreshRelatedSummaries } from '@ancstra/db';
 import { and, eq } from 'drizzle-orm';
 import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
@@ -30,6 +31,8 @@ export async function DELETE(
     await removeChildFromFamily(familyDb, familyId, personId);
     await refreshRelatedSummaries(familyDb, personId);
 
+    revalidateTag('tree-data', 'max');
+    revalidateTag('persons', 'max');
     return NextResponse.json({ success: true });
   } catch (error) {
     return handleAuthError(error);

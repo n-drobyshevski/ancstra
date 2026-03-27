@@ -56,7 +56,7 @@ export default function PersonsPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">People</h1>
         <Button asChild>
-          <Link href="/person/new">Add New Person</Link>
+          <Link href="/persons/new">Add New Person</Link>
         </Button>
       </div>
 

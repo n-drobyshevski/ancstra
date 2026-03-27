@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
 import { promoteSingleFactsheet, promoteFactsheetCluster } from '@ancstra/research';
 
@@ -14,6 +15,9 @@ export async function POST(
     // Cluster promotion
     if (body.cluster === true) {
       const result = await promoteFactsheetCluster(familyDb, factsheetId, ctx.userId);
+      revalidateTag('persons', 'max');
+      revalidateTag('tree-data', 'max');
+      revalidateTag('dashboard', 'max');
       return NextResponse.json(result);
     }
 
@@ -34,6 +38,9 @@ export async function POST(
       userId: ctx.userId,
     });
 
+    revalidateTag('persons', 'max');
+    revalidateTag('tree-data', 'max');
+    revalidateTag('dashboard', 'max');
     return NextResponse.json(result);
   } catch (err) {
     try { return handleAuthError(err); } catch { /* not auth */ }

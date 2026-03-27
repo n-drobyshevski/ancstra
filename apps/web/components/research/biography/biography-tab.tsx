@@ -132,8 +132,8 @@ export function ResearchBiographyTab({ personId, personName }: ResearchBiography
   }, [personId]);
 
   return (
-    <div className="max-w-2xl space-y-6">
-      {/* Biography */}
+    <div className="grid gap-6 lg:grid-cols-2">
+      {/* Left: Biography */}
       <Card>
         <CardHeader>
           <CardTitle>Biography</CardTitle>
@@ -163,7 +163,7 @@ export function ResearchBiographyTab({ personId, personName }: ResearchBiography
         </CardContent>
       </Card>
 
-      {/* Historical Context */}
+      {/* Right: Historical Context */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Historical Context</CardTitle>

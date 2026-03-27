@@ -14,7 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import type { PersonListItem } from '@ancstra/shared';
 
 const actions = [
-  { label: 'Add New Person', href: '/person/new', keywords: ['add', 'create', 'new', 'person'] },
+  { label: 'Add New Person', href: '/persons/new', keywords: ['add', 'create', 'new', 'person'] },
   { label: 'Import GEDCOM', href: '/import', keywords: ['import', 'gedcom', 'upload'] },
   { label: 'Export GEDCOM', href: '/export', keywords: ['export', 'gedcom', 'download'] },
   { label: 'Go to Tree', href: '/tree', keywords: ['tree', 'canvas', 'visualization'] },
@@ -82,8 +82,8 @@ export function CommandPalette() {
       setQuery('');
       setResults([]);
       // If selecting a person while on tree page, focus instead of navigating away
-      if (href.startsWith('/person/') && pathname === '/tree') {
-        const personId = href.replace('/person/', '');
+      if (href.startsWith('/persons/') && pathname === '/tree') {
+        const personId = href.replace('/persons/', '');
         router.push(`/tree?focus=${personId}`);
       } else {
         router.push(href);
@@ -120,7 +120,7 @@ export function CommandPalette() {
               <CommandItem
                 key={person.id}
                 value={`person-${person.id}`}
-                onSelect={() => handleSelect(`/person/${person.id}`)}
+                onSelect={() => handleSelect(`/persons/${person.id}`)}
               >
                 <div className="flex items-center gap-2 w-full">
                   <span className="font-medium">

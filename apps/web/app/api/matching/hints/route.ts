@@ -39,13 +39,13 @@ export async function GET(request: Request) {
       conditions.push(eq(matchCandidates.matchStatus, status));
     }
 
-    const hints = await familyDb
+    const rows = await familyDb
       .select()
       .from(matchCandidates)
       .where(and(...conditions))
       .orderBy(matchCandidates.matchScore)
-      .all()
-      .reverse(); // descending by score
+      .all();
+    const hints = rows.reverse(); // descending by score
 
     return NextResponse.json({ hints, count: hints.length });
   } catch (err) {
@@ -133,7 +133,7 @@ export async function POST(request: Request) {
     // Upsert into match_candidates
     let newCount = 0;
     for (const hint of hints) {
-      const existing = familyDb
+      const existing = await familyDb
         .select()
         .from(matchCandidates)
         .where(

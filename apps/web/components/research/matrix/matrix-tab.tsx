@@ -162,7 +162,7 @@ export function MatrixTab({ personId, personName = 'Person' }: MatrixTabProps) {
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="sticky top-0 z-20 bg-card border-b border-border">
-              <th className="sticky left-0 z-30 bg-card px-3 py-2 text-left font-medium text-muted-foreground min-w-[160px]">
+              <th className="sticky left-0 z-30 bg-card px-3 py-2 text-left font-medium text-muted-foreground min-w-[120px] md:min-w-[160px]">
                 Fact Type
               </th>
               {matrix.sources.map((source) => (
@@ -222,7 +222,7 @@ export function MatrixTab({ personId, personName = 'Person' }: MatrixTabProps) {
                       'bg-red-50/50 dark:bg-red-950/10',
                   )}
                 >
-                  <td className="sticky left-0 z-10 bg-card px-3 py-2 font-medium text-muted-foreground min-w-[160px]">
+                  <td className="sticky left-0 z-10 bg-card px-3 py-2 font-medium text-muted-foreground min-w-[120px] md:min-w-[160px]">
                     <div className="flex items-center gap-1.5">
                       {isConflictRow && (
                         <AlertTriangle className="size-3.5 shrink-0 text-destructive" />

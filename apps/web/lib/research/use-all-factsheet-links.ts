@@ -1,14 +1,19 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { FactsheetLink, Factsheet } from '@/lib/research/factsheet-client';
 
 export function useAllFactsheetLinks(factsheets: Factsheet[]) {
   const [links, setLinks] = useState<FactsheetLink[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Stable key derived from factsheet IDs so the effect only re-runs when
+  // the actual set of factsheets changes, not on every render.
+  const fsIds = useMemo(() => factsheets.map((f) => f.id), [factsheets]);
+  const fsKey = fsIds.join(',');
+
   const fetchLinks = useCallback(async () => {
-    if (factsheets.length === 0) {
+    if (fsIds.length === 0) {
       setLinks([]);
       return;
     }
@@ -16,8 +21,8 @@ export function useAllFactsheetLinks(factsheets: Factsheet[]) {
     try {
       const allLinks: FactsheetLink[] = [];
       const seenIds = new Set<string>();
-      for (const fs of factsheets) {
-        const res = await fetch(`/api/research/factsheets/${fs.id}/links`);
+      for (const id of fsIds) {
+        const res = await fetch(`/api/research/factsheets/${id}/links`);
         if (!res.ok) continue;
         const data = await res.json();
         for (const link of (data.links ?? []) as FactsheetLink[]) {
@@ -33,7 +38,7 @@ export function useAllFactsheetLinks(factsheets: Factsheet[]) {
     } finally {
       setIsLoading(false);
     }
-  }, [factsheets]);
+  }, [fsKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     fetchLinks();

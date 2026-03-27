@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { events } from '@ancstra/db';
 import { eq } from 'drizzle-orm';
 import { updateEventSchema } from '@/lib/validation';
@@ -63,6 +64,7 @@ export async function PUT(
       .where(eq(events.id, id))
       .all();
 
+    revalidateTag('persons', 'max');
     return NextResponse.json(updated);
   } catch (error) {
     return handleAuthError(error);
@@ -90,6 +92,7 @@ export async function DELETE(
 
     await familyDb.delete(events).where(eq(events.id, id)).run();
 
+    revalidateTag('persons', 'max');
     return NextResponse.json({ success: true });
   } catch (error) {
     return handleAuthError(error);

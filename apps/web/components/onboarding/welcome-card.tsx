@@ -41,7 +41,7 @@ export function WelcomeCard() {
             <Link href="/import">Import a GEDCOM file</Link>
           </Button>
           <Button asChild size="sm" variant="outline">
-            <Link href="/person/new">Add a person</Link>
+            <Link href="/persons/new">Add a person</Link>
           </Button>
           <Button asChild size="sm" variant="outline">
             <Link href="/research">AI Research</Link>

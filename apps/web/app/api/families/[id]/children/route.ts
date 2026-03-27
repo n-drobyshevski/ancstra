@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { persons, families, children, addChildToFamily, refreshRelatedSummaries } from '@ancstra/db';
 import { and, eq, isNull } from 'drizzle-orm';
 import { addChildSchema } from '@/lib/validation';
@@ -73,6 +74,8 @@ export async function POST(
     await addChildToFamily(familyDb, familyId, data.personId);
     await refreshRelatedSummaries(familyDb, data.personId);
 
+    revalidateTag('tree-data', 'max');
+    revalidateTag('persons', 'max');
     return NextResponse.json({ success: true }, { status: 201 });
   } catch (error) {
     return handleAuthError(error);
