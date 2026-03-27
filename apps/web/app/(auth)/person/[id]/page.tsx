@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { assemblePersonDetail } from '@/lib/queries';
-import { PersonDetail } from '@/components/person-detail';
+import { WorkspaceShell } from '@/components/research/workspace/workspace-shell';
 import { getAuthContext } from '@/lib/auth/context';
 import { getFamilyDb } from '@/lib/db';
 
@@ -15,5 +15,5 @@ export default async function PersonPage({
   const db = await getFamilyDb(authContext.dbFilename);
   const person = await assemblePersonDetail(db, id);
   if (!person) notFound();
-  return <PersonDetail person={person} />;
+  return <WorkspaceShell person={person} />;
 }
