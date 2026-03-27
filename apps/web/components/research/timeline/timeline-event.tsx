@@ -1,7 +1,8 @@
 'use client';
 
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Pencil, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 const CONFIDENCE_BADGE: Record<
@@ -21,6 +22,12 @@ interface TimelineEventProps {
   sourceName?: string;
   hasConflict?: boolean;
   isLast?: boolean;
+  /** 'event' = person event (blue border), 'fact' = research fact (neutral border) */
+  entrySource?: 'event' | 'fact';
+  /** If true, show edit/delete action buttons */
+  editable?: boolean;
+  onEdit?: () => void;
+  onDelete?: () => void;
 }
 
 export function TimelineEvent({
@@ -31,11 +38,16 @@ export function TimelineEvent({
   sourceName,
   hasConflict,
   isLast,
+  entrySource = 'fact',
+  editable,
+  onEdit,
+  onDelete,
 }: TimelineEventProps) {
   const conf = CONFIDENCE_BADGE[confidence] ?? CONFIDENCE_BADGE.medium;
+  const isEvent = entrySource === 'event';
 
   return (
-    <div className="relative flex gap-4 pb-6 last:pb-0">
+    <div className="group relative flex gap-4 pb-6 last:pb-0">
       {/* Vertical line + dot */}
       <div className="flex flex-col items-center">
         <div
@@ -43,7 +55,9 @@ export function TimelineEvent({
             'relative z-10 mt-1 size-3 shrink-0 rounded-full border-2',
             hasConflict
               ? 'border-destructive bg-destructive/20'
-              : 'border-primary bg-primary/20',
+              : isEvent
+                ? 'border-blue-500 bg-blue-500/20'
+                : 'border-primary bg-primary/20',
           )}
         >
           {hasConflict && (
@@ -60,13 +74,30 @@ export function TimelineEvent({
         {date && (
           <p className="text-xs font-medium text-muted-foreground">{date}</p>
         )}
-        <p className="text-sm font-medium">{factType}</p>
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-medium">{factType}</p>
+          {editable && (
+            <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+              <Button variant="ghost" size="icon" className="size-6" onClick={onEdit}>
+                <Pencil className="size-3" />
+              </Button>
+              <Button variant="ghost" size="icon" className="size-6 text-destructive" onClick={onDelete}>
+                <Trash2 className="size-3" />
+              </Button>
+            </div>
+          )}
+        </div>
         <p className="text-sm text-foreground/80">{factValue}</p>
         <div className="flex items-center gap-2 pt-0.5">
           {sourceName && (
             <span className="text-xs text-muted-foreground truncate max-w-[200px]">
               {sourceName}
             </span>
+          )}
+          {isEvent && (
+            <Badge variant="outline" className="text-[10px] border-blue-500/50 text-blue-600">
+              Event
+            </Badge>
           )}
           <Badge variant={conf.variant} className="text-[10px]">
             {conf.label}
