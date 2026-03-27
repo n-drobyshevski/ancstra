@@ -5,18 +5,19 @@ import { toast } from 'sonner';
 import { FactsheetFactRow } from './factsheet-fact-row';
 import { resolveFactsheetConflict } from '@/lib/research/factsheet-client';
 import type { FactsheetFact, FactsheetConflict } from '@/lib/research/factsheet-client';
+import { AssignFactsPopover } from './assign-facts-popover';
 
 interface FactsheetFactsSectionProps {
   factsheetId: string;
+  personId: string;
   facts: FactsheetFact[];
   conflicts: FactsheetConflict[];
   researchItemTitles: Map<string, string>;
   onDataChanged: () => void;
-  onAssignFacts: () => void;
 }
 
 export function FactsheetFactsSection({
-  factsheetId, facts, conflicts, researchItemTitles, onDataChanged, onAssignFacts,
+  factsheetId, personId, facts, conflicts, researchItemTitles, onDataChanged,
 }: FactsheetFactsSectionProps) {
   const conflictFactIds = new Set(
     conflicts.flatMap((c) => c.facts.map((f) => f.id)),
@@ -56,13 +57,19 @@ export function FactsheetFactsSection({
         <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
           Facts ({facts.length})
         </h4>
-        <button
-          type="button"
-          className="text-[10px] text-muted-foreground hover:text-foreground transition-colors"
-          onClick={onAssignFacts}
+        <AssignFactsPopover
+          factsheetId={factsheetId}
+          personId={personId}
+          existingFactIds={new Set(facts.map((f) => f.id))}
+          onAssigned={onDataChanged}
         >
-          + Assign facts
-        </button>
+          <button
+            type="button"
+            className="text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+          >
+            + Assign facts
+          </button>
+        </AssignFactsPopover>
       </div>
 
       {facts.length === 0 ? (

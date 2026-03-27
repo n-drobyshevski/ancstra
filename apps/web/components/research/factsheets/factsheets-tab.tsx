@@ -79,9 +79,9 @@ export function FactsheetsTab({ personId }: FactsheetsTabProps) {
           detail={detail}
           allFactsheets={factsheets}
           researchItemTitles={researchItemTitles}
+          personId={personId}
           onDataChanged={handleDataChanged}
           onSelectFactsheet={setSelectedFactsheet}
-          onAssignFacts={() => {}}
         />
       ) : (
         <div className="flex items-center justify-center text-sm text-muted-foreground">

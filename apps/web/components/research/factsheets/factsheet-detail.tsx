@@ -20,13 +20,13 @@ interface FactsheetDetailProps {
   detail: FactsheetDetailType;
   allFactsheets: Factsheet[];
   researchItemTitles: Map<string, string>;
+  personId: string;
   onDataChanged: () => void;
   onSelectFactsheet: (id: string) => void;
-  onAssignFacts: () => void;
 }
 
 export function FactsheetDetail({
-  detail, allFactsheets, researchItemTitles, onDataChanged, onSelectFactsheet, onAssignFacts,
+  detail, allFactsheets, researchItemTitles, personId, onDataChanged, onSelectFactsheet,
 }: FactsheetDetailProps) {
   const [notes, setNotes] = useState(detail.notes ?? '');
   const [notesTimer, setNotesTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
@@ -100,11 +100,11 @@ export function FactsheetDetail({
       {/* Facts */}
       <FactsheetFactsSection
         factsheetId={detail.id}
+        personId={personId}
         facts={detail.facts}
         conflicts={conflicts}
         researchItemTitles={researchItemTitles}
         onDataChanged={handleDataChanged}
-        onAssignFacts={onAssignFacts}
       />
 
       {/* Links */}
