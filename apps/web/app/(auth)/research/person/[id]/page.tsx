@@ -17,15 +17,6 @@ export default async function ResearchPersonPage({
   if (!person) notFound();
 
   return (
-    <WorkspaceShell
-      person={{
-        id: person.id,
-        givenName: person.givenName,
-        surname: person.surname,
-        birthDate: person.birthDate ?? null,
-        deathDate: person.deathDate ?? null,
-        sex: person.sex,
-      }}
-    />
+    <WorkspaceShell person={person} />
   );
 }
