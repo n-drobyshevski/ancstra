@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { useInbox } from '@/lib/research/factsheet-client';
@@ -8,6 +9,15 @@ import { InboxItemCard } from './inbox-item-card';
 
 export function InboxTab() {
   const { items, total, isLoading, refetch } = useInbox();
+  const router = useRouter();
+
+  const handleAssign = useCallback((itemId: string) => {
+    router.push(`/research/item/${itemId}`);
+  }, [router]);
+
+  const handleCreateFactsheet = useCallback((itemId: string) => {
+    router.push(`/research/item/${itemId}`);
+  }, [router]);
 
   const handleDismiss = useCallback(async (itemId: string) => {
     try {
@@ -61,8 +71,8 @@ export function InboxTab() {
           <InboxItemCard
             key={item.id}
             item={item}
-            onAssign={() => {}}
-            onCreateFactsheet={() => {}}
+            onAssign={() => handleAssign(item.id)}
+            onCreateFactsheet={() => handleCreateFactsheet(item.id)}
             onDismiss={() => handleDismiss(item.id)}
           />
         ))}
