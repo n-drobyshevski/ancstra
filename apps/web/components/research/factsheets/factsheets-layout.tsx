@@ -2,9 +2,15 @@
 
 import { useCallback, useEffect, useMemo } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
-import { useAllFactsheets, useFactsheetDetail } from '@/lib/research/factsheet-client';
+import dynamic from 'next/dynamic';
+import { useAllFactsheets, useFactsheetDetail, useAllFactsheetLinks } from '@/lib/research/factsheet-client';
 import { FactsheetSidebar } from './factsheet-sidebar';
 import { FactsheetDetail } from './factsheet-detail';
+
+const FactsheetGraphView = dynamic(
+  () => import('./factsheet-graph-view').then((m) => ({ default: m.FactsheetGraphView })),
+  { ssr: false, loading: () => <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Loading graph...</div> }
+);
 
 export function FactsheetsLayout() {
   const searchParams = useSearchParams();
@@ -16,6 +22,7 @@ export function FactsheetsLayout() {
 
   const { factsheets, refetch: refetchList } = useAllFactsheets();
   const { detail, refetch: refetchDetail } = useFactsheetDetail(selectedId);
+  const { links } = useAllFactsheetLinks();
 
   const researchItemTitles = useMemo(() => new Map<string, string>(), []);
 
@@ -119,9 +126,12 @@ export function FactsheetsLayout() {
                 : 'No factsheets yet. Create one to get started.'}
             </div>
           ) : (
-            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-              Graph view — coming soon
-            </div>
+            <FactsheetGraphView
+              factsheets={factsheets}
+              links={links}
+              selectedId={selectedId}
+              onSelectFactsheet={setSelectedFactsheet}
+            />
           )}
         </div>
       </div>
