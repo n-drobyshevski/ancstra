@@ -15,6 +15,7 @@ import {
   Settings,
   LogOut,
   ExternalLink,
+  FileStack,
   type LucideIcon,
 } from 'lucide-react';
 import { signOut } from 'next-auth/react';
@@ -48,6 +49,7 @@ const coreItems: NavItem[] = [
 
 const researchItems: NavItem[] = [
   { title: 'Research', href: '/research', icon: Microscope },
+  { title: 'Factsheets', href: '/research/factsheets', icon: FileStack },
   { title: 'Sources', href: '/sources', icon: Bookmark },
 ];
 
@@ -74,25 +76,35 @@ function NavGroup({
     <SidebarGroup>
       {label && <SidebarGroupLabel>{label}</SidebarGroupLabel>}
       <SidebarMenu>
-        {items.map((item) => (
-          <SidebarMenuItem key={item.href}>
-            <SidebarMenuButton
-              asChild
-              isActive={pathname.startsWith(item.href)}
-              tooltip={item.title}
-            >
-              <Link href={item.href}>
-                <item.icon />
-                <span>{item.title}</span>
-              </Link>
-            </SidebarMenuButton>
-            {item.badge != null && item.badge > 0 && (
-              <SidebarMenuBadge className="bg-amber-500/20 text-amber-600 dark:text-amber-400">
-                {item.badge}
-              </SidebarMenuBadge>
-            )}
-          </SidebarMenuItem>
-        ))}
+        {items.map((item) => {
+          const hasMoreSpecificMatch = items.some(
+            (other) =>
+              other.href !== item.href &&
+              other.href.startsWith(item.href) &&
+              pathname.startsWith(other.href)
+          );
+          const isActive = pathname.startsWith(item.href) && !hasMoreSpecificMatch;
+
+          return (
+            <SidebarMenuItem key={item.href}>
+              <SidebarMenuButton
+                asChild
+                isActive={isActive}
+                tooltip={item.title}
+              >
+                <Link href={item.href}>
+                  <item.icon />
+                  <span>{item.title}</span>
+                </Link>
+              </SidebarMenuButton>
+              {item.badge != null && item.badge > 0 && (
+                <SidebarMenuBadge className="bg-primary/20 text-primary">
+                  {item.badge}
+                </SidebarMenuBadge>
+              )}
+            </SidebarMenuItem>
+          );
+        })}
       </SidebarMenu>
     </SidebarGroup>
   );
