@@ -13,6 +13,7 @@ import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { PlaceInput } from '@/components/place-input';
 import { toast } from 'sonner';
 import { createRelatedPerson } from '@/app/actions/create-related-person';
 import type { PersonDetail } from '@ancstra/shared';
@@ -337,16 +338,11 @@ function PersonFormInner({ person }: PersonFormProps) {
                   </PopoverContent>
                 </Popover>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="birthPlace">Birth Place</Label>
-                <Input
-                  id="birthPlace"
-                  name="birthPlace"
-                  placeholder="e.g. Springfield, IL"
-                  defaultValue={person?.birthPlace ?? ''}
-                  className="h-10 md:h-8"
-                />
-              </div>
+              <PlaceInput
+                name="birthPlace"
+                label="Birth Place"
+                defaultValue={person?.birthPlace ?? ''}
+              />
             </div>
 
             {/* Death date/place — dimmed when living */}
@@ -389,17 +385,12 @@ function PersonFormInner({ person }: PersonFormProps) {
                   </PopoverContent>
                 </Popover>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="deathPlace">Death Place</Label>
-                <Input
-                  id="deathPlace"
-                  name="deathPlace"
-                  placeholder="e.g. Chicago, IL"
-                  defaultValue={person?.deathPlace ?? ''}
-                  disabled={isLiving}
-                  className="h-10 md:h-8"
-                />
-              </div>
+              <PlaceInput
+                name="deathPlace"
+                label="Death Place"
+                defaultValue={person?.deathPlace ?? ''}
+                disabled={isLiving}
+              />
             </div>
 
             <Separator />
