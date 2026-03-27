@@ -1,3 +1,4 @@
+import { connection } from 'next/server';
 import { auth } from '@/auth';
 import { validateInviteToken } from '@ancstra/auth';
 import { createCentralDb, centralSchema } from '@ancstra/db';
@@ -13,6 +14,7 @@ export default async function JoinPage({
 }: {
   searchParams: Promise<{ token?: string }>;
 }) {
+  await connection();
   const { token } = await searchParams;
   if (!token) {
     return <ErrorCard message="No invitation token provided." />;
