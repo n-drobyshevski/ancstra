@@ -126,7 +126,7 @@ export async function listFactsheetsWithCounts(
 
   // Batch-fetch link counts per factsheet (from + to directions)
   const linkCountRows = await db.all<{ factsheetId: string; cnt: number }>(sql`
-    SELECT factsheet_id, COUNT(*) AS cnt FROM (
+    SELECT factsheet_id AS factsheetId, COUNT(*) AS cnt FROM (
       SELECT from_factsheet_id AS factsheet_id FROM factsheet_links
         WHERE from_factsheet_id IN (${sql.raw(idList)})
       UNION ALL
@@ -135,7 +135,7 @@ export async function listFactsheetsWithCounts(
     ) GROUP BY factsheet_id
   `);
   const linkCountMap = new Map<string, number>(
-    linkCountRows.map((r) => [r.factsheet_id, r.cnt])
+    linkCountRows.map((r) => [r.factsheetId, r.cnt])
   );
 
   // Batch-fetch anchored factsheet IDs (have at least one fact with non-null person_id)
