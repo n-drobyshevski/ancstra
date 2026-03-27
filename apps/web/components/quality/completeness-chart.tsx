@@ -1,5 +1,6 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import {
   BarChart,
   Bar,
@@ -19,7 +20,7 @@ interface CompletenessChartProps {
   data: GenerationData[];
 }
 
-export function CompletenessChart({ data }: CompletenessChartProps) {
+function CompletenessChartImpl({ data }: CompletenessChartProps) {
   if (data.length === 0) {
     return (
       <Card>
@@ -60,3 +61,8 @@ export function CompletenessChart({ data }: CompletenessChartProps) {
     </Card>
   );
 }
+
+export const CompletenessChart = dynamic(
+  () => Promise.resolve(CompletenessChartImpl),
+  { ssr: false }
+);

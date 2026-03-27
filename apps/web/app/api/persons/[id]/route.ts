@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { persons, personNames, events } from '@ancstra/db';
 import { eq, and, isNull } from 'drizzle-orm';
 import { assemblePersonDetail } from '@/lib/queries';
@@ -160,6 +161,9 @@ export async function PUT(
     });
 
     const updated = await assemblePersonDetail(familyDb, id);
+    revalidateTag(`person-${id}`, 'max');
+    revalidateTag('persons', 'max');
+    revalidateTag('tree-data', 'max');
     return NextResponse.json(updated);
   } catch (error) {
     return handleAuthError(error);
@@ -189,6 +193,10 @@ export async function DELETE(
       .where(eq(persons.id, id))
       .run();
 
+    revalidateTag(`person-${id}`, 'max');
+    revalidateTag('persons', 'max');
+    revalidateTag('tree-data', 'max');
+    revalidateTag('dashboard', 'max');
     return NextResponse.json({ success: true });
   } catch (error) {
     return handleAuthError(error);

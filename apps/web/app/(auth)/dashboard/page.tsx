@@ -4,66 +4,17 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ContributionQueue } from '@/components/moderation/contribution-queue';
 import { WelcomeCard } from '@/components/onboarding/welcome-card';
-import { persons, personNames, events } from '@ancstra/db';
-import { getFamilyDb } from '@/lib/db';
-import { eq, and, isNull, sql } from 'drizzle-orm';
+import { getCachedDashboardData } from '@/lib/cached-queries';
 import { hasPermission } from '@ancstra/auth';
 import { getAuthContext } from '@/lib/auth/context';
 
 export default async function DashboardPage() {
   const authContext = await getAuthContext();
   if (!authContext) return null;
-  const db = await getFamilyDb(authContext.dbFilename);
   const canReview =
     authContext != null && hasPermission(authContext.role, 'contributions:review');
 
-  // Fetch last 5 persons ordered by created_at desc
-  const recentRows = await db
-    .select({
-      id: persons.id,
-      sex: persons.sex,
-      isLiving: persons.isLiving,
-      givenName: personNames.givenName,
-      surname: personNames.surname,
-      createdAt: persons.createdAt,
-    })
-    .from(persons)
-    // @ts-expect-error -- libsql driver type mismatch with schema join conditions
-    .innerJoin(personNames, eq(personNames.personId, persons.id))
-    .where(and(isNull(persons.deletedAt), eq(personNames.isPrimary, true)))
-    .orderBy(sql`${persons.createdAt} DESC`)
-    .limit(5)
-    .all();
-
-  // Get birth dates for recent persons
-  const recentIds = recentRows.map((r) => r.id);
-  const birthEvents =
-    recentIds.length > 0
-      ? await db
-          .select({
-            personId: events.personId,
-            dateOriginal: events.dateOriginal,
-          })
-          .from(events)
-          .where(
-            sql`${events.personId} IN (${sql.join(
-              recentIds.map((id) => sql`${id}`),
-              sql`, `
-            )}) AND ${events.eventType} = 'birth'`
-          )
-          .all()
-      : [];
-
-  const birthByPerson = new Map(
-    birthEvents.map((e) => [e.personId, e.dateOriginal])
-  );
-
-  const countRows = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(persons)
-    .where(isNull(persons.deletedAt))
-    .all();
-  const totalPersons = countRows[0]?.count ?? 0;
+  const { recentPersons, totalPersons } = await getCachedDashboardData(authContext.dbFilename);
 
   const sexLabel = { M: 'Male', F: 'Female', U: 'Unknown' } as const;
 
@@ -79,7 +30,7 @@ export default async function DashboardPage() {
           </p>
         </div>
         <Button asChild>
-          <Link href="/person/new">Add New Person</Link>
+          <Link href="/persons/new">Add New Person</Link>
         </Button>
       </div>
 
@@ -93,24 +44,24 @@ export default async function DashboardPage() {
           )}
         </CardHeader>
         <CardContent>
-          {recentRows.length === 0 ? (
+          {recentPersons.length === 0 ? (
             <p className="py-4 text-center text-sm text-muted-foreground">
               No persons yet.{' '}
-              <Link href="/person/new" className="text-primary underline">
+              <Link href="/persons/new" className="text-primary underline">
                 Add your first person
               </Link>
               .
             </p>
           ) : (
             <div className="space-y-3">
-              {recentRows.map((person) => (
+              {recentPersons.map((person) => (
                 <div
                   key={person.id}
                   className="flex items-center justify-between"
                 >
                   <div className="flex items-center gap-3">
                     <Link
-                      href={`/person/${person.id}`}
+                      href={`/persons/${person.id}`}
                       className="text-sm font-medium text-primary underline-offset-4 hover:underline"
                     >
                       {person.givenName} {person.surname}
@@ -120,7 +71,7 @@ export default async function DashboardPage() {
                     </Badge>
                   </div>
                   <span className="text-xs text-muted-foreground">
-                    {birthByPerson.get(person.id) ?? ''}
+                    {person.birthDate ?? ''}
                   </span>
                 </div>
               ))}

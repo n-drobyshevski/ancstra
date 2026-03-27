@@ -8,12 +8,14 @@
     "test": "turbo test"
   },
   "devDependencies": {
+    "@types/sanitize-html": "^2.16.1",
     "next": "^16.0.0",
     "turbo": "latest",
     "typescript": "^5"
   },
   "packageManager": "pnpm@9.15.0",
   "dependencies": {
-    "@sentry/nextjs": "10"
+    "@sentry/nextjs": "10",
+    "sanitize-html": "^2.17.2"
   }
 }

@@ -39,14 +39,14 @@ export function ConflictCard({
   const confB = CONFIDENCE_BADGE[factB.confidence] ?? CONFIDENCE_BADGE.medium;
 
   return (
-    <Card size="sm">
+    <Card size="sm" className="border-l-2 border-l-destructive/40">
       <CardHeader>
-        <CardTitle className="text-sm">{factType}</CardTitle>
+        <CardTitle className="text-sm capitalize">{factType}</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-[1fr_auto_1fr] gap-3">
           {/* Value A */}
-          <div className="space-y-1.5 rounded-md bg-muted/50 p-3">
+          <div className="space-y-1.5 rounded-lg border border-border/50 bg-muted/30 p-3 transition-colors hover:border-primary/30">
             <p className="text-sm font-medium">{factA.factValue}</p>
             {factA.sourceTitle && (
               <p className="text-xs text-muted-foreground truncate">
@@ -58,8 +58,15 @@ export function ConflictCard({
             </Badge>
           </div>
 
+          {/* VS divider */}
+          <div className="flex items-center">
+            <span className="flex size-7 items-center justify-center rounded-full bg-muted text-[10px] font-bold text-muted-foreground">
+              VS
+            </span>
+          </div>
+
           {/* Value B */}
-          <div className="space-y-1.5 rounded-md bg-muted/50 p-3">
+          <div className="space-y-1.5 rounded-lg border border-border/50 bg-muted/30 p-3 transition-colors hover:border-primary/30">
             <p className="text-sm font-medium">{factB.factValue}</p>
             {factB.sourceTitle && (
               <p className="text-xs text-muted-foreground truncate">
@@ -73,7 +80,7 @@ export function ConflictCard({
         </div>
 
         {/* Resolution buttons */}
-        <div className="mt-3 flex items-center gap-2">
+        <div className="mt-4 flex items-center gap-2 border-t border-border/50 pt-3">
           <Button
             size="sm"
             variant="outline"

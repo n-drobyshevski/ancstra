@@ -5,6 +5,20 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
+const EVENT_DOT_COLORS: Record<string, string> = {
+  birth: 'border-green-500 bg-green-500/20',
+  death: 'border-gray-400 bg-gray-400/20',
+  marriage: 'border-pink-500 bg-pink-500/20',
+  divorce: 'border-orange-400 bg-orange-400/20',
+  census: 'border-blue-400 bg-blue-400/20',
+  immigration: 'border-cyan-500 bg-cyan-500/20',
+  emigration: 'border-teal-500 bg-teal-500/20',
+  residence: 'border-violet-400 bg-violet-400/20',
+  burial: 'border-stone-400 bg-stone-400/20',
+  christening: 'border-amber-400 bg-amber-400/20',
+  baptism: 'border-amber-400 bg-amber-400/20',
+};
+
 const CONFIDENCE_BADGE: Record<
   string,
   { label: string; variant: 'default' | 'secondary' | 'destructive' }
@@ -47,7 +61,7 @@ export function TimelineEvent({
   const isEvent = entrySource === 'event';
 
   return (
-    <div className="group relative flex gap-4 pb-6 last:pb-0">
+    <div className="group relative flex gap-4 pb-6 last:pb-0 -mx-2 px-2 rounded-lg transition-colors duration-150 hover:bg-muted/30">
       {/* Vertical line + dot */}
       <div className="flex flex-col items-center">
         <div
@@ -55,9 +69,7 @@ export function TimelineEvent({
             'relative z-10 mt-1 size-3 shrink-0 rounded-full border-2',
             hasConflict
               ? 'border-destructive bg-destructive/20'
-              : isEvent
-                ? 'border-blue-500 bg-blue-500/20'
-                : 'border-primary bg-primary/20',
+              : EVENT_DOT_COLORS[factType.toLowerCase()] ?? (isEvent ? 'border-blue-500 bg-blue-500/20' : 'border-primary bg-primary/20'),
           )}
         >
           {hasConflict && (
@@ -65,7 +77,7 @@ export function TimelineEvent({
           )}
         </div>
         {!isLast && (
-          <div className="w-px flex-1 bg-border" />
+          <div className="w-0.5 flex-1 bg-border/70" />
         )}
       </div>
 
@@ -75,7 +87,7 @@ export function TimelineEvent({
           <p className="text-xs font-medium text-muted-foreground">{date}</p>
         )}
         <div className="flex items-center gap-2">
-          <p className="text-sm font-medium">{factType}</p>
+          <p className="text-sm font-semibold capitalize">{factType}</p>
           {editable && (
             <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
               <Button variant="ghost" size="icon" className="size-6" onClick={onEdit}>

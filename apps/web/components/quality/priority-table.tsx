@@ -91,7 +91,7 @@ export function PriorityTable() {
               <TableRow key={person.id}>
                 <TableCell>
                   <Link
-                    href={`/person/${person.id}`}
+                    href={`/persons/${person.id}`}
                     className="font-medium hover:underline"
                   >
                     {person.givenName || person.surname

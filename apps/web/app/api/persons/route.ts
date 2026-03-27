@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { persons, personNames, events } from '@ancstra/db';
 import { and, isNull, sql } from 'drizzle-orm';
 import { createPersonSchema } from '@/lib/validation';
@@ -81,6 +82,9 @@ export async function POST(request: Request) {
       }
     });
 
+    revalidateTag('persons', 'max');
+    revalidateTag('tree-data', 'max');
+    revalidateTag('dashboard', 'max');
     return NextResponse.json(
       {
         id: personId,

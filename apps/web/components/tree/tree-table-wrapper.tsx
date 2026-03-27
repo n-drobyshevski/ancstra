@@ -18,7 +18,7 @@ export function TreeTableWrapper({ treeData, relationships }: TreeTableWrapperPr
     <TreeTable
       treeData={treeData}
       relationships={relationships}
-      onSelectPerson={(id) => router.push(`/person/${id}`)}
+      onSelectPerson={(id) => router.push(`/persons/${id}`)}
     />
   );
 }

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { events } from '@ancstra/db';
 import { eq, sql } from 'drizzle-orm';
 import { createEventSchema } from '@/lib/validation';
@@ -58,6 +59,8 @@ export async function POST(request: Request) {
       .where(eq(events.id, eventId))
       .all();
 
+    revalidateTag('persons', 'max');
+    revalidateTag('dashboard', 'max');
     return NextResponse.json(created, { status: 201 });
   } catch (error) {
     return handleAuthError(error);

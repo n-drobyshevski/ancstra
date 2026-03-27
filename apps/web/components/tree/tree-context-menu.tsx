@@ -40,13 +40,13 @@ export function TreeContextMenu({ x, y, type, nodeId, edgeId, edgeType, edgeFami
       { label: `${person.givenName} ${person.surname}`, onClick: () => {}, header: true },
       { label: '', onClick: () => {}, separator: true },
       { label: 'View Details', onClick: () => onClose() },
-      { label: 'Edit Person', onClick: () => { router.push(`/person/${nodeId}?view=record`); onClose(); } },
-      { label: 'Research this person', onClick: () => { router.push(`/person/${nodeId}?view=board`); onClose(); } },
+      { label: 'Edit Person', onClick: () => { router.push(`/persons/${nodeId}?view=record`); onClose(); } },
+      { label: 'Research this person', onClick: () => { router.push(`/persons/${nodeId}?view=board`); onClose(); } },
       { label: '', onClick: () => {}, separator: true },
-      { label: '+ Add Spouse', onClick: () => { router.push(`/person/new?relation=spouse&of=${nodeId}`); onClose(); } },
-      { label: '+ Add Father', onClick: () => { router.push(`/person/new?relation=father&of=${nodeId}`); onClose(); } },
-      { label: '+ Add Mother', onClick: () => { router.push(`/person/new?relation=mother&of=${nodeId}`); onClose(); } },
-      { label: '+ Add Child', onClick: () => { router.push(`/person/new?relation=child&of=${nodeId}`); onClose(); } },
+      { label: '+ Add Spouse', onClick: () => { router.push(`/persons/new?relation=spouse&of=${nodeId}`); onClose(); } },
+      { label: '+ Add Father', onClick: () => { router.push(`/persons/new?relation=father&of=${nodeId}`); onClose(); } },
+      { label: '+ Add Mother', onClick: () => { router.push(`/persons/new?relation=mother&of=${nodeId}`); onClose(); } },
+      { label: '+ Add Child', onClick: () => { router.push(`/persons/new?relation=child&of=${nodeId}`); onClose(); } },
       { label: '', onClick: () => {}, separator: true },
       {
         label: 'Delete Person', destructive: true,
@@ -83,7 +83,7 @@ export function TreeContextMenu({ x, y, type, nodeId, edgeId, edgeType, edgeFami
     });
   } else if (type === 'canvas') {
     items.push(
-      { label: 'Add Person', onClick: () => { router.push('/person/new'); onClose(); } },
+      { label: 'Add Person', onClick: () => { router.push('/persons/new'); onClose(); } },
       { label: 'Fit View', onClick: () => onClose() },
     );
   }

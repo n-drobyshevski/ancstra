@@ -1,16 +1,20 @@
 'use client';
 
-import { Suspense } from 'react';
-import { Pencil, Search, Sparkles } from 'lucide-react';
+import { Suspense, useEffect, useCallback } from 'react';
+import { Pencil, Search, Sparkles, MoreVertical } from 'lucide-react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import type { PersonDetail } from '@ancstra/shared';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarBadge } from '@/components/ui/avatar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { WorkspaceTabs, type WorkspaceView } from './workspace-tabs';
 import { ResearchBreadcrumb } from '../breadcrumb';
-import { usePersonConflicts } from '@/lib/research/evidence-client';
-import { usePersonHints } from '@/lib/research/hints-client';
-import { useFactsheets } from '@/lib/research/factsheet-client';
+import { useBadgeCounts } from '@/lib/research/badge-counts-client';
 import { RecordTab } from '../record/record-tab';
 import { BoardTab } from '../board/board-tab';
 import { ConflictsTab } from '../conflicts/conflicts-tab';
@@ -38,72 +42,144 @@ function formatDates(birthDate: string | null | undefined, deathDate: string | n
   if (!birthDate && !deathDate) return '';
   const birth = birthDate ?? '?';
   const death = deathDate ?? '';
-  return death ? `${birth} - ${death}` : `b. ${birth}`;
+  return death ? `${birth} – ${death}` : `b. ${birth}`;
 }
+
+const TAB_ORDER: WorkspaceView[] = [
+  'record', 'timeline', 'conflicts', 'board', 'matrix', 'factsheets', 'hints', 'canvas', 'proof', 'biography', 'citations',
+];
 
 function ShellInner({ person, children }: WorkspaceShellProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
   const activeView = (searchParams.get('view') as WorkspaceView) || 'record';
-  const { conflicts } = usePersonConflicts(person.id);
-  const { hints } = usePersonHints(person.id, 'pending');
-  const { factsheets } = useFactsheets(person.id);
-  const activeFactsheetCount = factsheets.filter(f => f.status !== 'dismissed').length;
+  const { conflictCount, hintCount, factsheetCount } = useBadgeCounts(person.id);
   const dates = formatDates(person.birthDate, person.deathDate);
+  const birthPlace = (person as any).birthPlace as string | null | undefined;
+  const deathPlace = (person as any).deathPlace as string | null | undefined;
   const personName = `${person.givenName} ${person.surname}`.trim();
 
-  const goToRecord = () => {
+  const setView = useCallback((view: WorkspaceView) => {
     const params = new URLSearchParams(searchParams.toString());
-    params.set('view', 'record');
-    router.push(`${pathname}?${params.toString()}`);
-  };
+    if (view === 'record') params.delete('view');
+    else params.set('view', view);
+    const qs = params.toString();
+    router.push(qs ? `${pathname}?${qs}` : pathname);
+  }, [searchParams, router, pathname]);
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      const mod = e.ctrlKey || e.metaKey;
+      if (!mod) return;
+
+      const num = parseInt(e.key, 10);
+      if (num >= 1 && num <= 9 && num <= TAB_ORDER.length) {
+        e.preventDefault();
+        setView(TAB_ORDER[num - 1]);
+      }
+      if (e.key === 'e' || e.key === 'E') {
+        e.preventDefault();
+        setView('record');
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [setView]);
 
   return (
-    <div className="space-y-6">
-      {/* Breadcrumb */}
-      <ResearchBreadcrumb personName={personName} />
+    <div className="space-y-4 md:space-y-6">
+      {/* Gradient banner + header */}
+      <div className="relative -mx-4 -mt-4 px-4 pt-4 pb-5 md:-mx-6 md:px-6 bg-gradient-to-b from-primary/[0.04] to-transparent">
+        <div className="space-y-3">
+          <ResearchBreadcrumb personName={personName} />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Avatar className="size-12">
+                <AvatarFallback className="text-base">
+                  {getInitials(person.givenName, person.surname)}
+                </AvatarFallback>
+                {person.sex !== 'U' && (
+                  <AvatarBadge className="size-4 text-[9px] font-bold">
+                    {person.sex === 'M' ? '♂' : '♀'}
+                  </AvatarBadge>
+                )}
+              </Avatar>
+              <div>
+                <h1 className="text-xl md:text-2xl font-semibold tracking-tight">{personName}</h1>
+                {dates && (
+                  <p className="text-sm text-muted-foreground leading-snug">{dates}</p>
+                )}
+                {(birthPlace || deathPlace) && (
+                  <p className="text-xs text-muted-foreground/70 leading-snug mt-0.5">
+                    {birthPlace && deathPlace
+                      ? `${birthPlace} – ${deathPlace}`
+                      : birthPlace ?? deathPlace}
+                  </p>
+                )}
+              </div>
+            </div>
 
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Avatar size="lg">
-            <AvatarFallback>{getInitials(person.givenName, person.surname)}</AvatarFallback>
-          </Avatar>
-          <div>
-            <h1 className="text-xl font-semibold">{personName}</h1>
-            {dates && (
-              <p className="text-sm text-muted-foreground">{dates}</p>
-            )}
+            {/* Desktop: inline action buttons — ghost, outline, primary (left to right) */}
+            <div className="hidden md:flex items-center gap-2">
+              {activeView !== 'record' && (
+                <Button variant="ghost" size="sm" onClick={() => setView('record')}>
+                  <Pencil className="mr-1.5" />
+                  Edit
+                </Button>
+              )}
+              <Button variant="outline" size="sm">
+                <Search className="mr-1.5" />
+                Search Sources
+              </Button>
+              <Button variant="default" size="sm">
+                <Sparkles className="mr-1.5" />
+                Ask AI
+              </Button>
+            </div>
+
+            {/* Mobile: overflow menu */}
+            <div className="md:hidden">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon" className="size-8">
+                    <MoreVertical className="size-4" />
+                    <span className="sr-only">Actions</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {activeView !== 'record' && (
+                    <DropdownMenuItem onClick={() => setView('record')}>
+                      <Pencil className="mr-2 size-4" />
+                      Edit
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem>
+                    <Search className="mr-2 size-4" />
+                    Search Sources
+                  </DropdownMenuItem>
+                  <DropdownMenuItem>
+                    <Sparkles className="mr-2 size-4" />
+                    Ask AI
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {activeView !== 'record' && (
-            <Button variant="outline" size="sm" onClick={goToRecord}>
-              <Pencil className="mr-1.5" />
-              Edit
-            </Button>
-          )}
-          <Button variant="outline" size="sm">
-            <Search className="mr-1.5" />
-            Search Sources
-          </Button>
-          <Button variant="outline" size="sm">
-            <Sparkles className="mr-1.5" />
-            Ask AI
-          </Button>
         </div>
       </div>
 
       {/* Tabs */}
       <WorkspaceTabs
-        conflictCount={conflicts.length}
-        hintCount={hints.length}
-        factsheetCount={activeFactsheetCount}
+        conflictCount={conflictCount}
+        hintCount={hintCount}
+        factsheetCount={factsheetCount}
       />
 
-      {/* Tab content */}
-      <div>
+      {/* Tab content — keyed for enter animation */}
+      <div key={activeView} className="animate-tab-enter">
         {children ?? (
           <>
             {activeView === 'record' && <RecordTab person={person} />}

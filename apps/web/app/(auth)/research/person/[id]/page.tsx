@@ -11,5 +11,5 @@ export default async function ResearchPersonRedirect({
   const sp = await searchParams;
   const view = typeof sp.view === 'string' ? sp.view : undefined;
   const qs = view ? `?view=${view}` : '';
-  redirect(`/person/${id}${qs}`);
+  redirect(`/persons/${id}${qs}`);
 }

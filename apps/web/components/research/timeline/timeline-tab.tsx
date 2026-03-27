@@ -135,7 +135,7 @@ export function TimelineTab({ personId, events = [] }: TimelineTabProps) {
   // Empty state
   if (all.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+      <div className="flex flex-col items-center justify-center py-16 text-muted-foreground animate-fade-slide-in">
         <Calendar className="mb-3 size-10" />
         <p className="text-sm font-medium">No events yet</p>
         <p className="mt-1 text-xs">
@@ -175,7 +175,7 @@ export function TimelineTab({ personId, events = [] }: TimelineTabProps) {
             <div className="flex flex-col items-center">
               <div className="w-px flex-1 border-l border-dashed border-muted-foreground/30" />
             </div>
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground/60 italic">
+            <div className="flex items-center gap-1.5 rounded-full bg-muted/40 px-2.5 py-0.5 text-xs text-muted-foreground/60 italic">
               <Clock className="size-3" />
               ~{gapYears} year gap
             </div>
@@ -220,7 +220,7 @@ export function TimelineTab({ personId, events = [] }: TimelineTabProps) {
   }
 
   return (
-    <div className="max-w-xl space-y-6">
+    <div className="max-w-2xl space-y-6">
       {/* Add event button */}
       <div className="flex justify-end">
         <Button variant="outline" size="sm" onClick={() => setShowAddEvent(true)}>

@@ -1,5 +1,6 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import {
   PieChart,
   Pie,
@@ -23,7 +24,7 @@ interface MissingDataChartProps {
   metrics: QualityMetric[];
 }
 
-export function MissingDataChart({ metrics }: MissingDataChartProps) {
+function MissingDataChartImpl({ metrics }: MissingDataChartProps) {
   const chartData = metrics.map((m) => ({
     name: m.label.replace('Has ', 'Missing '),
     value: m.total - m.count,
@@ -78,3 +79,8 @@ export function MissingDataChart({ metrics }: MissingDataChartProps) {
     </Card>
   );
 }
+
+export const MissingDataChart = dynamic(
+  () => Promise.resolve(MissingDataChartImpl),
+  { ssr: false }
+);

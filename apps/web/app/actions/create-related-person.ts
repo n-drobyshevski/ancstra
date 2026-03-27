@@ -5,6 +5,7 @@ import { createPersonSchema } from '@/lib/validation';
 import { parseDateToSort } from '@ancstra/shared';
 import { findOrCreateFamilyForChild, findFamiliesAsPartner } from '@/lib/queries';
 import { redirect } from 'next/navigation';
+import { updateTag } from 'next/cache';
 import { auth } from '@/auth';
 
 export async function createRelatedPerson(formData: FormData) {
@@ -123,5 +124,8 @@ export async function createRelatedPerson(formData: FormData) {
     }
   });
 
-  redirect(ofPersonId ? `/person/${ofPersonId}` : `/person/${personId}`);
+  updateTag('persons');
+  updateTag('tree-data');
+  updateTag('dashboard');
+  redirect(ofPersonId ? `/persons/${ofPersonId}` : `/persons/${personId}`);
 }

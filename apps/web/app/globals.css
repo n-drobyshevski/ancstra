@@ -99,6 +99,34 @@ body {
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* Research workspace animations */
+@keyframes tab-enter {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes subtle-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.05); }
+}
+
+@keyframes fade-slide-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@layer utilities {
+  .animate-tab-enter {
+    animation: tab-enter 150ms ease-out;
+  }
+  .animate-subtle-pulse {
+    animation: subtle-pulse 2s ease-in-out infinite;
+  }
+  .animate-fade-slide-in {
+    animation: fade-slide-in 200ms ease-out;
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

@@ -87,10 +87,10 @@ export function TreeDetailPanel({ person, treeData, onClose, onFocusNode }: Tree
 
       <div className="p-4 space-y-2">
         <Button variant="outline" size="sm" className="w-full" asChild>
-          <Link href={`/person/${person.id}/edit`}>Edit Full Page</Link>
+          <Link href={`/persons/${person.id}/edit`}>Edit Full Page</Link>
         </Button>
         <Button variant="outline" size="sm" className="w-full" asChild>
-          <Link href={`/person/${person.id}`}>View Detail Page</Link>
+          <Link href={`/persons/${person.id}`}>View Detail Page</Link>
         </Button>
       </div>
     </div>

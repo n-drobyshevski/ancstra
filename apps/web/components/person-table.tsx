@@ -38,7 +38,7 @@ export function PersonTable({ persons }: { persons: PersonListItem[] }) {
           <TableRow key={person.id}>
             <TableCell>
               <Link
-                href={`/person/${person.id}`}
+                href={`/persons/${person.id}`}
                 className="font-medium text-primary underline-offset-4 hover:underline"
               >
                 {person.givenName} {person.surname}

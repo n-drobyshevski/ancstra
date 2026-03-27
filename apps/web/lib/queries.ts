@@ -125,6 +125,44 @@ async function getPersonListItem(
 }
 
 // ---------------------------------------------------------------------------
+// Private helper: batch-fetch PersonListItems from person_summary
+// ---------------------------------------------------------------------------
+async function getPersonListItemsBatch(
+  db: Database,
+  personIds: string[],
+): Promise<Map<string, PersonListItem>> {
+  if (personIds.length === 0) return new Map();
+
+  const rows = await db.all<{
+    person_id: string;
+    given_name: string;
+    surname: string;
+    sex: string;
+    is_living: number;
+    birth_date: string | null;
+    death_date: string | null;
+  }>(sql`
+    SELECT person_id, given_name, surname, sex, is_living, birth_date, death_date
+    FROM person_summary
+    WHERE person_id IN (${sql.join(personIds.map((id) => sql`${id}`), sql`, `)})
+  `);
+
+  const map = new Map<string, PersonListItem>();
+  for (const r of rows) {
+    map.set(r.person_id, {
+      id: r.person_id,
+      givenName: r.given_name,
+      surname: r.surname,
+      sex: r.sex as 'M' | 'F' | 'U',
+      isLiving: Boolean(r.is_living),
+      birthDate: r.birth_date,
+      deathDate: r.death_date,
+    });
+  }
+  return map;
+}
+
+// ---------------------------------------------------------------------------
 // Exported: find family IDs where person appears as a child
 // ---------------------------------------------------------------------------
 export async function findFamiliesAsChild(
@@ -232,9 +270,15 @@ export async function assemblePersonDetail(
     )
     .get();
 
-  // 2. Spouses: families where person is a partner → extract OTHER partner
+  // 2. Spouses: families where person is a partner → collect partner IDs
   const partnerFamilyIds = await findFamiliesAsPartner(db, personId);
-  const spouseMap = new Map<string, PersonListItem>();
+
+  // spouse family records — needed again in step 4 for children, so store them
+  const partnerFamilyRecords = new Map<
+    string,
+    { partner1Id: string | null; partner2Id: string | null }
+  >();
+  const spouseIds: string[] = [];
 
   for (const fId of partnerFamilyIds) {
     const fam = await db
@@ -244,22 +288,19 @@ export async function assemblePersonDetail(
       .get();
 
     if (!fam) continue;
+    partnerFamilyRecords.set(fId, fam);
 
-    // The "other" partner is the one that is not personId
-    const otherIds: (string | null)[] = [];
-    if (fam.partner1Id && fam.partner1Id !== personId) otherIds.push(fam.partner1Id);
-    if (fam.partner2Id && fam.partner2Id !== personId) otherIds.push(fam.partner2Id);
-
-    for (const oid of otherIds) {
-      if (!oid || spouseMap.has(oid)) continue;
-      const item = await getPersonListItem(db, oid);
-      if (item) spouseMap.set(oid, item);
+    if (fam.partner1Id && fam.partner1Id !== personId && !spouseIds.includes(fam.partner1Id)) {
+      spouseIds.push(fam.partner1Id);
+    }
+    if (fam.partner2Id && fam.partner2Id !== personId && !spouseIds.includes(fam.partner2Id)) {
+      spouseIds.push(fam.partner2Id);
     }
   }
 
-  // 3. Parents: children table where person is child → family → non-null, non-deleted partners
+  // 3. Parents: children table where person is child → collect parent IDs
   const childFamilyIds = await findFamiliesAsChild(db, personId);
-  const parentMap = new Map<string, PersonListItem>();
+  const parentIds: string[] = [];
 
   for (const fId of childFamilyIds) {
     const fam = await db
@@ -271,30 +312,53 @@ export async function assemblePersonDetail(
     if (!fam) continue;
 
     for (const pid of [fam.partner1Id, fam.partner2Id]) {
-      if (!pid || parentMap.has(pid)) continue;
-      const item = await getPersonListItem(db, pid);
-      if (item) parentMap.set(pid, item);
+      if (pid && !parentIds.includes(pid)) parentIds.push(pid);
     }
   }
 
-  // 4. Children: families where person is partner → children records → getPersonListItem each
-  const childMap = new Map<string, PersonListItem>();
+  // 4. Children: families where person is partner → collect child person IDs
+  const childPersonIds: string[] = [];
+  const childFamilyChildRows = new Map<string, string[]>();
 
   for (const fId of partnerFamilyIds) {
+    if (!partnerFamilyRecords.has(fId)) continue; // family was deleted — skipped above
     const childRows = await db
       .select({ personId: children.personId })
       .from(children)
       .where(eq(children.familyId, fId))
       .all();
 
-    for (const cr of childRows) {
-      if (childMap.has(cr.personId)) continue;
-      const item = await getPersonListItem(db, cr.personId);
-      if (item) childMap.set(cr.personId, item);
+    const ids = childRows.map((cr) => cr.personId);
+    childFamilyChildRows.set(fId, ids);
+    for (const cid of ids) {
+      if (!childPersonIds.includes(cid)) childPersonIds.push(cid);
     }
   }
 
-  // 5. All events for person, ordered by dateSort ASC NULLS LAST
+  // 5. ONE batch query to person_summary for all related persons
+  const allRelatedIds = [...new Set([...spouseIds, ...parentIds, ...childPersonIds])];
+  const batchMap = await getPersonListItemsBatch(db, allRelatedIds);
+
+  // 6. Distribute batch results into typed maps
+  const spouseMap = new Map<string, PersonListItem>();
+  for (const sid of spouseIds) {
+    const item = batchMap.get(sid);
+    if (item) spouseMap.set(sid, item);
+  }
+
+  const parentMap = new Map<string, PersonListItem>();
+  for (const pid of parentIds) {
+    const item = batchMap.get(pid);
+    if (item) parentMap.set(pid, item);
+  }
+
+  const childMap = new Map<string, PersonListItem>();
+  for (const cid of childPersonIds) {
+    const item = batchMap.get(cid);
+    if (item) childMap.set(cid, item);
+  }
+
+  // 7. All events for person, ordered by dateSort ASC NULLS LAST
   const personEvents = await db
     .select()
     .from(events)
