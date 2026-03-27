@@ -26,8 +26,8 @@ interface ResearchBreadcrumbProps {
 
 function BreadcrumbInner({ personName }: ResearchBreadcrumbProps) {
   const searchParams = useSearchParams();
-  const view = (searchParams.get('view') as WorkspaceView) || 'board';
-  const viewLabel = VIEW_LABELS[view] ?? 'Board';
+  const view = (searchParams.get('view') as WorkspaceView) || 'record';
+  const viewLabel = VIEW_LABELS[view] ?? 'Record';
 
   return (
     <nav aria-label="Breadcrumb">

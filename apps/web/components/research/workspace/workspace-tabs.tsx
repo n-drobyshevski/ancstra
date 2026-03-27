@@ -49,12 +49,12 @@ export function WorkspaceTabs({ conflictCount = 0, hintCount = 0, factsheetCount
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
 
-  const activeView = (searchParams.get('view') as WorkspaceView) || 'board';
+  const activeView = (searchParams.get('view') as WorkspaceView) || 'record';
 
   const setView = useCallback(
     (view: WorkspaceView) => {
       const params = new URLSearchParams(searchParams.toString());
-      if (view === 'board') {
+      if (view === 'record') {
         params.delete('view');
       } else {
         params.set('view', view);
