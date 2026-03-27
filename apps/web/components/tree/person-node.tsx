@@ -1,6 +1,12 @@
 import { memo } from 'react';
 import { Handle, Position, type Node, type NodeProps } from '@xyflow/react';
 import type { PersonNodeData } from './tree-utils';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 type PersonNodeType = Node<PersonNodeData, 'person'>;
 
@@ -10,10 +16,28 @@ const sexColors = {
   U: { border: '#9ca3af', bg: '#f3f4f6', text: '#6b7280' },
 } as const;
 
+const GAP_FIELDS = [
+  { key: 'name', label: 'Name' },
+  { key: 'birthDate', label: 'Birth Date' },
+  { key: 'birthPlace', label: 'Birth Place' },
+  { key: 'deathDate', label: 'Death Date' },
+  { key: 'source', label: 'Source' },
+] as const;
+
+function scoreColor(score: number): string {
+  if (score >= 70) return 'var(--completion-high)';
+  if (score >= 40) return 'var(--completion-medium)';
+  return 'var(--completion-low)';
+}
+
 function PersonNodeComponent({ data, selected }: NodeProps<PersonNodeType>) {
   const dimmed = !!(data as any).dimmed;
   const colors = sexColors[data.sex] ?? sexColors.U;
   const initials = `${data.givenName[0] ?? ''}${data.surname[0] ?? ''}`.toUpperCase();
+  const showGaps = !!data.showGaps;
+  const missingSet = new Set(data.missingFields ?? []);
+  const score = data.qualityScore ?? 0;
+  const isLiving = data.isLiving;
 
   return (
     <>
@@ -24,7 +48,7 @@ function PersonNodeComponent({ data, selected }: NodeProps<PersonNodeType>) {
       <div
         className={`w-[200px] rounded-lg bg-card shadow-sm border transition-all ${
           selected ? 'ring-2 ring-primary shadow-md' : ''
-        } ${dimmed ? 'opacity-30 pointer-events-none' : ''}`}
+        } ${dimmed ? 'opacity-30 pointer-events-none' : ''} ${showGaps ? 'overflow-hidden' : ''}`}
         style={{ borderLeftWidth: 4, borderLeftColor: colors.border }}
       >
         <div className="flex items-center gap-2.5 p-2.5">
@@ -47,8 +71,53 @@ function PersonNodeComponent({ data, selected }: NodeProps<PersonNodeType>) {
             {!data.birthDate && !data.deathDate && (
               <div className="text-[11px] text-amber-500/80">no dates</div>
             )}
+            {showGaps && (
+              <TooltipProvider delayDuration={200}>
+                <div className="flex gap-[3px] mt-0.5">
+                  {GAP_FIELDS.map(({ key, label }) => {
+                    const isNotApplicable = key === 'deathDate' && isLiving;
+                    const isMissing = missingSet.has(key);
+                    const dotColor = isNotApplicable
+                      ? 'var(--border)'
+                      : isMissing
+                        ? 'var(--completion-low)'
+                        : 'var(--completion-high)';
+                    const tooltipText = isNotApplicable
+                      ? `${label}: N/A (living)`
+                      : isMissing
+                        ? `${label}: missing`
+                        : `${label}: ✓`;
+                    return (
+                      <Tooltip key={key}>
+                        <TooltipTrigger asChild>
+                          <span
+                            className="inline-block size-1.5 rounded-full"
+                            style={{ backgroundColor: dotColor }}
+                          />
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="text-xs">
+                          {tooltipText}
+                        </TooltipContent>
+                      </Tooltip>
+                    );
+                  })}
+                </div>
+              </TooltipProvider>
+            )}
           </div>
         </div>
+        {showGaps && (
+          <div className="h-[3px]" style={{ backgroundColor: 'var(--border)' }}>
+            <div
+              className="h-full transition-all duration-300"
+              style={{
+                width: `${score}%`,
+                backgroundColor: scoreColor(score),
+                borderRadius: '0 2px 0 0',
+              }}
+            />
+          </div>
+        )}
       </div>
     </>
   );

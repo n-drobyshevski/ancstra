@@ -13,6 +13,9 @@ const PARTNER_GAP = 40;
 
 export interface PersonNodeData extends PersonListItem {
   label: string;
+  qualityScore?: number;
+  missingFields?: string[];
+  showGaps?: boolean;
   [key: string]: unknown;
 }
 
@@ -94,7 +97,7 @@ export function treeDataToFlow(data: TreeData): {
   return { nodes, edges };
 }
 
-export function applyDagreLayout(nodes: Node[], edges: Edge[]): Node[] {
+export function applyDagreLayout(nodes: Node[], edges: Edge[], nodeHeight = NODE_HEIGHT): Node[] {
   if (nodes.length === 0) return nodes;
 
   const g = new dagre.graphlib.Graph();
@@ -108,7 +111,7 @@ export function applyDagreLayout(nodes: Node[], edges: Edge[]): Node[] {
   });
 
   for (const node of nodes) {
-    g.setNode(node.id, { width: NODE_WIDTH, height: NODE_HEIGHT });
+    g.setNode(node.id, { width: NODE_WIDTH, height: nodeHeight });
   }
 
   for (const edge of edges) {
