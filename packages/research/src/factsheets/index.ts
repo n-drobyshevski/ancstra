@@ -36,3 +36,5 @@ export {
   promoteFactsheetCluster,
 } from './promote';
 export type { PromoteSingleInput, PromoteSingleResult, PromoteClusterResult } from './promote';
+
+export { batchDismissFactsheets, batchLinkFactsheets } from './batch';

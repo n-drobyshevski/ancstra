@@ -104,6 +104,8 @@ export {
   checkDuplicates,
   promoteSingleFactsheet,
   promoteFactsheetCluster,
+  batchDismissFactsheets,
+  batchLinkFactsheets,
 } from './factsheets';
 export type {
   CreateFactsheetInput,

@@ -1,10 +1,12 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import type { FactsheetWithCounts } from '@/lib/research/factsheet-client';
+import { batchDismiss, batchLink } from '@/lib/research/factsheet-client';
 import { FactsheetStatsBar } from './factsheet-stats-bar';
 import { FactsheetCard } from './factsheet-card';
 import { CreateFactsheetForm } from './create-factsheet-form';
@@ -78,13 +80,31 @@ export function FactsheetSidebar({
     });
   }
 
-  function handleBatchDismiss() {
-    console.log('Batch dismiss:', [...selected]);
-  }
+  const handleBatchDismiss = useCallback(async () => {
+    if (selected.size === 0) return;
+    try {
+      await batchDismiss([...selected]);
+      toast.success(`Dismissed ${selected.size} factsheets`);
+      setSelected(new Set());
+      setBatchMode(false);
+      onDataChanged();
+    } catch {
+      toast.error('Failed to batch dismiss');
+    }
+  }, [selected, onDataChanged]);
 
-  function handleBatchLink() {
-    console.log('Batch link:', [...selected]);
-  }
+  const handleBatchLink = useCallback(async () => {
+    if (selected.size < 2) return;
+    try {
+      await batchLink([...selected], 'parent_child');
+      toast.success(`Linked ${selected.size} factsheets`);
+      setSelected(new Set());
+      setBatchMode(false);
+      onDataChanged();
+    } catch {
+      toast.error('Failed to batch link');
+    }
+  }, [selected, onDataChanged]);
 
   const filterOptions: { label: string; value: StatusFilter }[] = [
     { label: 'All', value: 'all' },

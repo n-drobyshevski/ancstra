@@ -319,3 +319,23 @@ export async function fetchLinkSuggestions(factsheetId: string) {
   );
   return res.json();
 }
+
+export async function batchDismiss(factsheetIds: string[]) {
+  const res = await fetch('/api/research/factsheets/batch', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'dismiss', factsheetIds }),
+  });
+  if (!res.ok) throw new Error('Batch dismiss failed');
+  return res.json();
+}
+
+export async function batchLink(factsheetIds: string[], relationshipType: string) {
+  const res = await fetch('/api/research/factsheets/batch', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'link', factsheetIds, relationshipType }),
+  });
+  if (!res.ok) throw new Error('Batch link failed');
+  return res.json();
+}
