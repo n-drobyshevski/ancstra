@@ -6,17 +6,19 @@ import {
   Home,
   Users,
   GitBranch,
-  Search,
-  BookOpen,
+  Microscope,
   Bookmark,
   Upload,
+  Download,
   Activity,
   BarChart3,
   Settings,
   LogOut,
   ExternalLink,
+  type LucideIcon,
 } from 'lucide-react';
 import { signOut } from 'next-auth/react';
+import { useInboxCount } from '@/lib/research/factsheet-client';
 import {
   Sidebar,
   SidebarContent,
@@ -27,25 +29,83 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
+  SidebarMenuBadge,
   SidebarRail,
 } from '@/components/ui/sidebar';
 
-const navItems = [
+interface NavItem {
+  title: string;
+  href: string;
+  icon: LucideIcon;
+  badge?: number;
+}
+
+const coreItems: NavItem[] = [
   { title: 'Dashboard', href: '/dashboard', icon: Home },
   { title: 'People', href: '/persons', icon: Users },
   { title: 'Tree', href: '/tree', icon: GitBranch },
-  { title: 'Research', href: '/research', icon: Search },
+];
+
+const researchItems: NavItem[] = [
+  { title: 'Research', href: '/research', icon: Microscope },
   { title: 'Sources', href: '/sources', icon: Bookmark },
+];
+
+const dataItems: NavItem[] = [
   { title: 'Import', href: '/import', icon: Upload },
+  { title: 'Export', href: '/export', icon: Download },
   { title: 'Activity', href: '/activity', icon: Activity },
 ];
 
-const analyticsItems = [
+const analyticsItems: NavItem[] = [
   { title: 'Data Quality', href: '/analytics/quality', icon: BarChart3 },
 ];
 
+function NavGroup({
+  label,
+  items,
+  pathname,
+}: {
+  label?: string;
+  items: NavItem[];
+  pathname: string;
+}) {
+  return (
+    <SidebarGroup>
+      {label && <SidebarGroupLabel>{label}</SidebarGroupLabel>}
+      <SidebarMenu>
+        {items.map((item) => (
+          <SidebarMenuItem key={item.href}>
+            <SidebarMenuButton
+              asChild
+              isActive={pathname.startsWith(item.href)}
+              tooltip={item.title}
+            >
+              <Link href={item.href}>
+                <item.icon />
+                <span>{item.title}</span>
+              </Link>
+            </SidebarMenuButton>
+            {item.badge != null && item.badge > 0 && (
+              <SidebarMenuBadge className="bg-amber-500/20 text-amber-600 dark:text-amber-400">
+                {item.badge}
+              </SidebarMenuBadge>
+            )}
+          </SidebarMenuItem>
+        ))}
+      </SidebarMenu>
+    </SidebarGroup>
+  );
+}
+
 export function AppSidebar() {
   const pathname = usePathname();
+  const { count: inboxCount } = useInboxCount();
+
+  // Inject live badge counts into nav items
+  const researchWithBadges = researchItems.map((item) =>
+    item.href === '/research' ? { ...item, badge: inboxCount } : item,
+  );
 
   return (
     <Sidebar collapsible="icon" role="navigation" aria-label="Main navigation">
@@ -64,43 +124,10 @@ export function AppSidebar() {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarMenu>
-            {navItems.map((item) => (
-              <SidebarMenuItem key={item.href}>
-                <SidebarMenuButton
-                  asChild
-                  isActive={pathname.startsWith(item.href)}
-                  tooltip={item.title}
-                >
-                  <Link href={item.href}>
-                    <item.icon />
-                    <span>{item.title}</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))}
-          </SidebarMenu>
-        </SidebarGroup>
-        <SidebarGroup>
-          <SidebarGroupLabel>Analytics</SidebarGroupLabel>
-          <SidebarMenu>
-            {analyticsItems.map((item) => (
-              <SidebarMenuItem key={item.href}>
-                <SidebarMenuButton
-                  asChild
-                  isActive={pathname.startsWith(item.href)}
-                  tooltip={item.title}
-                >
-                  <Link href={item.href}>
-                    <item.icon />
-                    <span>{item.title}</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))}
-          </SidebarMenu>
-        </SidebarGroup>
+        <NavGroup items={coreItems} pathname={pathname} />
+        <NavGroup label="Research" items={researchWithBadges} pathname={pathname} />
+        <NavGroup label="Data" items={dataItems} pathname={pathname} />
+        <NavGroup label="Analytics" items={analyticsItems} pathname={pathname} />
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>
