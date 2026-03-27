@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { auth } from '@/auth';
 import { validateInviteToken } from '@ancstra/auth';
 import { createCentralDb, centralSchema } from '@ancstra/db';
