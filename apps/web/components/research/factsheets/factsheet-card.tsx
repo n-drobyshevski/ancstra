@@ -1,5 +1,6 @@
 'use client';
 
+import { useRef, useCallback } from 'react';
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FACTSHEET_STATUS_CONFIG } from '@/lib/research/constants';
@@ -16,14 +17,32 @@ interface FactsheetCardProps {
   isSelectable?: boolean;
   isChecked?: boolean;
   onCheckChange?: (checked: boolean) => void;
+  onLongPress?: () => void;
 }
 
 export function FactsheetCard({
   factsheet, isSelected, factCount, linkCount, conflictCount, onClick,
-  isUnanchored, isSelectable, isChecked, onCheckChange,
+  isUnanchored, isSelectable, isChecked, onCheckChange, onLongPress,
 }: FactsheetCardProps) {
   const status = FACTSHEET_STATUS_CONFIG[factsheet.status] ?? FACTSHEET_STATUS_CONFIG.draft;
   const isDismissed = factsheet.status === 'dismissed';
+
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handlePointerDown = useCallback(() => {
+    if (!onLongPress) return;
+    longPressTimer.current = setTimeout(() => {
+      onLongPress();
+      longPressTimer.current = null;
+    }, 500);
+  }, [onLongPress]);
+
+  const handlePointerUpOrLeave = useCallback(() => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  }, []);
 
   return (
     <div
@@ -31,6 +50,10 @@ export function FactsheetCard({
       tabIndex={0}
       onClick={onClick}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } }}
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUpOrLeave}
+      onPointerLeave={handlePointerUpOrLeave}
+      onPointerCancel={handlePointerUpOrLeave}
       className={cn(
         'w-full text-left rounded-lg border px-3 py-2.5 transition-colors cursor-pointer',
         'hover:bg-accent/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',

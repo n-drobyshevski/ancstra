@@ -106,6 +106,11 @@ export function FactsheetSidebar({
     }
   }, [selected, onDataChanged]);
 
+  const handleLongPress = useCallback((id: string) => {
+    setBatchMode(true);
+    setSelected(new Set([id]));
+  }, []);
+
   const filterOptions: { label: string; value: StatusFilter }[] = [
     { label: 'All', value: 'all' },
     { label: 'Draft', value: 'draft' },
@@ -115,7 +120,7 @@ export function FactsheetSidebar({
   ];
 
   return (
-    <div className="flex flex-col overflow-hidden border-r border-border">
+    <div className="flex flex-col overflow-hidden md:border-r border-border">
       {/* Stats bar */}
       <FactsheetStatsBar factsheets={factsheets} />
 
@@ -205,7 +210,14 @@ export function FactsheetSidebar({
               factCount={fs.factCount}
               linkCount={fs.linkCount}
               conflictCount={fs.conflictCount}
-              onClick={() => onSelect(fs.id)}
+              onClick={() => {
+                if (batchMode) {
+                  handleCheckChange(fs.id, !selected.has(fs.id));
+                } else {
+                  onSelect(fs.id);
+                }
+              }}
+              onLongPress={() => handleLongPress(fs.id)}
               isUnanchored={fs.isUnanchored}
               isSelectable={batchMode}
               isChecked={selected.has(fs.id)}
@@ -223,6 +235,10 @@ export function FactsheetSidebar({
           onBatchDismiss={handleBatchDismiss}
           onBatchLink={handleBatchLink}
           isAllSelected={isAllSelected}
+          onCancel={() => {
+            setBatchMode(false);
+            setSelected(new Set());
+          }}
         />
       )}
     </div>
