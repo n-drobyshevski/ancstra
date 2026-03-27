@@ -1,11 +1,13 @@
 'use client';
 
-import { useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { useAllFactsheets, useFactsheetDetail, useAllFactsheetLinks } from '@/lib/research/factsheet-client';
+import type { FactsheetWithCounts } from '@/lib/research/factsheet-client';
 import { FactsheetSidebar } from './factsheet-sidebar';
 import { FactsheetDetail } from './factsheet-detail';
+import { FamilyPromoteModal } from './family-promote-modal';
 
 const FactsheetGraphView = dynamic(
   () => import('./factsheet-graph-view').then((m) => ({ default: m.FactsheetGraphView })),
@@ -19,6 +21,8 @@ export function FactsheetsLayout() {
 
   const view = searchParams.get('view') ?? 'detail';
   const selectedId = searchParams.get('fs');
+
+  const [promoteCluster, setPromoteCluster] = useState<FactsheetWithCounts[] | null>(null);
 
   const { factsheets, refetch: refetchList } = useAllFactsheets();
   const { detail, refetch: refetchDetail } = useFactsheetDetail(selectedId);
@@ -131,10 +135,23 @@ export function FactsheetsLayout() {
               links={links}
               selectedId={selectedId}
               onSelectFactsheet={setSelectedFactsheet}
+              onPromoteCluster={(cluster) => setPromoteCluster(cluster)}
             />
           )}
         </div>
       </div>
+
+      {promoteCluster && (
+        <FamilyPromoteModal
+          open={!!promoteCluster}
+          onClose={() => setPromoteCluster(null)}
+          factsheets={promoteCluster}
+          onPromoted={() => {
+            setPromoteCluster(null);
+            handleDataChanged();
+          }}
+        />
+      )}
     </div>
   );
 }
