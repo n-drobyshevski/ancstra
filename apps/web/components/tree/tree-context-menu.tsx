@@ -41,7 +41,7 @@ export function TreeContextMenu({ x, y, type, nodeId, edgeId, edgeType, edgeFami
       { label: '', onClick: () => {}, separator: true },
       { label: 'View Details', onClick: () => onClose() },
       { label: 'Edit Person', onClick: () => { router.push(`/person/${nodeId}/edit`); onClose(); } },
-      { label: 'Research this person', onClick: () => { router.push(`/research/person/${nodeId}`); onClose(); } },
+      { label: 'Research this person', onClick: () => { router.push(`/person/${nodeId}?view=board`); onClose(); } },
       { label: '', onClick: () => {}, separator: true },
       { label: '+ Add Spouse', onClick: () => { router.push(`/person/new?relation=spouse&of=${nodeId}`); onClose(); } },
       { label: '+ Add Father', onClick: () => { router.push(`/person/new?relation=father&of=${nodeId}`); onClose(); } },

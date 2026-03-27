@@ -103,7 +103,7 @@ export function ItemSidebar({ item }: ItemSidebarProps) {
             {item.personIds.map((personId) => (
               <Link
                 key={personId}
-                href={`/research/person/${personId}`}
+                href={`/person/${personId}`}
                 className="block rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-muted"
               >
                 {personId}
