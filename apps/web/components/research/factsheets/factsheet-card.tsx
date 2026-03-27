@@ -26,11 +26,13 @@ export function FactsheetCard({
   const isDismissed = factsheet.status === 'dismissed';
 
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } }}
       className={cn(
-        'w-full text-left rounded-lg border px-3 py-2.5 transition-colors',
+        'w-full text-left rounded-lg border px-3 py-2.5 transition-colors cursor-pointer',
         'hover:bg-accent/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         isSelected ? 'border-primary bg-accent/5' : 'border-border',
         isDismissed && 'opacity-50',
@@ -39,20 +41,22 @@ export function FactsheetCard({
     >
       <div className="flex items-center justify-between gap-2 mb-1">
         {isSelectable && (
-          <button
+          <div
             role="checkbox"
+            tabIndex={0}
             aria-checked={isChecked}
             onClick={(e) => {
               e.stopPropagation();
               onCheckChange?.(!isChecked);
             }}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); onCheckChange?.(!isChecked); } }}
             className={cn(
-              'size-4 shrink-0 rounded border border-border flex items-center justify-center',
+              'size-4 shrink-0 rounded border border-border flex items-center justify-center cursor-pointer',
               isChecked && 'bg-primary border-primary'
             )}
           >
             {isChecked && <Check className="size-3 text-primary-foreground" />}
-          </button>
+          </div>
         )}
         <p className="text-sm font-medium leading-snug line-clamp-1">{factsheet.title}</p>
         <span className={cn('shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium', status.className)}>
@@ -69,6 +73,6 @@ export function FactsheetCard({
           <span className="text-amber-600 dark:text-amber-400 text-[10px]"> ⚠ unanchored</span>
         )}
       </p>
-    </button>
+    </div>
   );
 }
