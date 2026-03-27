@@ -9,7 +9,7 @@ import { AssignFactsPopover } from './assign-facts-popover';
 
 interface FactsheetFactsSectionProps {
   factsheetId: string;
-  personId: string;
+  personId?: string;
   facts: FactsheetFact[];
   conflicts: FactsheetConflict[];
   researchItemTitles: Map<string, string>;
@@ -57,19 +57,25 @@ export function FactsheetFactsSection({
         <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
           Facts ({facts.length})
         </h4>
-        <AssignFactsPopover
-          factsheetId={factsheetId}
-          personId={personId}
-          existingFactIds={new Set(facts.map((f) => f.id))}
-          onAssigned={onDataChanged}
-        >
-          <button
-            type="button"
-            className="text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+        {personId ? (
+          <AssignFactsPopover
+            factsheetId={factsheetId}
+            personId={personId}
+            existingFactIds={new Set(facts.map((f) => f.id))}
+            onAssigned={onDataChanged}
           >
+            <button
+              type="button"
+              className="text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+            >
+              + Assign facts
+            </button>
+          </AssignFactsPopover>
+        ) : (
+          <span className="text-[10px] text-muted-foreground/50 cursor-not-allowed" title="Link to a person to assign facts">
             + Assign facts
-          </button>
-        </AssignFactsPopover>
+          </span>
+        )}
       </div>
 
       {facts.length === 0 ? (

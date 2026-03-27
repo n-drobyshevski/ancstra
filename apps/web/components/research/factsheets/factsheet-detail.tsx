@@ -20,7 +20,7 @@ interface FactsheetDetailProps {
   detail: FactsheetDetailType;
   allFactsheets: Factsheet[];
   researchItemTitles: Map<string, string>;
-  personId: string;
+  personId?: string;
   onDataChanged: () => void;
   onSelectFactsheet: (id: string) => void;
 }
