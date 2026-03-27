@@ -7,6 +7,7 @@ import Link from 'next/link';
 import type { WorkspaceView } from './workspace/workspace-tabs';
 
 const VIEW_LABELS: Record<WorkspaceView, string> = {
+  record: 'Record',
   board: 'Board',
   matrix: 'Matrix',
   conflicts: 'Conflicts',
@@ -14,6 +15,9 @@ const VIEW_LABELS: Record<WorkspaceView, string> = {
   canvas: 'Canvas',
   hints: 'Hints',
   proof: 'Proof',
+  factsheets: 'Factsheets',
+  biography: 'Biography',
+  citations: 'Citations',
 };
 
 interface ResearchBreadcrumbProps {
@@ -22,8 +26,8 @@ interface ResearchBreadcrumbProps {
 
 function BreadcrumbInner({ personName }: ResearchBreadcrumbProps) {
   const searchParams = useSearchParams();
-  const view = (searchParams.get('view') as WorkspaceView) || 'board';
-  const viewLabel = VIEW_LABELS[view] ?? 'Board';
+  const view = (searchParams.get('view') as WorkspaceView) || 'record';
+  const viewLabel = VIEW_LABELS[view] ?? 'Record';
 
   return (
     <nav aria-label="Breadcrumb">

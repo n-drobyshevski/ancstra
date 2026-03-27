@@ -1,31 +1,15 @@
-import { notFound } from 'next/navigation';
-import { assemblePersonDetail } from '@/lib/queries';
-import { WorkspaceShell } from '@/components/research/workspace/workspace-shell';
-import { getAuthContext } from '@/lib/auth/context';
-import { getFamilyDb } from '@/lib/db';
+import { redirect } from 'next/navigation';
 
-export default async function ResearchPersonPage({
+export default async function ResearchPersonRedirect({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { id } = await params;
-  const authContext = await getAuthContext();
-  if (!authContext) return null;
-  const db = await getFamilyDb(authContext.dbFilename);
-  const person = await assemblePersonDetail(db, id);
-  if (!person) notFound();
-
-  return (
-    <WorkspaceShell
-      person={{
-        id: person.id,
-        givenName: person.givenName,
-        surname: person.surname,
-        birthDate: person.birthDate ?? null,
-        deathDate: person.deathDate ?? null,
-        sex: person.sex,
-      }}
-    />
-  );
+  const sp = await searchParams;
+  const view = typeof sp.view === 'string' ? sp.view : undefined;
+  const qs = view ? `?view=${view}` : '';
+  redirect(`/person/${id}${qs}`);
 }

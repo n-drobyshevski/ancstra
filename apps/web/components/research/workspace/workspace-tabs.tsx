@@ -11,14 +11,18 @@ import {
   BookOpen,
   FileText,
   Layers,
+  UserPen,
+  BookMarked,
+  Quote,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 
-export type WorkspaceView = 'board' | 'matrix' | 'conflicts' | 'timeline' | 'canvas' | 'hints' | 'proof' | 'factsheets';
+export type WorkspaceView = 'record' | 'board' | 'matrix' | 'conflicts' | 'timeline' | 'canvas' | 'hints' | 'proof' | 'factsheets' | 'biography' | 'citations';
 
 const tabs: { value: WorkspaceView; label: string; icon: LucideIcon }[] = [
+  { value: 'record', label: 'Record', icon: UserPen },
   { value: 'board', label: 'Board', icon: LayoutGrid },
   { value: 'matrix', label: 'Matrix', icon: Table2 },
   { value: 'conflicts', label: 'Conflicts', icon: GitCompareArrows },
@@ -27,6 +31,8 @@ const tabs: { value: WorkspaceView; label: string; icon: LucideIcon }[] = [
   { value: 'hints', label: 'Hints', icon: BookOpen },
   { value: 'proof', label: 'Proof', icon: FileText },
   { value: 'factsheets', label: 'Factsheets', icon: Layers },
+  { value: 'biography', label: 'Biography', icon: BookMarked },
+  { value: 'citations', label: 'Citations', icon: Quote },
 ];
 
 interface WorkspaceTabsProps {
@@ -43,12 +49,12 @@ export function WorkspaceTabs({ conflictCount = 0, hintCount = 0, factsheetCount
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
 
-  const activeView = (searchParams.get('view') as WorkspaceView) || 'board';
+  const activeView = (searchParams.get('view') as WorkspaceView) || 'record';
 
   const setView = useCallback(
     (view: WorkspaceView) => {
       const params = new URLSearchParams(searchParams.toString());
-      if (view === 'board') {
+      if (view === 'record') {
         params.delete('view');
       } else {
         params.set('view', view);
