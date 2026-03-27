@@ -2,7 +2,8 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, CalendarIcon } from 'lucide-react';
+import { format, parse } from 'date-fns';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -10,9 +11,27 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { toast } from 'sonner';
 import { createRelatedPerson } from '@/app/actions/create-related-person';
 import type { PersonDetail } from '@ancstra/shared';
+
+/** Try to parse a flexible date string into a Date object for the calendar */
+function tryParseDate(value: string): Date | undefined {
+  if (!value) return undefined;
+  // Try common genealogy formats
+  for (const fmt of ['d MMM yyyy', 'dd MMM yyyy', 'yyyy-MM-dd', 'dd/MM/yyyy', 'MM/dd/yyyy', 'd MMMM yyyy']) {
+    try {
+      const d = parse(value, fmt, new Date());
+      if (!isNaN(d.getTime()) && d.getFullYear() > 0) return d;
+    } catch { /* try next */ }
+  }
+  // Fallback: native Date parsing
+  const d = new Date(value);
+  if (!isNaN(d.getTime()) && d.getFullYear() > 0) return d;
+  return undefined;
+}
 
 interface PersonFormProps {
   person?: PersonDetail;
@@ -61,6 +80,14 @@ function PersonFormInner({ person }: PersonFormProps) {
 
   const [sex, setSex] = useState(getDefaultSex());
   const [isLiving, setIsLiving] = useState(person?.isLiving ?? true);
+  const [birthDate, setBirthDate] = useState<Date | undefined>(
+    person?.birthDate ? tryParseDate(person.birthDate) : undefined
+  );
+  const [birthCalendarOpen, setBirthCalendarOpen] = useState(false);
+  const [deathDate, setDeathDate] = useState<Date | undefined>(
+    person?.deathDate ? tryParseDate(person.deathDate) : undefined
+  );
+  const [deathCalendarOpen, setDeathCalendarOpen] = useState(false);
 
   // Handle edit mode submit (PUT)
   async function handleEditSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -279,14 +306,36 @@ function PersonFormInner({ person }: PersonFormProps) {
             {/* Birth date/place — responsive grid */}
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
               <div className="space-y-2">
-                <Label htmlFor="birthDate">Birth Date</Label>
-                <Input
-                  id="birthDate"
-                  name="birthDate"
-                  placeholder="e.g. 15 Mar 1845"
-                  defaultValue={person?.birthDate ?? ''}
-                  className="h-10 md:h-8"
-                />
+                <Label>Birth Date</Label>
+                <input type="hidden" name="birthDate" value={birthDate ? format(birthDate, 'd MMM yyyy') : ''} />
+                <Popover open={birthCalendarOpen} onOpenChange={setBirthCalendarOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className={`h-10 w-full justify-start font-normal md:h-8 ${
+                        !birthDate ? 'text-muted-foreground' : ''
+                      }`}
+                    >
+                      <CalendarIcon className="mr-2 size-4" />
+                      {birthDate ? format(birthDate, 'd MMM yyyy') : 'Pick a date'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      captionLayout="dropdown"
+                      selected={birthDate}
+                      defaultMonth={birthDate}
+                      onSelect={(date) => {
+                        setBirthDate(date);
+                        setBirthCalendarOpen(false);
+                      }}
+                      startMonth={new Date(1700, 0)}
+                      endMonth={new Date()}
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="birthPlace">Birth Place</Label>
@@ -308,15 +357,37 @@ function PersonFormInner({ person }: PersonFormProps) {
               aria-disabled={isLiving}
             >
               <div className="space-y-2">
-                <Label htmlFor="deathDate">Death Date</Label>
-                <Input
-                  id="deathDate"
-                  name="deathDate"
-                  placeholder="e.g. 23 Nov 1923"
-                  defaultValue={person?.deathDate ?? ''}
-                  disabled={isLiving}
-                  className="h-10 md:h-8"
-                />
+                <Label>Death Date</Label>
+                <input type="hidden" name="deathDate" value={deathDate ? format(deathDate, 'd MMM yyyy') : ''} />
+                <Popover open={deathCalendarOpen} onOpenChange={setDeathCalendarOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={isLiving}
+                      className={`h-10 w-full justify-start font-normal md:h-8 ${
+                        !deathDate ? 'text-muted-foreground' : ''
+                      }`}
+                    >
+                      <CalendarIcon className="mr-2 size-4" />
+                      {deathDate ? format(deathDate, 'd MMM yyyy') : 'Pick a date'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      captionLayout="dropdown"
+                      selected={deathDate}
+                      defaultMonth={deathDate}
+                      onSelect={(date) => {
+                        setDeathDate(date);
+                        setDeathCalendarOpen(false);
+                      }}
+                      startMonth={new Date(1700, 0)}
+                      endMonth={new Date()}
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="deathPlace">Death Place</Label>
