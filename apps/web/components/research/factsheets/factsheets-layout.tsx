@@ -68,7 +68,7 @@ export function FactsheetsLayout() {
   }, [refetchList, refetchDetail]);
 
   return (
-    <div className="grid h-[calc(100vh-5rem)] grid-cols-1 md:grid-cols-[280px_1fr] overflow-hidden rounded-lg border border-border">
+    <div className="grid h-full grid-cols-1 md:grid-cols-[280px_1fr] overflow-hidden rounded-lg border border-border">
       <FactsheetSidebar
         factsheets={factsheets}
         selectedId={selectedId}
