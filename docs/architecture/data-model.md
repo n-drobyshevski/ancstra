@@ -755,49 +755,89 @@ CREATE INDEX idx_tree_layouts_name ON tree_layouts(layout_name);
 
 ---
 
-## Proposed Persons (AI Discovery Staging)
+## ~~Proposed Persons (AI Discovery Staging)~~ — SUPERSEDED
 
-AI-discovered persons are staged in a separate table, never inserted directly into `persons`. This keeps the main tree clean while allowing AI to propose new people for user review.
+> **Superseded by [Factsheets](#12-factsheets-working-hypotheses)** (2026-03-26).
+>
+> The `proposed_persons` table was never implemented. Its purpose — staging AI-discovered persons before tree insertion — is now handled by the factsheet pipeline:
+> - AI creates a factsheet (working hypothesis) instead of a proposed_person
+> - Facts are extracted and grouped into the factsheet
+> - User reviews, resolves conflicts, checks duplicates
+> - Promotes to a real person via `promoteSingleFactsheet`
+>
+> The factsheet approach is superior because it supports multiple sources per entity, conflict resolution, relationship graphs (factsheet_links), and family unit promotion.
+>
+> Other specs that reference `proposed_persons` should use factsheets instead when those features are implemented.
+
+---
+
+### 12. Factsheets (Working Hypotheses)
+
+> [Full spec: Research → Tree Pipeline](../superpowers/specs/2026-03-26-research-to-tree-pipeline-design.md)
+
+Factsheets are curated groupings of `research_facts` representing a working hypothesis about an entity (person, couple, or family unit). They sit between raw fact extraction and tree entry creation, enabling evidence analysis before committing to the tree.
 
 ```sql
-CREATE TABLE proposed_persons (
-  id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
-  -- Extracted person data
-  given_name TEXT,
-  surname TEXT,
-  sex TEXT CHECK(sex IN ('M','F','U')) DEFAULT 'U',
-  birth_date_original TEXT,
-  birth_date_sort INTEGER,
-  birth_place_name TEXT,
-  death_date_original TEXT,
-  death_date_sort INTEGER,
-  death_place_name TEXT,
-  additional_data TEXT, -- JSON for any extra extracted fields
-
-  -- Proposal metadata
-  source_type TEXT NOT NULL CHECK(source_type IN ('familysearch','nara','ai_suggestion','record_match','web_search','newspaper')),
-  source_detail TEXT,          -- URL or record reference
-  source_record_text TEXT,     -- original record text for reference
-  confidence REAL CHECK(confidence >= 0 AND confidence <= 1),
-  status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','accepted','rejected','needs_info')),
-
-  -- Link to existing tree
-  related_person_id TEXT REFERENCES persons(id), -- the person this discovery relates to
-  proposed_relationship_type TEXT CHECK(proposed_relationship_type IN ('parent_child','partner','sibling')),
-
-  -- Audit
-  accepted_person_id TEXT REFERENCES persons(id), -- set when accepted, points to created person
-  rejection_reason TEXT,
-  reviewed_at TEXT,
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+CREATE TABLE factsheets (
+  id               TEXT PRIMARY KEY,
+  title            TEXT NOT NULL,              -- e.g. "John Smith hypothesis"
+  entity_type      TEXT NOT NULL DEFAULT 'person'
+                   CHECK (entity_type IN ('person', 'couple', 'family_unit')),
+  status           TEXT NOT NULL DEFAULT 'draft'
+                   CHECK (status IN ('draft', 'ready', 'promoted', 'merged', 'dismissed')),
+  notes            TEXT,
+  promoted_person_id TEXT REFERENCES persons(id), -- set on promotion
+  promoted_at      TEXT,
+  created_by       TEXT NOT NULL,
+  created_at       TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at       TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
-CREATE INDEX idx_proposed_persons_status ON proposed_persons(status);
-CREATE INDEX idx_proposed_persons_related ON proposed_persons(related_person_id);
+CREATE INDEX idx_factsheets_status ON factsheets(status);
+CREATE INDEX idx_factsheets_created_by ON factsheets(created_by);
+CREATE INDEX idx_factsheets_promoted_person ON factsheets(promoted_person_id);
 ```
 
-**Workflow:** AI research → creates `proposed_persons` entry → user reviews in validation queue → accepts (creates real person + relationship) or rejects (with reason). Accepted proposals link back via `accepted_person_id`.
+**Status lifecycle:** `draft` → `ready` → `promoted` or `merged` (also `draft` → `dismissed`).
+
+### 13. Factsheet Links (Relationship Graph)
+
+Factsheets can be connected via relationship facts, forming a graph. This enables family unit promotion — promoting a cluster of connected factsheets into persons + families + children atomically.
+
+```sql
+CREATE TABLE factsheet_links (
+  id                TEXT PRIMARY KEY,
+  from_factsheet_id TEXT NOT NULL REFERENCES factsheets(id) ON DELETE CASCADE,
+  to_factsheet_id   TEXT NOT NULL REFERENCES factsheets(id) ON DELETE CASCADE,
+  relationship_type TEXT NOT NULL
+                    CHECK (relationship_type IN ('parent_child', 'spouse', 'sibling')),
+  source_fact_id    TEXT REFERENCES research_facts(id), -- the fact that created this link
+  -- Directionality: for parent_child, from=parent, to=child
+  -- For spouse/sibling, order is arbitrary (alphabetical by id)
+  confidence        TEXT NOT NULL DEFAULT 'medium'
+                    CHECK (confidence IN ('high', 'medium', 'low')),
+  created_at        TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX idx_factsheet_links_from ON factsheet_links(from_factsheet_id);
+CREATE INDEX idx_factsheet_links_to ON factsheet_links(to_factsheet_id);
+CREATE UNIQUE INDEX idx_factsheet_links_unique
+  ON factsheet_links(from_factsheet_id, to_factsheet_id, relationship_type);
+```
+
+### research_facts Additions
+
+Two new columns on the existing `research_facts` table:
+
+```sql
+ALTER TABLE research_facts ADD COLUMN factsheet_id TEXT REFERENCES factsheets(id);
+ALTER TABLE research_facts ADD COLUMN accepted INTEGER; -- null=unresolved, 1=accepted, 0=rejected
+
+CREATE INDEX idx_research_facts_factsheet ON research_facts(factsheet_id);
+```
+
+- `factsheet_id`: Links a fact to its factsheet grouping (nullable — facts can exist ungrouped).
+- `accepted`: Used for conflict resolution. When multiple facts of the same single-valued type exist on one factsheet, the user resolves by marking one `accepted=1` and others `accepted=0`. Promotion is blocked until all single-valued conflicts are resolved.
 
 ---
 

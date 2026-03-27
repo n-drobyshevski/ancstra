@@ -1,11 +1,8 @@
-import { eq } from 'drizzle-orm';
-import {
-  researchItems,
-  researchFacts,
-  sources,
-  sourceCitations,
-} from '@ancstra/db';
+import { eq, sql } from 'drizzle-orm';
+import { researchItems, researchFacts, factsheets } from '@ancstra/db';
 import type { Database } from '@ancstra/db';
+import { createFactsheet, assignFactToFactsheet } from '../factsheets/queries';
+import { promoteSingleFactsheet } from '../factsheets/promote';
 
 export interface PromoteInput {
   researchItemId: string;
@@ -15,27 +12,25 @@ export interface PromoteInput {
 }
 
 export interface PromoteResult {
-  sourceId: string;
-  sourceCitationId: string;
-  factsUpdated: number;
+  factsheetId: string;
+  personId: string;
+  eventsCreated: number;
+  sourcesCreated: number;
+  mode: 'created' | 'merged';
 }
 
-/** Map provider IDs to source types. Falls back to 'online'. */
-const PROVIDER_SOURCE_TYPE: Record<string, string> = {
-  nara: 'military',
-  chronicling_america: 'newspaper',
-  familysearch: 'vital_record',
-};
-
 /**
- * Promotes a research item into a source + citation in a single transaction.
- * All facts linked to the item get their source_citation_id set.
+ * Promotes a research item by auto-creating a factsheet from its facts,
+ * then promoting that factsheet into the tree.
+ *
+ * This is the convenience wrapper for the simple case: "I found a record
+ * for an existing person, just add it as a source." Internally it routes
+ * through the factsheet pipeline so there's a single promotion pathway.
  *
  * Throws if the item doesn't exist or is already promoted.
- * Rolls back all changes if any step fails.
  */
 export async function promoteToSource(db: Database, input: PromoteInput): Promise<PromoteResult> {
-  // 1. Fetch research item
+  // 1. Fetch and validate research item
   const items = await db
     .select()
     .from(researchItems)
@@ -51,63 +46,40 @@ export async function promoteToSource(db: Database, input: PromoteInput): Promis
     throw new Error(`Research item already promoted: ${input.researchItemId}`);
   }
 
-  const sourceId = crypto.randomUUID();
-  const citationId = crypto.randomUUID();
-  const now = new Date().toISOString();
-
-  // 2. Run entire promotion as a single transaction.
-  //    Drizzle's db.transaction() is async with libsql and
-  //    automatically rolls back on thrown errors.
-  let factsUpdated = 0;
-
-  await (db as any).transaction(async (tx: any) => {
-    // a. INSERT source
-    const sourceType = item.providerId
-      ? PROVIDER_SOURCE_TYPE[item.providerId] ?? 'online'
-      : 'online';
-
-    await tx.insert(sources)
-      .values({
-        id: sourceId,
-        title: item.title,
-        repositoryUrl: item.url ?? null,
-        sourceType: sourceType as any,
-        createdBy: input.userId,
-        createdAt: now,
-        updatedAt: now,
-      })
-      .run();
-
-    // b. INSERT source citation
-    await tx.insert(sourceCitations)
-      .values({
-        id: citationId,
-        sourceId,
-        personId: input.personId,
-        citationText: input.citationText ?? null,
-        confidence: 'medium',
-        createdAt: now,
-      })
-      .run();
-
-    // c. UPDATE facts linked to this research item
-    const updateResult = await tx.update(researchFacts)
-      .set({ sourceCitationId: citationId, updatedAt: now })
-      .where(eq(researchFacts.researchItemId, input.researchItemId))
-      .run();
-
-    factsUpdated = updateResult.changes;
-
-    // d. UPDATE research item status
-    await tx.update(researchItems)
-      .set({
-        status: 'promoted' as const,
-        promotedSourceId: sourceId,
-        updatedAt: now,
-      })
-      .where(eq(researchItems.id, input.researchItemId))
-      .run();
+  // 2. Auto-create a factsheet from the research item
+  const factsheet = await createFactsheet(db, {
+    title: item.title,
+    entityType: 'person',
+    createdBy: input.userId,
   });
 
-  return { sourceId, sourceCitationId: citationId, factsUpdated };
+  // 3. Assign all facts from this research item to the factsheet
+  const facts = await db
+    .select()
+    .from(researchFacts)
+    .where(eq(researchFacts.researchItemId, input.researchItemId))
+    .all();
+
+  for (const fact of facts) {
+    await assignFactToFactsheet(db, fact.id, factsheet.id);
+  }
+
+  // 4. Promote via factsheet pipeline (merge into existing person).
+  //    skipValidation: this is an auto-created factsheet from a convenience
+  //    wrapper, so we trust the caller and skip the promotability gate.
+  const result = await promoteSingleFactsheet(db, {
+    factsheetId: factsheet.id,
+    mode: 'merge',
+    mergeTargetPersonId: input.personId,
+    userId: input.userId,
+    skipValidation: true,
+  });
+
+  return {
+    factsheetId: factsheet.id,
+    personId: result.personId,
+    eventsCreated: result.eventsCreated,
+    sourcesCreated: result.sourcesCreated,
+    mode: result.mode,
+  };
 }

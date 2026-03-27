@@ -21,7 +21,7 @@ export async function POST(request: Request) {
     }
 
     try {
-      const result = promoteToSource(familyDb, {
+      const result = await promoteToSource(familyDb, {
         researchItemId: body.researchItemId,
         personId: body.personId,
         userId: ctx.userId,
