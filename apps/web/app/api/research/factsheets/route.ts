@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
-import { createFactsheet, listFactsheets } from '@ancstra/research';
+import { createFactsheet, listFactsheets, listFactsheetsWithCounts } from '@ancstra/research';
 
 export async function GET(request: Request) {
   try {
@@ -13,7 +13,11 @@ export async function GET(request: Request) {
       personId: searchParams.get('personId') ?? undefined,
     };
 
-    const rows = await listFactsheets(familyDb, filters);
+    const include = searchParams.get('include');
+    const rows = include === 'counts'
+      ? await listFactsheetsWithCounts(familyDb, filters)
+      : await listFactsheets(familyDb, filters);
+
     return NextResponse.json({ factsheets: rows });
   } catch (err) {
     try { return handleAuthError(err); } catch { /* not auth */ }

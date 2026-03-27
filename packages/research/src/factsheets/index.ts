@@ -2,12 +2,13 @@ export {
   createFactsheet,
   getFactsheet,
   listFactsheets,
+  listFactsheetsWithCounts,
   updateFactsheet,
   deleteFactsheet,
   assignFactToFactsheet,
   removeFactFromFactsheet,
 } from './queries';
-export type { CreateFactsheetInput, UpdateFactsheetInput, FactsheetFilters } from './queries';
+export type { CreateFactsheetInput, UpdateFactsheetInput, FactsheetFilters, FactsheetWithCounts } from './queries';
 
 export {
   createFactsheetLink,
@@ -17,6 +18,8 @@ export {
   suggestFactsheetLinks,
 } from './links';
 export type { CreateFactsheetLinkInput } from './links';
+
+export { listAllFactsheetLinks } from './links-queries';
 
 export {
   detectFactsheetConflicts,
@@ -33,3 +36,5 @@ export {
   promoteFactsheetCluster,
 } from './promote';
 export type { PromoteSingleInput, PromoteSingleResult, PromoteClusterResult } from './promote';
+
+export { batchDismissFactsheets, batchLinkFactsheets } from './batch';

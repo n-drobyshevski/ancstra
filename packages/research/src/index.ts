@@ -49,8 +49,10 @@ export type { CreateResearchItemInput, ResearchItemFilters, UpdateResearchItemCo
 // Research Facts CRUD
 export {
   createFact,
+  batchCreateFacts,
   getFactsByPerson,
   getFactsByResearchItem,
+  getFactsByFactsheet,
   updateFact,
   deleteFact,
 } from './facts/queries';
@@ -85,12 +87,14 @@ export {
   createFactsheet,
   getFactsheet,
   listFactsheets,
+  listFactsheetsWithCounts,
   updateFactsheet,
   deleteFactsheet,
   assignFactToFactsheet,
   removeFactFromFactsheet,
   createFactsheetLink,
   getFactsheetLinks,
+  listAllFactsheetLinks,
   deleteFactsheetLink,
   getFactsheetCluster,
   suggestFactsheetLinks,
@@ -100,11 +104,14 @@ export {
   checkDuplicates,
   promoteSingleFactsheet,
   promoteFactsheetCluster,
+  batchDismissFactsheets,
+  batchLinkFactsheets,
 } from './factsheets';
 export type {
   CreateFactsheetInput,
   UpdateFactsheetInput,
   FactsheetFilters,
+  FactsheetWithCounts,
   CreateFactsheetLinkInput,
   FactsheetConflict,
   PromotabilityResult,

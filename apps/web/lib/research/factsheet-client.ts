@@ -158,6 +158,43 @@ export function useFactsheetDuplicates(factsheetId: string | null, enabled: bool
 }
 
 // ---------------------------------------------------------------------------
+// useAllFactsheets — fetch /api/research/factsheets?include=counts (all persons)
+// ---------------------------------------------------------------------------
+
+export interface FactsheetWithCounts extends Factsheet {
+  factCount: number;
+  linkCount: number;
+  conflictCount: number;
+  isUnanchored: boolean;
+}
+
+export function useAllFactsheets() {
+  const { data, isLoading, error, refetch } = useFetchData<{
+    factsheets: FactsheetWithCounts[];
+  }>('/api/research/factsheets?include=counts');
+  return { factsheets: data?.factsheets ?? [], isLoading, error, refetch };
+}
+
+export function useFactsheetCount() {
+  const { factsheets } = useAllFactsheets();
+  const count = factsheets.filter(
+    (fs) => fs.status === 'draft' || fs.status === 'ready'
+  ).length;
+  return { count };
+}
+
+// ---------------------------------------------------------------------------
+// useAllFactsheetLinks — fetch all links for graph view
+// ---------------------------------------------------------------------------
+export function useAllFactsheetLinks() {
+  const { data, isLoading, error, refetch } = useFetchData<{
+    links: FactsheetLink[];
+  }>('/api/research/factsheets/links');
+
+  return { links: data?.links ?? [], isLoading, error, refetch };
+}
+
+// ---------------------------------------------------------------------------
 // useInbox — fetch /api/research/inbox
 // ---------------------------------------------------------------------------
 export function useInbox() {
@@ -280,5 +317,25 @@ export async function fetchLinkSuggestions(factsheetId: string) {
   const res = await fetch(
     `/api/research/factsheets/${factsheetId}/links?suggest=true`
   );
+  return res.json();
+}
+
+export async function batchDismiss(factsheetIds: string[]) {
+  const res = await fetch('/api/research/factsheets/batch', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'dismiss', factsheetIds }),
+  });
+  if (!res.ok) throw new Error('Batch dismiss failed');
+  return res.json();
+}
+
+export async function batchLink(factsheetIds: string[], relationshipType: string) {
+  const res = await fetch('/api/research/factsheets/batch', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'link', factsheetIds, relationshipType }),
+  });
+  if (!res.ok) throw new Error('Batch link failed');
   return res.json();
 }
