@@ -43,6 +43,7 @@ import {
 } from './tree-utils';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { useQualityData } from '@/lib/tree/use-quality-data';
 
 const nodeTypes = { person: PersonNode, draftPerson: DraftPersonNode, draftFactsheet: DraftFactsheetNode };
 const edgeTypes = { partner: PartnerEdge, parentChild: ParentChildEdge };
@@ -110,6 +111,8 @@ function TreeCanvasInner({ treeData, focusPersonId }: TreeCanvasProps) {
   const [activeLayoutName, setActiveLayoutName] = useState<string | null>(null);
 
   const [filterState, setFilterState] = useState<FilterState>(DEFAULT_FILTERS);
+  const [showGaps, setShowGaps] = useState(false);
+  const { qualityData } = useQualityData(showGaps);
 
   const handleToggleFilter = useCallback((category: 'sex' | 'living', key: string) => {
     setFilterState(prev => ({
@@ -249,11 +252,11 @@ function TreeCanvasInner({ treeData, focusPersonId }: TreeCanvasProps) {
   const onPaneClick = useCallback(() => setContextMenu(null), []);
 
   const handleAutoLayout = useCallback(() => {
-    const laid = applyDagreLayout(rawNodes, rawEdges);
+    const laid = applyDagreLayout(rawNodes, rawEdges, showGaps ? 82 : undefined);
     setNodes(laid);
     setActiveLayoutId(null);
     setActiveLayoutName(null);
-  }, [rawNodes, rawEdges, setNodes]);
+  }, [rawNodes, rawEdges, setNodes, showGaps]);
 
   const handleLoadLayout = useCallback(
     (id: string) => {
@@ -499,6 +502,23 @@ function TreeCanvasInner({ treeData, focusPersonId }: TreeCanvasProps) {
     setNodes(nds => applyFilters(nds, filterState));
   }, [filterState, setNodes]);
 
+  // Merge quality data into nodes when showGaps changes
+  useEffect(() => {
+    setNodes(nds => nds.map(node => {
+      if (node.type !== 'person') return node;
+      const q = qualityData.get(node.id);
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          showGaps,
+          qualityScore: q?.score ?? 0,
+          missingFields: q?.missingFields ?? [],
+        },
+      };
+    }));
+  }, [showGaps, qualityData, setNodes]);
+
   // Compute filtered edges (dimmed based on node dimmed status)
   const filteredEdges = useMemo(() => applyEdgeFilters(edges, nodes), [edges, nodes]);
 
@@ -580,6 +600,10 @@ function TreeCanvasInner({ treeData, focusPersonId }: TreeCanvasProps) {
           onRenameLayout={handleRenameLayout}
           filterState={filterState}
           onToggleFilter={handleToggleFilter}
+          showGaps={showGaps}
+          onToggleGaps={() => setShowGaps(v => !v)}
+          view="canvas"
+          onToggleView={() => {}}
         />
 
         {paletteOpen && (
