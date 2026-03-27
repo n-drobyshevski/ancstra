@@ -31,7 +31,7 @@ interface TreeToolbarProps {
   showGaps: boolean;
   onToggleGaps: () => void;
   view: 'canvas' | 'table';
-  onToggleView: () => void;
+  onSetView: (v: 'canvas' | 'table') => void;
 }
 
 export function TreeToolbar({
@@ -52,18 +52,44 @@ export function TreeToolbar({
   showGaps,
   onToggleGaps,
   view,
-  onToggleView,
+  onSetView,
 }: TreeToolbarProps) {
   return (
-    <div className="absolute top-3 left-3 right-3 z-10 flex justify-between pointer-events-none">
-      <div className="flex gap-1.5 pointer-events-auto">
-        <Button variant="secondary" size="sm" className="shadow-sm" onClick={onAutoLayout}>
+    <div className="flex items-center justify-between border-b border-border bg-background px-4 py-2">
+      <div className="flex items-center gap-1.5">
+        {/* Segmented view toggle — matches factsheets Detail/Graph pattern */}
+        <div className="flex overflow-hidden rounded-lg border border-border">
+          <button
+            onClick={() => onSetView('canvas')}
+            className={`px-3 py-1 text-xs font-medium transition-colors ${
+              view === 'canvas'
+                ? 'bg-primary text-primary-foreground'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Canvas
+          </button>
+          <button
+            onClick={() => onSetView('table')}
+            className={`px-3 py-1 text-xs font-medium transition-colors ${
+              view === 'table'
+                ? 'bg-primary text-primary-foreground'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Table
+          </button>
+        </div>
+
+        <Separator orientation="vertical" className="h-5 mx-0.5" />
+
+        <Button variant="secondary" size="sm" onClick={onAutoLayout}>
           Auto Layout
         </Button>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="secondary" size="sm" className="shadow-sm gap-1">
+            <Button variant="secondary" size="sm" className="gap-1">
               Layouts
               <ChevronDown className="size-3.5" />
             </Button>
@@ -116,22 +142,21 @@ export function TreeToolbar({
 
         <Button
           size="sm"
-          className="shadow-sm"
           variant={paletteOpen ? 'default' : 'secondary'}
           onClick={onTogglePalette}
         >
           + New Person
         </Button>
       </div>
-      <div className="flex gap-1.5 pointer-events-auto">
-        <Button variant="secondary" size="sm" className="shadow-sm" disabled>
+      <div className="flex items-center gap-1.5">
+        <Button variant="secondary" size="sm" disabled>
           Search
         </Button>
 
         <Button
           variant={filterState.sex.M ? 'secondary' : 'outline'}
           size="sm"
-          className="shadow-sm h-7 text-xs"
+          className="h-7 text-xs"
           onClick={() => onToggleFilter('sex', 'M')}
         >
           M
@@ -139,7 +164,7 @@ export function TreeToolbar({
         <Button
           variant={filterState.sex.F ? 'secondary' : 'outline'}
           size="sm"
-          className="shadow-sm h-7 text-xs"
+          className="h-7 text-xs"
           onClick={() => onToggleFilter('sex', 'F')}
         >
           F
@@ -147,7 +172,7 @@ export function TreeToolbar({
         <Button
           variant={filterState.sex.U ? 'secondary' : 'outline'}
           size="sm"
-          className="shadow-sm h-7 text-xs"
+          className="h-7 text-xs"
           onClick={() => onToggleFilter('sex', 'U')}
         >
           U
@@ -158,7 +183,7 @@ export function TreeToolbar({
         <Button
           variant={filterState.living.living ? 'secondary' : 'outline'}
           size="sm"
-          className="shadow-sm h-7 text-xs"
+          className="h-7 text-xs"
           onClick={() => onToggleFilter('living', 'living')}
         >
           Living
@@ -166,7 +191,7 @@ export function TreeToolbar({
         <Button
           variant={filterState.living.deceased ? 'secondary' : 'outline'}
           size="sm"
-          className="shadow-sm h-7 text-xs"
+          className="h-7 text-xs"
           onClick={() => onToggleFilter('living', 'deceased')}
         >
           Deceased
@@ -177,20 +202,11 @@ export function TreeToolbar({
         <Button
           variant={showGaps ? 'default' : 'secondary'}
           size="sm"
-          className="shadow-sm h-7 text-xs gap-1"
+          className="h-7 text-xs gap-1"
           onClick={onToggleGaps}
         >
           <BarChart3 className="size-3.5" />
           Data Quality
-        </Button>
-
-        <Button
-          variant="secondary"
-          size="sm"
-          className="shadow-sm"
-          onClick={onToggleView}
-        >
-          {view === 'canvas' ? 'Table View' : 'Canvas View'}
         </Button>
 
         <TreeExport />

@@ -29,7 +29,7 @@ export function PersonPalette({ onClose }: PersonPaletteProps) {
   }
 
   return (
-    <div className="absolute top-0 left-0 z-20 h-full w-[250px] border-r bg-card flex flex-col overflow-hidden">
+    <div className="w-[250px] shrink-0 border-r border-border bg-card flex flex-col overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-4 pt-4 pb-2">
         <h3 className="text-sm font-medium">Palette</h3>

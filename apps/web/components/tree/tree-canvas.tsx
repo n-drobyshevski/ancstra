@@ -25,9 +25,7 @@ import { PersonNode } from './person-node';
 import { PartnerEdge } from './partner-edge';
 import { ParentChildEdge } from './parent-child-edge';
 import { TreeToolbar } from './tree-toolbar';
-import { PersonPalette } from './person-palette';
 import { TreeContextMenu } from './tree-context-menu';
-import { TreeDetailPanel } from './tree-detail-panel';
 import { DraftPersonNode } from './draft-person-node';
 import { DraftFactsheetNode } from './draft-factsheet-node';
 import {
@@ -51,9 +49,14 @@ const edgeTypes = { partner: PartnerEdge, parentChild: ParentChildEdge };
 interface TreeCanvasProps {
   treeData: TreeData;
   focusPersonId?: string;
+  paletteOpen: boolean;
+  onTogglePalette: () => void;
+  onSelectPerson: (person: PersonListItem | null) => void;
+  view: 'canvas' | 'table';
+  onSetView: (v: 'canvas' | 'table') => void;
 }
 
-function TreeCanvasInner({ treeData, focusPersonId }: TreeCanvasProps) {
+function TreeCanvasInner({ treeData, focusPersonId, paletteOpen, onTogglePalette, onSelectPerson, view, onSetView }: TreeCanvasProps) {
   const { fitView, screenToFlowPosition } = useReactFlow();
   const router = useRouter();
 
@@ -70,30 +73,6 @@ function TreeCanvasInner({ treeData, focusPersonId }: TreeCanvasProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(rawEdges);
 
-  // Sync nodes/edges when treeData changes (after router.refresh)
-  const treeDataRef = useRef(treeData);
-  useEffect(() => {
-    if (treeDataRef.current === treeData) return;
-    treeDataRef.current = treeData;
-
-    // Preserve existing node positions
-    setNodes((prev) => {
-      const posMap: Record<string, { x: number; y: number }> = {};
-      for (const n of prev) {
-        if (n.type !== 'draftPerson') posMap[n.id] = n.position;
-      }
-      const laid = applyDagreLayout(rawNodes, rawEdges, showGaps ? 82 : undefined);
-      return laid.map((n) => ({
-        ...n,
-        position: posMap[n.id] ?? n.position,
-      }));
-    });
-    setEdges(rawEdges);
-  }, [treeData, rawNodes, rawEdges, setNodes, setEdges, showGaps]);
-
-  const [paletteOpen, setPaletteOpen] = useState(false);
-  const [selectedPerson, setSelectedPerson] =
-    useState<PersonListItem | null>(null);
   const [contextMenu, setContextMenu] = useState<{
     x: number;
     y: number;
@@ -113,6 +92,32 @@ function TreeCanvasInner({ treeData, focusPersonId }: TreeCanvasProps) {
   const [filterState, setFilterState] = useState<FilterState>(DEFAULT_FILTERS);
   const [showGaps, setShowGaps] = useState(false);
   const { qualityData } = useQualityData(showGaps);
+
+  // Sync nodes/edges when treeData changes (after router.refresh)
+  const treeDataRef = useRef(treeData);
+  useEffect(() => {
+    if (treeDataRef.current === treeData) return;
+    treeDataRef.current = treeData;
+
+    // Preserve existing node positions
+    setNodes((prev) => {
+      const posMap: Record<string, { x: number; y: number }> = {};
+      for (const n of prev) {
+        if (n.type !== 'draftPerson') posMap[n.id] = n.position;
+      }
+      const laid = applyDagreLayout(rawNodes, rawEdges, showGaps ? 82 : undefined);
+      return laid.map((n) => ({
+        ...n,
+        position: posMap[n.id] ?? n.position,
+      }));
+    });
+    // Replace with server edges, keeping any optimistic edges not yet in server data
+    setEdges((prev) => {
+      const serverIds = new Set(rawEdges.map(e => e.id));
+      const optimistic = prev.filter(e => !serverIds.has(e.id));
+      return [...rawEdges, ...optimistic];
+    });
+  }, [treeData, rawNodes, rawEdges, setNodes, setEdges, showGaps]);
 
   const handleToggleFilter = useCallback((category: 'sex' | 'living', key: string) => {
     setFilterState(prev => ({
@@ -202,10 +207,10 @@ function TreeCanvasInner({ treeData, focusPersonId }: TreeCanvasProps) {
   const onNodeClick = useCallback(
     (_event: React.MouseEvent, node: Node) => {
       const person = treeData.persons.find((p) => p.id === node.id);
-      if (person) setSelectedPerson(person);
+      if (person) onSelectPerson(person);
       setContextMenu(null);
     },
-    [treeData],
+    [treeData, onSelectPerson],
   );
 
   const onNodeContextMenu = useCallback(
@@ -345,16 +350,6 @@ function TreeCanvasInner({ treeData, focusPersonId }: TreeCanvasProps) {
     });
   }, [activeLayoutId, refreshLayouts]);
 
-  const handleClosePanel = useCallback(() => setSelectedPerson(null), []);
-
-  const handleFocusNode = useCallback(
-    (personId: string) => {
-      const person = treeData.persons.find((p) => p.id === personId);
-      if (person) setSelectedPerson(person);
-    },
-    [treeData],
-  );
-
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
@@ -408,8 +403,8 @@ function TreeCanvasInner({ treeData, focusPersonId }: TreeCanvasProps) {
       ]);
     }
 
-    setPaletteOpen(false);
-  }, [screenToFlowPosition, setNodes, router]);
+    if (paletteOpen) onTogglePalette();
+  }, [screenToFlowPosition, setNodes, router, paletteOpen, onTogglePalette]);
 
   const onConnect = useCallback(async (connection: Connection) => {
     const { source, target, sourceHandle, targetHandle } = connection;
@@ -432,6 +427,18 @@ function TreeCanvasInner({ treeData, focusPersonId }: TreeCanvasProps) {
           body: JSON.stringify({ partner1Id: source, partner2Id: target }),
         });
         if (!res.ok) { toast.error('Failed to create relationship'); return; }
+        const family = await res.json();
+        // Optimistic: add partner edge immediately (deduplicate by id)
+        const partnerEdgeId = `partner-${family.id}`;
+        setEdges(eds => eds.some(e => e.id === partnerEdgeId) ? eds : [...eds, {
+          id: partnerEdgeId,
+          type: 'partner',
+          source,
+          target,
+          sourceHandle: 'right',
+          targetHandle: 'left',
+          data: { familyId: family.id },
+        }]);
       } else {
         const famRes = await fetch('/api/families', {
           method: 'POST',
@@ -446,11 +453,19 @@ function TreeCanvasInner({ treeData, focusPersonId }: TreeCanvasProps) {
           body: JSON.stringify({ personId: target }),
         });
         if (!childRes.ok) { toast.error('Failed to link child'); return; }
+        // Optimistic: add parent-child edge immediately (deduplicate by id)
+        const pcEdgeId = `pc-${source}-${target}`;
+        setEdges(eds => eds.some(e => e.id === pcEdgeId) ? eds : [...eds, {
+          id: pcEdgeId,
+          type: 'parentChild',
+          source,
+          target,
+          data: { validationStatus: 'confirmed', familyId: family.id },
+        }]);
       }
       toast.success(isSpouse ? 'Spouse linked' : 'Parent-child linked');
-      router.refresh();
     } catch { toast.error('Network error'); }
-  }, [treeData, router]);
+  }, [treeData, setEdges]);
 
   // Edge disconnect-by-drag: drag an edge endpoint to empty canvas to delete it
   const edgeReconnectSuccessful = useRef(true);
@@ -472,18 +487,29 @@ function TreeCanvasInner({ treeData, focusPersonId }: TreeCanvasProps) {
 
     if (!familyId) return;
 
+    // Optimistic: remove edge immediately
+    setEdges(eds => eds.filter(e => e.id !== edge.id));
+
     try {
+      let res: Response;
       if (edgeType === 'partner') {
-        await fetch(`/api/families/${familyId}`, { method: 'DELETE' });
+        res = await fetch(`/api/families/${familyId}`, { method: 'DELETE' });
       } else if (edgeType === 'parentChild') {
-        await fetch(`/api/families/${familyId}/children/${edge.target}`, { method: 'DELETE' });
+        res = await fetch(`/api/families/${familyId}/children/${edge.target}`, { method: 'DELETE' });
+      } else return;
+      // 404 = already gone server-side, treat as success
+      if (res.ok || res.status === 404) {
+        toast.success('Relationship removed');
+      } else {
+        toast.error('Failed to remove relationship');
+        setEdges(eds => [...eds, edge]);
       }
-      toast.success('Relationship removed');
-      router.refresh();
     } catch {
       toast.error('Failed to remove relationship');
+      // Rollback: re-add edge on failure
+      setEdges(eds => [...eds, edge]);
     }
-  }, [router]);
+  }, [setEdges]);
 
   // Focus on person when focusPersonId is provided (e.g. from /tree?focus=...)
   useEffect(() => {
@@ -492,7 +518,7 @@ function TreeCanvasInner({ treeData, focusPersonId }: TreeCanvasProps) {
     const timer = setTimeout(() => {
       fitView({ nodes: [{ id: focusPersonId }], duration: 500, padding: 0.5 });
       const person = treeData.persons.find((p) => p.id === focusPersonId);
-      if (person) setSelectedPerson(person);
+      if (person) onSelectPerson(person);
     }, 200);
     return () => clearTimeout(timer);
   }, [focusPersonId, fitView, treeData]);
@@ -526,7 +552,7 @@ function TreeCanvasInner({ treeData, focusPersonId }: TreeCanvasProps) {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        setSelectedPerson(null);
+        onSelectPerson(null);
         setContextMenu(null);
       }
       if ((e.metaKey || e.ctrlKey) && e.key === 'a') {
@@ -539,10 +565,29 @@ function TreeCanvasInner({ treeData, focusPersonId }: TreeCanvasProps) {
   }, [setNodes]);
 
   return (
-    <div className="relative flex h-full">
-      <div
-        className={`flex-1 transition-all ${selectedPerson ? 'mr-[400px]' : ''}`}
-      >
+    <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+      <TreeToolbar
+        onAutoLayout={handleAutoLayout}
+        onTogglePalette={onTogglePalette}
+        paletteOpen={paletteOpen}
+        layouts={layouts}
+        activeLayoutId={activeLayoutId}
+        activeLayoutName={activeLayoutName}
+        onLoadLayout={handleLoadLayout}
+        onSaveAsNew={handleSaveAsNew}
+        onUpdateLayout={handleUpdateLayout}
+        onSetDefault={handleSetDefault}
+        onDeleteLayout={handleDeleteLayout}
+        onRenameLayout={handleRenameLayout}
+        filterState={filterState}
+        onToggleFilter={handleToggleFilter}
+        showGaps={showGaps}
+        onToggleGaps={() => setShowGaps(v => !v)}
+        view={view}
+        onSetView={onSetView}
+      />
+
+      <div className="flex-1 relative overflow-hidden">
         <ReactFlow
           aria-label="Family tree"
           nodes={nodes}
@@ -585,48 +630,15 @@ function TreeCanvasInner({ treeData, focusPersonId }: TreeCanvasProps) {
           />
         </ReactFlow>
 
-        <TreeToolbar
-          onAutoLayout={handleAutoLayout}
-          onTogglePalette={() => setPaletteOpen((v) => !v)}
-          paletteOpen={paletteOpen}
-          layouts={layouts}
-          activeLayoutId={activeLayoutId}
-          activeLayoutName={activeLayoutName}
-          onLoadLayout={handleLoadLayout}
-          onSaveAsNew={handleSaveAsNew}
-          onUpdateLayout={handleUpdateLayout}
-          onSetDefault={handleSetDefault}
-          onDeleteLayout={handleDeleteLayout}
-          onRenameLayout={handleRenameLayout}
-          filterState={filterState}
-          onToggleFilter={handleToggleFilter}
-          showGaps={showGaps}
-          onToggleGaps={() => setShowGaps(v => !v)}
-          view="canvas"
-          onToggleView={() => {}}
-        />
-
-        {paletteOpen && (
-          <PersonPalette onClose={() => setPaletteOpen(false)} />
-        )}
-
         {contextMenu && (
           <TreeContextMenu
             {...contextMenu}
             persons={treeData.persons}
             onClose={() => setContextMenu(null)}
+            onDeleteEdge={(eid) => setEdges(eds => eds.filter(e => e.id !== eid))}
           />
         )}
       </div>
-
-      {selectedPerson && (
-        <TreeDetailPanel
-          person={selectedPerson}
-          treeData={treeData}
-          onClose={handleClosePanel}
-          onFocusNode={handleFocusNode}
-        />
-      )}
     </div>
   );
 }

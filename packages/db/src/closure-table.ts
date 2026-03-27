@@ -10,20 +10,20 @@ const log = createLogger('closure-table');
  */
 export async function rebuildClosureTable(db: FamilyDatabase): Promise<void> {
   // 1. Delete all existing rows
-  db.run(sql`DELETE FROM ancestor_paths`);
+  await db.run(sql`DELETE FROM ancestor_paths`);
 
   // 2. Insert self-referencing rows for every non-deleted person
-  db.run(sql`
+  await db.run(sql`
     INSERT INTO ancestor_paths (ancestor_id, descendant_id, depth)
     SELECT id, id, 0 FROM persons WHERE deleted_at IS NULL
   `);
 
   // 3. Build parent->children map from families + children tables
-  const familyRows = db.all<{ id: string; partner1_id: string | null; partner2_id: string | null }>(
+  const familyRows = await db.all<{ id: string; partner1_id: string | null; partner2_id: string | null }>(
     sql`SELECT id, partner1_id, partner2_id FROM families WHERE deleted_at IS NULL`
   );
 
-  const childRows = db.all<{ family_id: string; person_id: string }>(
+  const childRows = await db.all<{ family_id: string; person_id: string }>(
     sql`SELECT family_id, person_id FROM children`
   );
 
@@ -47,7 +47,7 @@ export async function rebuildClosureTable(db: FamilyDatabase): Promise<void> {
   }
 
   // 4. Find root persons (not in children table)
-  const allPersons = db.all<{ id: string }>(
+  const allPersons = await db.all<{ id: string }>(
     sql`SELECT id FROM persons WHERE deleted_at IS NULL`
   );
 
@@ -70,7 +70,7 @@ export async function rebuildClosureTable(db: FamilyDatabase): Promise<void> {
 
         for (const [ancestorId, depth] of ancestors) {
           const newDepth = depth + 1;
-          db.run(sql`
+          await db.run(sql`
             INSERT OR IGNORE INTO ancestor_paths (ancestor_id, descendant_id, depth)
             VALUES (${ancestorId}, ${childId}, ${newDepth})
           `);
@@ -85,7 +85,7 @@ export async function rebuildClosureTable(db: FamilyDatabase): Promise<void> {
     }
   }
 
-  const count = db.all<{ cnt: number }>(sql`SELECT COUNT(*) as cnt FROM ancestor_paths`);
+  const count = await db.all<{ cnt: number }>(sql`SELECT COUNT(*) as cnt FROM ancestor_paths`);
   log.info({ pathCount: count[0]?.cnt ?? 0 }, 'Closure table rebuild complete');
 }
 
@@ -99,7 +99,7 @@ export async function addChildToFamily(
   childId: string,
 ): Promise<void> {
   // Look up family partners
-  const familyRows = db.all<{ partner1_id: string | null; partner2_id: string | null }>(
+  const familyRows = await db.all<{ partner1_id: string | null; partner2_id: string | null }>(
     sql`SELECT partner1_id, partner2_id FROM families WHERE id = ${familyId}`
   );
 
@@ -107,7 +107,7 @@ export async function addChildToFamily(
   const family = familyRows[0];
 
   // Ensure child has a self-reference row
-  db.run(sql`
+  await db.run(sql`
     INSERT OR IGNORE INTO ancestor_paths (ancestor_id, descendant_id, depth)
     VALUES (${childId}, ${childId}, 0)
   `);
@@ -117,12 +117,12 @@ export async function addChildToFamily(
     if (!parentId) continue;
 
     // All ancestors of the parent (including self)
-    const parentAncestors = db.all<{ ancestor_id: string; depth: number }>(
+    const parentAncestors = await db.all<{ ancestor_id: string; depth: number }>(
       sql`SELECT ancestor_id, depth FROM ancestor_paths WHERE descendant_id = ${parentId}`
     );
 
     // All descendants of the child (including self)
-    const childDescendants = db.all<{ descendant_id: string; depth: number }>(
+    const childDescendants = await db.all<{ descendant_id: string; depth: number }>(
       sql`SELECT descendant_id, depth FROM ancestor_paths WHERE ancestor_id = ${childId}`
     );
 
@@ -130,7 +130,7 @@ export async function addChildToFamily(
     for (const ancestor of parentAncestors) {
       for (const descendant of childDescendants) {
         const newDepth = ancestor.depth + descendant.depth + 1;
-        db.run(sql`
+        await db.run(sql`
           INSERT OR IGNORE INTO ancestor_paths (ancestor_id, descendant_id, depth)
           VALUES (${ancestor.ancestor_id}, ${descendant.descendant_id}, ${newDepth})
         `);
@@ -150,7 +150,7 @@ export async function removeChildFromFamily(
   childId: string,
 ): Promise<void> {
   // 1. Collect all descendants of childId (including self)
-  const descendants = db.all<{ descendant_id: string }>(
+  const descendants = await db.all<{ descendant_id: string }>(
     sql`SELECT descendant_id FROM ancestor_paths WHERE ancestor_id = ${childId}`
   );
 
@@ -158,7 +158,7 @@ export async function removeChildFromFamily(
 
   // 2. Delete all non-self ancestor_paths rows for those descendants
   for (const descId of descendantIds) {
-    db.run(sql`
+    await db.run(sql`
       DELETE FROM ancestor_paths
       WHERE descendant_id = ${descId} AND ancestor_id != descendant_id
     `);
@@ -168,36 +168,36 @@ export async function removeChildFromFamily(
   //    to re-insert any still-valid paths
   for (const descId of descendantIds) {
     // Find families this person belongs to as a child (remaining links)
-    const childLinks = db.all<{ family_id: string }>(
+    const childLinks = await db.all<{ family_id: string }>(
       sql`SELECT family_id FROM children WHERE person_id = ${descId}`
     );
 
     for (const link of childLinks) {
       // Get the family's parents
-      const familyRows = db.all<{ partner1_id: string | null; partner2_id: string | null }>(
+      const familyRows = await db.all<{ partner1_id: string | null; partner2_id: string | null }>(
         sql`SELECT partner1_id, partner2_id FROM families WHERE id = ${link.family_id}`
       );
 
       if (familyRows.length === 0) continue;
-      const family = familyRows[0];
+      const fam = familyRows[0];
 
-      for (const parentId of [family.partner1_id, family.partner2_id]) {
+      for (const parentId of [fam.partner1_id, fam.partner2_id]) {
         if (!parentId) continue;
 
         // All ancestors of the parent (including self)
-        const parentAncestors = db.all<{ ancestor_id: string; depth: number }>(
+        const parentAncestors = await db.all<{ ancestor_id: string; depth: number }>(
           sql`SELECT ancestor_id, depth FROM ancestor_paths WHERE descendant_id = ${parentId}`
         );
 
         // All descendants of descId (including self)
-        const subDescendants = db.all<{ descendant_id: string; depth: number }>(
+        const subDescendants = await db.all<{ descendant_id: string; depth: number }>(
           sql`SELECT descendant_id, depth FROM ancestor_paths WHERE ancestor_id = ${descId}`
         );
 
         for (const ancestor of parentAncestors) {
           for (const sub of subDescendants) {
             const newDepth = ancestor.depth + sub.depth + 1;
-            db.run(sql`
+            await db.run(sql`
               INSERT OR IGNORE INTO ancestor_paths (ancestor_id, descendant_id, depth)
               VALUES (${ancestor.ancestor_id}, ${sub.descendant_id}, ${newDepth})
             `);

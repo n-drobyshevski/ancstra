@@ -5,9 +5,9 @@ import { TreePageClient } from '@/components/tree/tree-page-client';
 export default async function TreePage({
   searchParams,
 }: {
-  searchParams: Promise<{ focus?: string; view?: string }>;
+  searchParams: Promise<{ focus?: string }>;
 }) {
-  const { focus, view } = await searchParams;
+  const { focus } = await searchParams;
   const authContext = await getAuthContext();
   if (!authContext) return null;
   const treeData = await getCachedTreeData(authContext.dbFilename);
@@ -31,5 +31,5 @@ export default async function TreePage({
     );
   }
 
-  return <TreePageClient treeData={treeData} view={view} focusPersonId={focus} />;
+  return <TreePageClient treeData={treeData} focusPersonId={focus} />;
 }

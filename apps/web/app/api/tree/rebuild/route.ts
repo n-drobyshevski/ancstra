@@ -13,6 +13,7 @@ export async function POST() {
     revalidateTag('dashboard', 'max');
     return NextResponse.json({ success: true, message: 'Closure table and summaries rebuilt' });
   } catch (error) {
+    console.error('[tree/rebuild] error:', error);
     return handleAuthError(error);
   }
 }

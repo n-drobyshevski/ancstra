@@ -58,7 +58,7 @@ export function TreeDetailPanel({ person, treeData, onClose, onFocusNode }: Tree
   }
 
   return (
-    <div className="absolute top-0 right-0 z-20 h-full w-[400px] border-l bg-card overflow-y-auto">
+    <div className="w-[400px] shrink-0 border-l border-border bg-card overflow-y-auto">
       <div className="flex items-center justify-between border-b p-4">
         <div>
           <h2 className="text-base font-semibold">{person.givenName} {person.surname}</h2>
