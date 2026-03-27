@@ -94,6 +94,7 @@ export {
   removeFactFromFactsheet,
   createFactsheetLink,
   getFactsheetLinks,
+  listAllFactsheetLinks,
   deleteFactsheetLink,
   getFactsheetCluster,
   suggestFactsheetLinks,

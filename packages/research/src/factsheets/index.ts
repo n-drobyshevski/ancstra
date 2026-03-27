@@ -19,6 +19,8 @@ export {
 } from './links';
 export type { CreateFactsheetLinkInput } from './links';
 
+export { listAllFactsheetLinks } from './links-queries';
+
 export {
   detectFactsheetConflicts,
   resolveFactsheetConflict,

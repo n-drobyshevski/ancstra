@@ -184,6 +184,17 @@ export function useFactsheetCount() {
 }
 
 // ---------------------------------------------------------------------------
+// useAllFactsheetLinks — fetch all links for graph view
+// ---------------------------------------------------------------------------
+export function useAllFactsheetLinks() {
+  const { data, isLoading, error, refetch } = useFetchData<{
+    links: FactsheetLink[];
+  }>('/api/research/factsheets/links');
+
+  return { links: data?.links ?? [], isLoading, error, refetch };
+}
+
+// ---------------------------------------------------------------------------
 // useInbox — fetch /api/research/inbox
 // ---------------------------------------------------------------------------
 export function useInbox() {
