@@ -3,7 +3,7 @@ import { FactsheetsLayout } from '@/components/research/factsheets/factsheets-la
 
 export default function FactsheetsPage() {
   return (
-    <div className="p-4">
+    <div className="h-full">
       <Suspense fallback={<div className="flex h-96 items-center justify-center text-muted-foreground">Loading factsheets...</div>}>
         <FactsheetsLayout />
       </Suspense>
