@@ -29,6 +29,7 @@ import { PersonPalette } from './person-palette';
 import { TreeContextMenu } from './tree-context-menu';
 import { TreeDetailPanel } from './tree-detail-panel';
 import { DraftPersonNode } from './draft-person-node';
+import { DraftFactsheetNode } from './draft-factsheet-node';
 import {
   treeDataToFlow,
   applyDagreLayout,
@@ -43,7 +44,7 @@ import {
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
-const nodeTypes = { person: PersonNode, draftPerson: DraftPersonNode };
+const nodeTypes = { person: PersonNode, draftPerson: DraftPersonNode, draftFactsheet: DraftFactsheetNode };
 const edgeTypes = { partner: PartnerEdge, parentChild: ParentChildEdge };
 
 interface TreeCanvasProps {
@@ -358,29 +359,52 @@ function TreeCanvasInner({ treeData, focusPersonId }: TreeCanvasProps) {
 
   const onDrop = useCallback((event: React.DragEvent) => {
     event.preventDefault();
-    const type = event.dataTransfer.getData('application/ancstra');
-    if (type !== 'new-person') return;
+    const transfer = event.dataTransfer.getData('application/ancstra');
+    if (!transfer) return;
 
     const position = screenToFlowPosition({ x: event.clientX, y: event.clientY });
     const draftId = `draft-${Date.now()}`;
 
-    setNodes((nds) => [
-      ...nds,
-      {
-        id: draftId,
-        type: 'draftPerson',
-        position,
-        data: {
-          onSave: () => {
-            setNodes((n) => n.filter((node) => node.id !== draftId));
-            router.refresh();
-          },
-          onCancel: () => {
-            setNodes((n) => n.filter((node) => node.id !== draftId));
+    if (transfer === 'new-person') {
+      setNodes((nds) => [
+        ...nds,
+        {
+          id: draftId,
+          type: 'draftPerson',
+          position,
+          data: {
+            onSave: () => {
+              setNodes((n) => n.filter((node) => node.id !== draftId));
+              router.refresh();
+            },
+            onCancel: () => {
+              setNodes((n) => n.filter((node) => node.id !== draftId));
+            },
           },
         },
-      },
-    ]);
+      ]);
+    } else if (transfer.startsWith('factsheet:')) {
+      const factsheetId = transfer.slice('factsheet:'.length);
+      setNodes((nds) => [
+        ...nds,
+        {
+          id: draftId,
+          type: 'draftFactsheet',
+          position,
+          data: {
+            factsheetId,
+            onPromoted: () => {
+              setNodes((n) => n.filter((node) => node.id !== draftId));
+              router.refresh();
+            },
+            onCancel: () => {
+              setNodes((n) => n.filter((node) => node.id !== draftId));
+            },
+          },
+        },
+      ]);
+    }
+
     setPaletteOpen(false);
   }, [screenToFlowPosition, setNodes, router]);
 
