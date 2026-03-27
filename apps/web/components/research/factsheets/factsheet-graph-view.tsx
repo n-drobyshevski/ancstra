@@ -117,6 +117,9 @@ export function FactsheetGraphView({ factsheets, links, selectedId, onSelectFact
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         fitView
+        fitViewOptions={{ maxZoom: 0.8, padding: 0.3 }}
+        minZoom={0.2}
+        maxZoom={2}
         proOptions={{ hideAttribution: true }}
         className="bg-muted/20"
       >
