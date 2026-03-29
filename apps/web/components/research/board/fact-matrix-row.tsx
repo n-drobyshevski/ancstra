@@ -17,9 +17,9 @@ interface FactMatrixRowProps {
 }
 
 const CONFIDENCE_COLORS: Record<string, string> = {
-  high: 'text-green-600 dark:text-green-400',
-  medium: 'text-yellow-600 dark:text-yellow-400',
-  low: 'text-red-600 dark:text-red-400',
+  high: 'text-status-success-text',
+  medium: 'text-status-warning-text',
+  low: 'text-status-error-text',
 };
 
 export function FactMatrixRow({ factType, cells }: FactMatrixRowProps) {

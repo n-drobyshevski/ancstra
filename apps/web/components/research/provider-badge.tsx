@@ -11,13 +11,13 @@ interface ProviderConfigEntry {
 const PROVIDER_CONFIG: Record<string, ProviderConfigEntry> = {
   mock: {
     label: 'Mock',
-    className: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
+    className: 'bg-[oklch(0.93_0.04_300)] text-[oklch(0.35_0.12_300)] dark:bg-[oklch(0.28_0.04_300)] dark:text-[oklch(0.75_0.10_300)]',
     borderClass: 'border-l-purple-500',
     icon: Globe,
   },
   nara: {
     label: 'NARA',
-    className: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
+    className: 'bg-[oklch(0.93_0.04_240)] text-[oklch(0.35_0.12_240)] dark:bg-[oklch(0.28_0.04_240)] dark:text-[oklch(0.75_0.10_240)]',
     borderClass: 'border-l-[oklch(0.60_0.12_240)]',
     icon: Archive,
   },
@@ -31,25 +31,25 @@ const PROVIDER_CONFIG: Record<string, ProviderConfigEntry> = {
   },
   familysearch: {
     label: 'FamilySearch',
-    className: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
+    className: 'bg-status-success-bg text-status-success-text',
     borderClass: 'border-l-[oklch(0.55_0.15_150)]',
     icon: Globe,
   },
   findagrave: {
     label: 'Find A Grave',
-    className: 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300',
+    className: 'bg-[oklch(0.93_0.04_180)] text-[oklch(0.35_0.12_180)] dark:bg-[oklch(0.28_0.04_180)] dark:text-[oklch(0.75_0.10_180)]',
     borderClass: 'border-l-provider-findagrave',
     icon: MapPin,
   },
   web_search: {
     label: 'Web Search',
-    className: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300',
+    className: 'bg-status-info-bg text-status-info-text',
     borderClass: 'border-l-primary',
     icon: Search,
   },
   wikitree: {
     label: 'WikiTree',
-    className: 'bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300',
+    className: 'bg-[oklch(0.93_0.04_300)] text-[oklch(0.35_0.12_300)] dark:bg-[oklch(0.28_0.04_300)] dark:text-[oklch(0.75_0.10_300)]',
     borderClass: 'border-l-provider-wikitree',
     icon: TreePine,
   },

@@ -72,7 +72,7 @@ export function FamilyPromoteModal({ open, onClose, factsheets, onPromoted }: Fa
           })}
 
           {nonDismissed.some((fs) => fs.conflictCount > 0) && (
-            <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
+            <div className="rounded-md border border-status-warning-bg bg-status-warning-bg p-3 text-xs text-status-warning-text">
               Some factsheets have unresolved conflicts. Resolve them first for best results.
             </div>
           )}

@@ -134,7 +134,7 @@ export function PendingInvites({ familyId }: PendingInvitesProps) {
                     <p
                       className={`text-xs ${
                         isExpiringSoon
-                          ? 'text-amber-600 dark:text-amber-400'
+                          ? 'text-status-warning-text'
                           : 'text-muted-foreground'
                       }`}
                     >

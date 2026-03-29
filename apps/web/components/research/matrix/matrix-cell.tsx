@@ -10,17 +10,17 @@ import {
 } from '@/components/ui/tooltip';
 
 const CONFIDENCE_BG: Record<string, string> = {
-  high: 'bg-green-50 dark:bg-green-950/30',
-  medium: 'bg-amber-50 dark:bg-amber-950/30',
-  low: 'bg-red-50 dark:bg-red-950/30',
-  disputed: 'bg-red-100 dark:bg-red-950/50',
+  high: 'bg-status-success-bg',
+  medium: 'bg-status-warning-bg',
+  low: 'bg-status-error-bg',
+  disputed: 'bg-status-error-bg',
 };
 
 const CONFIDENCE_TEXT: Record<string, string> = {
-  high: 'text-green-700 dark:text-green-400',
-  medium: 'text-yellow-700 dark:text-yellow-400',
-  low: 'text-red-700 dark:text-red-400',
-  disputed: 'text-red-800 dark:text-red-300',
+  high: 'text-status-success-text',
+  medium: 'text-status-warning-text',
+  low: 'text-status-error-text',
+  disputed: 'text-status-error-text',
 };
 
 interface MatrixCellComponentProps {

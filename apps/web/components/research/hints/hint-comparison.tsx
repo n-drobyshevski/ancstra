@@ -40,8 +40,8 @@ function fieldStatus(local: string | null | undefined, external: string | null |
 }
 
 const STATUS_STYLES = {
-  match: 'bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-300',
-  mismatch: 'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300',
+  match: 'bg-status-success-bg text-status-success-text',
+  mismatch: 'bg-status-warning-bg text-status-warning-text',
   missing: 'bg-muted text-muted-foreground',
 } as const;
 

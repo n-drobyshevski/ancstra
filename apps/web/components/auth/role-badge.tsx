@@ -5,10 +5,13 @@ import type { Role } from '@ancstra/auth';
 
 const ROLE_COLORS: Record<Role, string> = {
   owner:
-    'bg-violet-100 text-violet-800 dark:bg-violet-900 dark:text-violet-200',
-  admin: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-  editor: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-  viewer: 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200',
+    'bg-[oklch(0.93_0.04_300)] text-[oklch(0.35_0.12_300)] dark:bg-[oklch(0.28_0.04_300)] dark:text-[oklch(0.75_0.10_300)]',
+  admin:
+    'bg-[oklch(0.93_0.04_240)] text-[oklch(0.35_0.12_240)] dark:bg-[oklch(0.28_0.04_240)] dark:text-[oklch(0.75_0.10_240)]',
+  editor:
+    'bg-status-success-bg text-status-success-text',
+  viewer:
+    'bg-status-neutral-bg text-status-neutral-text',
 };
 
 export function RoleBadge({ role }: { role: Role }) {

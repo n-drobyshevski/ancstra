@@ -18,10 +18,10 @@ import {
 
 // Category colors for the icon background
 const CATEGORY_COLORS: Record<string, string> = {
-  databases: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
+  databases: 'bg-emerald-500/15 text-status-success-text',
   newspapers: 'bg-primary/15 text-primary',
-  cemeteries: 'bg-teal-500/15 text-teal-600 dark:text-teal-400',
-  web: 'bg-violet-500/15 text-violet-600 dark:text-violet-400',
+  cemeteries: 'bg-teal-500/15 text-[oklch(0.35_0.12_180)] dark:text-[oklch(0.75_0.10_180)]',
+  web: 'bg-violet-500/15 text-[oklch(0.35_0.12_300)] dark:text-[oklch(0.75_0.10_300)]',
 };
 
 // Map provider IDs to categories
@@ -67,7 +67,7 @@ function getStatusBadge(provider: SearchProvider): {
     return {
       label: 'Online',
       variant: 'outline',
-      className: 'border-emerald-500/50 text-emerald-600 dark:text-emerald-400',
+      className: 'border-emerald-500/50 text-status-success-text',
     };
   }
 
@@ -79,7 +79,7 @@ function getStatusBadge(provider: SearchProvider): {
     return {
       label: 'Degraded',
       variant: 'outline',
-      className: 'border-amber-500/50 text-amber-600 dark:text-amber-400',
+      className: 'border-amber-500/50 text-status-warning-text',
     };
   }
 
@@ -90,7 +90,7 @@ function getStatusBadge(provider: SearchProvider): {
       return {
         label: 'Needs Auth',
         variant: 'outline',
-        className: 'border-amber-500/50 text-amber-600 dark:text-amber-400',
+        className: 'border-amber-500/50 text-status-warning-text',
       };
     }
   }
@@ -341,7 +341,7 @@ export function ProviderCard({ provider, onUpdate }: ProviderCardProps) {
               className={cn(
                 'text-xs',
                 testResult.status === 'healthy'
-                  ? 'text-emerald-600 dark:text-emerald-400'
+                  ? 'text-status-success-text'
                   : testResult.status === 'down'
                     ? 'text-red-500'
                     : 'text-muted-foreground'
