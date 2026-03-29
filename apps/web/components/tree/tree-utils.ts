@@ -191,6 +191,39 @@ export function extractPositions(
   return positions;
 }
 
+export interface LayoutDataV2 {
+  positions: Record<string, { x: number; y: number }>;
+  nodeStyle?: NodeStyle;
+}
+
+/** Parse layoutData JSON — handles legacy flat positions and new v2 format */
+export function parseLayoutData(json: string): LayoutDataV2 {
+  const raw = JSON.parse(json);
+
+  // New format: has a `positions` key that is an object of {x,y} values
+  if (raw.positions && typeof raw.positions === 'object' && !Array.isArray(raw.positions)) {
+    return {
+      positions: raw.positions,
+      nodeStyle: raw.nodeStyle === 'compact' ? 'compact' : undefined,
+    };
+  }
+
+  // Legacy format: entire object is a positions record
+  return { positions: raw };
+}
+
+/** Serialize positions + nodeStyle to JSON for API storage */
+export function serializeLayoutData(
+  positions: Record<string, { x: number; y: number }>,
+  nodeStyle?: NodeStyle,
+): string {
+  const data: LayoutDataV2 = { positions };
+  if (nodeStyle && nodeStyle !== 'wide') {
+    data.nodeStyle = nodeStyle;
+  }
+  return JSON.stringify(data);
+}
+
 export function validateConnection(
   treeData: TreeData,
   sourceId: string,

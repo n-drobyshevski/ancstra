@@ -6,6 +6,8 @@ import {
   COMPACT_NODE_HEIGHT,
   type NodeStyle,
   applyDagreLayout,
+  parseLayoutData,
+  serializeLayoutData,
 } from '../../components/tree/tree-utils';
 import type { Node, Edge } from '@xyflow/react';
 
@@ -57,5 +59,40 @@ describe('applyDagreLayout with nodeStyle', () => {
     const compactResult = applyDagreLayout(nodes, edges, undefined, 'compact');
     const gap = Math.abs(compactResult[1].position.x - compactResult[0].position.x);
     expect(gap).toBe(144);
+  });
+});
+
+describe('layout data serialization', () => {
+  it('parses legacy format (flat positions record)', () => {
+    const legacy = JSON.stringify({ p1: { x: 10, y: 20 }, p2: { x: 30, y: 40 } });
+    const result = parseLayoutData(legacy);
+    expect(result.positions).toEqual({ p1: { x: 10, y: 20 }, p2: { x: 30, y: 40 } });
+    expect(result.nodeStyle).toBeUndefined();
+  });
+
+  it('parses new format with nodeStyle', () => {
+    const data = JSON.stringify({
+      positions: { p1: { x: 10, y: 20 } },
+      nodeStyle: 'compact',
+    });
+    const result = parseLayoutData(data);
+    expect(result.positions).toEqual({ p1: { x: 10, y: 20 } });
+    expect(result.nodeStyle).toBe('compact');
+  });
+
+  it('serializes to new format with compact style', () => {
+    const positions = { p1: { x: 10, y: 20 } };
+    const json = serializeLayoutData(positions, 'compact');
+    const parsed = JSON.parse(json);
+    expect(parsed.positions).toEqual(positions);
+    expect(parsed.nodeStyle).toBe('compact');
+  });
+
+  it('omits nodeStyle when wide (default)', () => {
+    const positions = { p1: { x: 10, y: 20 } };
+    const json = serializeLayoutData(positions, 'wide');
+    const parsed = JSON.parse(json);
+    expect(parsed.positions).toEqual(positions);
+    expect(parsed.nodeStyle).toBeUndefined();
   });
 });
