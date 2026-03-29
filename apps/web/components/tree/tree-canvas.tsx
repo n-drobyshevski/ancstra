@@ -34,7 +34,10 @@ import {
   applyPositionMap,
   extractPositions,
   validateConnection,
+  parseLayoutData,
+  serializeLayoutData,
   type FilterState,
+  type NodeStyle,
   DEFAULT_FILTERS,
   applyFilters,
   applyEdgeFilters,
@@ -100,6 +103,7 @@ function TreeCanvasInner({ treeData, focusPersonId, paletteOpen, onTogglePalette
 
   const [filterState, setFilterState] = useState<FilterState>(DEFAULT_FILTERS);
   const [showGaps, setShowGaps] = useState(false);
+  const [nodeStyle, setNodeStyle] = useState<NodeStyle>('wide');
   const { qualityData } = useQualityData(showGaps);
 
   // Sync nodes/edges when treeData changes (after router.refresh)
@@ -114,7 +118,7 @@ function TreeCanvasInner({ treeData, focusPersonId, paletteOpen, onTogglePalette
       for (const n of prev) {
         if (n.type !== 'draftPerson') posMap[n.id] = n.position;
       }
-      const laid = applyDagreLayout(rawNodes, rawEdges, showGaps ? 82 : undefined);
+      const laid = applyDagreLayout(rawNodes, rawEdges, showGaps ? 82 : undefined, nodeStyle);
       return laid.map((n) => ({
         ...n,
         position: posMap[n.id] ?? n.position,
@@ -126,7 +130,7 @@ function TreeCanvasInner({ treeData, focusPersonId, paletteOpen, onTogglePalette
       const optimistic = prev.filter(e => !serverIds.has(e.id));
       return [...rawEdges, ...optimistic];
     });
-  }, [treeData, rawNodes, rawEdges, setNodes, setEdges, showGaps]);
+  }, [treeData, rawNodes, rawEdges, setNodes, setEdges, showGaps, nodeStyle]);
 
   const handleToggleFilter = useCallback((category: 'sex' | 'living', key: string) => {
     setFilterState(prev => ({
@@ -152,15 +156,16 @@ function TreeCanvasInner({ treeData, focusPersonId, paletteOpen, onTogglePalette
           fetch(`/api/layouts/${defaultLayout.id}`)
             .then((r) => r.json())
             .then((layout) => {
-              const positions = JSON.parse(layout.layoutData);
+              const { positions, nodeStyle: savedStyle } = parseLayoutData(layout.layoutData);
               setNodes(applyPositionMap(rawNodes, positions));
               setActiveLayoutId(layout.id);
               setActiveLayoutName(layout.name);
+              if (savedStyle) setNodeStyle(savedStyle);
             });
         } else if (typeof window !== 'undefined' && localStorage.getItem('ancstra-tree-layout')) {
           const stored = localStorage.getItem('ancstra-tree-layout');
           if (stored) {
-            const positions = JSON.parse(stored);
+            const { positions } = parseLayoutData(stored);
             setNodes(applyPositionMap(rawNodes, positions));
             fetch('/api/layouts', {
               method: 'POST',
@@ -203,14 +208,14 @@ function TreeCanvasInner({ treeData, focusPersonId, paletteOpen, onTogglePalette
             fetch(`/api/layouts/${activeLayoutId}`, {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ layoutData: JSON.stringify(positions) }),
+              body: JSON.stringify({ layoutData: serializeLayoutData(positions, nodeStyle) }),
             });
             return currentNodes;
           });
         }, 2000);
       }
     },
-    [onNodesChange, setNodes, activeLayoutId],
+    [onNodesChange, setNodes, activeLayoutId, nodeStyle],
   );
 
   const onNodeClick = useCallback(
@@ -266,21 +271,29 @@ function TreeCanvasInner({ treeData, focusPersonId, paletteOpen, onTogglePalette
   const onPaneClick = useCallback(() => setContextMenu(null), []);
 
   const handleAutoLayout = useCallback(() => {
-    const laid = applyDagreLayout(rawNodes, rawEdges, showGaps ? 82 : undefined);
+    const laid = applyDagreLayout(rawNodes, rawEdges, showGaps ? 82 : undefined, nodeStyle);
     setNodes(laid);
     setActiveLayoutId(null);
     setActiveLayoutName(null);
-  }, [rawNodes, rawEdges, setNodes, showGaps]);
+  }, [rawNodes, rawEdges, setNodes, showGaps, nodeStyle]);
+
+  const handleNodeStyleChange = useCallback((style: NodeStyle) => {
+    setNodeStyle(style);
+    const laid = applyDagreLayout(rawNodes, rawEdges, showGaps ? 82 : undefined, style);
+    setNodes(laid);
+    setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 50);
+  }, [rawNodes, rawEdges, setNodes, showGaps, fitView]);
 
   const handleLoadLayout = useCallback(
     (id: string) => {
       fetch(`/api/layouts/${id}`)
         .then((r) => r.json())
         .then((layout) => {
-          const positions = JSON.parse(layout.layoutData);
+          const { positions, nodeStyle: savedStyle } = parseLayoutData(layout.layoutData);
           setNodes(applyPositionMap(rawNodes, positions));
           setActiveLayoutId(layout.id);
           setActiveLayoutName(layout.name);
+          setNodeStyle(savedStyle ?? 'wide');
         });
     },
     [rawNodes, setNodes],
@@ -294,7 +307,7 @@ function TreeCanvasInner({ treeData, focusPersonId, paletteOpen, onTogglePalette
       fetch('/api/layouts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, layoutData: JSON.stringify(positions) }),
+        body: JSON.stringify({ name, layoutData: serializeLayoutData(positions, nodeStyle) }),
       })
         .then((r) => r.json())
         .then((layout) => {
@@ -305,7 +318,7 @@ function TreeCanvasInner({ treeData, focusPersonId, paletteOpen, onTogglePalette
         });
       return currentNodes;
     });
-  }, [setNodes, refreshLayouts]);
+  }, [setNodes, refreshLayouts, nodeStyle]);
 
   const handleUpdateLayout = useCallback(() => {
     if (!activeLayoutId) {
@@ -317,13 +330,13 @@ function TreeCanvasInner({ treeData, focusPersonId, paletteOpen, onTogglePalette
       fetch(`/api/layouts/${activeLayoutId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ layoutData: JSON.stringify(positions) }),
+        body: JSON.stringify({ layoutData: serializeLayoutData(positions, nodeStyle) }),
       }).then(() => {
         toast.success('Layout updated');
       });
       return currentNodes;
     });
-  }, [activeLayoutId, setNodes]);
+  }, [activeLayoutId, setNodes, nodeStyle]);
 
   const handleSetDefault = useCallback(() => {
     if (!activeLayoutId) return;
@@ -618,6 +631,14 @@ function TreeCanvasInner({ treeData, focusPersonId, paletteOpen, onTogglePalette
     }));
   }, [showGaps, qualityData, setNodes]);
 
+  // Stamp nodeStyle onto person nodes when it changes
+  useEffect(() => {
+    setNodes(nds => nds.map(node => {
+      if (node.type !== 'person') return node;
+      return { ...node, data: { ...node.data, nodeStyle } };
+    }));
+  }, [nodeStyle, setNodes]);
+
   // Compute filtered edges (dimmed based on node dimmed status)
   const filteredEdges = useMemo(() => applyEdgeFilters(edges, nodes), [edges, nodes]);
 
@@ -658,6 +679,8 @@ function TreeCanvasInner({ treeData, focusPersonId, paletteOpen, onTogglePalette
         onToggleGaps={() => setShowGaps(v => !v)}
         view={view}
         onSetView={onSetView}
+        nodeStyle={nodeStyle}
+        onNodeStyleChange={handleNodeStyleChange}
       />
 
       <div className="flex-1 relative overflow-hidden">
