@@ -104,21 +104,31 @@ export function treeDataToFlow(data: TreeData): {
   return { nodes, edges };
 }
 
-export function applyDagreLayout(nodes: Node[], edges: Edge[], nodeHeight = NODE_HEIGHT): Node[] {
+export function applyDagreLayout(
+  nodes: Node[],
+  edges: Edge[],
+  nodeHeight?: number,
+  nodeStyle: NodeStyle = 'wide',
+): Node[] {
   if (nodes.length === 0) return nodes;
+
+  const isCompact = nodeStyle === 'compact';
+  const width = isCompact ? COMPACT_NODE_WIDTH : NODE_WIDTH;
+  const height = nodeHeight ?? (isCompact ? COMPACT_NODE_HEIGHT : NODE_HEIGHT);
+  const partnerGap = isCompact ? COMPACT_PARTNER_GAP : PARTNER_GAP;
 
   const g = new dagre.graphlib.Graph();
   g.setDefaultEdgeLabel(() => ({}));
   g.setGraph({
     rankdir: 'TB',
-    ranksep: 120,
-    nodesep: 80,
+    ranksep: isCompact ? 100 : 120,
+    nodesep: isCompact ? 50 : 80,
     marginx: 40,
     marginy: 40,
   });
 
   for (const node of nodes) {
-    g.setNode(node.id, { width: NODE_WIDTH, height: nodeHeight });
+    g.setNode(node.id, { width, height });
   }
 
   for (const edge of edges) {
@@ -133,7 +143,7 @@ export function applyDagreLayout(nodes: Node[], edges: Edge[], nodeHeight = NODE
     const pos = g.node(node.id);
     return {
       ...node,
-      position: { x: pos.x - NODE_WIDTH / 2, y: pos.y - NODE_HEIGHT / 2 },
+      position: { x: pos.x - width / 2, y: pos.y - height / 2 },
     };
   });
 
@@ -143,16 +153,14 @@ export function applyDagreLayout(nodes: Node[], edges: Edge[], nodeHeight = NODE
     const sourceNode = positioned.find((n) => n.id === pe.source);
     const targetNode = positioned.find((n) => n.id === pe.target);
     if (sourceNode && targetNode) {
-      const midX =
-        (sourceNode.position.x + targetNode.position.x) / 2;
-      const midY =
-        (sourceNode.position.y + targetNode.position.y) / 2;
+      const midX = (sourceNode.position.x + targetNode.position.x) / 2;
+      const midY = (sourceNode.position.y + targetNode.position.y) / 2;
       sourceNode.position = {
-        x: midX - (NODE_WIDTH + PARTNER_GAP) / 2,
+        x: midX - (width + partnerGap) / 2,
         y: midY,
       };
       targetNode.position = {
-        x: midX + (NODE_WIDTH + PARTNER_GAP) / 2,
+        x: midX + (width + partnerGap) / 2,
         y: midY,
       };
     }
