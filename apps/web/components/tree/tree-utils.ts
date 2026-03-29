@@ -11,11 +11,18 @@ const NODE_WIDTH = 240;
 const NODE_HEIGHT = 70;
 const PARTNER_GAP = 40;
 
+const COMPACT_NODE_WIDTH = 120;
+const COMPACT_NODE_HEIGHT = 80;
+const COMPACT_PARTNER_GAP = 24;
+
+export type NodeStyle = 'wide' | 'compact';
+
 export interface PersonNodeData extends PersonListItem {
   label: string;
   qualityScore?: number;
   missingFields?: string[];
   showGaps?: boolean;
+  nodeStyle?: NodeStyle;
   [key: string]: unknown;
 }
 
@@ -97,21 +104,31 @@ export function treeDataToFlow(data: TreeData): {
   return { nodes, edges };
 }
 
-export function applyDagreLayout(nodes: Node[], edges: Edge[], nodeHeight = NODE_HEIGHT): Node[] {
+export function applyDagreLayout(
+  nodes: Node[],
+  edges: Edge[],
+  nodeHeight?: number,
+  nodeStyle: NodeStyle = 'wide',
+): Node[] {
   if (nodes.length === 0) return nodes;
+
+  const isCompact = nodeStyle === 'compact';
+  const width = isCompact ? COMPACT_NODE_WIDTH : NODE_WIDTH;
+  const height = nodeHeight ?? (isCompact ? COMPACT_NODE_HEIGHT : NODE_HEIGHT);
+  const partnerGap = isCompact ? COMPACT_PARTNER_GAP : PARTNER_GAP;
 
   const g = new dagre.graphlib.Graph();
   g.setDefaultEdgeLabel(() => ({}));
   g.setGraph({
     rankdir: 'TB',
-    ranksep: 120,
-    nodesep: 80,
+    ranksep: isCompact ? 100 : 120,
+    nodesep: isCompact ? 50 : 80,
     marginx: 40,
     marginy: 40,
   });
 
   for (const node of nodes) {
-    g.setNode(node.id, { width: NODE_WIDTH, height: nodeHeight });
+    g.setNode(node.id, { width, height });
   }
 
   for (const edge of edges) {
@@ -126,7 +143,7 @@ export function applyDagreLayout(nodes: Node[], edges: Edge[], nodeHeight = NODE
     const pos = g.node(node.id);
     return {
       ...node,
-      position: { x: pos.x - NODE_WIDTH / 2, y: pos.y - NODE_HEIGHT / 2 },
+      position: { x: pos.x - width / 2, y: pos.y - height / 2 },
     };
   });
 
@@ -136,16 +153,14 @@ export function applyDagreLayout(nodes: Node[], edges: Edge[], nodeHeight = NODE
     const sourceNode = positioned.find((n) => n.id === pe.source);
     const targetNode = positioned.find((n) => n.id === pe.target);
     if (sourceNode && targetNode) {
-      const midX =
-        (sourceNode.position.x + targetNode.position.x) / 2;
-      const midY =
-        (sourceNode.position.y + targetNode.position.y) / 2;
+      const midX = (sourceNode.position.x + targetNode.position.x) / 2;
+      const midY = (sourceNode.position.y + targetNode.position.y) / 2;
       sourceNode.position = {
-        x: midX - (NODE_WIDTH + PARTNER_GAP) / 2,
+        x: midX - (width + partnerGap) / 2,
         y: midY,
       };
       targetNode.position = {
-        x: midX + (NODE_WIDTH + PARTNER_GAP) / 2,
+        x: midX + (width + partnerGap) / 2,
         y: midY,
       };
     }
@@ -174,6 +189,39 @@ export function extractPositions(
     positions[n.id] = { x: n.position.x, y: n.position.y };
   }
   return positions;
+}
+
+export interface LayoutDataV2 {
+  positions: Record<string, { x: number; y: number }>;
+  nodeStyle?: NodeStyle;
+}
+
+/** Parse layoutData JSON — handles legacy flat positions and new v2 format */
+export function parseLayoutData(json: string): LayoutDataV2 {
+  const raw = JSON.parse(json);
+
+  // New format: has a `positions` key that is an object of {x,y} values
+  if (raw.positions && typeof raw.positions === 'object' && !Array.isArray(raw.positions)) {
+    return {
+      positions: raw.positions,
+      nodeStyle: raw.nodeStyle === 'compact' ? 'compact' : undefined,
+    };
+  }
+
+  // Legacy format: entire object is a positions record
+  return { positions: raw };
+}
+
+/** Serialize positions + nodeStyle to JSON for API storage */
+export function serializeLayoutData(
+  positions: Record<string, { x: number; y: number }>,
+  nodeStyle?: NodeStyle,
+): string {
+  const data: LayoutDataV2 = { positions };
+  if (nodeStyle && nodeStyle !== 'wide') {
+    data.nodeStyle = nodeStyle;
+  }
+  return JSON.stringify(data);
 }
 
 export function validateConnection(
@@ -259,4 +307,4 @@ export function applyEdgeFilters(edges: Edge[], nodes: Node[]): Edge[] {
   }));
 }
 
-export { NODE_WIDTH, NODE_HEIGHT };
+export { NODE_WIDTH, NODE_HEIGHT, COMPACT_NODE_WIDTH, COMPACT_NODE_HEIGHT };
