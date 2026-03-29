@@ -1,9 +1,9 @@
-import { eq, asc } from 'drizzle-orm';
+import { eq, asc, sql } from 'drizzle-orm';
 import { researchFacts } from '@ancstra/db';
 import type { Database } from '@ancstra/db';
 
 export interface CreateFactInput {
-  personId: string;
+  personId?: string | null;
   factType: 'name' | 'birth_date' | 'birth_place' | 'death_date' | 'death_place'
     | 'marriage_date' | 'marriage_place' | 'residence' | 'occupation'
     | 'immigration' | 'military_service' | 'religion' | 'ethnicity'
@@ -11,6 +11,7 @@ export interface CreateFactInput {
   factValue: string;
   factDateSort?: number;
   researchItemId?: string;
+  factsheetId?: string;
   sourceCitationId?: string;
   confidence?: 'high' | 'medium' | 'low' | 'disputed';
   extractionMethod?: 'manual' | 'ai_extracted' | 'ocr_extracted';
@@ -28,11 +29,12 @@ export async function createFact(db: Database, input: CreateFactInput) {
   await db.insert(researchFacts)
     .values({
       id,
-      personId: input.personId,
+      personId: input.personId ?? null,
       factType: input.factType,
       factValue: input.factValue,
       factDateSort: input.factDateSort ?? null,
       researchItemId: input.researchItemId ?? null,
+      factsheetId: input.factsheetId ?? null,
       sourceCitationId: input.sourceCitationId ?? null,
       confidence: input.confidence ?? 'medium',
       extractionMethod: input.extractionMethod ?? 'manual',
@@ -65,6 +67,50 @@ export async function getFactsByResearchItem(db: Database, researchItemId: strin
     .from(researchFacts)
     .where(eq(researchFacts.researchItemId, researchItemId))
     .orderBy(asc(researchFacts.factDateSort))
+    .all();
+}
+
+export async function getFactsByFactsheet(db: Database, factsheetId: string) {
+  return await db
+    .select()
+    .from(researchFacts)
+    .where(eq(researchFacts.factsheetId, factsheetId))
+    .orderBy(asc(researchFacts.factDateSort))
+    .all();
+}
+
+export async function batchCreateFacts(db: Database, inputs: CreateFactInput[]) {
+  if (inputs.length === 0) return [];
+
+  const now = new Date().toISOString();
+  const ids: string[] = [];
+
+  for (const input of inputs) {
+    const id = crypto.randomUUID();
+    ids.push(id);
+
+    await db.insert(researchFacts)
+      .values({
+        id,
+        personId: input.personId ?? null,
+        factType: input.factType,
+        factValue: input.factValue,
+        factDateSort: input.factDateSort ?? null,
+        researchItemId: input.researchItemId ?? null,
+        factsheetId: input.factsheetId ?? null,
+        sourceCitationId: input.sourceCitationId ?? null,
+        confidence: input.confidence ?? 'medium',
+        extractionMethod: input.extractionMethod ?? 'manual',
+        createdAt: now,
+        updatedAt: now,
+      })
+      .run();
+  }
+
+  return await db
+    .select()
+    .from(researchFacts)
+    .where(sql`${researchFacts.id} IN (${sql.join(ids.map(id => sql`${id}`), sql`, `)})`)
     .all();
 }
 

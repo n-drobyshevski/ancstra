@@ -2,9 +2,9 @@ import { NextResponse } from 'next/server';
 import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
 import { generateAuthUrl } from '@ancstra/research';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    await withAuth('ai:research');
+    await withAuth('ai:research', request);
 
     const clientId = process.env.FAMILYSEARCH_CLIENT_ID;
     const redirectUri = process.env.FAMILYSEARCH_REDIRECT_URI;

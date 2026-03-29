@@ -24,7 +24,7 @@ export interface SourcePreset {
 
 const CATEGORIES: { id: string; label: string; color: string }[] = [
   { id: 'databases', label: 'Databases', color: 'text-emerald-500' },
-  { id: 'newspapers', label: 'Newspapers & Media', color: 'text-amber-500' },
+  { id: 'newspapers', label: 'Newspapers & Media', color: 'text-primary' },
   { id: 'cemeteries', label: 'Cemeteries', color: 'text-teal-500' },
   { id: 'web', label: 'Web & Community', color: 'text-violet-500' },
 ];

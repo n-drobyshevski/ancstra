@@ -3,6 +3,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { Loader2, X, Users } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
@@ -72,9 +78,19 @@ export function DraftFactsheetNode({ data }: { data: DraftFactsheetNodeData }) {
   const topMatch = matches[0];
 
   return (
-    <>
-      <Handle type="target" position={Position.Top} className="!bg-primary" />
-      <Handle type="source" position={Position.Bottom} className="!bg-primary" />
+    <TooltipProvider delayDuration={300}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Handle type="target" position={Position.Top} className="!bg-primary" />
+        </TooltipTrigger>
+        <TooltipContent side="top" className="text-xs">Parents</TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Handle type="source" position={Position.Bottom} className="!bg-primary" />
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="text-xs">Children</TooltipContent>
+      </Tooltip>
 
       <div className="w-[240px] rounded-lg border-2 border-dashed border-primary/40 bg-card p-3 shadow-md space-y-2.5 nowheel">
         {/* Header */}
@@ -164,6 +180,6 @@ export function DraftFactsheetNode({ data }: { data: DraftFactsheetNodeData }) {
           </Button>
         </div>
       </div>
-    </>
+    </TooltipProvider>
   );
 }

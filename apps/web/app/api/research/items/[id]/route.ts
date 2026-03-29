@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
 import {
   getResearchItem,
-  updateResearchItemStatus,
   updateResearchItemNotes,
   updateResearchItemContent,
   deleteResearchItem,
@@ -41,17 +40,6 @@ export async function PATCH(
     const existing = getResearchItem(familyDb, id);
     if (!existing) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
-    }
-
-    if (body.status !== undefined) {
-      const validStatuses = ['draft', 'promoted', 'dismissed'];
-      if (!validStatuses.includes(body.status)) {
-        return NextResponse.json(
-          { error: 'Invalid status. Must be one of: draft, promoted, dismissed' },
-          { status: 400 }
-        );
-      }
-      await updateResearchItemStatus(familyDb, id, body.status);
     }
 
     if (body.notes !== undefined) {

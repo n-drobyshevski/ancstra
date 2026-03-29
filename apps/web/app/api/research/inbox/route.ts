@@ -4,7 +4,7 @@ import { listUnanchoredItems, getUnanchoredCount } from '@ancstra/research';
 
 export async function GET(request: Request) {
   try {
-    const { familyDb } = await withAuth('ai:research');
+    const { familyDb } = await withAuth('ai:research', request);
     const { searchParams } = new URL(request.url);
 
     // Count-only mode for badge

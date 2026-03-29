@@ -13,10 +13,12 @@ export interface AuthContext {
 
 /**
  * Get the authenticated user's context from proxy headers.
- * Call this in API routes or server components.
+ * Pass `request` from route handlers to avoid async headers() — prevents
+ * HANGING_PROMISE_REJECTION warnings during Next.js prerendering.
+ * Falls back to next/headers for server components.
  */
-export async function getAuthContext(): Promise<AuthContext | null> {
-  const headersList = await headers();
+export async function getAuthContext(request?: Request): Promise<AuthContext | null> {
+  const headersList = request ? request.headers : await headers();
   const userId = headersList.get('x-user-id');
   const familyId = headersList.get('x-family-id');
 
@@ -78,8 +80,8 @@ export async function getAuthContext(): Promise<AuthContext | null> {
 /**
  * Require auth context — throws if not authenticated.
  */
-export async function requireAuthContext(): Promise<AuthContext> {
-  const ctx = await getAuthContext();
+export async function requireAuthContext(request?: Request): Promise<AuthContext> {
+  const ctx = await getAuthContext(request);
   if (!ctx) {
     throw new Error('Not authenticated or no family membership');
   }

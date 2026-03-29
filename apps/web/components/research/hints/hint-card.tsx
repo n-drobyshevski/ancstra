@@ -152,7 +152,7 @@ export function HintCard({ hint, localPerson, onAccept, onReject, onMaybe }: Hin
           <Button
             variant="outline"
             size="sm"
-            className="text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+            className="text-primary hover:bg-primary/10"
             onClick={() => onMaybe(hint.id)}
           >
             <HelpCircle className="size-3.5 mr-1" />

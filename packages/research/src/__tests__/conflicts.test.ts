@@ -96,7 +96,7 @@ beforeEach(() => {
     );
     CREATE TABLE research_facts (
       id TEXT PRIMARY KEY,
-      person_id TEXT NOT NULL REFERENCES persons(id) ON DELETE CASCADE,
+      person_id TEXT REFERENCES persons(id) ON DELETE CASCADE,
       fact_type TEXT NOT NULL,
       fact_value TEXT NOT NULL,
       fact_date_sort INTEGER,

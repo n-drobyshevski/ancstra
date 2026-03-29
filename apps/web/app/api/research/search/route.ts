@@ -40,7 +40,7 @@ function buildRegistry(providerIds?: string[]): ProviderRegistry {
 
 export async function GET(request: Request) {
   try {
-    await withAuth('ai:research');
+    await withAuth('ai:research', request);
 
     const { searchParams } = new URL(request.url);
 

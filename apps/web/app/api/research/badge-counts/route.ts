@@ -6,7 +6,7 @@ import { detectConflicts } from '@ancstra/research';
 
 export async function GET(request: Request) {
   try {
-    const { familyDb } = await withAuth('ai:research');
+    const { familyDb } = await withAuth('ai:research', request);
 
     const { searchParams } = new URL(request.url);
     const personId = searchParams.get('personId');

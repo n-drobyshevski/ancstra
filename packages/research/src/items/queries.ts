@@ -16,7 +16,6 @@ export interface CreateResearchItemInput {
 }
 
 export interface ResearchItemFilters {
-  status?: 'draft' | 'promoted' | 'dismissed';
   personId?: string;
   createdBy?: string;
 }
@@ -79,9 +78,6 @@ export async function getResearchItem(db: Database, id: string) {
 export async function listResearchItems(db: Database, filters?: ResearchItemFilters) {
   const conditions = [];
 
-  if (filters?.status) {
-    conditions.push(eq(researchItems.status, filters.status));
-  }
   if (filters?.createdBy) {
     conditions.push(eq(researchItems.createdBy, filters.createdBy));
   }
@@ -133,17 +129,6 @@ export async function listResearchItems(db: Database, filters?: ResearchItemFilt
     ...item,
     personIds: personMap.get(item.id) ?? [],
   }));
-}
-
-export async function updateResearchItemStatus(
-  db: Database,
-  id: string,
-  status: 'draft' | 'promoted' | 'dismissed'
-) {
-  await db.update(researchItems)
-    .set({ status, updatedAt: new Date().toISOString() })
-    .where(eq(researchItems.id, id))
-    .run();
 }
 
 export async function updateResearchItemNotes(db: Database, id: string, notes: string) {
@@ -217,8 +202,7 @@ export async function listUnanchoredItems(db: Database, opts?: { limit?: number;
     SELECT ri.id, ri.title, ri.url, ri.snippet, ri.status,
            ri.discovery_method as discoveryMethod, ri.created_at as createdAt
     FROM research_items ri
-    WHERE ri.status = 'draft'
-      AND NOT EXISTS (
+    WHERE NOT EXISTS (
         SELECT 1 FROM research_item_persons rip
         WHERE rip.research_item_id = ri.id
       )
@@ -234,8 +218,7 @@ export async function getUnanchoredCount(db: Database): Promise<number> {
   const rows = await db.all<{ count: number }>(sql`
     SELECT COUNT(*) as count
     FROM research_items ri
-    WHERE ri.status = 'draft'
-      AND NOT EXISTS (
+    WHERE NOT EXISTS (
         SELECT 1 FROM research_item_persons rip
         WHERE rip.research_item_id = ri.id
       )

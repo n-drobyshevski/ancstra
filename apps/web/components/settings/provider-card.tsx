@@ -19,7 +19,7 @@ import {
 // Category colors for the icon background
 const CATEGORY_COLORS: Record<string, string> = {
   databases: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
-  newspapers: 'bg-amber-500/15 text-amber-600 dark:text-amber-400',
+  newspapers: 'bg-primary/15 text-primary',
   cemeteries: 'bg-teal-500/15 text-teal-600 dark:text-teal-400',
   web: 'bg-violet-500/15 text-violet-600 dark:text-violet-400',
 };

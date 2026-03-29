@@ -7,10 +7,15 @@ import { ItemNotesEditor } from './item-notes-editor';
 import { ContentViewer } from './content-viewer';
 import { useScrapeUrl } from '@/lib/research/scrape-client';
 import { toast } from 'sonner';
+import { useFactExtraction } from '../extraction/use-fact-extraction';
+import { useTextHighlighter } from '../extraction/use-text-highlighter';
+import { FactContextMenu } from '../extraction/fact-context-menu';
+import { FactPanel, FactPanelBadge } from '../extraction/fact-panel';
 
 interface ItemContentProps {
   item: {
     id: string;
+    title: string;
     snippet: string | null;
     fullText: string | null;
     notes: string | null;
@@ -31,6 +36,70 @@ export function ItemContent({ item, onNotesChange, onRefresh, onScrapeJobStarted
   const [saving, setSaving] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [iframeKey, setIframeKey] = useState(0);
+
+  // --- Fact extraction ---
+  const extraction = useFactExtraction({
+    researchItemId: item.id,
+    researchItemTitle: item.title,
+  });
+
+  // Wire ref callbacks to the extraction hook's refs
+  const handleSrcDocIframeRef = useCallback((el: HTMLIFrameElement | null) => {
+    (extraction.iframeRef as React.MutableRefObject<HTMLIFrameElement | null>).current = el;
+    if (el) extraction.attachIframeListeners();
+  }, [extraction]);
+
+  const handlePlainTextRef = useCallback((el: HTMLDivElement | null) => {
+    (extraction.plainTextRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
+  }, [extraction]);
+
+  // Text highlighting for extracted facts
+  useTextHighlighter(extraction.session.facts, extraction.iframeRef, extraction.plainTextRef);
+
+  // Save handler: create factsheet + batch insert facts
+  const handleSaveToFactsheet = useCallback(async () => {
+    const { session } = extraction;
+    if (session.facts.length === 0) return;
+
+    try {
+      // Create or reuse factsheet
+      let factsheetId = session.factsheetId;
+      if (!factsheetId) {
+        const res = await fetch('/api/research/factsheets', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title: session.factsheetTitle }),
+        });
+        if (!res.ok) throw new Error('Failed to create factsheet');
+        const data = await res.json();
+        factsheetId = data.id;
+        extraction.setFactsheetId(factsheetId!);
+      }
+
+      // Batch create facts
+      const factsPayload = session.facts.map((f) => ({
+        factType: f.factType,
+        factValue: f.factValue,
+        confidence: f.confidence,
+        factsheetId,
+        researchItemId: session.researchItemId,
+        extractionMethod: 'manual' as const,
+      }));
+
+      const res = await fetch('/api/research/facts/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ facts: factsPayload }),
+      });
+
+      if (!res.ok) throw new Error('Failed to save facts');
+
+      toast.success(`${session.facts.length} facts saved to factsheet`);
+      extraction.clearAllFacts();
+    } catch (err) {
+      toast.error(String(err));
+    }
+  }, [extraction]);
 
   const handleScrape = useCallback(async () => {
     if (!item.url) return;
@@ -99,12 +168,17 @@ export function ItemContent({ item, onNotesChange, onRefresh, onScrapeJobStarted
         </div>
       </details>
 
-      {/* Content & Preview — reusable tabbed viewer */}
+      {/* Content & Preview — reusable tabbed viewer + extraction panel */}
+      <div className="flex gap-0 overflow-hidden rounded-lg border border-border/80">
+      <div className="min-w-0 flex-1">
       <ContentViewer
         url={item.url}
         fullText={item.fullText}
         showBookmarklet={!!item.url}
         iframeKey={iframeKey}
+        onSrcDocIframeRef={handleSrcDocIframeRef}
+        onPlainTextRef={handlePlainTextRef}
+        className=""
         sourceActions={
           <Button
             size="sm"
@@ -205,6 +279,37 @@ export function ItemContent({ item, onNotesChange, onRefresh, onScrapeJobStarted
           </div>
         )}
       </ContentViewer>
+      </div>
+
+      {/* Fact extraction panel */}
+      {extraction.panelVisible && (
+        <FactPanel
+          session={extraction.session}
+          onRemoveFact={extraction.removeFact}
+          onUpdateFact={extraction.updateDraftFact}
+          onClearAll={extraction.clearAllFacts}
+          onSave={handleSaveToFactsheet}
+          onCollapse={() => extraction.setPanelVisible(false)}
+          onTitleChange={extraction.updateFactsheetTitle}
+          researchItemTitle={item.title}
+        />
+      )}
+      </div>
+
+      {/* Collapsed panel badge */}
+      {!extraction.panelVisible && (
+        <FactPanelBadge
+          count={extraction.session.facts.length}
+          onClick={() => extraction.setPanelVisible(true)}
+        />
+      )}
+
+      {/* Context menu (portal to body) */}
+      <FactContextMenu
+        state={extraction.contextMenu}
+        onSelect={extraction.addFact}
+        onDismiss={extraction.dismissMenu}
+      />
 
       {/* Notes */}
       <div className="rounded-lg border border-border/80 p-4">

@@ -9,7 +9,7 @@ import { SettingsMobileHeader } from '@/components/settings/settings-mobile-head
 
 const CATEGORIES = [
   { id: 'databases', label: 'Databases', color: 'bg-emerald-500', providerIds: ['familysearch', 'nara', 'wikitree', 'openarchives'] },
-  { id: 'newspapers', label: 'Newspapers & Media', color: 'bg-amber-500', providerIds: ['chronicling_america'] },
+  { id: 'newspapers', label: 'Newspapers & Media', color: 'bg-indigo-500', providerIds: ['chronicling_america'] },
   { id: 'cemeteries', label: 'Cemeteries', color: 'bg-teal-500', providerIds: ['findagrave'] },
   { id: 'web', label: 'Web & Community', color: 'bg-violet-500', providerIds: ['web_search', 'geneanet'] },
 ];

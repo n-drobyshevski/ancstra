@@ -34,9 +34,9 @@ function buildRegistry(): ProviderRegistry {
   return registry;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    await withAuth('tree:view');
+    await withAuth('tree:view', request);
 
     const registry = buildRegistry();
     const providers = registry.listAll();

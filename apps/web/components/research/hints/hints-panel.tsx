@@ -60,7 +60,7 @@ export function HintsPanel({ personId, localPerson }: HintsPanelProps) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Lightbulb className="size-4 text-amber-500" />
+          <Lightbulb className="size-4 text-primary" />
           <h2 className="text-sm font-semibold">
             Hints
             {hints.length > 0 && (

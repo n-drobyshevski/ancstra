@@ -41,9 +41,16 @@ export async function POST(request: Request) {
 
     const body = await request.json();
 
-    if (!body.personId || !body.factType || !body.factValue) {
+    if (!body.factType || !body.factValue) {
       return NextResponse.json(
-        { error: 'Validation failed: personId, factType, and factValue are required' },
+        { error: 'Validation failed: factType and factValue are required' },
+        { status: 400 }
+      );
+    }
+
+    if (!body.personId && !body.factsheetId) {
+      return NextResponse.json(
+        { error: 'Validation failed: either personId or factsheetId is required' },
         { status: 400 }
       );
     }

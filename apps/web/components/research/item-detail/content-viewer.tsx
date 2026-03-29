@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { ExternalLink, FileText, Globe, Loader2, Copy, Check } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
@@ -124,6 +124,12 @@ interface ContentViewerProps {
   showBookmarklet?: boolean;
   /** Content below extracted text */
   children?: React.ReactNode;
+  /** Ref callback for the srcDoc iframe (used by fact extraction) */
+  onSrcDocIframeRef?: (el: HTMLIFrameElement | null) => void;
+  /** Ref callback for the plain text container (used by fact extraction) */
+  onPlainTextRef?: (el: HTMLDivElement | null) => void;
+  /** Override root className (e.g., to remove border when embedded) */
+  className?: string;
 }
 
 // --- Main component ---
@@ -138,6 +144,9 @@ export function ContentViewer({
   iframeKey,
   showBookmarklet = false,
   children,
+  onSrcDocIframeRef,
+  onPlainTextRef,
+  className,
 }: ContentViewerProps) {
   const { resolvedTheme } = useTheme();
   const [showPreview, setShowPreview] = useState(false);
@@ -169,7 +178,7 @@ export function ContentViewer({
   const showCustomToolbar = toolbar !== undefined && toolbar !== null;
 
   return (
-    <div className="rounded-lg border border-border/80">
+    <div className={className ?? "rounded-lg border border-border/80"}>
       <Tabs
         defaultValue={url ? 'preview' : 'content'}
         onValueChange={(v) => {
@@ -209,6 +218,7 @@ export function ContentViewer({
             <div className="relative">
               {isHtml ? (
                 <iframe
+                  ref={(el) => onSrcDocIframeRef?.(el)}
                   srcDoc={srcDoc}
                   title="Extracted content"
                   className="w-full overflow-auto border-0"
@@ -217,6 +227,7 @@ export function ContentViewer({
                 />
               ) : (
                 <div
+                  ref={(el) => onPlainTextRef?.(el)}
                   className="overflow-auto p-3"
                   style={{ height: contentResize.height }}
                 >

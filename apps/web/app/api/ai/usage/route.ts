@@ -2,9 +2,9 @@ import { NextResponse } from 'next/server';
 import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
 import { checkBudget, getUsageStats } from '@ancstra/ai';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const { ctx, familyDb } = await withAuth('tree:view');
+    const { ctx, familyDb } = await withAuth('tree:view', request);
 
     const monthlyLimit = parseFloat(process.env.AI_MONTHLY_BUDGET_USD ?? '10');
 

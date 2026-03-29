@@ -76,7 +76,7 @@ function ResearchLayoutInner() {
               <Icon className="size-3.5" />
               {tab.label}
               {tab.value === 'inbox' && inboxCount > 0 && (
-                <Badge className="ml-1 h-4 min-w-4 px-1 text-[10px] bg-amber-500/20 text-amber-500">
+                <Badge className="ml-1 h-4 min-w-4 px-1 text-[10px] bg-primary/20 text-primary">
                   {inboxCount}
                 </Badge>
               )}

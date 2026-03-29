@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
-import { persons, personNames, families, children, events, type FamilyDatabase } from '@ancstra/db';
+import { persons, personNames, families, children, events, refreshSummary, type FamilyDatabase } from '@ancstra/db';
 import { and, eq, isNull } from 'drizzle-orm';
 import { updateFamilySchema } from '@/lib/validation';
 import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
@@ -164,6 +164,8 @@ export async function DELETE(
         .run();
     });
 
+    if (existing.partner1Id) await refreshSummary(familyDb, existing.partner1Id);
+    if (existing.partner2Id) await refreshSummary(familyDb, existing.partner2Id);
     revalidateTag('tree-data', 'max');
     revalidateTag('persons', 'max');
     return NextResponse.json({ success: true });

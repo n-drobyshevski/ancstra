@@ -25,7 +25,7 @@ const PROVIDER_CONFIG: Record<string, ProviderConfigEntry> = {
   // used chronicling-america (hyphen). This matches the actual providerId.
   chronicling_america: {
     label: 'Chronicling America',
-    className: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
+    className: 'bg-primary/10 text-primary dark:bg-primary/15 dark:text-primary/90',
     borderClass: 'border-l-accent',
     icon: Newspaper,
   },
