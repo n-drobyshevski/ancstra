@@ -11,11 +11,18 @@ const NODE_WIDTH = 240;
 const NODE_HEIGHT = 70;
 const PARTNER_GAP = 40;
 
+const COMPACT_NODE_WIDTH = 120;
+const COMPACT_NODE_HEIGHT = 80;
+const COMPACT_PARTNER_GAP = 24;
+
+export type NodeStyle = 'wide' | 'compact';
+
 export interface PersonNodeData extends PersonListItem {
   label: string;
   qualityScore?: number;
   missingFields?: string[];
   showGaps?: boolean;
+  nodeStyle?: NodeStyle;
   [key: string]: unknown;
 }
 
@@ -259,4 +266,4 @@ export function applyEdgeFilters(edges: Edge[], nodes: Node[]): Edge[] {
   }));
 }
 
-export { NODE_WIDTH, NODE_HEIGHT };
+export { NODE_WIDTH, NODE_HEIGHT, COMPACT_NODE_WIDTH, COMPACT_NODE_HEIGHT };
