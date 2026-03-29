@@ -1,6 +1,6 @@
 import { type Edge, type EdgeProps, getSmoothStepPath, BaseEdge } from '@xyflow/react';
 
-type ParentChildEdgeType = Edge<{ validationStatus: string; familyId: string }, 'parentChild'>;
+type ParentChildEdgeType = Edge<{ validationStatus: string; familyId: string; pending?: boolean }, 'parentChild'>;
 
 const statusStyles = {
   confirmed: { strokeDasharray: 'none', stroke: '#6b7280' },
@@ -12,6 +12,11 @@ export function ParentChildEdge({
   id, sourceX, sourceY, targetX, targetY, data,
 }: EdgeProps<ParentChildEdgeType>) {
   const [edgePath] = getSmoothStepPath({ sourceX, sourceY, targetX, targetY, borderRadius: 8 });
+  if (data?.pending) {
+    return (
+      <BaseEdge id={id} path={edgePath} style={{ stroke: '#6b7280', strokeWidth: 2, strokeDasharray: '6,4', animation: 'edge-dash-flow 0.5s linear infinite' }} />
+    );
+  }
   const status = data?.validationStatus ?? 'confirmed';
   const s = statusStyles[status as keyof typeof statusStyles] ?? statusStyles.confirmed;
   return (

@@ -21,7 +21,7 @@ export interface PromoteSingleInput {
   mode: 'create' | 'merge';
   mergeTargetPersonId?: string;
   userId: string;
-  /** Skip promotability validation (used by promoteToSource for source-only promotes). */
+  /** Skip promotability validation for programmatic callers. */
   skipValidation?: boolean;
 }
 
@@ -60,7 +60,7 @@ export async function promoteSingleFactsheet(
   db: Database,
   input: PromoteSingleInput,
 ): Promise<PromoteSingleResult> {
-  // Validate promotability (skip for internal callers like promoteToSource)
+  // Validate promotability (skip when caller has already validated)
   if (!input.skipValidation) {
     const check = await isFactsheetPromotable(db, input.factsheetId);
     if (!check.promotable) {
@@ -175,7 +175,7 @@ export async function promoteSingleFactsheet(
     for (const riId of researchItemIds) {
       const items = await tx.select().from(researchItems).where(eq(researchItems.id, riId)).all();
       const item = items[0];
-      if (!item || item.status === 'promoted') continue;
+      if (!item) continue;
 
       const sourceId = crypto.randomUUID();
       const citationId = crypto.randomUUID();
@@ -209,12 +209,6 @@ export async function promoteSingleFactsheet(
         WHERE factsheet_id = ${input.factsheetId}
           AND research_item_id = ${riId}
       `);
-
-      // Mark research item as promoted
-      await tx.update(researchItems)
-        .set({ status: 'promoted' as const, promotedSourceId: sourceId, updatedAt: now })
-        .where(eq(researchItems.id, riId))
-        .run();
 
       sourcesCreated++;
     }

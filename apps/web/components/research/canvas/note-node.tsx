@@ -50,8 +50,8 @@ function NoteNodeComponent({ data, selected, id }: NodeProps<NoteNodeType>) {
         className="!w-2 !h-2 !bg-muted-foreground/40"
       />
       <div
-        className={`min-w-[150px] min-h-[100px] max-w-[240px] rounded-lg bg-amber-50 border border-amber-200 shadow-sm transition-all dark:bg-amber-950/40 dark:border-amber-800 ${
-          selected ? 'ring-2 ring-indigo-500 shadow-md' : ''
+        className={`min-w-[150px] min-h-[100px] max-w-[240px] rounded-lg bg-primary/5 border border-primary/20 shadow-sm transition-all dark:bg-primary/10 dark:border-primary/30 ${
+          selected ? 'ring-2 ring-primary shadow-md' : ''
         }`}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
@@ -60,10 +60,10 @@ function NoteNodeComponent({ data, selected, id }: NodeProps<NoteNodeType>) {
         {/* Delete button */}
         {hovered && (
           <button
-            className="absolute top-1 right-1 p-0.5 rounded-full bg-amber-200/80 hover:bg-amber-300 dark:bg-amber-800/80 dark:hover:bg-amber-700 transition-colors"
+            className="absolute top-1 right-1 p-0.5 rounded-full bg-primary/15 hover:bg-primary/25 dark:bg-primary/20 dark:hover:bg-primary/30 transition-colors"
             data-delete-note={id}
           >
-            <X className="size-3 text-amber-700 dark:text-amber-300" />
+            <X className="size-3 text-primary dark:text-primary/80" />
           </button>
         )}
 
@@ -74,15 +74,15 @@ function NoteNodeComponent({ data, selected, id }: NodeProps<NoteNodeType>) {
               value={text}
               onChange={(e) => setText(e.target.value)}
               onBlur={handleBlur}
-              className="w-full min-h-[60px] resize-none bg-transparent text-[12px] text-amber-900 dark:text-amber-100 outline-none placeholder:text-amber-400"
+              className="w-full min-h-[60px] resize-none bg-transparent text-[12px] text-foreground dark:text-foreground outline-none placeholder:text-muted-foreground"
               placeholder="Add your notes..."
               // Prevent React Flow from capturing keyboard events while editing
               onKeyDown={(e) => e.stopPropagation()}
             />
           ) : (
-            <p className="text-[12px] text-amber-900 dark:text-amber-100 whitespace-pre-wrap min-h-[60px]">
+            <p className="text-[12px] text-foreground dark:text-foreground whitespace-pre-wrap min-h-[60px]">
               {text || (
-                <span className="text-amber-400 italic">Double-click to edit...</span>
+                <span className="text-muted-foreground italic">Double-click to edit...</span>
               )}
             </p>
           )}

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
-import { persons, personNames, events } from '@ancstra/db';
+import { persons, personNames, events, refreshSummary } from '@ancstra/db';
 import { eq, and, isNull } from 'drizzle-orm';
 import { assemblePersonDetail } from '@/lib/queries';
 import { updatePersonSchema } from '@/lib/validation';
@@ -160,6 +160,7 @@ export async function PUT(
       }
     });
 
+    await refreshSummary(familyDb, id);
     const updated = await assemblePersonDetail(familyDb, id);
     revalidateTag(`person-${id}`, 'max');
     revalidateTag('persons', 'max');
@@ -193,6 +194,7 @@ export async function DELETE(
       .where(eq(persons.id, id))
       .run();
 
+    await refreshSummary(familyDb, id);
     revalidateTag(`person-${id}`, 'max');
     revalidateTag('persons', 'max');
     revalidateTag('tree-data', 'max');

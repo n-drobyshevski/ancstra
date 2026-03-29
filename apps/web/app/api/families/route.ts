@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
-import { persons, families } from '@ancstra/db';
+import { persons, families, refreshSummary } from '@ancstra/db';
 import { and, eq, or, isNull } from 'drizzle-orm';
 import { createFamilySchema } from '@/lib/validation';
 import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
@@ -93,6 +93,8 @@ export async function POST(request: Request) {
       .where(eq(families.id, familyId))
       .all();
 
+    if (data.partner1Id) await refreshSummary(familyDb, data.partner1Id);
+    if (data.partner2Id) await refreshSummary(familyDb, data.partner2Id);
     revalidateTag('tree-data', 'max');
     revalidateTag('persons', 'max');
     return NextResponse.json(created, { status: 201 });

@@ -15,8 +15,8 @@ const EVENT_DOT_COLORS: Record<string, string> = {
   emigration: 'border-teal-500 bg-teal-500/20',
   residence: 'border-violet-400 bg-violet-400/20',
   burial: 'border-stone-400 bg-stone-400/20',
-  christening: 'border-amber-400 bg-amber-400/20',
-  baptism: 'border-amber-400 bg-amber-400/20',
+  christening: 'border-indigo-400 bg-indigo-400/20',
+  baptism: 'border-indigo-400 bg-indigo-400/20',
 };
 
 const CONFIDENCE_BADGE: Record<

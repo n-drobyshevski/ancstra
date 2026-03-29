@@ -22,7 +22,7 @@ function formatBytes(bytes: number): string {
 
 const categories = [
   { key: 'database' as const, label: 'Database', icon: Database, color: 'bg-blue-500' },
-  { key: 'archives' as const, label: 'Archives', icon: Archive, color: 'bg-amber-500' },
+  { key: 'archives' as const, label: 'Archives', icon: Archive, color: 'bg-indigo-500' },
   { key: 'screenshots' as const, label: 'Screenshots', icon: Image, color: 'bg-emerald-500' },
 ];
 

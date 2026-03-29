@@ -19,7 +19,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { ProviderBadge } from '../provider-badge';
-import { STATUS_CONFIG, DISCOVERY_METHOD_LABELS } from '@/lib/research/constants';
+import { DISCOVERY_METHOD_LABELS } from '@/lib/research/constants';
 import { toast } from 'sonner';
 
 interface ItemHeaderProps {
@@ -38,29 +38,7 @@ interface ItemHeaderProps {
 
 export function ItemHeader({ item, onStatusChange, onDeleted }: ItemHeaderProps) {
   const router = useRouter();
-  const [updating, setUpdating] = useState(false);
   const [deleting, setDeleting] = useState(false);
-
-  async function updateStatus(newStatus: string) {
-    setUpdating(true);
-    try {
-      const res = await fetch(`/api/research/items/${item.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus }),
-      });
-      if (!res.ok) throw new Error('Failed to update status');
-      onStatusChange(newStatus);
-      toast.success(
-        newStatus === 'promoted' ? 'Item promoted' :
-        newStatus === 'dismissed' ? 'Item dismissed' : 'Item restored'
-      );
-    } catch {
-      toast.error('Failed to update status');
-    } finally {
-      setUpdating(false);
-    }
-  }
 
   async function handleDelete() {
     setDeleting(true);
@@ -77,7 +55,6 @@ export function ItemHeader({ item, onStatusChange, onDeleted }: ItemHeaderProps)
   }
 
   const { setHeaderContent } = useHeaderContent();
-  const statusConfig = STATUS_CONFIG[item.status] ?? STATUS_CONFIG.draft;
   const methodLabel = DISCOVERY_METHOD_LABELS[item.discoveryMethod] ?? item.discoveryMethod;
 
   // Push breadcrumb into the app header bar
@@ -113,9 +90,6 @@ export function ItemHeader({ item, onStatusChange, onDeleted }: ItemHeaderProps)
         <h1 className="text-xl font-bold">{item.title}</h1>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
           {item.providerId && <ProviderBadge providerId={item.providerId} />}
-          <Badge variant="outline" className={statusConfig.className}>
-            {statusConfig.label}
-          </Badge>
           <Badge variant="outline" className="text-xs">
             {methodLabel}
           </Badge>
@@ -127,30 +101,6 @@ export function ItemHeader({ item, onStatusChange, onDeleted }: ItemHeaderProps)
 
       {/* Actions */}
       <div className="flex flex-wrap items-center gap-2">
-        {item.status === 'draft' && (
-          <>
-            <span title="Mark as a verified source for your research">
-              <Button
-                size="sm"
-                onClick={() => updateStatus('promoted')}
-                disabled={updating}
-                className="bg-accent text-accent-foreground hover:bg-accent/90"
-              >
-                Promote
-              </Button>
-            </span>
-            <span title="Hide this item — you can restore it later">
-              <Button size="sm" variant="outline" onClick={() => updateStatus('dismissed')} disabled={updating}>
-                Dismiss
-              </Button>
-            </span>
-          </>
-        )}
-        {item.status === 'dismissed' && (
-          <Button size="sm" variant="outline" onClick={() => updateStatus('draft')} disabled={updating}>
-            Restore
-          </Button>
-        )}
         {item.url && (
           <Button size="sm" variant="outline" asChild>
             <a href={item.url} target="_blank" rel="noopener noreferrer">

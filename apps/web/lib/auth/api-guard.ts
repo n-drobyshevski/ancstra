@@ -15,10 +15,11 @@ import { eq, and } from 'drizzle-orm';
 
 /**
  * Wrap an API handler with auth context and permission check.
- * Returns the auth context and family DB connection.
+ * Pass `request` from route handlers to use synchronous header access,
+ * preventing HANGING_PROMISE_REJECTION during Next.js prerendering.
  */
-export async function withAuth(permission: Permission) {
-  const ctx = await requireAuthContext();
+export async function withAuth(permission: Permission, request?: Request) {
+  const ctx = await requireAuthContext(request);
   requirePermission(ctx.role, permission);
   const familyDb = createFamilyDb(ctx.dbFilename);
   await ensureFamilySchema(familyDb, ctx.dbFilename);

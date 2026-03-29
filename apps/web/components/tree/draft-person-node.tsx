@@ -50,7 +50,7 @@ function DraftPersonNodeComponent({ data }: NodeProps) {
   }
 
   return (
-    <div className="w-[200px] rounded-lg border-2 border-dashed border-primary/40 bg-card p-2.5 shadow-sm space-y-2">
+    <div className="w-[240px] rounded-lg border-2 border-dashed border-primary/40 bg-card p-2.5 shadow-sm space-y-2">
       <Input
         ref={inputRef}
         placeholder="Given name"

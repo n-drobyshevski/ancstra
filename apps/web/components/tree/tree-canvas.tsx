@@ -42,6 +42,14 @@ import {
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { useQualityData } from '@/lib/tree/use-quality-data';
+import { useConnectionLock } from './use-connection-lock';
+
+function classifyApiError(res: Response): string {
+  if (res.status === 409) return 'This relationship already exists';
+  if (res.status === 404) return 'Person not found — may have been deleted';
+  if (res.status === 400) return 'Invalid connection data';
+  return 'Server error — please try again';
+}
 
 const nodeTypes = { person: PersonNode, draftPerson: DraftPersonNode, draftFactsheet: DraftFactsheetNode };
 const edgeTypes = { partner: PartnerEdge, parentChild: ParentChildEdge };
@@ -59,6 +67,7 @@ interface TreeCanvasProps {
 function TreeCanvasInner({ treeData, focusPersonId, paletteOpen, onTogglePalette, onSelectPerson, view, onSetView }: TreeCanvasProps) {
   const { fitView, screenToFlowPosition } = useReactFlow();
   const router = useRouter();
+  const connectionLock = useConnectionLock();
 
   const { nodes: rawNodes, edges: rawEdges } = useMemo(
     () => treeDataToFlow(treeData),
@@ -406,6 +415,17 @@ function TreeCanvasInner({ treeData, focusPersonId, paletteOpen, onTogglePalette
     if (paletteOpen) onTogglePalette();
   }, [screenToFlowPosition, setNodes, router, paletteOpen, onTogglePalette]);
 
+  // Restrict handle pairing: bottom→top (parent-child), right→left (spouse)
+  const isValidConnection = useCallback((connection: Edge | Connection) => {
+    const { source, target, sourceHandle, targetHandle } = connection;
+    if (!source || !target || source === target) return false;
+    // Spouse: right source → left target only
+    if (sourceHandle === 'right') return targetHandle === 'left';
+    // Parent-child: default source (bottom) → default target (top) only
+    if (!sourceHandle) return !targetHandle;
+    return false;
+  }, []);
+
   const onConnect = useCallback(async (connection: Connection) => {
     const { source, target, sourceHandle, targetHandle } = connection;
     if (!source || !target) return;
@@ -413,11 +433,33 @@ function TreeCanvasInner({ treeData, focusPersonId, paletteOpen, onTogglePalette
     const isSpouse = sourceHandle === 'right' && targetHandle === 'left';
     const type = isSpouse ? 'spouse' as const : 'parentChild' as const;
 
-    const validation = validateConnection(treeData, source, target, type);
+    if (connectionLock.isLocked(source, target, type)) {
+      toast.info('Connection already in progress...');
+      return;
+    }
+
+    const currentTreeData = treeDataRef.current;
+    const validation = validateConnection(currentTreeData, source, target, type);
     if (!validation.valid) {
       toast.error(validation.error ?? 'Invalid connection');
       return;
     }
+
+    const sourcePerson = currentTreeData.persons.find((p) => p.id === source);
+    const targetPerson = currentTreeData.persons.find((p) => p.id === target);
+    const sourceName = sourcePerson ? `${sourcePerson.givenName} ${sourcePerson.surname}` : 'Person';
+    const targetName = targetPerson ? `${targetPerson.givenName} ${targetPerson.surname}` : 'Person';
+    const linkLabel = isSpouse ? 'Spouse' : 'Parent → Child';
+
+    connectionLock.lock(source, target, type);
+    const toastId = toast.loading(`Linking ${linkLabel}: ${sourceName} — ${targetName}`);
+
+    // Add pending edge immediately for visual feedback
+    const pendingId = `pending-${Date.now()}`;
+    const pendingEdge: Edge = isSpouse
+      ? { id: pendingId, type: 'partner', source, target, sourceHandle: 'right', targetHandle: 'left', data: { familyId: '', pending: true } }
+      : { id: pendingId, type: 'parentChild', source, target, data: { validationStatus: 'confirmed', familyId: '', pending: true } };
+    setEdges(eds => [...eds, pendingEdge]);
 
     try {
       if (isSpouse) {
@@ -426,46 +468,105 @@ function TreeCanvasInner({ treeData, focusPersonId, paletteOpen, onTogglePalette
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ partner1Id: source, partner2Id: target }),
         });
-        if (!res.ok) { toast.error('Failed to create relationship'); return; }
+        if (!res.ok) {
+          setEdges(eds => eds.filter(e => e.id !== pendingId));
+          toast.error(classifyApiError(res), { id: toastId });
+          return;
+        }
         const family = await res.json();
-        // Optimistic: add partner edge immediately (deduplicate by id)
-        const partnerEdgeId = `partner-${family.id}`;
-        setEdges(eds => eds.some(e => e.id === partnerEdgeId) ? eds : [...eds, {
-          id: partnerEdgeId,
+        // Replace pending edge with confirmed edge
+        setEdges(eds => eds.filter(e => e.id !== pendingId).concat({
+          id: `partner-${family.id}`,
           type: 'partner',
           source,
           target,
           sourceHandle: 'right',
           targetHandle: 'left',
           data: { familyId: family.id },
-        }]);
+        }));
       } else {
-        const famRes = await fetch('/api/families', {
+        const res = await fetch('/api/families/with-child', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ partner1Id: source }),
+          body: JSON.stringify({ parentId: source, childId: target }),
         });
-        if (!famRes.ok) { toast.error('Failed to create family'); return; }
-        const family = await famRes.json();
-        const childRes = await fetch(`/api/families/${family.id}/children`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ personId: target }),
-        });
-        if (!childRes.ok) { toast.error('Failed to link child'); return; }
-        // Optimistic: add parent-child edge immediately (deduplicate by id)
-        const pcEdgeId = `pc-${source}-${target}`;
-        setEdges(eds => eds.some(e => e.id === pcEdgeId) ? eds : [...eds, {
-          id: pcEdgeId,
+        if (!res.ok) {
+          setEdges(eds => eds.filter(e => e.id !== pendingId));
+          toast.error(classifyApiError(res), { id: toastId });
+          return;
+        }
+        const { familyId } = await res.json();
+        // Replace pending edge with confirmed edge
+        setEdges(eds => eds.filter(e => e.id !== pendingId).concat({
+          id: `pc-${source}-${target}`,
           type: 'parentChild',
           source,
           target,
-          data: { validationStatus: 'confirmed', familyId: family.id },
-        }]);
+          data: { validationStatus: 'confirmed', familyId },
+        }));
       }
-      toast.success(isSpouse ? 'Spouse linked' : 'Parent-child linked');
-    } catch { toast.error('Network error'); }
-  }, [treeData, setEdges]);
+      toast.success(isSpouse ? 'Spouse linked' : 'Parent-child linked', { id: toastId });
+      router.refresh();
+    } catch {
+      setEdges(eds => eds.filter(e => e.id !== pendingId));
+      toast.error('Network error — check your connection', { id: toastId });
+    }
+    finally { connectionLock.unlock(source, target, type); }
+  }, [setEdges, connectionLock, router]);
+
+  // Shared delete helper with undo support
+  const pendingDeletesRef = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+
+  const deleteRelationship = useCallback((edge: Edge) => {
+    const edgeType = edge.type;
+    const familyId = (edge.data as any)?.familyId as string | undefined;
+    if (!familyId) return;
+
+    // Optimistic: remove edge immediately
+    setEdges(eds => eds.filter(e => e.id !== edge.id));
+
+    const timeoutId = setTimeout(async () => {
+      pendingDeletesRef.current.delete(edge.id);
+      try {
+        let res: Response;
+        if (edgeType === 'partner') {
+          res = await fetch(`/api/families/${familyId}`, { method: 'DELETE' });
+        } else if (edgeType === 'parentChild') {
+          res = await fetch(`/api/families/${familyId}/children/${edge.target}`, { method: 'DELETE' });
+        } else return;
+        if (!res.ok && res.status !== 404) {
+          toast.error(classifyApiError(res));
+          setEdges(eds => [...eds, edge]);
+        } else {
+          router.refresh();
+        }
+      } catch {
+        toast.error('Network error — check your connection');
+        setEdges(eds => [...eds, edge]);
+      }
+    }, 5000);
+
+    pendingDeletesRef.current.set(edge.id, timeoutId);
+
+    toast('Relationship removed', {
+      duration: 5000,
+      action: {
+        label: 'Undo',
+        onClick: () => {
+          const tid = pendingDeletesRef.current.get(edge.id);
+          if (tid) { clearTimeout(tid); pendingDeletesRef.current.delete(edge.id); }
+          setEdges(eds => [...eds, edge]);
+        },
+      },
+    });
+  }, [setEdges, router]);
+
+  // Clean up pending deletes on unmount
+  useEffect(() => {
+    return () => {
+      for (const tid of pendingDeletesRef.current.values()) clearTimeout(tid);
+    };
+  }, []);
 
   // Edge disconnect-by-drag: drag an edge endpoint to empty canvas to delete it
   const edgeReconnectSuccessful = useRef(true);
@@ -478,38 +579,10 @@ function TreeCanvasInner({ treeData, focusPersonId, paletteOpen, onTogglePalette
     edgeReconnectSuccessful.current = true;
   }, []);
 
-  const onReconnectEnd = useCallback(async (_event: MouseEvent | TouchEvent, edge: Edge) => {
-    if (edgeReconnectSuccessful.current) return; // Was reconnected to another handle, not dropped
-
-    // Edge was dropped on empty canvas → delete the relationship
-    const edgeType = edge.type;
-    const familyId = (edge.data as any)?.familyId as string | undefined;
-
-    if (!familyId) return;
-
-    // Optimistic: remove edge immediately
-    setEdges(eds => eds.filter(e => e.id !== edge.id));
-
-    try {
-      let res: Response;
-      if (edgeType === 'partner') {
-        res = await fetch(`/api/families/${familyId}`, { method: 'DELETE' });
-      } else if (edgeType === 'parentChild') {
-        res = await fetch(`/api/families/${familyId}/children/${edge.target}`, { method: 'DELETE' });
-      } else return;
-      // 404 = already gone server-side, treat as success
-      if (res.ok || res.status === 404) {
-        toast.success('Relationship removed');
-      } else {
-        toast.error('Failed to remove relationship');
-        setEdges(eds => [...eds, edge]);
-      }
-    } catch {
-      toast.error('Failed to remove relationship');
-      // Rollback: re-add edge on failure
-      setEdges(eds => [...eds, edge]);
-    }
-  }, [setEdges]);
+  const onReconnectEnd = useCallback((_event: MouseEvent | TouchEvent, edge: Edge) => {
+    if (edgeReconnectSuccessful.current) return;
+    deleteRelationship(edge);
+  }, [deleteRelationship]);
 
   // Focus on person when focusPersonId is provided (e.g. from /tree?focus=...)
   useEffect(() => {
@@ -602,6 +675,7 @@ function TreeCanvasInner({ treeData, focusPersonId, paletteOpen, onTogglePalette
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           connectionMode={ConnectionMode.Loose}
+          isValidConnection={isValidConnection}
           onConnect={onConnect}
           onReconnectStart={onReconnectStart}
           onReconnect={onReconnect}
@@ -635,7 +709,10 @@ function TreeCanvasInner({ treeData, focusPersonId, paletteOpen, onTogglePalette
             {...contextMenu}
             persons={treeData.persons}
             onClose={() => setContextMenu(null)}
-            onDeleteEdge={(eid) => setEdges(eds => eds.filter(e => e.id !== eid))}
+            onDeleteRelationship={(edgeId) => {
+              const edge = edges.find(e => e.id === edgeId);
+              if (edge) deleteRelationship(edge);
+            }}
           />
         )}
       </div>

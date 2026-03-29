@@ -7,7 +7,7 @@ import type { CanvasNodeData } from './canvas-utils';
 type SourceNodeType = Node<CanvasNodeData, 'source'>;
 
 const statusColors: Record<string, { dot: string; badge: string; badgeText: string }> = {
-  draft: { dot: 'bg-amber-400', badge: 'bg-amber-100 text-amber-800 border-amber-200', badgeText: 'Draft' },
+  draft: { dot: 'bg-primary', badge: 'bg-primary/10 text-primary border-primary/20', badgeText: 'Draft' },
   promoted: { dot: 'bg-green-500', badge: 'bg-green-100 text-green-800 border-green-200', badgeText: 'Promoted' },
   dismissed: { dot: 'bg-gray-400', badge: 'bg-gray-100 text-gray-600 border-gray-200', badgeText: 'Dismissed' },
 };

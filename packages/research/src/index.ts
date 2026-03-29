@@ -35,7 +35,6 @@ export {
   createResearchItem,
   getResearchItem,
   listResearchItems,
-  updateResearchItemStatus,
   updateResearchItemNotes,
   updateResearchItemContent,
   tagPersonToItem,
@@ -57,10 +56,6 @@ export {
   deleteFact,
 } from './facts/queries';
 export type { CreateFactInput, UpdateFactInput } from './facts/queries';
-
-// Source Promotion
-export { promoteToSource } from './facts/promote';
-export type { PromoteInput, PromoteResult } from './facts/promote';
 
 // Scraper
 export { scrapeUrl } from './scraper/url-scraper';

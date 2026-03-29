@@ -112,7 +112,7 @@ export function SourcePalette({
                   key={item.id}
                   item={item}
                   onCanvas={isOnCanvas(item)}
-                  borderColor="border-l-amber-400"
+                  borderColor="border-l-primary"
                   onDragStart={handleDragStart}
                 />
               ))}

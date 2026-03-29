@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
-import { persons, personNames, events } from '@ancstra/db';
+import { persons, personNames, events, refreshSummary } from '@ancstra/db';
 import { and, isNull, sql } from 'drizzle-orm';
 import { createPersonSchema } from '@/lib/validation';
 import { parseDateToSort } from '@ancstra/shared';
@@ -82,6 +82,7 @@ export async function POST(request: Request) {
       }
     });
 
+    await refreshSummary(familyDb, personId);
     revalidateTag('persons', 'max');
     revalidateTag('tree-data', 'max');
     revalidateTag('dashboard', 'max');

@@ -6,7 +6,6 @@ import {
   createResearchItem,
   getResearchItem,
   listResearchItems,
-  updateResearchItemStatus,
   updateResearchItemNotes,
   tagPersonToItem,
   untagPersonFromItem,
@@ -182,31 +181,6 @@ describe('Research Items CRUD queries', () => {
     expect(item).toBeNull();
   });
 
-  it('lists research items with status filter', () => {
-    createResearchItem(db as any, {
-      title: 'Draft Item',
-      discoveryMethod: 'search',
-      createdBy: 'test-user-1',
-    });
-    const promoted = createResearchItem(db as any, {
-      title: 'Promoted Item',
-      discoveryMethod: 'paste_text',
-      createdBy: 'test-user-1',
-    });
-    updateResearchItemStatus(db as any, promoted.id, 'promoted');
-
-    const allItems = listResearchItems(db as any);
-    expect(allItems).toHaveLength(2);
-
-    const draftItems = listResearchItems(db as any, { status: 'draft' });
-    expect(draftItems).toHaveLength(1);
-    expect(draftItems[0].title).toBe('Draft Item');
-
-    const promotedItems = listResearchItems(db as any, { status: 'promoted' });
-    expect(promotedItems).toHaveLength(1);
-    expect(promotedItems[0].title).toBe('Promoted Item');
-  });
-
   it('lists research items filtered by personId', () => {
     const item1 = createResearchItem(db as any, {
       title: 'Item for Person 1',
@@ -242,19 +216,6 @@ describe('Research Items CRUD queries', () => {
     // Most recent first
     expect(items[0].title).toBe('Second');
     expect(items[1].title).toBe('First');
-  });
-
-  it('updates status', () => {
-    const created = createResearchItem(db as any, {
-      title: 'To Promote',
-      discoveryMethod: 'search',
-      createdBy: 'test-user-1',
-    });
-
-    updateResearchItemStatus(db as any, created.id, 'promoted');
-
-    const item = getResearchItem(db as any, created.id);
-    expect(item!.status).toBe('promoted');
   });
 
   it('updates notes', () => {

@@ -37,8 +37,9 @@ export const researchItems = sqliteTable('research_items', {
   }).notNull(),
   searchQuery: text('search_query'),
   status: text('status', {
-    enum: ['draft', 'promoted', 'dismissed'],
+    enum: ['draft'],
   }).notNull().default('draft'),
+  // @deprecated — column retained for backward compat, no longer written
   promotedSourceId: text('promoted_source_id').references(() => sources.id),
   createdBy: text('created_by').notNull(),
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
@@ -105,7 +106,7 @@ export const factsheetLinks = sqliteTable('factsheet_links', {
 // ==================== RESEARCH FACTS ====================
 export const researchFacts = sqliteTable('research_facts', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  personId: text('person_id').notNull().references(() => persons.id, { onDelete: 'cascade' }),
+  personId: text('person_id').references(() => persons.id, { onDelete: 'cascade' }),
   factType: text('fact_type', {
     enum: [
       'name', 'birth_date', 'birth_place', 'death_date', 'death_place',

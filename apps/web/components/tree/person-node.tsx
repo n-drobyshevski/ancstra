@@ -40,13 +40,33 @@ function PersonNodeComponent({ data, selected }: NodeProps<PersonNodeType>) {
   const isLiving = data.isLiving;
 
   return (
-    <>
-      <Handle type="target" position={Position.Top} className="!w-2 !h-2 !bg-muted-foreground/40" />
-      <Handle type="source" position={Position.Bottom} className="!w-2 !h-2 !bg-muted-foreground/40" />
-      <Handle type="source" position={Position.Right} id="right" className="!w-2 !h-2 !bg-muted-foreground/40" />
-      <Handle type="target" position={Position.Left} id="left" className="!w-2 !h-2 !bg-muted-foreground/40" />
+    <TooltipProvider delayDuration={300}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Handle type="target" position={Position.Top} className="!w-2 !h-2 !bg-muted-foreground/40" />
+        </TooltipTrigger>
+        <TooltipContent side="top" className="text-xs">Parents</TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Handle type="source" position={Position.Bottom} className="!w-2 !h-2 !bg-muted-foreground/40" />
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="text-xs">Children</TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Handle type="source" position={Position.Right} id="right" className="!w-2 !h-2 !bg-muted-foreground/40" />
+        </TooltipTrigger>
+        <TooltipContent side="right" className="text-xs">Spouse</TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Handle type="target" position={Position.Left} id="left" className="!w-2 !h-2 !bg-muted-foreground/40" />
+        </TooltipTrigger>
+        <TooltipContent side="left" className="text-xs">Spouse</TooltipContent>
+      </Tooltip>
       <div
-        className={`w-[200px] rounded-lg bg-card shadow-sm border transition-all ${
+        className={`w-[240px] rounded-lg bg-card shadow-sm border transition-all ${
           selected ? 'ring-2 ring-primary shadow-md' : ''
         } ${dimmed ? 'opacity-30 pointer-events-none' : ''} ${showGaps ? 'overflow-hidden' : ''}`}
         style={{ borderLeftWidth: 4, borderLeftColor: colors.border }}
@@ -72,7 +92,6 @@ function PersonNodeComponent({ data, selected }: NodeProps<PersonNodeType>) {
               <div className="text-[11px] text-amber-500/80">no dates</div>
             )}
             {showGaps && (
-              <TooltipProvider delayDuration={200}>
                 <div className="flex gap-[3px] mt-0.5">
                   {GAP_FIELDS.map(({ key, label }) => {
                     const isNotApplicable = key === 'deathDate' && isLiving;
@@ -102,7 +121,6 @@ function PersonNodeComponent({ data, selected }: NodeProps<PersonNodeType>) {
                     );
                   })}
                 </div>
-              </TooltipProvider>
             )}
           </div>
         </div>
@@ -119,7 +137,7 @@ function PersonNodeComponent({ data, selected }: NodeProps<PersonNodeType>) {
           </div>
         )}
       </div>
-    </>
+    </TooltipProvider>
   );
 }
 

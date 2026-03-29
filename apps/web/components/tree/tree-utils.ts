@@ -7,7 +7,7 @@ import type {
   TreeData,
 } from '@ancstra/shared';
 
-const NODE_WIDTH = 200;
+const NODE_WIDTH = 240;
 const NODE_HEIGHT = 70;
 const PARTNER_GAP = 40;
 
