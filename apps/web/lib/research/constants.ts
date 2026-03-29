@@ -16,23 +16,23 @@ export const CONFIDENCE_VARIANT: Record<string, 'default' | 'secondary' | 'outli
 export const FACTSHEET_STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   draft: {
     label: 'Draft',
-    className: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
+    className: 'bg-status-warning-bg text-status-warning-text',
   },
   ready: {
     label: 'Ready',
-    className: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
+    className: 'bg-status-success-bg text-status-success-text',
   },
   promoted: {
     label: 'Promoted',
-    className: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300',
+    className: 'bg-status-info-bg text-status-info-text',
   },
   merged: {
     label: 'Merged',
-    className: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-300',
+    className: 'bg-status-merged-bg text-status-merged-text',
   },
   dismissed: {
     label: 'Dismissed',
-    className: 'bg-gray-100 text-gray-500 dark:bg-gray-800/30 dark:text-gray-400',
+    className: 'bg-status-neutral-bg text-status-neutral-text',
   },
 };
 

@@ -80,50 +80,53 @@ Tailwind CSS v4 uses CSS custom properties. All colors defined in OKLCH for perc
 }
 ```
 
-### Dark Mode
+### Dark Mode (Soft Dusk)
+
+Applied via `.dark` class (next-themes, `attribute="class"`).
 
 ```css
-@media (prefers-color-scheme: dark) {
-  :root {
-    --primary: oklch(0.70 0.12 265);
-    --primary-foreground: oklch(0.15 0.01 265);
+.dark {
+  /* Interactive (reconciled from design-system.md spec) */
+  --primary: oklch(0.70 0.12 265);
+  --primary-foreground: oklch(0.15 0.02 265);
+  --secondary: oklch(0.50 0.07 160);
+  --secondary-foreground: oklch(0.90 0.005 160);
+  --accent: oklch(0.28 0.03 265);        /* surface accent for hover states */
+  --accent-foreground: oklch(0.88 0.03 265);
+  --destructive: oklch(0.65 0.16 25);
+  --destructive-foreground: oklch(0.15 0.01 25);
 
-    --secondary: oklch(0.50 0.07 160);
-    --secondary-foreground: oklch(0.95 0.005 160);
+  /* Surfaces — Soft Dusk: lifted, warm indigo tint */
+  --background: oklch(0.20 0.02 265);
+  --card: oklch(0.24 0.02 265);
+  --popover: oklch(0.24 0.02 265);
+  --muted: oklch(0.28 0.02 265);
 
-    --accent: oklch(0.65 0.12 60);
-    --accent-foreground: oklch(0.95 0.005 60);
+  /* Text — dimmed for comfort */
+  --foreground: oklch(0.87 0.01 260);
+  --card-foreground: oklch(0.87 0.01 260);
+  --muted-foreground: oklch(0.62 0.015 260);
 
-    --destructive: oklch(0.65 0.18 25);
-    --destructive-foreground: oklch(0.15 0.01 25);
+  /* Borders */
+  --border: oklch(0.34 0.02 265);
+  --input: oklch(0.34 0.02 265);
+  --ring: oklch(0.70 0.12 265);
 
-    --background: oklch(0.15 0.01 250);
-    --card: oklch(0.20 0.01 250);
-    --popover: oklch(0.20 0.01 250);
-    --muted: oklch(0.25 0.01 250);
+  /* Sex indicators (brighter, lower chroma for dark bg) */
+  --sex-male: oklch(0.70 0.10 240);
+  --sex-female: oklch(0.72 0.10 340);
+  --sex-unknown: oklch(0.60 0.03 250);
 
-    --foreground: oklch(0.93 0.005 250);
-    --card-foreground: oklch(0.93 0.005 250);
-    --muted-foreground: oklch(0.60 0.01 250);
-
-    --border: oklch(0.30 0.01 250);
-    --input: oklch(0.30 0.01 250);
-    --ring: oklch(0.70 0.12 265);
-
-    /* Sex indicators (adjust for dark backgrounds) */
-    --sex-male: oklch(0.70 0.10 240);
-    --sex-female: oklch(0.72 0.10 340);
-    --sex-unknown: oklch(0.60 0.03 250);
-
-    /* Validation (brighter on dark) */
-    --status-confirmed: oklch(0.65 0.12 150);
-    --status-proposed: oklch(0.70 0.12 250);
-    --status-disputed: oklch(0.72 0.12 80);
-  }
+  /* Validation statuses (brighter on dark) */
+  --status-confirmed: oklch(0.65 0.12 150);
+  --status-proposed: oklch(0.70 0.12 250);
+  --status-disputed: oklch(0.72 0.12 80);
 }
 ```
 
-Theme toggle: `prefers-color-scheme` media query + manual toggle (light/dark/system). shadcn/ui has built-in dark mode support via CSS variables.
+Design direction: "Soft Dusk" — backgrounds lifted to L=0.20 (never near-black), foreground dimmed to L=0.87, warm indigo tint (hue 265°, chroma 0.02) on all surfaces. Target contrast ~6:1 (WCAG AA). See `docs/superpowers/specs/2026-03-29-dark-theme-soft-dusk-design.md` for full rationale.
+
+Theme toggle: `.dark` class applied via next-themes (`attribute="class"`, `defaultTheme="system"`). Three modes: light, dark, system.
 
 ---
 

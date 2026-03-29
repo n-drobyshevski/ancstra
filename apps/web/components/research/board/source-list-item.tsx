@@ -52,8 +52,8 @@ export function SourceListItem({
         <span
           className={cn(
             'text-[10px] font-semibold tracking-wide uppercase',
-            status === 'promoted' && 'text-green-600 dark:text-green-400',
-            status === 'draft' && 'text-yellow-600 dark:text-yellow-400',
+            status === 'promoted' && 'text-status-success-text',
+            status === 'draft' && 'text-status-warning-text',
             status === 'dismissed' && 'text-muted-foreground',
           )}
         >

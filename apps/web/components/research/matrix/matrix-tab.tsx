@@ -125,7 +125,7 @@ export function MatrixTab({ personId, personName = 'Person' }: MatrixTabProps) {
           {conflictCount > 0 && (
             <button
               onClick={handleScrollToConflict}
-              className="inline-flex items-center gap-1.5 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 px-3 py-1.5 text-xs text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-950/50 transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-md bg-status-warning-bg border border-status-warning-bg px-3 py-1.5 text-xs text-status-warning-text hover:bg-status-warning-bg/80 transition-colors"
             >
               <AlertTriangle className="size-3.5" />
               {conflictCount} conflict{conflictCount !== 1 ? 's' : ''} detected
@@ -187,7 +187,7 @@ export function MatrixTab({ personId, personName = 'Person' }: MatrixTabProps) {
                   </div>
                 </th>
               ))}
-              <th className="sticky right-0 z-30 bg-indigo-50/50 dark:bg-indigo-950/20 px-3 py-2 text-left font-medium text-indigo-700 dark:text-indigo-300 min-w-[180px] border-l border-border">
+              <th className="sticky right-0 z-30 bg-status-info-bg px-3 py-2 text-left font-medium text-status-info-text min-w-[180px] border-l border-border">
                 Conclusion
               </th>
             </tr>
@@ -219,7 +219,7 @@ export function MatrixTab({ personId, personName = 'Person' }: MatrixTabProps) {
                   className={cn(
                     'border-b border-border last:border-b-0',
                     isConflictRow &&
-                      'bg-red-50/50 dark:bg-red-950/10',
+                      'bg-status-error-bg/50',
                   )}
                 >
                   <td className="sticky left-0 z-10 bg-card px-3 py-2 font-medium text-muted-foreground min-w-[120px] md:min-w-[160px]">

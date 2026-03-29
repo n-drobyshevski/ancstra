@@ -49,26 +49,26 @@ function ConflictNodeComponent({ data, selected }: NodeProps<ConflictNodeType>) 
         className="!w-2 !h-2 !bg-muted-foreground/40"
       />
       <div
-        className={`w-[160px] rounded-lg bg-red-50 border border-red-300 shadow-sm transition-all dark:bg-red-950/40 dark:border-red-800 ${
+        className={`w-[160px] rounded-lg bg-status-error-bg border border-status-error-text/30 shadow-sm transition-all ${
           selected ? 'ring-2 ring-indigo-500 shadow-md' : ''
         }`}
       >
         <div className="p-3 space-y-2 text-center">
           <AlertTriangle className="mx-auto size-5 text-red-500" />
-          <p className="text-[12px] font-semibold text-red-800 dark:text-red-300">
+          <p className="text-[12px] font-semibold text-status-error-text">
             {label}
           </p>
           <div className="space-y-0.5">
             {shown.map((val, i) => (
               <p
                 key={i}
-                className="text-[11px] text-red-700 dark:text-red-400 truncate"
+                className="text-[11px] text-status-error-text truncate"
               >
                 {val}
               </p>
             ))}
             {remaining > 0 && (
-              <p className="text-[10px] text-red-500 dark:text-red-500">
+              <p className="text-[10px] text-status-error-text/80">
                 +{remaining} more
               </p>
             )}

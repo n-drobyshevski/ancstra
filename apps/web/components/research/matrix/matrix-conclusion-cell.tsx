@@ -66,7 +66,7 @@ export function MatrixConclusionCell({
   return (
     <td
       className={cn(
-        'px-3 py-2 min-w-[180px] bg-indigo-50/50 dark:bg-indigo-950/20',
+        'px-3 py-2 min-w-[180px] bg-status-info-bg',
         'sticky right-0 z-10',
       )}
     >
@@ -81,7 +81,7 @@ export function MatrixConclusionCell({
           }}
           onBlur={handleBlur}
           onKeyDown={handleKeyDown}
-          className="w-full min-h-[28px] text-sm bg-transparent border border-indigo-300 dark:border-indigo-700 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-none"
+          className="w-full min-h-[28px] text-sm bg-transparent border border-status-info-bg rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-none"
           rows={1}
         />
       ) : (

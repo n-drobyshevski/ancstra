@@ -59,7 +59,7 @@ export function FactsheetCard({
         'hover:bg-accent/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         isSelected ? 'border-primary bg-accent/5' : 'border-border',
         isDismissed && 'opacity-50',
-        isUnanchored && 'border-l-[3px] border-l-amber-500 bg-amber-50/50 dark:bg-amber-950/20',
+        isUnanchored && 'border-l-[3px] border-l-amber-500 bg-status-warning-bg',
       )}
     >
       <div className="flex items-center justify-between gap-2 mb-1">
@@ -93,7 +93,7 @@ export function FactsheetCard({
           <span className="text-destructive"> · {conflictCount} conflict{conflictCount !== 1 ? 's' : ''}</span>
         )}
         {isUnanchored && (
-          <span className="text-amber-600 dark:text-amber-400 text-[10px]"> ⚠ unanchored</span>
+          <span className="text-status-warning-text text-[10px]"> ⚠ unanchored</span>
         )}
       </p>
     </div>

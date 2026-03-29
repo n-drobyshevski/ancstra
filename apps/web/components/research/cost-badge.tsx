@@ -54,8 +54,8 @@ export function CostBadge() {
     usage.percentUsed > 80
       ? 'text-destructive'
       : usage.percentUsed > 50
-        ? 'text-amber-600 dark:text-amber-400'
-        : 'text-green-600 dark:text-green-400';
+        ? 'text-status-warning-text'
+        : 'text-status-success-text';
 
   return (
     <TooltipProvider>

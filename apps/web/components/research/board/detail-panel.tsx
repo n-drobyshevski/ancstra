@@ -37,15 +37,15 @@ interface DetailPanelProps {
 const STATUS_BADGE: Record<string, { label: string; className: string }> = {
   promoted: {
     label: 'Source',
-    className: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
+    className: 'bg-status-success-bg text-status-success-text',
   },
   draft: {
     label: 'Draft',
-    className: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
+    className: 'bg-status-warning-bg text-status-warning-text',
   },
   dismissed: {
     label: 'Dismissed',
-    className: 'bg-gray-100 text-gray-500 dark:bg-gray-800/30 dark:text-gray-400',
+    className: 'bg-status-neutral-bg text-status-neutral-text',
   },
 };
 

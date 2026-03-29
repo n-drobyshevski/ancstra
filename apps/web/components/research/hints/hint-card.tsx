@@ -30,9 +30,9 @@ interface HintCardProps {
 }
 
 function scoreColor(score: number): string {
-  if (score >= 0.8) return 'text-green-600 dark:text-green-400';
-  if (score >= 0.5) return 'text-amber-600 dark:text-amber-400';
-  return 'text-red-600 dark:text-red-400';
+  if (score >= 0.8) return 'text-status-success-text';
+  if (score >= 0.5) return 'text-status-warning-text';
+  return 'text-status-error-text';
 }
 
 function scoreBarColor(score: number): string {
@@ -134,7 +134,7 @@ export function HintCard({ hint, localPerson, onAccept, onReject, onMaybe }: Hin
           <Button
             variant="outline"
             size="sm"
-            className="text-green-600 hover:bg-green-50 dark:hover:bg-green-950/30"
+            className="text-status-success-text hover:bg-status-success-bg"
             onClick={() => onAccept(hint.id)}
           >
             <Check className="size-3.5 mr-1" />
@@ -143,7 +143,7 @@ export function HintCard({ hint, localPerson, onAccept, onReject, onMaybe }: Hin
           <Button
             variant="outline"
             size="sm"
-            className="text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+            className="text-status-error-text hover:bg-status-error-bg"
             onClick={() => onReject(hint.id)}
           >
             <X className="size-3.5 mr-1" />

@@ -118,7 +118,7 @@ function getBadge(
   }
   if (value === 'hints' && hintCount > 0) {
     return (
-      <Badge className="ml-1 h-4 min-w-4 px-1 text-[10px] bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300">
+      <Badge className="ml-1 h-4 min-w-4 px-1 text-[10px] bg-status-info-bg text-status-info-text">
         {hintCount}
       </Badge>
     );
