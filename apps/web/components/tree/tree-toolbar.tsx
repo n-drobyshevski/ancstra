@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Star, ChevronDown, BarChart3 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
-import type { FilterState } from './tree-utils';
+import type { FilterState, NodeStyle } from './tree-utils';
 import { TreeExport } from './tree-export';
 
 interface TreeToolbarProps {
@@ -32,6 +32,8 @@ interface TreeToolbarProps {
   onToggleGaps: () => void;
   view: 'canvas' | 'table';
   onSetView: (v: 'canvas' | 'table') => void;
+  nodeStyle: NodeStyle;
+  onNodeStyleChange: (style: NodeStyle) => void;
 }
 
 export function TreeToolbar({
@@ -53,6 +55,8 @@ export function TreeToolbar({
   onToggleGaps,
   view,
   onSetView,
+  nodeStyle,
+  onNodeStyleChange,
 }: TreeToolbarProps) {
   return (
     <div className="flex items-center justify-between border-b border-border bg-background px-4 py-2">
@@ -111,6 +115,34 @@ export function TreeToolbar({
             ))}
 
             {layouts.length > 0 && <DropdownMenuSeparator />}
+
+            <div className="px-2 py-1.5">
+              <div className="text-[11px] text-muted-foreground mb-1">Node style</div>
+              <div className="flex overflow-hidden rounded-md border border-border">
+                <button
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); onNodeStyleChange('wide'); }}
+                  className={`flex-1 px-2 py-0.5 text-[11px] font-medium transition-colors ${
+                    nodeStyle === 'wide'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Wide
+                </button>
+                <button
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); onNodeStyleChange('compact'); }}
+                  className={`flex-1 px-2 py-0.5 text-[11px] font-medium transition-colors ${
+                    nodeStyle === 'compact'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Compact
+                </button>
+              </div>
+            </div>
+
+            <DropdownMenuSeparator />
 
             <DropdownMenuItem onClick={onSaveAsNew}>
               Save as new…
