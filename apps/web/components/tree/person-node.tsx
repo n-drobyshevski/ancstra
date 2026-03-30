@@ -80,9 +80,8 @@ function PersonNodeComponent({ data, selected }: NodeProps<PersonNodeType>) {
 
   // Shared: quality gap dots helper
   function gapDots(dotSize: string) {
-    const gapClass = isCompact ? 'gap-[2px] justify-center' : 'gap-[3px]';
     return (
-      <div className={`flex ${gapClass} mt-0.5`}>
+      <div className="flex justify-center mt-0.5 -mx-1">
         {GAP_FIELDS.map(({ key, label }) => {
           const isNotApplicable = key === 'deathDate' && isLiving;
           const isMissing = missingSet.has(key);
@@ -99,10 +98,12 @@ function PersonNodeComponent({ data, selected }: NodeProps<PersonNodeType>) {
           return (
             <Tooltip key={key}>
               <TooltipTrigger asChild>
-                <span
-                  className={`inline-block ${dotSize} rounded-full`}
-                  style={{ backgroundColor: dotColor }}
-                />
+                <span className="inline-flex items-center justify-center p-1 cursor-default">
+                  <span
+                    className={`block ${dotSize} rounded-full`}
+                    style={{ backgroundColor: dotColor }}
+                  />
+                </span>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="text-xs">
                 {tooltipText}
