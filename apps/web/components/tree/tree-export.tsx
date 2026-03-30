@@ -16,6 +16,10 @@ import { toast } from 'sonner';
 const IMAGE_WIDTH = 4096;
 const IMAGE_HEIGHT = 3072;
 
+function getThemeBackground(): string {
+  return getComputedStyle(document.documentElement).getPropertyValue('--color-background').trim() || '#f8fafc';
+}
+
 function downloadDataUrl(dataUrl: string, filename: string) {
   const a = document.createElement('a');
   a.href = dataUrl;
@@ -47,7 +51,7 @@ export function TreeExport() {
       const viewport = getViewportForBounds(bounds, IMAGE_WIDTH, IMAGE_HEIGHT, 0.5, 2, 0.1);
 
       const dataUrl = await toPng(element, {
-        backgroundColor: '#f8fafc',
+        backgroundColor: getThemeBackground(),
         width: IMAGE_WIDTH,
         height: IMAGE_HEIGHT,
         style: {
@@ -83,7 +87,7 @@ export function TreeExport() {
       const viewport = getViewportForBounds(bounds, IMAGE_WIDTH, IMAGE_HEIGHT, 0.5, 2, 0.1);
 
       const dataUrl = await toSvg(element, {
-        backgroundColor: '#f8fafc',
+        backgroundColor: getThemeBackground(),
         width: IMAGE_WIDTH,
         height: IMAGE_HEIGHT,
         style: {
@@ -119,7 +123,7 @@ export function TreeExport() {
       const viewport = getViewportForBounds(bounds, IMAGE_WIDTH, IMAGE_HEIGHT, 0.5, 2, 0.1);
 
       const dataUrl = await toPng(element, {
-        backgroundColor: '#ffffff',
+        backgroundColor: getThemeBackground(),
         width: IMAGE_WIDTH,
         height: IMAGE_HEIGHT,
         style: {

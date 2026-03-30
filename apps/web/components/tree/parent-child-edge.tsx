@@ -3,9 +3,9 @@ import { type Edge, type EdgeProps, getSmoothStepPath, BaseEdge } from '@xyflow/
 type ParentChildEdgeType = Edge<{ validationStatus: string; familyId: string; pending?: boolean }, 'parentChild'>;
 
 const statusStyles = {
-  confirmed: { strokeDasharray: 'none', stroke: '#6b7280' },
-  proposed: { strokeDasharray: '5,5', stroke: '#3b82f6' },
-  disputed: { strokeDasharray: '2,4', stroke: '#f59e0b' },
+  confirmed: { strokeDasharray: 'none', stroke: 'var(--color-muted-foreground)' },
+  proposed: { strokeDasharray: '5,5', stroke: 'var(--color-muted-foreground)' },
+  disputed: { strokeDasharray: '2,4', stroke: 'var(--color-muted-foreground)' },
 } as const;
 
 export function ParentChildEdge({
@@ -14,7 +14,7 @@ export function ParentChildEdge({
   const [edgePath] = getSmoothStepPath({ sourceX, sourceY, targetX, targetY, borderRadius: 8 });
   if (data?.pending) {
     return (
-      <BaseEdge id={id} path={edgePath} style={{ stroke: '#6b7280', strokeWidth: 2, strokeDasharray: '6,4', animation: 'edge-dash-flow 0.5s linear infinite' }} />
+      <BaseEdge id={id} path={edgePath} style={{ stroke: 'var(--color-muted-foreground)', strokeWidth: 2, strokeDasharray: '6,4', animation: 'edge-dash-flow 0.5s linear infinite' }} />
     );
   }
   const status = data?.validationStatus ?? 'confirmed';

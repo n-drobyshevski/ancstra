@@ -153,7 +153,7 @@ function PersonNodeComponent({ data, selected }: NodeProps<PersonNodeType>) {
             {lifespan ? (
               <div className="text-[9px] text-muted-foreground">{lifespan}</div>
             ) : (
-              <div className="text-[9px] text-amber-500/80">no dates</div>
+              <div className="text-[9px] text-muted-foreground italic">no dates</div>
             )}
             {showGaps && gapDots('size-1')}
           </div>
@@ -179,7 +179,7 @@ function PersonNodeComponent({ data, selected }: NodeProps<PersonNodeType>) {
                 <div className="text-[11px] text-muted-foreground">d. {data.deathDate}</div>
               )}
               {!data.birthDate && !data.deathDate && (
-                <div className="text-[11px] text-amber-500/80">no dates</div>
+                <div className="text-[11px] text-muted-foreground italic">no dates</div>
               )}
               {showGaps && gapDots('size-1.5')}
             </div>

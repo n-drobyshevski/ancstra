@@ -7,7 +7,7 @@ export function PartnerEdge({
 }: EdgeProps<PartnerEdgeType>) {
   const [edgePath] = getStraightPath({ sourceX, sourceY, targetX, targetY });
   const style = data?.pending
-    ? { stroke: '#9ca3af', strokeWidth: 2, strokeDasharray: '6,4', animation: 'edge-dash-flow 0.5s linear infinite' }
-    : { stroke: '#9ca3af', strokeWidth: 2 };
+    ? { stroke: 'var(--color-muted-foreground)', strokeWidth: 2, strokeDasharray: '6,4', animation: 'edge-dash-flow 0.5s linear infinite' }
+    : { stroke: 'var(--color-muted-foreground)', strokeWidth: 2 };
   return <BaseEdge id={id} path={edgePath} style={style} />;
 }
