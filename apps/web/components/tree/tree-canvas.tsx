@@ -122,6 +122,7 @@ function TreeCanvasInner({ treeData, focusPersonId, paletteOpen, onTogglePalette
       return laid.map((n) => ({
         ...n,
         position: posMap[n.id] ?? n.position,
+        data: { ...n.data, nodeStyle },
       }));
     });
     // Replace with server edges, keeping any optimistic edges not yet in server data
@@ -272,17 +273,16 @@ function TreeCanvasInner({ treeData, focusPersonId, paletteOpen, onTogglePalette
 
   const handleAutoLayout = useCallback(() => {
     const laid = applyDagreLayout(rawNodes, rawEdges, showGaps ? 82 : undefined, nodeStyle);
-    setNodes(laid);
+    setNodes(laid.map(n => n.type === 'person' ? { ...n, data: { ...n.data, nodeStyle } } : n));
     setActiveLayoutId(null);
     setActiveLayoutName(null);
   }, [rawNodes, rawEdges, setNodes, showGaps, nodeStyle]);
 
   const handleNodeStyleChange = useCallback((style: NodeStyle) => {
     setNodeStyle(style);
-    const laid = applyDagreLayout(rawNodes, rawEdges, showGaps ? 82 : undefined, style);
-    setNodes(laid);
+    setNodes(nds => nds.map(n => n.type === 'person' ? { ...n, data: { ...n.data, nodeStyle: style } } : n));
     setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 50);
-  }, [rawNodes, rawEdges, setNodes, showGaps, fitView]);
+  }, [setNodes, fitView]);
 
   const handleLoadLayout = useCallback(
     (id: string) => {
@@ -290,10 +290,12 @@ function TreeCanvasInner({ treeData, focusPersonId, paletteOpen, onTogglePalette
         .then((r) => r.json())
         .then((layout) => {
           const { positions, nodeStyle: savedStyle } = parseLayoutData(layout.layoutData);
-          setNodes(applyPositionMap(rawNodes, positions));
+          const style = savedStyle ?? 'wide';
+          const positioned = applyPositionMap(rawNodes, positions);
+          setNodes(positioned.map(n => n.type === 'person' ? { ...n, data: { ...n.data, nodeStyle: style } } : n));
           setActiveLayoutId(layout.id);
           setActiveLayoutName(layout.name);
-          setNodeStyle(savedStyle ?? 'wide');
+          setNodeStyle(style);
         });
     },
     [rawNodes, setNodes],
