@@ -104,6 +104,14 @@ export function treeDataToFlow(data: TreeData): {
   return { nodes, edges };
 }
 
+/** Order a pair so female is left, male is right. Falls back to original order. */
+function orderByMotherLeft(a: Node, b: Node): { left: Node; right: Node } {
+  const aSex = (a.data as PersonNodeData).sex;
+  const bSex = (b.data as PersonNodeData).sex;
+  if (aSex === 'M' && bSex === 'F') return { left: b, right: a };
+  return { left: a, right: b };
+}
+
 export function applyDagreLayout(
   nodes: Node[],
   edges: Edge[],
@@ -147,23 +155,55 @@ export function applyDagreLayout(
     };
   });
 
-  // Post-layout: adjust partners side-by-side
+  // Build set of pairs already handled (by partner edges)
+  const handledPairs = new Set<string>();
+
+  // Collect all co-parent pairs: partners + parents sharing a child
+  const pairs: { left: typeof positioned[0]; right: typeof positioned[0] }[] = [];
+
+  // From partner edges
   const partnerEdges = edges.filter((e) => e.type === 'partner');
   for (const pe of partnerEdges) {
-    const sourceNode = positioned.find((n) => n.id === pe.source);
-    const targetNode = positioned.find((n) => n.id === pe.target);
-    if (sourceNode && targetNode) {
-      const midX = (sourceNode.position.x + targetNode.position.x) / 2;
-      const midY = (sourceNode.position.y + targetNode.position.y) / 2;
-      sourceNode.position = {
-        x: midX - (width + partnerGap) / 2,
-        y: midY,
-      };
-      targetNode.position = {
-        x: midX + (width + partnerGap) / 2,
-        y: midY,
-      };
+    const a = positioned.find((n) => n.id === pe.source);
+    const b = positioned.find((n) => n.id === pe.target);
+    if (a && b) {
+      const pairKey = [a.id, b.id].sort().join(':');
+      if (!handledPairs.has(pairKey)) {
+        handledPairs.add(pairKey);
+        pairs.push(orderByMotherLeft(a, b));
+      }
     }
+  }
+
+  // From co-parents (multiple parentChild edges to same child)
+  const parentsByChild = new Map<string, string[]>();
+  for (const edge of edges) {
+    if (edge.type === 'parentChild') {
+      const parents = parentsByChild.get(edge.target) ?? [];
+      parents.push(edge.source);
+      parentsByChild.set(edge.target, parents);
+    }
+  }
+  for (const parents of parentsByChild.values()) {
+    if (parents.length === 2) {
+      const a = positioned.find((n) => n.id === parents[0]);
+      const b = positioned.find((n) => n.id === parents[1]);
+      if (a && b) {
+        const pairKey = [a.id, b.id].sort().join(':');
+        if (!handledPairs.has(pairKey)) {
+          handledPairs.add(pairKey);
+          pairs.push(orderByMotherLeft(a, b));
+        }
+      }
+    }
+  }
+
+  // Position each pair side-by-side (mother left, father right)
+  for (const { left, right } of pairs) {
+    const midX = (left.position.x + right.position.x) / 2;
+    const midY = (left.position.y + right.position.y) / 2;
+    left.position = { x: midX - (width + partnerGap) / 2, y: midY };
+    right.position = { x: midX + (width + partnerGap) / 2, y: midY };
   }
 
   return positioned;
