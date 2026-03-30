@@ -260,6 +260,33 @@ body {
   opacity: 1;
 }
 
+/* XYFlow dark theme — map XY variables to Soft Dusk tokens */
+.dark .react-flow {
+  /* Controls */
+  --xy-controls-button-background-color-default: var(--card);
+  --xy-controls-button-background-color-hover-default: var(--accent);
+  --xy-controls-button-color-default: var(--foreground);
+  --xy-controls-button-color-hover-default: var(--foreground);
+  --xy-controls-button-border-color-default: var(--border);
+  --xy-controls-box-shadow-default: 0 0 2px 1px rgba(0, 0, 0, 0.2);
+  /* MiniMap */
+  --xy-minimap-background-color-default: var(--card);
+  --xy-minimap-mask-background-color-default: oklch(0.14 0.02 265 / 0.6);
+  --xy-minimap-node-background-color-default: var(--muted-foreground);
+  /* Background */
+  --xy-background-color-default: var(--background);
+  --xy-background-pattern-dots-color-default: var(--border);
+  /* Edges */
+  --xy-edge-stroke-default: var(--muted-foreground);
+  --xy-edge-label-background-color-default: var(--card);
+  --xy-edge-label-color-default: var(--foreground);
+  /* Nodes */
+  --xy-node-border-default: var(--border);
+  --xy-node-background-color-default: var(--card);
+  --xy-node-color-default: var(--foreground);
+  --xy-node-boxshadow-selected-default: 0 0 0 2px var(--primary);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
