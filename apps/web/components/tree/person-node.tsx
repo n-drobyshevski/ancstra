@@ -11,9 +11,9 @@ import {
 type PersonNodeType = Node<PersonNodeData, 'person'>;
 
 const sexColors = {
-  M: { border: '#4f6bed', bg: '#e8ecf4', text: '#4f6bed' },
-  F: { border: '#ec4899', bg: '#fce7f3', text: '#ec4899' },
-  U: { border: '#9ca3af', bg: '#f3f4f6', text: '#6b7280' },
+  M: { border: 'var(--sex-male)', bg: 'var(--sex-male-bg)', text: 'var(--sex-male)' },
+  F: { border: 'var(--sex-female)', bg: 'var(--sex-female-bg)', text: 'var(--sex-female)' },
+  U: { border: 'var(--sex-unknown)', bg: 'var(--sex-unknown-bg)', text: 'var(--sex-unknown)' },
 } as const;
 
 const GAP_FIELDS = [
@@ -145,8 +145,9 @@ function PersonNodeComponent({ data, selected }: NodeProps<PersonNodeType>) {
             >
               {initials}
             </div>
-            <div className="truncate w-full text-center text-[11px] font-semibold text-foreground">
-              {data.givenName} {data.surname}
+            <div className="w-full text-center leading-tight">
+              <div className="truncate text-[11px] font-semibold text-foreground">{data.givenName}</div>
+              <div className="truncate text-[9px] text-muted-foreground">{data.surname}</div>
             </div>
             {lifespan ? (
               <div className="text-[9px] text-muted-foreground">{lifespan}</div>

@@ -63,6 +63,14 @@
   --status-confirmed: oklch(0.55 0.15 150);
   --status-proposed: oklch(0.60 0.15 250);
   --status-disputed: oklch(0.65 0.15 80);
+  /* Sex background variants (for avatars) */
+  --sex-male-bg: oklch(0.92 0.04 240);
+  --sex-female-bg: oklch(0.92 0.04 340);
+  --sex-unknown-bg: oklch(0.94 0.01 250);
+  /* Completion levels */
+  --completion-low: oklch(0.60 0.15 25);
+  --completion-medium: oklch(0.65 0.15 80);
+  --completion-high: oklch(0.55 0.15 150);
 }
 
 @theme {
@@ -127,6 +135,12 @@ body {
   --color-sex-male: var(--sex-male);
   --color-sex-female: var(--sex-female);
   --color-sex-unknown: var(--sex-unknown);
+  --color-sex-male-bg: var(--sex-male-bg);
+  --color-sex-female-bg: var(--sex-female-bg);
+  --color-sex-unknown-bg: var(--sex-unknown-bg);
+  --color-completion-low: var(--completion-low);
+  --color-completion-medium: var(--completion-medium);
+  --color-completion-high: var(--completion-high);
   --color-status-confirmed: var(--status-confirmed);
   --color-status-proposed: var(--status-proposed);
   --color-status-disputed: var(--status-disputed);
@@ -226,6 +240,12 @@ body {
   --sex-male: oklch(0.70 0.10 240);
   --sex-female: oklch(0.72 0.10 340);
   --sex-unknown: oklch(0.60 0.03 250);
+  --sex-male-bg: oklch(0.30 0.06 240);
+  --sex-female-bg: oklch(0.30 0.06 340);
+  --sex-unknown-bg: oklch(0.30 0.02 250);
+  --completion-low: oklch(0.55 0.12 25);
+  --completion-medium: oklch(0.60 0.12 80);
+  --completion-high: oklch(0.50 0.12 150);
   --status-confirmed: oklch(0.65 0.12 150);
   --status-proposed: oklch(0.70 0.12 250);
   --status-disputed: oklch(0.72 0.12 80);
