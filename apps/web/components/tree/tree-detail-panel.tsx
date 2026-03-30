@@ -184,7 +184,7 @@ function DetailHeader({
           {isLoading ? (
             <Skeleton className="h-3.5 w-36 mt-1" />
           ) : (
-            <p className="text-xs text-muted-foreground mt-0.5 truncate">
+            <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
               {computeLifespan(birthDate, deathDate)}
             </p>
           )}
@@ -366,6 +366,7 @@ function DetailVitalInfo({
 
   return (
     <div className="border-b p-4 space-y-2 text-sm">
+      <div className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-2">Vital Information</div>
       {/* Birth */}
       <div className="flex items-baseline gap-2">
         <span className="w-10 text-xs text-muted-foreground shrink-0">Born</span>
@@ -459,14 +460,20 @@ function DetailFamily({
     );
   }
 
-  function RelRow({ label, people }: { label: string; people: PersonListItem[] }) {
+  function RelRow({
+    label, people, labelFn,
+  }: {
+    label: string;
+    people: PersonListItem[];
+    labelFn?: (p: PersonListItem) => string;
+  }) {
     if (people.length === 0) return null;
     return (
       <div className="space-y-1">
-        {people.map((p) => (
+        {people.map((p, i) => (
           <div key={p.id} className="flex items-center gap-2">
             <span className="w-14 text-xs text-muted-foreground shrink-0">
-              {people.indexOf(p) === 0 ? label : ''}
+              {labelFn ? labelFn(p) : (i === 0 ? label : '')}
             </span>
             <MiniAvatar person={p} />
             <button
@@ -483,21 +490,13 @@ function DetailFamily({
 
   return (
     <div className="border-b p-4 space-y-2">
+      <div className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-2">Family</div>
       <RelRow label="Spouse" people={spouses} />
-      {parents.map((p, i) => (
-        <div key={p.id} className="flex items-center gap-2">
-          <span className="w-14 text-xs text-muted-foreground shrink-0">
-            {i === 0 ? (p.sex === 'F' ? 'Mother' : 'Father') : (p.sex === 'F' ? 'Mother' : 'Father')}
-          </span>
-          <MiniAvatar person={p} />
-          <button
-            onClick={() => onFocusNode(p.id)}
-            className="text-sm text-left text-primary underline-offset-4 hover:underline truncate"
-          >
-            {p.givenName} {p.surname}
-          </button>
-        </div>
-      ))}
+      <RelRow
+        label="Father/Mother"
+        people={parents}
+        labelFn={(p) => (p.sex === 'F' ? 'Mother' : 'Father')}
+      />
       <RelRow label="Children" people={childrenList} />
     </div>
   );
@@ -561,13 +560,14 @@ function DetailTimeline({
 
   return (
     <div className="border-b p-4">
+      <div className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-2">Life Events</div>
       <div className="relative pl-4">
         {/* Vertical line */}
         <div className="absolute left-[4px] top-1 bottom-1 w-px bg-border" />
 
-        <div className="space-y-3">
+        <ol className="space-y-3">
           {visible.map((item, i) => (
-            <div key={i} className="relative flex items-start gap-2">
+            <li key={i} className="relative flex items-start gap-2">
               {/* Dot */}
               <div
                 className={`absolute left-[-13px] top-[3px] size-[9px] rounded-full border-2 border-card ${
@@ -580,9 +580,9 @@ function DetailTimeline({
                   {[item.date, item.place].filter(Boolean).join(' \u00b7 ') || 'No details'}
                 </div>
               </div>
-            </div>
+            </li>
           ))}
-        </div>
+        </ol>
 
         {hasMore && (
           <button
@@ -659,6 +659,7 @@ function DetailNotes({
 
   return (
     <div className="border-b p-4">
+      <div className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-2">Notes</div>
       <div
         className={`text-sm text-muted-foreground ${!showFull && isLong ? 'line-clamp-3' : ''} ${
           editState.isEditMode ? 'hover:ring-1 hover:ring-border rounded px-1 -mx-1 cursor-pointer' : ''
