@@ -260,6 +260,13 @@ body {
   opacity: 1;
 }
 
+/* Mobile: always hide connection handles */
+@media (max-width: 767px) {
+  .react-flow__handle {
+    display: none !important;
+  }
+}
+
 /* XYFlow dark theme — map XY variables to Soft Dusk tokens */
 .dark .react-flow {
   /* Controls */

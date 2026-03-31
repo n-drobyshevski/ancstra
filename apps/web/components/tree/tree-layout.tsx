@@ -3,10 +3,11 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { ArrowLeft } from 'lucide-react';
 import type { PersonListItem, TreeData } from '@ancstra/shared';
 import { PersonPalette } from './person-palette';
 import { TreeDetailPanel } from './tree-detail-panel';
+import { MobileDetailSheet } from './mobile-detail-sheet';
+import { MobileTreeToolbar } from './mobile-tree-toolbar';
 
 const TreeCanvas = dynamic(
   () => import('./tree-canvas').then((m) => ({ default: m.TreeCanvas })),
@@ -110,6 +111,7 @@ export function TreeLayout({ treeData, focusPersonId }: TreeLayoutProps) {
             onSelectPerson={handleSelectPerson}
             view={view}
             onSetView={setView}
+            isMobile={false}
           />
         ) : (
           <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
@@ -150,59 +152,40 @@ export function TreeLayout({ treeData, focusPersonId }: TreeLayoutProps) {
 
       {/* Mobile layout */}
       <div className="flex h-full flex-col md:hidden">
-        {selectedPerson ? (
+        {view === 'canvas' ? (
           <>
-            <div className="flex h-12 items-center gap-2 border-b border-border px-3">
-              <button
-                onClick={clearSelection}
-                className="-ml-1 rounded-md p-1.5 hover:bg-muted"
-                aria-label="Back to tree"
-              >
-                <ArrowLeft className="size-4" />
-              </button>
-              <span className="flex-1 truncate text-sm font-semibold">
-                {selectedPerson.givenName} {selectedPerson.surname}
-              </span>
-            </div>
-            <div className="flex-1 overflow-y-auto">
-              <TreeDetailPanel
-                person={selectedPerson}
-                treeData={treeData}
-                onClose={clearSelection}
-                onFocusNode={handleFocusNode}
-              />
-            </div>
+            <TreeCanvas
+              treeData={treeData}
+              focusPersonId={focusPersonId}
+              paletteOpen={false}
+              onTogglePalette={handleTogglePalette}
+              onSelectPerson={handleSelectPerson}
+              view={view}
+              onSetView={setView}
+              isMobile
+              mobileToolbarSlot={(toolbarProps) => (
+                <MobileTreeToolbar {...toolbarProps} />
+              )}
+            />
+            <MobileDetailSheet
+              person={selectedPerson}
+              treeData={treeData}
+              onClose={clearSelection}
+              onFocusNode={handleFocusNode}
+            />
           </>
-        ) : view === 'canvas' ? (
-          <TreeCanvas
-            treeData={treeData}
-            focusPersonId={focusPersonId}
-            paletteOpen={false}
-            onTogglePalette={handleTogglePalette}
-            onSelectPerson={handleSelectPerson}
-            view={view}
-            onSetView={setView}
-          />
         ) : (
           <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-            <div className="flex items-center justify-between border-b border-border bg-background px-4 py-2">
-              <div className="flex items-center gap-1.5">
-                <div className="flex overflow-hidden rounded-lg border border-border">
-                  <button
-                    onClick={() => setView('canvas')}
-                    className="px-3 py-1 text-xs font-medium transition-colors text-muted-foreground hover:text-foreground"
-                  >
-                    Canvas
-                  </button>
-                  <button
-                    onClick={() => setView('table')}
-                    className="px-3 py-1 text-xs font-medium transition-colors bg-primary text-primary-foreground"
-                  >
-                    Table
-                  </button>
-                </div>
-              </div>
-            </div>
+            <MobileTreeToolbar
+              filterState={{ sex: { M: true, F: true, U: true }, living: { living: true, deceased: true } }}
+              onToggleFilter={() => {}}
+              showGaps={false}
+              onToggleGaps={() => {}}
+              onAutoLayout={() => {}}
+              onExportPng={() => {}}
+              onExportSvg={() => {}}
+              onExportPdf={() => {}}
+            />
             <div className="flex-1 overflow-hidden">
               <TreeTableWrapper treeData={treeData} relationships={relationships} />
             </div>
