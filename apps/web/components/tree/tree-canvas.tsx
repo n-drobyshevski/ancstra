@@ -21,6 +21,7 @@ import {
 import '@xyflow/react/dist/style.css';
 
 import type { PersonListItem, TreeData } from '@ancstra/shared';
+import { cn } from '@/lib/utils';
 import { PersonNode } from './person-node';
 import { PartnerEdge } from './partner-edge';
 import { ParentChildEdge } from './parent-child-edge';
@@ -65,10 +66,21 @@ interface TreeCanvasProps {
   onSelectPerson: (person: PersonListItem | null) => void;
   view: 'canvas' | 'table';
   onSetView: (v: 'canvas' | 'table') => void;
+  isMobile?: boolean;
+  mobileToolbarSlot?: (props: {
+    filterState: FilterState;
+    onToggleFilter: (category: 'sex' | 'living', key: string) => void;
+    showGaps: boolean;
+    onToggleGaps: () => void;
+    onAutoLayout: () => void;
+    onExportPng: () => void;
+    onExportSvg: () => void;
+    onExportPdf: () => void;
+  }) => React.ReactNode;
 }
 
-function TreeCanvasInner({ treeData, focusPersonId, paletteOpen, onTogglePalette, onSelectPerson, view, onSetView }: TreeCanvasProps) {
-  const { fitView, screenToFlowPosition } = useReactFlow();
+function TreeCanvasInner({ treeData, focusPersonId, paletteOpen, onTogglePalette, onSelectPerson, view, onSetView, isMobile, mobileToolbarSlot }: TreeCanvasProps) {
+  const { fitView, screenToFlowPosition, getNodes } = useReactFlow();
   const router = useRouter();
   const connectionLock = useConnectionLock();
 
@@ -104,6 +116,7 @@ function TreeCanvasInner({ treeData, focusPersonId, paletteOpen, onTogglePalette
   const [filterState, setFilterState] = useState<FilterState>(DEFAULT_FILTERS);
   const [showGaps, setShowGaps] = useState(false);
   const [nodeStyle, setNodeStyle] = useState<NodeStyle>('wide');
+  const effectiveNodeStyle = isMobile ? 'compact' : nodeStyle;
   const { qualityData } = useQualityData(showGaps);
 
   // Sync nodes/edges when treeData changes (after router.refresh)
@@ -118,11 +131,11 @@ function TreeCanvasInner({ treeData, focusPersonId, paletteOpen, onTogglePalette
       for (const n of prev) {
         if (n.type !== 'draftPerson') posMap[n.id] = n.position;
       }
-      const laid = applyDagreLayout(rawNodes, rawEdges, showGaps ? 82 : undefined, nodeStyle);
+      const laid = applyDagreLayout(rawNodes, rawEdges, showGaps ? 82 : undefined, effectiveNodeStyle);
       return laid.map((n) => ({
         ...n,
         position: posMap[n.id] ?? n.position,
-        data: { ...n.data, nodeStyle },
+        data: { ...n.data, nodeStyle: effectiveNodeStyle },
       }));
     });
     // Replace with server edges, keeping any optimistic edges not yet in server data
@@ -131,7 +144,7 @@ function TreeCanvasInner({ treeData, focusPersonId, paletteOpen, onTogglePalette
       const optimistic = prev.filter(e => !serverIds.has(e.id));
       return [...rawEdges, ...optimistic];
     });
-  }, [treeData, rawNodes, rawEdges, setNodes, setEdges, showGaps, nodeStyle]);
+  }, [treeData, rawNodes, rawEdges, setNodes, setEdges, showGaps, effectiveNodeStyle]);
 
   const handleToggleFilter = useCallback((category: 'sex' | 'living', key: string) => {
     setFilterState(prev => ({
@@ -209,14 +222,14 @@ function TreeCanvasInner({ treeData, focusPersonId, paletteOpen, onTogglePalette
             fetch(`/api/layouts/${activeLayoutId}`, {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ layoutData: serializeLayoutData(positions, nodeStyle) }),
+              body: JSON.stringify({ layoutData: serializeLayoutData(positions, effectiveNodeStyle) }),
             });
             return currentNodes;
           });
         }, 2000);
       }
     },
-    [onNodesChange, setNodes, activeLayoutId, nodeStyle],
+    [onNodesChange, setNodes, activeLayoutId, effectiveNodeStyle],
   );
 
   const onNodeClick = useCallback(
@@ -272,11 +285,11 @@ function TreeCanvasInner({ treeData, focusPersonId, paletteOpen, onTogglePalette
   const onPaneClick = useCallback(() => setContextMenu(null), []);
 
   const handleAutoLayout = useCallback(() => {
-    const laid = applyDagreLayout(rawNodes, rawEdges, showGaps ? 82 : undefined, nodeStyle);
-    setNodes(laid.map(n => n.type === 'person' ? { ...n, data: { ...n.data, nodeStyle } } : n));
+    const laid = applyDagreLayout(rawNodes, rawEdges, showGaps ? 82 : undefined, effectiveNodeStyle);
+    setNodes(laid.map(n => n.type === 'person' ? { ...n, data: { ...n.data, nodeStyle: effectiveNodeStyle } } : n));
     setActiveLayoutId(null);
     setActiveLayoutName(null);
-  }, [rawNodes, rawEdges, setNodes, showGaps, nodeStyle]);
+  }, [rawNodes, rawEdges, setNodes, showGaps, effectiveNodeStyle]);
 
   const handleNodeStyleChange = useCallback((style: NodeStyle) => {
     setNodeStyle(style);
@@ -309,7 +322,7 @@ function TreeCanvasInner({ treeData, focusPersonId, paletteOpen, onTogglePalette
       fetch('/api/layouts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, layoutData: serializeLayoutData(positions, nodeStyle) }),
+        body: JSON.stringify({ name, layoutData: serializeLayoutData(positions, effectiveNodeStyle) }),
       })
         .then((r) => r.json())
         .then((layout) => {
@@ -320,7 +333,7 @@ function TreeCanvasInner({ treeData, focusPersonId, paletteOpen, onTogglePalette
         });
       return currentNodes;
     });
-  }, [setNodes, refreshLayouts, nodeStyle]);
+  }, [setNodes, refreshLayouts, effectiveNodeStyle]);
 
   const handleUpdateLayout = useCallback(() => {
     if (!activeLayoutId) {
@@ -332,13 +345,13 @@ function TreeCanvasInner({ treeData, focusPersonId, paletteOpen, onTogglePalette
       fetch(`/api/layouts/${activeLayoutId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ layoutData: serializeLayoutData(positions, nodeStyle) }),
+        body: JSON.stringify({ layoutData: serializeLayoutData(positions, effectiveNodeStyle) }),
       }).then(() => {
         toast.success('Layout updated');
       });
       return currentNodes;
     });
-  }, [activeLayoutId, setNodes, nodeStyle]);
+  }, [activeLayoutId, setNodes, effectiveNodeStyle]);
 
   const handleSetDefault = useCallback(() => {
     if (!activeLayoutId) return;
@@ -637,15 +650,16 @@ function TreeCanvasInner({ treeData, focusPersonId, paletteOpen, onTogglePalette
   useEffect(() => {
     setNodes(nds => nds.map(node => {
       if (node.type !== 'person') return node;
-      return { ...node, data: { ...node.data, nodeStyle } };
+      return { ...node, data: { ...node.data, nodeStyle: effectiveNodeStyle } };
     }));
-  }, [nodeStyle, setNodes]);
+  }, [effectiveNodeStyle, setNodes]);
 
   // Compute filtered edges (dimmed based on node dimmed status)
   const filteredEdges = useMemo(() => applyEdgeFilters(edges, nodes), [edges, nodes]);
 
   // Keyboard shortcuts
   useEffect(() => {
+    if (isMobile) return; // No keyboard shortcuts on mobile
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         onSelectPerson(null);
@@ -658,11 +672,99 @@ function TreeCanvasInner({ treeData, focusPersonId, paletteOpen, onTogglePalette
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [setNodes]);
+  }, [setNodes, isMobile]);
+
+  // Export helpers (for mobile toolbar slot)
+  const getFlowElement = useCallback(() => {
+    return document.querySelector('.react-flow__viewport') as HTMLElement | null;
+  }, []);
+
+  const exportPng = useCallback(async () => {
+    const element = getFlowElement();
+    if (!element) return;
+    const nodes = getNodes();
+    if (nodes.length === 0) { toast.error('No nodes to export'); return; }
+    const { getNodesBounds, getViewportForBounds } = await import('@xyflow/react');
+    const { toPng } = await import('html-to-image');
+    const IMAGE_WIDTH = 4096;
+    const IMAGE_HEIGHT = 3072;
+    const bg = getComputedStyle(document.documentElement).getPropertyValue('--color-background').trim() || '#f8fafc';
+    const bounds = getNodesBounds(nodes);
+    const viewport = getViewportForBounds(bounds, IMAGE_WIDTH, IMAGE_HEIGHT, 0.5, 2, 0.1);
+    try {
+      const dataUrl = await toPng(element, {
+        backgroundColor: bg,
+        width: IMAGE_WIDTH, height: IMAGE_HEIGHT,
+        style: { width: `${IMAGE_WIDTH}px`, height: `${IMAGE_HEIGHT}px`, transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})` },
+      });
+      const a = document.createElement('a');
+      a.href = dataUrl; a.download = 'ancstra-tree.png'; a.click();
+      toast.success('PNG exported');
+    } catch { toast.error('Export failed'); }
+  }, [getFlowElement, getNodes]);
+
+  const exportSvg = useCallback(async () => {
+    const element = getFlowElement();
+    if (!element) return;
+    const nodes = getNodes();
+    if (nodes.length === 0) { toast.error('No nodes to export'); return; }
+    const { getNodesBounds, getViewportForBounds } = await import('@xyflow/react');
+    const { toSvg } = await import('html-to-image');
+    const IMAGE_WIDTH = 4096;
+    const IMAGE_HEIGHT = 3072;
+    const bg = getComputedStyle(document.documentElement).getPropertyValue('--color-background').trim() || '#f8fafc';
+    const bounds = getNodesBounds(nodes);
+    const viewport = getViewportForBounds(bounds, IMAGE_WIDTH, IMAGE_HEIGHT, 0.5, 2, 0.1);
+    try {
+      const dataUrl = await toSvg(element, {
+        backgroundColor: bg,
+        width: IMAGE_WIDTH, height: IMAGE_HEIGHT,
+        style: { width: `${IMAGE_WIDTH}px`, height: `${IMAGE_HEIGHT}px`, transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})` },
+      });
+      const a = document.createElement('a');
+      a.href = dataUrl; a.download = 'ancstra-tree.svg'; a.click();
+      toast.success('SVG exported');
+    } catch { toast.error('Export failed'); }
+  }, [getFlowElement, getNodes]);
+
+  const exportPdf = useCallback(async () => {
+    const element = getFlowElement();
+    if (!element) return;
+    const nodes = getNodes();
+    if (nodes.length === 0) { toast.error('No nodes to export'); return; }
+    const { getNodesBounds, getViewportForBounds } = await import('@xyflow/react');
+    const { toPng } = await import('html-to-image');
+    const IMAGE_WIDTH = 4096;
+    const IMAGE_HEIGHT = 3072;
+    const bg = getComputedStyle(document.documentElement).getPropertyValue('--color-background').trim() || '#f8fafc';
+    const bounds = getNodesBounds(nodes);
+    const viewport = getViewportForBounds(bounds, IMAGE_WIDTH, IMAGE_HEIGHT, 0.5, 2, 0.1);
+    try {
+      const dataUrl = await toPng(element, {
+        backgroundColor: bg,
+        width: IMAGE_WIDTH, height: IMAGE_HEIGHT,
+        style: { width: `${IMAGE_WIDTH}px`, height: `${IMAGE_HEIGHT}px`, transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})` },
+      });
+      const { jsPDF } = await import('jspdf');
+      const pdf = new jsPDF({ orientation: 'landscape', unit: 'px', format: [IMAGE_WIDTH, IMAGE_HEIGHT] });
+      pdf.addImage(dataUrl, 'PNG', 0, 0, IMAGE_WIDTH, IMAGE_HEIGHT);
+      pdf.save('ancstra-tree.pdf');
+      toast.success('PDF exported');
+    } catch { toast.error('Export failed'); }
+  }, [getFlowElement, getNodes]);
 
   return (
     <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-      <TreeToolbar
+      {isMobile ? mobileToolbarSlot?.({
+        filterState,
+        onToggleFilter: handleToggleFilter,
+        showGaps,
+        onToggleGaps: () => setShowGaps(v => !v),
+        onAutoLayout: handleAutoLayout,
+        onExportPng: exportPng,
+        onExportSvg: exportSvg,
+        onExportPdf: exportPdf,
+      }) : (<TreeToolbar
         onAutoLayout={handleAutoLayout}
         onTogglePalette={onTogglePalette}
         paletteOpen={paletteOpen}
@@ -683,7 +785,7 @@ function TreeCanvasInner({ treeData, focusPersonId, paletteOpen, onTogglePalette
         onSetView={onSetView}
         nodeStyle={nodeStyle}
         onNodeStyleChange={handleNodeStyleChange}
-      />
+      />)}
 
       <div className="flex-1 relative overflow-hidden">
         <ReactFlow
@@ -691,45 +793,61 @@ function TreeCanvasInner({ treeData, focusPersonId, paletteOpen, onTogglePalette
           nodes={nodes}
           edges={filteredEdges}
           onNodesChange={handleNodesChange}
-          onEdgesChange={onEdgesChange}
+          onEdgesChange={isMobile ? undefined : onEdgesChange}
           onNodeClick={onNodeClick}
-          onNodeContextMenu={onNodeContextMenu}
-          onEdgeContextMenu={onEdgeContextMenu}
-          onPaneContextMenu={onPaneContextMenu}
+          onNodeContextMenu={isMobile ? undefined : onNodeContextMenu}
+          onEdgeContextMenu={isMobile ? undefined : onEdgeContextMenu}
+          onPaneContextMenu={isMobile ? undefined : onPaneContextMenu}
           onPaneClick={onPaneClick}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
-          connectionMode={ConnectionMode.Loose}
-          isValidConnection={isValidConnection}
-          onConnect={onConnect}
-          onReconnectStart={onReconnectStart}
-          onReconnect={onReconnect}
-          onReconnectEnd={onReconnectEnd}
-          edgesReconnectable
-          onDragOver={onDragOver}
-          onDrop={onDrop}
+          connectionMode={isMobile ? undefined : ConnectionMode.Loose}
+          isValidConnection={isMobile ? undefined : isValidConnection}
+          onConnect={isMobile ? undefined : onConnect}
+          onReconnectStart={isMobile ? undefined : onReconnectStart}
+          onReconnect={isMobile ? undefined : onReconnect}
+          onReconnectEnd={isMobile ? undefined : onReconnectEnd}
+          edgesReconnectable={!isMobile}
+          onDragOver={isMobile ? undefined : onDragOver}
+          onDrop={isMobile ? undefined : onDrop}
           fitView
           minZoom={0.1}
           maxZoom={2}
-          deleteKeyCode="Delete"
-          selectionOnDrag
-          selectionMode={SelectionMode.Partial}
-          multiSelectionKeyCode="Shift"
+          deleteKeyCode={isMobile ? null : "Delete"}
+          selectionOnDrag={!isMobile}
+          selectionMode={isMobile ? undefined : SelectionMode.Partial}
+          multiSelectionKeyCode={isMobile ? null : "Shift"}
+          nodesDraggable={!isMobile}
+          nodesConnectable={!isMobile}
+          zoomOnScroll={!isMobile}
+          zoomOnDoubleClick={!isMobile}
+          panOnDrag
+          zoomOnPinch
         >
           <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
           <MiniMap
-            position="bottom-left"
-            zoomable
+            position={isMobile ? "top-right" : "bottom-left"}
+            zoomable={!isMobile}
             pannable
-            className="!bg-card !border !shadow-sm !rounded-lg"
+            className={isMobile
+              ? "!bg-card/70 !backdrop-blur-sm !border !border-border/50 !rounded-md !shadow-sm"
+              : "!bg-card !border !shadow-sm !rounded-lg"
+            }
+            style={isMobile ? { width: 80, height: 50 } : undefined}
           />
           <Controls
             position="bottom-right"
-            className="!bg-card !border !shadow-sm !rounded-lg"
+            showZoom
+            showFitView
+            showInteractive={!isMobile}
+            className={cn(
+              "!bg-card !border !shadow-sm !rounded-lg",
+              isMobile && "!mb-[38dvh]"
+            )}
           />
         </ReactFlow>
 
-        {contextMenu && (
+        {!isMobile && contextMenu && (
           <TreeContextMenu
             {...contextMenu}
             persons={treeData.persons}
