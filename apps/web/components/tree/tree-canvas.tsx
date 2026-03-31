@@ -61,12 +61,14 @@ const edgeTypes = { partner: PartnerEdge, parentChild: ParentChildEdge };
 interface TreeCanvasProps {
   treeData: TreeData;
   focusPersonId?: string;
+  focusKey?: number;
   paletteOpen: boolean;
   onTogglePalette: () => void;
   onSelectPerson: (person: PersonListItem | null) => void;
   view: 'canvas' | 'table';
   onSetView: (v: 'canvas' | 'table') => void;
   isMobile?: boolean;
+  isDetailOpen?: boolean;
   mobileToolbarSlot?: (props: {
     filterState: FilterState;
     onToggleFilter: (category: 'sex' | 'living', key: string) => void;
@@ -79,7 +81,7 @@ interface TreeCanvasProps {
   }) => React.ReactNode;
 }
 
-function TreeCanvasInner({ treeData, focusPersonId, paletteOpen, onTogglePalette, onSelectPerson, view, onSetView, isMobile, mobileToolbarSlot }: TreeCanvasProps) {
+function TreeCanvasInner({ treeData, focusPersonId, focusKey, paletteOpen, onTogglePalette, onSelectPerson, view, onSetView, isMobile, isDetailOpen, mobileToolbarSlot }: TreeCanvasProps) {
   const { fitView, screenToFlowPosition, getNodes } = useReactFlow();
   const router = useRouter();
   const connectionLock = useConnectionLock();
@@ -613,16 +615,20 @@ function TreeCanvasInner({ treeData, focusPersonId, paletteOpen, onTogglePalette
   }, [deleteRelationship]);
 
   // Focus on person when focusPersonId is provided (e.g. from /tree?focus=...)
+  // focusKey allows re-triggering the effect for the same person (e.g. tapping same family member)
   useEffect(() => {
     if (!focusPersonId) return;
     // Small delay to let React Flow render nodes first
     const timer = setTimeout(() => {
       fitView({ nodes: [{ id: focusPersonId }], duration: 500, padding: 0.5 });
-      const person = treeData.persons.find((p) => p.id === focusPersonId);
-      if (person) onSelectPerson(person);
+      // On mobile, the parent already set selectedPerson via handleFocusNode
+      if (!isMobile) {
+        const person = treeData.persons.find((p) => p.id === focusPersonId);
+        if (person) onSelectPerson(person);
+      }
     }, 200);
     return () => clearTimeout(timer);
-  }, [focusPersonId, fitView, treeData]);
+  }, [focusPersonId, focusKey, fitView, treeData, isMobile]);
 
   // Apply filters when filterState changes
   useEffect(() => {
@@ -842,7 +848,7 @@ function TreeCanvasInner({ treeData, focusPersonId, paletteOpen, onTogglePalette
             showInteractive={!isMobile}
             className={cn(
               "!bg-card !border !shadow-sm !rounded-lg",
-              isMobile && "!mb-[38dvh]"
+              isMobile && isDetailOpen && "!mb-[38dvh]"
             )}
           />
         </ReactFlow>

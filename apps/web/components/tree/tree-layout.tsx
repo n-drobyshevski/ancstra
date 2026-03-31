@@ -61,6 +61,8 @@ export function TreeLayout({ treeData, focusPersonId }: TreeLayoutProps) {
   const view = (searchParams.get('view') ?? 'canvas') as 'canvas' | 'table';
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [selectedPerson, setSelectedPerson] = useState<PersonListItem | null>(null);
+  const [focusKey, setFocusKey] = useState(0);
+  const [runtimeFocusId, setRuntimeFocusId] = useState<string | undefined>(undefined);
 
   const setView = useCallback(
     (v: 'canvas' | 'table') => {
@@ -82,7 +84,11 @@ export function TreeLayout({ treeData, focusPersonId }: TreeLayoutProps) {
   const handleFocusNode = useCallback(
     (personId: string) => {
       const person = treeData.persons.find((p) => p.id === personId);
-      if (person) setSelectedPerson(person);
+      if (person) {
+        setSelectedPerson(person);
+        setRuntimeFocusId(personId);
+        setFocusKey(k => k + 1);
+      }
     },
     [treeData],
   );
@@ -156,13 +162,15 @@ export function TreeLayout({ treeData, focusPersonId }: TreeLayoutProps) {
           <>
             <TreeCanvas
               treeData={treeData}
-              focusPersonId={focusPersonId}
+              focusPersonId={runtimeFocusId ?? focusPersonId}
+              focusKey={focusKey}
               paletteOpen={false}
               onTogglePalette={handleTogglePalette}
               onSelectPerson={handleSelectPerson}
               view={view}
               onSetView={setView}
               isMobile
+              isDetailOpen={!!selectedPerson}
               mobileToolbarSlot={(toolbarProps) => (
                 <MobileTreeToolbar {...toolbarProps} />
               )}

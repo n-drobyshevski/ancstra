@@ -396,6 +396,13 @@ export function DetailHeaderCompact({
   const tokens = sexTokens[sex];
   const birthDate = fullPerson?.birthDate ?? person.birthDate;
   const deathDate = fullPerson?.deathDate ?? person.deathDate;
+  const birthPlace = fullPerson?.birthPlace;
+  const deathPlace = fullPerson?.deathPlace;
+
+  const compactPlaceLine = [
+    birthDate && `b. ${birthDate}${birthPlace ? `, ${birthPlace}` : ''}`,
+    deathDate && `d. ${deathDate}${deathPlace ? `, ${deathPlace}` : ''}`,
+  ].filter(Boolean).join(' \u00b7 ');
 
   return (
     <div className="flex items-center gap-2 min-w-0">
@@ -416,6 +423,11 @@ export function DetailHeaderCompact({
           <span className="text-[11px] text-muted-foreground ml-1.5">
             {computeLifespan(birthDate, deathDate)}
           </span>
+        )}
+        {!isLoading && fullPerson && (birthPlace || deathPlace) && (
+          <div className="truncate text-[10px] text-muted-foreground">
+            {compactPlaceLine}
+          </div>
         )}
       </div>
     </div>
