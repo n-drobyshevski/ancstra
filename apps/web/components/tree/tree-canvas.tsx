@@ -802,6 +802,7 @@ function TreeCanvasInner({ treeData, focusPersonId, focusKey, paletteOpen, onTog
       <div className="flex-1 relative overflow-hidden">
         <ReactFlow
           aria-label="Family tree"
+          proOptions={{ hideAttribution: true }}
           nodes={nodes}
           edges={filteredEdges}
           onNodesChange={handleNodesChange}
