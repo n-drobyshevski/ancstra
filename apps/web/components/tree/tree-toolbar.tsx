@@ -8,7 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
-import { Star, ChevronDown, BarChart3 } from 'lucide-react';
+import { Star, ChevronDown, BarChart3, Map } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import type { FilterState, NodeStyle } from './tree-utils';
 import { TreeExport } from './tree-export';
@@ -30,6 +30,8 @@ interface TreeToolbarProps {
   onToggleFilter: (category: 'sex' | 'living', key: string) => void;
   showGaps: boolean;
   onToggleGaps: () => void;
+  showMinimap: boolean;
+  onToggleMinimap: () => void;
   view: 'canvas' | 'table';
   onSetView: (v: 'canvas' | 'table') => void;
   nodeStyle: NodeStyle;
@@ -53,6 +55,8 @@ export function TreeToolbar({
   onToggleFilter,
   showGaps,
   onToggleGaps,
+  showMinimap,
+  onToggleMinimap,
   view,
   onSetView,
   nodeStyle,
@@ -239,6 +243,16 @@ export function TreeToolbar({
         >
           <BarChart3 className="size-3.5" />
           Data Quality
+        </Button>
+
+        <Button
+          variant={showMinimap ? 'default' : 'secondary'}
+          size="sm"
+          className="h-7 text-xs gap-1"
+          onClick={onToggleMinimap}
+        >
+          <Map className="size-3.5" />
+          Minimap
         </Button>
 
         <TreeExport />
