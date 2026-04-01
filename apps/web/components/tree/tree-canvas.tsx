@@ -120,6 +120,7 @@ function TreeCanvasInner({ treeData, focusPersonId, focusKey, paletteOpen, onTog
 
   const [filterState, setFilterState] = useState<FilterState>(DEFAULT_FILTERS);
   const [showGaps, setShowGaps] = useState(false);
+  const [showMinimap, setShowMinimap] = useState(true);
   const [nodeStyle, setNodeStyle] = useState<NodeStyle>('wide');
   const effectiveNodeStyle = isMobile ? 'compact' : nodeStyle;
   const { qualityData } = useQualityData(showGaps);
@@ -793,6 +794,8 @@ function TreeCanvasInner({ treeData, focusPersonId, focusKey, paletteOpen, onTog
         onToggleFilter={handleToggleFilter}
         showGaps={showGaps}
         onToggleGaps={() => setShowGaps(v => !v)}
+        showMinimap={showMinimap}
+        onToggleMinimap={() => setShowMinimap(v => !v)}
         view={view}
         onSetView={onSetView}
         nodeStyle={nodeStyle}
@@ -838,16 +841,15 @@ function TreeCanvasInner({ treeData, focusPersonId, focusKey, paletteOpen, onTog
           zoomOnPinch
         >
           <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
-          <MiniMap
-            position={isMobile ? "top-right" : "bottom-left"}
-            zoomable={!isMobile}
-            pannable
-            className={isMobile
-              ? "!bg-card/70 !backdrop-blur-sm !border !border-border/50 !rounded-md !shadow-sm"
-              : "!bg-card !border !shadow-sm !rounded-lg"
-            }
-            style={isMobile ? { width: 80, height: 50 } : undefined}
-          />
+          {(isMobile || showMinimap) && (
+            <MiniMap
+              position="top-right"
+              zoomable={!isMobile}
+              pannable
+              className="!bg-card/70 !backdrop-blur-sm !border !border-border/50 !rounded-md !shadow-sm"
+              style={isMobile ? { width: 80, height: 50 } : { width: 120, height: 75 }}
+            />
+          )}
           <Controls
             position="bottom-right"
             showZoom
