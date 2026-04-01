@@ -3,10 +3,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { Menu } from 'lucide-react';
 import type { PersonListItem, TreeData } from '@ancstra/shared';
-import { Button } from '@/components/ui/button';
-import { useSidebar } from '@/components/ui/sidebar';
 import { PersonPalette } from './person-palette';
 import { TreeDetailPanel } from './tree-detail-panel';
 import { MobileDetailSheet } from './mobile-detail-sheet';
@@ -60,7 +57,6 @@ export function TreeLayout({ treeData, focusPersonId }: TreeLayoutProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
-  const { toggleSidebar } = useSidebar();
 
   const view = (searchParams.get('view') ?? 'canvas') as 'canvas' | 'table';
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -189,15 +185,6 @@ export function TreeLayout({ treeData, focusPersonId }: TreeLayoutProps) {
         ) : (
           <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
             <div className="flex h-11 items-center border-b border-border bg-background px-2 gap-1">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-8"
-                onClick={toggleSidebar}
-                aria-label="Toggle sidebar"
-              >
-                <Menu className="size-4" />
-              </Button>
               <span className="flex-1 text-sm font-semibold truncate px-1">Family Tree</span>
             </div>
             <div className="flex-1 overflow-hidden">

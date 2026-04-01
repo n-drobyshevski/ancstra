@@ -9,8 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuCheckboxItem,
 } from '@/components/ui/dropdown-menu';
-import { Menu, EllipsisVertical, BarChart3, LayoutGrid, Download } from 'lucide-react';
-import { useSidebar } from '@/components/ui/sidebar';
+import { EllipsisVertical, BarChart3, LayoutGrid, Download } from 'lucide-react';
 import type { FilterState } from './tree-utils';
 
 interface MobileTreeToolbarProps {
@@ -34,8 +33,6 @@ export function MobileTreeToolbar({
   onExportSvg,
   onExportPdf,
 }: MobileTreeToolbarProps) {
-  const { toggleSidebar } = useSidebar();
-
   const hasActiveFilter =
     !filterState.sex.M ||
     !filterState.sex.F ||
@@ -46,19 +43,8 @@ export function MobileTreeToolbar({
 
   return (
     <div className="flex h-11 items-center gap-1 border-b bg-background px-2">
-      {/* Hamburger / sidebar trigger */}
-      <Button
-        variant="ghost"
-        size="icon"
-        className="size-8"
-        aria-label="Open sidebar"
-        onClick={toggleSidebar}
-      >
-        <Menu className="size-4" />
-      </Button>
-
       {/* Title */}
-      <span className="flex-1 truncate text-center text-sm font-semibold">Family Tree</span>
+      <span className="flex-1 truncate text-sm font-semibold px-1">Family Tree</span>
 
       {/* Overflow menu */}
       <DropdownMenu>
