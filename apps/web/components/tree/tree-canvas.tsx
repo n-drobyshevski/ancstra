@@ -91,9 +91,12 @@ function TreeCanvasInner({ treeData, focusPersonId, focusKey, paletteOpen, onTog
     [treeData],
   );
 
+  const initStyle: NodeStyle = isMobile ? 'compact' : 'wide';
   const initialNodes = useMemo(
-    () => applyDagreLayout(rawNodes, rawEdges),
-    [rawNodes, rawEdges],
+    () => applyDagreLayout(rawNodes, rawEdges, undefined, initStyle).map(
+      n => n.type === 'person' ? { ...n, data: { ...n.data, nodeStyle: initStyle } } : n
+    ),
+    [rawNodes, rawEdges, initStyle],
   );
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
@@ -173,7 +176,9 @@ function TreeCanvasInner({ treeData, focusPersonId, focusKey, paletteOpen, onTog
             .then((r) => r.json())
             .then((layout) => {
               const { positions, nodeStyle: savedStyle } = parseLayoutData(layout.layoutData);
-              setNodes(applyPositionMap(rawNodes, positions));
+              const style = isMobile ? 'compact' : (savedStyle ?? 'wide');
+              const positioned = applyPositionMap(rawNodes, positions);
+              setNodes(positioned.map(n => n.type === 'person' ? { ...n, data: { ...n.data, nodeStyle: style } } : n));
               setActiveLayoutId(layout.id);
               setActiveLayoutName(layout.name);
               if (savedStyle) setNodeStyle(savedStyle);
@@ -182,7 +187,8 @@ function TreeCanvasInner({ treeData, focusPersonId, focusKey, paletteOpen, onTog
           const stored = localStorage.getItem('ancstra-tree-layout');
           if (stored) {
             const { positions } = parseLayoutData(stored);
-            setNodes(applyPositionMap(rawNodes, positions));
+            const positioned = applyPositionMap(rawNodes, positions);
+            setNodes(positioned.map(n => n.type === 'person' ? { ...n, data: { ...n.data, nodeStyle: effectiveNodeStyle } } : n));
             fetch('/api/layouts', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -305,12 +311,12 @@ function TreeCanvasInner({ treeData, focusPersonId, focusKey, paletteOpen, onTog
         .then((r) => r.json())
         .then((layout) => {
           const { positions, nodeStyle: savedStyle } = parseLayoutData(layout.layoutData);
-          const style = savedStyle ?? 'wide';
+          const style = isMobile ? 'compact' : (savedStyle ?? 'wide');
           const positioned = applyPositionMap(rawNodes, positions);
           setNodes(positioned.map(n => n.type === 'person' ? { ...n, data: { ...n.data, nodeStyle: style } } : n));
           setActiveLayoutId(layout.id);
           setActiveLayoutName(layout.name);
-          setNodeStyle(style);
+          setNodeStyle(savedStyle ?? 'wide');
         });
     },
     [rawNodes, setNodes],
