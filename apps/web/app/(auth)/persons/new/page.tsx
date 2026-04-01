@@ -1,8 +1,10 @@
 import { UserPlus } from 'lucide-react';
 import { PersonForm } from '@/components/person-form';
+import { PagePadding } from '@/components/page-padding';
 
 export default function NewPersonPage() {
   return (
+    <PagePadding>
     <div className="mx-auto max-w-2xl pb-20 py-6 md:pb-0 md:py-8">
       {/* Desktop header — hidden on mobile (form has its own mobile header) */}
       <div className="mb-6 hidden items-center gap-3 md:flex">
@@ -18,5 +20,6 @@ export default function NewPersonPage() {
       </div>
       <PersonForm />
     </div>
+    </PagePadding>
   );
 }

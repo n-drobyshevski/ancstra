@@ -1,5 +1,6 @@
 import { ResearchLayout } from '@/components/research/research-layout';
+import { PagePadding } from '@/components/page-padding';
 
 export default function ResearchPage() {
-  return <ResearchLayout />;
+  return <PagePadding><ResearchLayout /></PagePadding>;
 }

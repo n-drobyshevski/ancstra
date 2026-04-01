@@ -103,7 +103,7 @@ export function TreeLayout({ treeData, focusPersonId }: TreeLayoutProps) {
   const showPalette = paletteOpen && view === 'canvas';
 
   return (
-    <div className="h-full overflow-hidden rounded-lg border border-border">
+    <div className="h-full overflow-hidden">
       {/* Desktop layout */}
       <div className="hidden h-full md:flex">
         {showPalette && <PersonPalette onClose={() => setPaletteOpen(false)} />}

@@ -3,6 +3,7 @@ import { getResearchItem } from '@ancstra/research';
 import { ItemDetailShell } from '@/components/research/item-detail/item-detail-shell';
 import { getAuthContext } from '@/lib/auth/context';
 import { getFamilyDb } from '@/lib/db';
+import { PagePadding } from '@/components/page-padding';
 
 export default async function ResearchItemPage({
   params,
@@ -16,5 +17,5 @@ export default async function ResearchItemPage({
   const item = await getResearchItem(db, id);
   if (!item) notFound();
 
-  return <ItemDetailShell item={item} />;
+  return <PagePadding><ItemDetailShell item={item} /></PagePadding>;
 }
