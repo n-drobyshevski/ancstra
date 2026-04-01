@@ -1,4 +1,4 @@
-import { eq, and, or, isNull, sql } from 'drizzle-orm';
+import { eq, and, or, isNull, inArray, sql } from 'drizzle-orm';
 import {
   type Database,
   persons,
@@ -270,68 +270,68 @@ export async function assemblePersonDetail(
     )
     .get();
 
-  // 2. Spouses: families where person is a partner → collect partner IDs
+  // 2. Spouses: batch-fetch all families where person is a partner
   const partnerFamilyIds = await findFamiliesAsPartner(db, personId);
 
-  // spouse family records — needed again in step 4 for children, so store them
   const partnerFamilyRecords = new Map<
     string,
     { partner1Id: string | null; partner2Id: string | null }
   >();
   const spouseIds: string[] = [];
 
-  for (const fId of partnerFamilyIds) {
-    const fam = await db
-      .select({ partner1Id: families.partner1Id, partner2Id: families.partner2Id })
+  if (partnerFamilyIds.length > 0) {
+    const famRows = await db
+      .select({ id: families.id, partner1Id: families.partner1Id, partner2Id: families.partner2Id })
       .from(families)
-      .where(and(eq(families.id, fId), isNull(families.deletedAt)))
-      .get();
+      .where(and(inArray(families.id, partnerFamilyIds), isNull(families.deletedAt)))
+      .all();
 
-    if (!fam) continue;
-    partnerFamilyRecords.set(fId, fam);
-
-    if (fam.partner1Id && fam.partner1Id !== personId && !spouseIds.includes(fam.partner1Id)) {
-      spouseIds.push(fam.partner1Id);
-    }
-    if (fam.partner2Id && fam.partner2Id !== personId && !spouseIds.includes(fam.partner2Id)) {
-      spouseIds.push(fam.partner2Id);
+    for (const fam of famRows) {
+      partnerFamilyRecords.set(fam.id, fam);
+      if (fam.partner1Id && fam.partner1Id !== personId && !spouseIds.includes(fam.partner1Id)) {
+        spouseIds.push(fam.partner1Id);
+      }
+      if (fam.partner2Id && fam.partner2Id !== personId && !spouseIds.includes(fam.partner2Id)) {
+        spouseIds.push(fam.partner2Id);
+      }
     }
   }
 
-  // 3. Parents: children table where person is child → collect parent IDs
+  // 3. Parents: batch-fetch families where person is a child
   const childFamilyIds = await findFamiliesAsChild(db, personId);
   const parentIds: string[] = [];
 
-  for (const fId of childFamilyIds) {
-    const fam = await db
+  if (childFamilyIds.length > 0) {
+    const parentFamRows = await db
       .select({ partner1Id: families.partner1Id, partner2Id: families.partner2Id })
       .from(families)
-      .where(eq(families.id, fId))
-      .get();
+      .where(inArray(families.id, childFamilyIds))
+      .all();
 
-    if (!fam) continue;
-
-    for (const pid of [fam.partner1Id, fam.partner2Id]) {
-      if (pid && !parentIds.includes(pid)) parentIds.push(pid);
+    for (const fam of parentFamRows) {
+      for (const pid of [fam.partner1Id, fam.partner2Id]) {
+        if (pid && !parentIds.includes(pid)) parentIds.push(pid);
+      }
     }
   }
 
-  // 4. Children: families where person is partner → collect child person IDs
+  // 4. Children: batch-fetch all child links for partner families
   const childPersonIds: string[] = [];
   const childFamilyChildRows = new Map<string, string[]>();
 
-  for (const fId of partnerFamilyIds) {
-    if (!partnerFamilyRecords.has(fId)) continue; // family was deleted — skipped above
-    const childRows = await db
-      .select({ personId: children.personId })
+  if (partnerFamilyIds.length > 0) {
+    const allChildRows = await db
+      .select({ familyId: children.familyId, personId: children.personId })
       .from(children)
-      .where(eq(children.familyId, fId))
+      .where(inArray(children.familyId, partnerFamilyIds))
       .all();
 
-    const ids = childRows.map((cr) => cr.personId);
-    childFamilyChildRows.set(fId, ids);
-    for (const cid of ids) {
-      if (!childPersonIds.includes(cid)) childPersonIds.push(cid);
+    for (const cr of allChildRows) {
+      if (!partnerFamilyRecords.has(cr.familyId)) continue;
+      const existing = childFamilyChildRows.get(cr.familyId) ?? [];
+      existing.push(cr.personId);
+      childFamilyChildRows.set(cr.familyId, existing);
+      if (!childPersonIds.includes(cr.personId)) childPersonIds.push(cr.personId);
     }
   }
 

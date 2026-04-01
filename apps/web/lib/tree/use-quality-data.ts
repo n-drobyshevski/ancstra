@@ -1,7 +1,8 @@
 // apps/web/lib/tree/use-quality-data.ts
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useMemo } from 'react';
+import type { PersonListItem } from '@ancstra/shared';
 
 export interface QualityEntry {
   id: string;
@@ -9,35 +10,49 @@ export interface QualityEntry {
   missingFields: string[];
 }
 
-export function useQualityData(enabled: boolean) {
-  const [data, setData] = useState<Map<string, QualityEntry>>(new Map());
-  const [isLoading, setIsLoading] = useState(false);
+/**
+ * Compute quality scores client-side from existing tree data.
+ * Scoring (max 80 from available fields):
+ *   - Name (given + surname): 20
+ *   - Birth date: 25
+ *   - Death date: 15
+ *   - Birth place / source not available from summary — omitted (20+20)
+ */
+export function useQualityData(
+  enabled: boolean,
+  persons?: PersonListItem[],
+) {
+  const qualityData = useMemo(() => {
+    if (!enabled || !persons) return new Map<string, QualityEntry>();
 
-  const fetch_ = useCallback(async () => {
-    if (!enabled) {
-      setData(new Map());
-      return;
-    }
-    setIsLoading(true);
-    try {
-      const res = await fetch('/api/quality/priorities?page=1&pageSize=10000');
-      if (!res.ok) throw new Error('Failed to fetch quality data');
-      const json = await res.json();
-      const map = new Map<string, QualityEntry>();
-      for (const p of json.persons) {
-        map.set(p.id, { id: p.id, score: p.score, missingFields: p.missingFields });
+    const map = new Map<string, QualityEntry>();
+    for (const p of persons) {
+      const missingFields: string[] = [];
+      let score = 0;
+
+      if (p.givenName && p.surname) {
+        score += 20;
+      } else {
+        missingFields.push('name');
       }
-      setData(map);
-    } catch {
-      setData(new Map());
-    } finally {
-      setIsLoading(false);
+
+      if (p.birthDate) {
+        score += 25;
+      } else {
+        missingFields.push('birthDate');
+      }
+
+      if (p.deathDate) {
+        score += 15;
+      } else if (!p.isLiving) {
+        // Only flag missing death date for non-living persons
+        missingFields.push('deathDate');
+      }
+
+      map.set(p.id, { id: p.id, score, missingFields });
     }
-  }, [enabled]);
+    return map;
+  }, [enabled, persons]);
 
-  useEffect(() => {
-    fetch_();
-  }, [fetch_]);
-
-  return { qualityData: data, isLoading };
+  return { qualityData };
 }

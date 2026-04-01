@@ -2,7 +2,6 @@
 
 import { useCallback, useState } from 'react';
 import { useReactFlow, getNodesBounds, getViewportForBounds } from '@xyflow/react';
-import { toPng, toSvg } from 'html-to-image';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -50,6 +49,7 @@ export function TreeExport() {
       const bounds = getNodesBounds(nodes);
       const viewport = getViewportForBounds(bounds, IMAGE_WIDTH, IMAGE_HEIGHT, 0.5, 2, 0.1);
 
+      const { toPng } = await import('html-to-image');
       const dataUrl = await toPng(element, {
         backgroundColor: getThemeBackground(),
         width: IMAGE_WIDTH,
@@ -86,6 +86,7 @@ export function TreeExport() {
       const bounds = getNodesBounds(nodes);
       const viewport = getViewportForBounds(bounds, IMAGE_WIDTH, IMAGE_HEIGHT, 0.5, 2, 0.1);
 
+      const { toSvg } = await import('html-to-image');
       const dataUrl = await toSvg(element, {
         backgroundColor: getThemeBackground(),
         width: IMAGE_WIDTH,
@@ -122,6 +123,7 @@ export function TreeExport() {
       const bounds = getNodesBounds(nodes);
       const viewport = getViewportForBounds(bounds, IMAGE_WIDTH, IMAGE_HEIGHT, 0.5, 2, 0.1);
 
+      const { toPng } = await import('html-to-image');
       const dataUrl = await toPng(element, {
         backgroundColor: getThemeBackground(),
         width: IMAGE_WIDTH,

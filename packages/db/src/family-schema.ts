@@ -50,7 +50,10 @@ export const families = sqliteTable('families', {
   updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
   deletedAt: text('deleted_at'),
   version: integer('version').notNull().default(1),
-});
+}, (table) => [
+  index('idx_families_partner1').on(table.partner1Id),
+  index('idx_families_partner2').on(table.partner2Id),
+]);
 
 // ==================== CHILDREN ====================
 export const children = sqliteTable('children', {

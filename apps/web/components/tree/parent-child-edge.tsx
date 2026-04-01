@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { type Edge, type EdgeProps, getSmoothStepPath, BaseEdge } from '@xyflow/react';
 
 type ParentChildEdgeType = Edge<{ validationStatus: string; familyId: string; pending?: boolean }, 'parentChild'>;
@@ -8,7 +9,7 @@ const statusStyles = {
   disputed: { strokeDasharray: '2,4', stroke: 'var(--color-muted-foreground)' },
 } as const;
 
-export function ParentChildEdge({
+function ParentChildEdgeComponent({
   id, sourceX, sourceY, targetX, targetY, data,
 }: EdgeProps<ParentChildEdgeType>) {
   const [edgePath] = getSmoothStepPath({ sourceX, sourceY, targetX, targetY, borderRadius: 8 });
@@ -23,3 +24,5 @@ export function ParentChildEdge({
     <BaseEdge id={id} path={edgePath} style={{ stroke: s.stroke, strokeWidth: 2, strokeDasharray: s.strokeDasharray }} />
   );
 }
+
+export const ParentChildEdge = memo(ParentChildEdgeComponent);
