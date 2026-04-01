@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import {
   ReactFlow,
   MiniMap,
@@ -123,7 +123,8 @@ function TreeCanvasInner({ treeData, focusPersonId, focusKey, paletteOpen, onTog
   const [showMinimap, setShowMinimap] = useState(true);
   const [nodeStyle, setNodeStyle] = useState<NodeStyle>('wide');
   const effectiveNodeStyle = isMobile ? 'compact' : nodeStyle;
-  const { qualityData } = useQualityData(showGaps);
+  const { qualityData } = useQualityData(showGaps, treeData.persons);
+  const [, startTransition] = useTransition();
 
   // Sync nodes/edges when treeData changes (after router.refresh)
   const treeDataRef = useRef(treeData);
@@ -131,24 +132,26 @@ function TreeCanvasInner({ treeData, focusPersonId, focusKey, paletteOpen, onTog
     if (treeDataRef.current === treeData) return;
     treeDataRef.current = treeData;
 
-    // Preserve existing node positions
-    setNodes((prev) => {
-      const posMap: Record<string, { x: number; y: number }> = {};
-      for (const n of prev) {
-        if (n.type !== 'draftPerson') posMap[n.id] = n.position;
-      }
-      const laid = applyDagreLayout(rawNodes, rawEdges, showGaps ? 82 : undefined, effectiveNodeStyle);
-      return laid.map((n) => ({
-        ...n,
-        position: posMap[n.id] ?? n.position,
-        data: { ...n.data, nodeStyle: effectiveNodeStyle },
-      }));
-    });
-    // Replace with server edges, keeping any optimistic edges not yet in server data
-    setEdges((prev) => {
-      const serverIds = new Set(rawEdges.map(e => e.id));
-      const optimistic = prev.filter(e => !serverIds.has(e.id));
-      return [...rawEdges, ...optimistic];
+    startTransition(() => {
+      // Preserve existing node positions
+      setNodes((prev) => {
+        const posMap: Record<string, { x: number; y: number }> = {};
+        for (const n of prev) {
+          if (n.type !== 'draftPerson') posMap[n.id] = n.position;
+        }
+        const laid = applyDagreLayout(rawNodes, rawEdges, showGaps ? 82 : undefined, effectiveNodeStyle);
+        return laid.map((n) => ({
+          ...n,
+          position: posMap[n.id] ?? n.position,
+          data: { ...n.data, nodeStyle: effectiveNodeStyle },
+        }));
+      });
+      // Replace with server edges, keeping any optimistic edges not yet in server data
+      setEdges((prev) => {
+        const serverIds = new Set(rawEdges.map(e => e.id));
+        const optimistic = prev.filter(e => !serverIds.has(e.id));
+        return [...rawEdges, ...optimistic];
+      });
     });
   }, [treeData, rawNodes, rawEdges, setNodes, setEdges, showGaps, effectiveNodeStyle]);
 
@@ -637,35 +640,23 @@ function TreeCanvasInner({ treeData, focusPersonId, focusKey, paletteOpen, onTog
     return () => clearTimeout(timer);
   }, [focusPersonId, focusKey, fitView, treeData, isMobile]);
 
-  // Apply filters when filterState changes
+  // Apply filters, quality data, and nodeStyle in a single pass
   useEffect(() => {
-    setNodes(nds => applyFilters(nds, filterState));
-  }, [filterState, setNodes]);
-
-  // Merge quality data into nodes when showGaps changes
-  useEffect(() => {
-    setNodes(nds => nds.map(node => {
+    setNodes(nds => applyFilters(nds, filterState).map(node => {
       if (node.type !== 'person') return node;
       const q = qualityData.get(node.id);
       return {
         ...node,
         data: {
           ...node.data,
+          nodeStyle: effectiveNodeStyle,
           showGaps,
           qualityScore: q?.score ?? 0,
           missingFields: q?.missingFields ?? [],
         },
       };
     }));
-  }, [showGaps, qualityData, setNodes]);
-
-  // Stamp nodeStyle onto person nodes when it changes
-  useEffect(() => {
-    setNodes(nds => nds.map(node => {
-      if (node.type !== 'person') return node;
-      return { ...node, data: { ...node.data, nodeStyle: effectiveNodeStyle } };
-    }));
-  }, [effectiveNodeStyle, setNodes]);
+  }, [filterState, showGaps, qualityData, effectiveNodeStyle, setNodes]);
 
   // Compute filtered edges (dimmed based on node dimmed status)
   const filteredEdges = useMemo(() => applyEdgeFilters(edges, nodes), [edges, nodes]);
@@ -827,6 +818,7 @@ function TreeCanvasInner({ treeData, focusPersonId, focusKey, paletteOpen, onTog
           onDragOver={isMobile ? undefined : onDragOver}
           onDrop={isMobile ? undefined : onDrop}
           fitView
+          onlyRenderVisibleElements
           minZoom={0.1}
           maxZoom={2}
           deleteKeyCode={isMobile ? null : "Delete"}

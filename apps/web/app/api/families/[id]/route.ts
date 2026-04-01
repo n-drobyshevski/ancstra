@@ -1,49 +1,43 @@
 import { NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
-import { persons, personNames, families, children, events, refreshSummary, type FamilyDatabase } from '@ancstra/db';
-import { and, eq, isNull } from 'drizzle-orm';
+import { persons, personNames, families, children, events, personSummary, refreshSummary, type FamilyDatabase } from '@ancstra/db';
+import { and, eq, isNull, inArray, sql } from 'drizzle-orm';
 import { updateFamilySchema } from '@/lib/validation';
 import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
 
-async function getPersonListItem(
+async function getPersonListItemsBatch(
   db: FamilyDatabase,
-  personId: string,
+  personIds: string[],
 ) {
-  const row = await db
-    .select({ id: persons.id, sex: persons.sex, isLiving: persons.isLiving })
-    .from(persons)
-    .where(and(eq(persons.id, personId), isNull(persons.deletedAt)))
-    .get();
+  if (personIds.length === 0) return new Map<string, { id: string; givenName: string; surname: string; sex: string; isLiving: boolean; birthDate: string | null; deathDate: string | null }>();
 
-  if (!row) return null;
+  const rows = await db.all<{
+    person_id: string;
+    given_name: string;
+    surname: string;
+    sex: string;
+    is_living: number;
+    birth_date: string | null;
+    death_date: string | null;
+  }>(sql`
+    SELECT person_id, given_name, surname, sex, is_living, birth_date, death_date
+    FROM person_summary
+    WHERE person_id IN (${sql.join(personIds.map((id) => sql`${id}`), sql`, `)})
+  `);
 
-  const name = await db
-    .select({ givenName: personNames.givenName, surname: personNames.surname })
-    .from(personNames)
-    .where(and(eq(personNames.personId, personId), eq(personNames.isPrimary, true)))
-    .get();
-
-  const birthEvent = await db
-    .select({ dateOriginal: events.dateOriginal })
-    .from(events)
-    .where(and(eq(events.personId, personId), eq(events.eventType, 'birth')))
-    .get();
-
-  const deathEvent = await db
-    .select({ dateOriginal: events.dateOriginal })
-    .from(events)
-    .where(and(eq(events.personId, personId), eq(events.eventType, 'death')))
-    .get();
-
-  return {
-    id: row.id,
-    givenName: name?.givenName ?? '',
-    surname: name?.surname ?? '',
-    sex: row.sex,
-    isLiving: row.isLiving,
-    birthDate: birthEvent?.dateOriginal ?? null,
-    deathDate: deathEvent?.dateOriginal ?? null,
-  };
+  const map = new Map<string, { id: string; givenName: string; surname: string; sex: string; isLiving: boolean; birthDate: string | null; deathDate: string | null }>();
+  for (const r of rows) {
+    map.set(r.person_id, {
+      id: r.person_id,
+      givenName: r.given_name,
+      surname: r.surname,
+      sex: r.sex,
+      isLiving: Boolean(r.is_living),
+      birthDate: r.birth_date,
+      deathDate: r.death_date,
+    });
+  }
+  return map;
 }
 
 export async function GET(
@@ -64,10 +58,6 @@ export async function GET(
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
-    // Build partner info
-    const partner1 = family.partner1Id ? await getPersonListItem(familyDb, family.partner1Id) : null;
-    const partner2 = family.partner2Id ? await getPersonListItem(familyDb, family.partner2Id) : null;
-
     // Build children array
     const childRows = await familyDb
       .select({ personId: children.personId })
@@ -75,9 +65,19 @@ export async function GET(
       .where(eq(children.familyId, id))
       .all();
 
-    const childList = (await Promise.all(
-      childRows.map((cr) => getPersonListItem(familyDb, cr.personId))
-    )).filter((c): c is NonNullable<typeof c> => c !== null);
+    // Batch-fetch all related persons in a single query
+    const allIds = [
+      ...(family.partner1Id ? [family.partner1Id] : []),
+      ...(family.partner2Id ? [family.partner2Id] : []),
+      ...childRows.map((cr) => cr.personId),
+    ];
+    const batchMap = await getPersonListItemsBatch(familyDb, allIds);
+
+    const partner1 = family.partner1Id ? batchMap.get(family.partner1Id) ?? null : null;
+    const partner2 = family.partner2Id ? batchMap.get(family.partner2Id) ?? null : null;
+    const childList = childRows
+      .map((cr) => batchMap.get(cr.personId))
+      .filter((c): c is NonNullable<typeof c> => c !== null);
 
     return NextResponse.json({
       ...family,

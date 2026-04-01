@@ -55,83 +55,80 @@ export async function commitGedcomImport(
   const db = createDb();
   const now = new Date().toISOString();
 
+  const CHUNK = 500;
+
   await db.transaction(async (tx) => {
-    // 1. Insert persons
-    for (const p of data.persons) {
-      await tx.insert(persons)
-        .values({
-          id: p.id,
-          sex: p.sex,
-          isLiving: p.isLiving,
-          notes: p.notes,
-          createdBy: session.user?.id ?? null,
-          createdAt: now,
-          updatedAt: now,
-        })
-        .run();
+    // 1. Insert persons (chunked batch)
+    const personRows = data.persons.map((p) => ({
+      id: p.id,
+      sex: p.sex,
+      isLiving: p.isLiving,
+      notes: p.notes,
+      createdBy: session.user?.id ?? null,
+      createdAt: now,
+      updatedAt: now,
+    }));
+    for (let i = 0; i < personRows.length; i += CHUNK) {
+      await tx.insert(persons).values(personRows.slice(i, i + CHUNK)).run();
     }
 
-    // 2. Insert person names
-    for (const n of data.names) {
-      await tx.insert(personNames)
-        .values({
-          id: n.id,
-          personId: n.personId,
-          givenName: n.givenName,
-          surname: n.surname,
-          suffix: n.suffix,
-          prefix: n.prefix,
-          nameType: n.nameType as 'birth',
-          isPrimary: n.isPrimary,
-          createdAt: now,
-        })
-        .run();
+    // 2. Insert person names (chunked batch)
+    const nameRows = data.names.map((n) => ({
+      id: n.id,
+      personId: n.personId,
+      givenName: n.givenName,
+      surname: n.surname,
+      suffix: n.suffix,
+      prefix: n.prefix,
+      nameType: n.nameType as 'birth',
+      isPrimary: n.isPrimary,
+      createdAt: now,
+    }));
+    for (let i = 0; i < nameRows.length; i += CHUNK) {
+      await tx.insert(personNames).values(nameRows.slice(i, i + CHUNK)).run();
     }
 
-    // 3. Insert families
-    for (const f of data.families) {
-      await tx.insert(families)
-        .values({
-          id: f.id,
-          partner1Id: f.partner1Id,
-          partner2Id: f.partner2Id,
-          validationStatus: 'confirmed',
-          createdAt: now,
-          updatedAt: now,
-        })
-        .run();
+    // 3. Insert families (chunked batch)
+    const familyRows = data.families.map((f) => ({
+      id: f.id,
+      partner1Id: f.partner1Id,
+      partner2Id: f.partner2Id,
+      validationStatus: 'confirmed' as const,
+      createdAt: now,
+      updatedAt: now,
+    }));
+    for (let i = 0; i < familyRows.length; i += CHUNK) {
+      await tx.insert(families).values(familyRows.slice(i, i + CHUNK)).run();
     }
 
-    // 4. Insert children (child links)
-    for (const cl of data.childLinks) {
-      await tx.insert(children)
-        .values({
-          id: crypto.randomUUID(),
-          familyId: cl.familyId,
-          personId: cl.personId,
-          validationStatus: 'confirmed',
-          createdAt: now,
-        })
-        .run();
+    // 4. Insert children (chunked batch)
+    const childRows = data.childLinks.map((cl) => ({
+      id: crypto.randomUUID(),
+      familyId: cl.familyId,
+      personId: cl.personId,
+      validationStatus: 'confirmed' as const,
+      createdAt: now,
+    }));
+    for (let i = 0; i < childRows.length; i += CHUNK) {
+      await tx.insert(children).values(childRows.slice(i, i + CHUNK)).run();
     }
 
-    // 5. Insert events
-    for (const e of data.events) {
-      await tx.insert(events)
-        .values({
-          id: e.id,
-          eventType: e.eventType,
-          dateOriginal: e.dateOriginal,
-          dateSort: e.dateSort,
-          dateModifier: e.dateModifier as any,
-          dateEndSort: e.dateEndSort,
-          placeText: e.placeText,
-          personId: e.personId,
-          familyId: e.familyId,
-          createdAt: now,
-          updatedAt: now,
-        })
-        .run();
+    // 5. Insert events (chunked batch)
+    const eventRows = data.events.map((e) => ({
+      id: e.id,
+      eventType: e.eventType,
+      dateOriginal: e.dateOriginal,
+      dateSort: e.dateSort,
+      dateModifier: e.dateModifier as any,
+      dateEndSort: e.dateEndSort,
+      placeText: e.placeText,
+      personId: e.personId,
+      familyId: e.familyId,
+      createdAt: now,
+      updatedAt: now,
+    }));
+    for (let i = 0; i < eventRows.length; i += CHUNK) {
+      await tx.insert(events).values(eventRows.slice(i, i + CHUNK)).run();
     }
   });
 
