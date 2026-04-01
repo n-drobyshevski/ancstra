@@ -15,11 +15,10 @@ import type { PersonListItem } from '@ancstra/shared';
 
 const actions = [
   { label: 'Add New Person', href: '/persons/new', keywords: ['add', 'create', 'new', 'person'] },
-  { label: 'Import GEDCOM', href: '/import', keywords: ['import', 'gedcom', 'upload'] },
-  { label: 'Export GEDCOM', href: '/export', keywords: ['export', 'gedcom', 'download'] },
+  { label: 'Import GEDCOM', href: '/data', keywords: ['import', 'gedcom', 'upload'] },
+  { label: 'Export GEDCOM', href: '/data?tab=export', keywords: ['export', 'gedcom', 'download'] },
   { label: 'Go to Tree', href: '/tree', keywords: ['tree', 'canvas', 'visualization'] },
   { label: 'Go to People', href: '/persons', keywords: ['people', 'persons', 'list'] },
-  { label: 'Go to Sources', href: '/sources', keywords: ['sources', 'citations'] },
   { label: 'Go to Dashboard', href: '/dashboard', keywords: ['dashboard', 'home'] },
 ];
 

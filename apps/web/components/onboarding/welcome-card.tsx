@@ -38,7 +38,7 @@ export function WelcomeCard() {
         <p className="text-sm text-muted-foreground">Here&apos;s how to get started:</p>
         <div className="flex flex-wrap gap-2">
           <Button asChild size="sm">
-            <Link href="/import">Import a GEDCOM file</Link>
+            <Link href="/data">Import a GEDCOM file</Link>
           </Button>
           <Button asChild size="sm" variant="outline">
             <Link href="/persons/new">Add a person</Link>

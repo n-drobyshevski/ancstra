@@ -7,9 +7,7 @@ import {
   Users,
   GitBranch,
   Microscope,
-  Bookmark,
-  Upload,
-  Download,
+  ArrowLeftRight,
   Activity,
   BarChart3,
   Settings,
@@ -50,12 +48,10 @@ const coreItems: NavItem[] = [
 const researchItems: NavItem[] = [
   { title: 'Research', href: '/research', icon: Microscope },
   { title: 'Factsheets', href: '/research/factsheets', icon: FileStack },
-  { title: 'Sources', href: '/sources', icon: Bookmark },
 ];
 
 const dataItems: NavItem[] = [
-  { title: 'Import', href: '/import', icon: Upload },
-  { title: 'Export', href: '/export', icon: Download },
+  { title: 'Import / Export', href: '/data', icon: ArrowLeftRight },
   { title: 'Activity', href: '/activity', icon: Activity },
 ];
 
