@@ -7,6 +7,7 @@ import { WelcomeCard } from '@/components/onboarding/welcome-card';
 import { getCachedDashboardData } from '@/lib/cached-queries';
 import { hasPermission } from '@ancstra/auth';
 import { getAuthContext } from '@/lib/auth/context';
+import { PagePadding } from '@/components/page-padding';
 
 export default async function DashboardPage() {
   const authContext = await getAuthContext();
@@ -19,6 +20,7 @@ export default async function DashboardPage() {
   const sexLabel = { M: 'Male', F: 'Female', U: 'Unknown' } as const;
 
   return (
+    <PagePadding>
     <div className="space-y-6">
       <WelcomeCard />
       <div className="flex items-center justify-between">
@@ -84,5 +86,6 @@ export default async function DashboardPage() {
         <ContributionQueue familyId={authContext.familyId} />
       )}
     </div>
+    </PagePadding>
   );
 }

@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { PersonTable } from '@/components/person-table';
 import type { PersonListItem } from '@ancstra/shared';
+import { PagePadding } from '@/components/page-padding';
 
 export default function PersonsPage() {
   const [query, setQuery] = useState('');
@@ -52,6 +53,7 @@ export default function PersonsPage() {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   return (
+    <PagePadding>
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">People</h1>
@@ -100,5 +102,6 @@ export default function PersonsPage() {
         </>
       )}
     </div>
+    </PagePadding>
   );
 }

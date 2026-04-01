@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
+import { PagePadding } from '@/components/page-padding';
 
 export default function BookmarkletReceiverPage() {
   const [status, setStatus] = useState<'waiting' | 'saving' | 'done' | 'error'>('waiting');
@@ -64,6 +65,7 @@ export default function BookmarkletReceiverPage() {
   }, []);
 
   return (
+    <PagePadding>
     <div className="flex min-h-[60vh] items-center justify-center">
       <div className="rounded-xl border border-border bg-card p-8 text-center shadow-sm">
         {status === 'waiting' && (
@@ -95,5 +97,6 @@ export default function BookmarkletReceiverPage() {
         )}
       </div>
     </div>
+    </PagePadding>
   );
 }

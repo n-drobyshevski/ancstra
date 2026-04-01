@@ -5,6 +5,7 @@ import { PriorityTable } from '@/components/quality/priority-table';
 import { getQualitySummary } from '@ancstra/db';
 import { requireAuthContext } from '@/lib/auth/context';
 import { getFamilyDb } from '@/lib/db';
+import { PagePadding } from '@/components/page-padding';
 
 export default async function QualityPage() {
   let generationData: { generation: number; avgScore: number }[] = [];
@@ -24,6 +25,7 @@ export default async function QualityPage() {
   }
 
   return (
+    <PagePadding>
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Data Quality</h1>
@@ -41,5 +43,6 @@ export default async function QualityPage() {
 
       <PriorityTable />
     </div>
+    </PagePadding>
   );
 }

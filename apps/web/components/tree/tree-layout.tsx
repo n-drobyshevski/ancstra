@@ -61,6 +61,8 @@ export function TreeLayout({ treeData, focusPersonId }: TreeLayoutProps) {
   const view = (searchParams.get('view') ?? 'canvas') as 'canvas' | 'table';
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [selectedPerson, setSelectedPerson] = useState<PersonListItem | null>(null);
+  const [focusKey, setFocusKey] = useState(0);
+  const [runtimeFocusId, setRuntimeFocusId] = useState<string | undefined>(undefined);
 
   const setView = useCallback(
     (v: 'canvas' | 'table') => {
@@ -82,7 +84,11 @@ export function TreeLayout({ treeData, focusPersonId }: TreeLayoutProps) {
   const handleFocusNode = useCallback(
     (personId: string) => {
       const person = treeData.persons.find((p) => p.id === personId);
-      if (person) setSelectedPerson(person);
+      if (person) {
+        setSelectedPerson(person);
+        setRuntimeFocusId(personId);
+        setFocusKey(k => k + 1);
+      }
     },
     [treeData],
   );
@@ -97,7 +103,7 @@ export function TreeLayout({ treeData, focusPersonId }: TreeLayoutProps) {
   const showPalette = paletteOpen && view === 'canvas';
 
   return (
-    <div className="h-full overflow-hidden rounded-lg border border-border">
+    <div className="h-full overflow-hidden">
       {/* Desktop layout */}
       <div className="hidden h-full md:flex">
         {showPalette && <PersonPalette onClose={() => setPaletteOpen(false)} />}
@@ -156,13 +162,15 @@ export function TreeLayout({ treeData, focusPersonId }: TreeLayoutProps) {
           <>
             <TreeCanvas
               treeData={treeData}
-              focusPersonId={focusPersonId}
+              focusPersonId={runtimeFocusId ?? focusPersonId}
+              focusKey={focusKey}
               paletteOpen={false}
               onTogglePalette={handleTogglePalette}
               onSelectPerson={handleSelectPerson}
               view={view}
               onSetView={setView}
               isMobile
+              isDetailOpen={!!selectedPerson}
               mobileToolbarSlot={(toolbarProps) => (
                 <MobileTreeToolbar {...toolbarProps} />
               )}
@@ -176,16 +184,9 @@ export function TreeLayout({ treeData, focusPersonId }: TreeLayoutProps) {
           </>
         ) : (
           <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-            <MobileTreeToolbar
-              filterState={{ sex: { M: true, F: true, U: true }, living: { living: true, deceased: true } }}
-              onToggleFilter={() => {}}
-              showGaps={false}
-              onToggleGaps={() => {}}
-              onAutoLayout={() => {}}
-              onExportPng={() => {}}
-              onExportSvg={() => {}}
-              onExportPdf={() => {}}
-            />
+            <div className="flex h-11 items-center border-b border-border bg-background px-2 gap-1">
+              <span className="flex-1 text-sm font-semibold truncate px-1">Family Tree</span>
+            </div>
             <div className="flex-1 overflow-hidden">
               <TreeTableWrapper treeData={treeData} relationships={relationships} />
             </div>

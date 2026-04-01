@@ -61,12 +61,14 @@ const edgeTypes = { partner: PartnerEdge, parentChild: ParentChildEdge };
 interface TreeCanvasProps {
   treeData: TreeData;
   focusPersonId?: string;
+  focusKey?: number;
   paletteOpen: boolean;
   onTogglePalette: () => void;
   onSelectPerson: (person: PersonListItem | null) => void;
   view: 'canvas' | 'table';
   onSetView: (v: 'canvas' | 'table') => void;
   isMobile?: boolean;
+  isDetailOpen?: boolean;
   mobileToolbarSlot?: (props: {
     filterState: FilterState;
     onToggleFilter: (category: 'sex' | 'living', key: string) => void;
@@ -79,7 +81,7 @@ interface TreeCanvasProps {
   }) => React.ReactNode;
 }
 
-function TreeCanvasInner({ treeData, focusPersonId, paletteOpen, onTogglePalette, onSelectPerson, view, onSetView, isMobile, mobileToolbarSlot }: TreeCanvasProps) {
+function TreeCanvasInner({ treeData, focusPersonId, focusKey, paletteOpen, onTogglePalette, onSelectPerson, view, onSetView, isMobile, isDetailOpen, mobileToolbarSlot }: TreeCanvasProps) {
   const { fitView, screenToFlowPosition, getNodes } = useReactFlow();
   const router = useRouter();
   const connectionLock = useConnectionLock();
@@ -89,9 +91,12 @@ function TreeCanvasInner({ treeData, focusPersonId, paletteOpen, onTogglePalette
     [treeData],
   );
 
+  const initStyle: NodeStyle = isMobile ? 'compact' : 'wide';
   const initialNodes = useMemo(
-    () => applyDagreLayout(rawNodes, rawEdges),
-    [rawNodes, rawEdges],
+    () => applyDagreLayout(rawNodes, rawEdges, undefined, initStyle).map(
+      n => n.type === 'person' ? { ...n, data: { ...n.data, nodeStyle: initStyle } } : n
+    ),
+    [rawNodes, rawEdges, initStyle],
   );
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
@@ -171,7 +176,9 @@ function TreeCanvasInner({ treeData, focusPersonId, paletteOpen, onTogglePalette
             .then((r) => r.json())
             .then((layout) => {
               const { positions, nodeStyle: savedStyle } = parseLayoutData(layout.layoutData);
-              setNodes(applyPositionMap(rawNodes, positions));
+              const style = isMobile ? 'compact' : (savedStyle ?? 'wide');
+              const positioned = applyPositionMap(rawNodes, positions);
+              setNodes(positioned.map(n => n.type === 'person' ? { ...n, data: { ...n.data, nodeStyle: style } } : n));
               setActiveLayoutId(layout.id);
               setActiveLayoutName(layout.name);
               if (savedStyle) setNodeStyle(savedStyle);
@@ -180,7 +187,8 @@ function TreeCanvasInner({ treeData, focusPersonId, paletteOpen, onTogglePalette
           const stored = localStorage.getItem('ancstra-tree-layout');
           if (stored) {
             const { positions } = parseLayoutData(stored);
-            setNodes(applyPositionMap(rawNodes, positions));
+            const positioned = applyPositionMap(rawNodes, positions);
+            setNodes(positioned.map(n => n.type === 'person' ? { ...n, data: { ...n.data, nodeStyle: effectiveNodeStyle } } : n));
             fetch('/api/layouts', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -303,12 +311,12 @@ function TreeCanvasInner({ treeData, focusPersonId, paletteOpen, onTogglePalette
         .then((r) => r.json())
         .then((layout) => {
           const { positions, nodeStyle: savedStyle } = parseLayoutData(layout.layoutData);
-          const style = savedStyle ?? 'wide';
+          const style = isMobile ? 'compact' : (savedStyle ?? 'wide');
           const positioned = applyPositionMap(rawNodes, positions);
           setNodes(positioned.map(n => n.type === 'person' ? { ...n, data: { ...n.data, nodeStyle: style } } : n));
           setActiveLayoutId(layout.id);
           setActiveLayoutName(layout.name);
-          setNodeStyle(style);
+          setNodeStyle(savedStyle ?? 'wide');
         });
     },
     [rawNodes, setNodes],
@@ -613,16 +621,20 @@ function TreeCanvasInner({ treeData, focusPersonId, paletteOpen, onTogglePalette
   }, [deleteRelationship]);
 
   // Focus on person when focusPersonId is provided (e.g. from /tree?focus=...)
+  // focusKey allows re-triggering the effect for the same person (e.g. tapping same family member)
   useEffect(() => {
     if (!focusPersonId) return;
     // Small delay to let React Flow render nodes first
     const timer = setTimeout(() => {
       fitView({ nodes: [{ id: focusPersonId }], duration: 500, padding: 0.5 });
-      const person = treeData.persons.find((p) => p.id === focusPersonId);
-      if (person) onSelectPerson(person);
+      // On mobile, the parent already set selectedPerson via handleFocusNode
+      if (!isMobile) {
+        const person = treeData.persons.find((p) => p.id === focusPersonId);
+        if (person) onSelectPerson(person);
+      }
     }, 200);
     return () => clearTimeout(timer);
-  }, [focusPersonId, fitView, treeData]);
+  }, [focusPersonId, focusKey, fitView, treeData, isMobile]);
 
   // Apply filters when filterState changes
   useEffect(() => {
@@ -790,6 +802,7 @@ function TreeCanvasInner({ treeData, focusPersonId, paletteOpen, onTogglePalette
       <div className="flex-1 relative overflow-hidden">
         <ReactFlow
           aria-label="Family tree"
+          proOptions={{ hideAttribution: true }}
           nodes={nodes}
           edges={filteredEdges}
           onNodesChange={handleNodesChange}
@@ -842,7 +855,7 @@ function TreeCanvasInner({ treeData, focusPersonId, paletteOpen, onTogglePalette
             showInteractive={!isMobile}
             className={cn(
               "!bg-card !border !shadow-sm !rounded-lg",
-              isMobile && "!mb-[38dvh]"
+              isMobile && isDetailOpen && "!mb-[38dvh]"
             )}
           />
         </ReactFlow>

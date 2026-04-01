@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { ItemPreviewShell } from '@/components/research/item-detail/item-preview-shell';
+import { PagePadding } from '@/components/page-padding';
 
 export default async function ResearchItemPreviewPage({
   searchParams,
@@ -12,6 +13,7 @@ export default async function ResearchItemPreviewPage({
   if (!title) redirect('/research');
 
   return (
+    <PagePadding>
     <ItemPreviewShell
       result={{
         title,
@@ -26,5 +28,6 @@ export default async function ResearchItemPreviewPage({
         extractedLocation: params.extractedLocation ?? null,
       }}
     />
+    </PagePadding>
   );
 }
