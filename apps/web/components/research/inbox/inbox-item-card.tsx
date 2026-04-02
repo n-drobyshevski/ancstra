@@ -6,8 +6,7 @@ import type { InboxItem } from '@/lib/research/factsheet-client';
 
 interface InboxItemCardProps {
   item: InboxItem;
-  onAssign: () => void;
-  onCreateFactsheet: () => void;
+  onReview: () => void;
   onDismiss: () => void;
 }
 
@@ -21,7 +20,7 @@ function timeAgo(dateStr: string): string {
   return `${days}d ago`;
 }
 
-export function InboxItemCard({ item, onAssign, onCreateFactsheet, onDismiss }: InboxItemCardProps) {
+export function InboxItemCard({ item, onReview, onDismiss }: InboxItemCardProps) {
   const methodLabel = DISCOVERY_METHOD_LABELS[item.discoveryMethod] ?? item.discoveryMethod;
 
   return (
@@ -33,11 +32,8 @@ export function InboxItemCard({ item, onAssign, onCreateFactsheet, onDismiss }: 
         </p>
       </div>
       <div className="flex items-center gap-2 shrink-0">
-        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={onAssign}>
-          Assign to person
-        </Button>
-        <Button variant="secondary" size="sm" className="h-7 text-xs" onClick={onCreateFactsheet}>
-          Create factsheet
+        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={onReview}>
+          Review
         </Button>
         <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground" onClick={onDismiss}>
           Dismiss

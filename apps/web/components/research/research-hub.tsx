@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Search, Globe, Newspaper, BookOpen, Archive, Bookmark, ChevronsRight } from 'lucide-react';
 import { ResearchInput } from './research-input';
@@ -9,14 +9,8 @@ import { ResearchItemCard } from './research-item-card';
 import { TextPasteModal } from './text-paste-modal';
 import { SourceSelector } from './source-selector';
 import { useResearchSearch, useResearchItems } from '@/lib/research/search-client';
+import { addRecentSearch, EXAMPLE_SEARCHES } from '@/lib/research/search-history';
 import { cn } from '@/lib/utils';
-
-const EXAMPLE_SEARCHES = [
-  'Maria Kowalski born 1885',
-  'Chicago Tribune obituary 1952',
-  'Census records Cook County IL',
-  'Ship manifest Hamburg 1890',
-];
 
 const PROVIDERS = [
   { icon: Globe, name: 'FamilySearch', desc: '6B+ records' },
@@ -54,6 +48,7 @@ export function ResearchHub({ onAskAi, onSearchContextChange }: ResearchHubProps
 
   const handleSearch = useCallback((q: string) => {
     setQuery(q);
+    if (q.trim()) addRecentSearch(q.trim());
     // Sync to URL without triggering Next.js navigation
     const url = new URL(window.location.href);
     if (q) {
@@ -64,7 +59,7 @@ export function ResearchHub({ onAskAi, onSearchContextChange }: ResearchHubProps
     window.history.replaceState(null, '', url.toString());
   }, []);
 
-  const handleSaved = useCallback(() => {
+  const handleBookmark = useCallback(() => {
     refetchItems();
   }, [refetchItems]);
 
@@ -95,6 +90,16 @@ export function ResearchHub({ onAskAi, onSearchContextChange }: ResearchHubProps
     });
   }, [query, searchData, onSearchContextChange]);
 
+  const bookmarkedUrls = useMemo(() => {
+    const set = new Set<string>();
+    if (itemsData?.items) {
+      for (const item of itemsData.items) {
+        if (item.url) set.add(item.url);
+      }
+    }
+    return set;
+  }, [itemsData?.items]);
+
   const hasResults = !!query && (searchData?.results?.length ?? 0) > 0;
   const hasItems = (itemsData?.items?.length ?? 0) > 0;
   const showEmptyState = !query && !searchLoading;
@@ -112,7 +117,7 @@ export function ResearchHub({ onAskAi, onSearchContextChange }: ResearchHubProps
           {hasItems && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Bookmark className="size-4" />
-              {itemsData?.items.length} saved
+              {itemsData?.items.length} bookmarks
             </div>
           )}
         </div>
@@ -122,7 +127,7 @@ export function ResearchHub({ onAskAi, onSearchContextChange }: ResearchHubProps
         <div className="flex-1">
           <ResearchInput
             onSearch={handleSearch}
-            onSaved={handleSaved}
+            onBookmark={handleBookmark}
             onOpenTextModal={() => setTextModalOpen(true)}
             externalQuery={query}
           />
@@ -133,7 +138,7 @@ export function ResearchHub({ onAskAi, onSearchContextChange }: ResearchHubProps
       <TextPasteModal
         open={textModalOpen}
         onOpenChange={setTextModalOpen}
-        onSaved={handleSaved}
+        onBookmark={handleBookmark}
       />
 
       {showEmptyState ? (
@@ -200,7 +205,7 @@ export function ResearchHub({ onAskAi, onSearchContextChange }: ResearchHubProps
               <div className="space-y-1.5">
                 <div className="flex items-center gap-2">
                   <span className="flex size-6 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">2</span>
-                  <h3 className="text-sm font-medium">Save</h3>
+                  <h3 className="text-sm font-medium">Bookmark</h3>
                 </div>
                 <p className="text-xs text-muted-foreground pl-8">
                   Bookmark results as research items. Tag them to people in your tree.
@@ -218,18 +223,18 @@ export function ResearchHub({ onAskAi, onSearchContextChange }: ResearchHubProps
             </div>
           </div>
 
-          {/* Saved items in empty state */}
+          {/* Bookmarks in empty state */}
           {hasItems && (
             <div className="mx-auto max-w-2xl space-y-4">
               <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                Saved Items ({itemsData?.items.length})
+                Bookmarks ({itemsData?.items.length})
               </h2>
               <div className="space-y-3">
                 {itemsData?.items.map((item: any) => (
                   <ResearchItemCard
                     key={item.id}
                     item={item}
-                    onUpdated={handleSaved}
+                    onUpdated={handleBookmark}
                   />
                 ))}
               </div>
@@ -251,7 +256,7 @@ export function ResearchHub({ onAskAi, onSearchContextChange }: ResearchHubProps
                 className="absolute -top-1 right-0 z-10 inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1 text-xs font-medium text-muted-foreground shadow-sm transition-colors hover:text-foreground"
               >
                 <Bookmark className="size-3.5" />
-                {itemsData?.items.length ?? 0} saved
+                {itemsData?.items.length ?? 0} bookmarks
               </button>
             )}
             <SearchResults
@@ -259,8 +264,9 @@ export function ResearchHub({ onAskAi, onSearchContextChange }: ResearchHubProps
               isLoading={searchLoading}
               error={searchError}
               query={query}
-              onSaved={handleSaved}
+              onBookmark={handleBookmark}
               onAskAi={onAskAi}
+              bookmarkedUrls={bookmarkedUrls}
             />
           </div>
 
@@ -268,7 +274,7 @@ export function ResearchHub({ onAskAi, onSearchContextChange }: ResearchHubProps
             <div className="hidden space-y-3 lg:block">
               <div className="flex items-center justify-between">
                 <h2 className="text-sm font-medium text-muted-foreground">
-                  Saved Items <span className="text-foreground">({itemsData?.items.length ?? 0})</span>
+                  Bookmarks <span className="text-foreground">({itemsData?.items.length ?? 0})</span>
                 </h2>
                 <button
                   type="button"
@@ -285,7 +291,7 @@ export function ResearchHub({ onAskAi, onSearchContextChange }: ResearchHubProps
                 <div className="rounded-lg border border-dashed border-border p-4 text-center">
                   <Bookmark className="mx-auto size-5 text-muted-foreground mb-2" />
                   <p className="text-sm text-muted-foreground">
-                    Save search results to track them here.
+                    Bookmark search results to track them here.
                   </p>
                 </div>
               ) : (
@@ -293,7 +299,7 @@ export function ResearchHub({ onAskAi, onSearchContextChange }: ResearchHubProps
                   <ResearchItemCard
                     key={item.id}
                     item={item}
-                    onUpdated={handleSaved}
+                    onUpdated={handleBookmark}
                   />
                 ))
               )}

@@ -17,10 +17,10 @@ interface SearchContext {
   topResults: { title: string; providerId: string }[];
 }
 
-const tabs: { value: ResearchView; label: string; icon: typeof Search }[] = [
-  { value: 'search', label: 'Search', icon: Search },
-  { value: 'chat', label: 'AI Chat', icon: Sparkles },
-  { value: 'inbox', label: 'Inbox', icon: Inbox },
+const tabs: { value: ResearchView; label: string; icon: typeof Search; shortcut: string }[] = [
+  { value: 'search', label: 'Search', icon: Search, shortcut: '1' },
+  { value: 'chat', label: 'AI Chat', icon: Sparkles, shortcut: '2' },
+  { value: 'inbox', label: 'Inbox', icon: Inbox, shortcut: '3' },
 ];
 
 function ResearchLayoutInner() {
@@ -39,6 +39,20 @@ function ResearchLayoutInner() {
 
   const handlePromptConsumed = useCallback(() => {
     setPendingAiPrompt(null);
+  }, []);
+
+  // Keyboard shortcuts: Ctrl/Cmd + 1/2/3 to switch tabs
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (!(e.metaKey || e.ctrlKey)) return;
+      const tab = tabs.find(t => t.shortcut === e.key);
+      if (tab) {
+        e.preventDefault();
+        setActiveView(tab.value);
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
   // Read ?askAi= param on mount (from item detail "Ask AI" button)
@@ -75,6 +89,9 @@ function ResearchLayoutInner() {
             >
               <Icon className="size-3.5" />
               {tab.label}
+              <span className="hidden text-[10px] text-muted-foreground/50 sm:inline">
+                ⌘{tab.shortcut}
+              </span>
               {tab.value === 'inbox' && inboxCount > 0 && (
                 <Badge className="ml-1 h-4 min-w-4 px-1 text-[10px] bg-primary/20 text-primary">
                   {inboxCount}

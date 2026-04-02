@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ExternalLink, Plus, Sparkles, Eye, Copy, ClipboardCopy } from 'lucide-react';
+import { ExternalLink, Bookmark, BookmarkCheck, Sparkles, Eye, Copy, ClipboardCopy } from 'lucide-react';
 import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,7 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { ProviderBadge, getProviderConfig } from './provider-badge';
 import { toast } from 'sonner';
 import type { SearchResult } from '@ancstra/research';
@@ -35,16 +36,20 @@ function buildPreviewUrl(result: SearchResult): string {
 
 interface SearchResultCardProps {
   result: SearchResult;
-  onSaved?: () => void;
+  onBookmark?: () => void;
   onAskAi?: (prompt: string) => void;
+  isBookmarked?: boolean;
 }
 
-export function SearchResultCard({ result, onSaved, onAskAi }: SearchResultCardProps) {
-  const [saving, setSaving] = useState(false);
+export function SearchResultCard({ result, onBookmark, onAskAi, isBookmarked }: SearchResultCardProps) {
+  const [bookmarking, setBookmarking] = useState(false);
+  const [justBookmarked, setJustBookmarked] = useState(false);
+  const [snippetExpanded, setSnippetExpanded] = useState(false);
+  const saved = isBookmarked || justBookmarked;
   const router = useRouter();
 
-  async function handleSave() {
-    setSaving(true);
+  async function handleBookmark() {
+    setBookmarking(true);
     try {
       const res = await fetch('/api/research/items', {
         method: 'POST',
@@ -64,19 +69,20 @@ export function SearchResultCard({ result, onSaved, onAskAi }: SearchResultCardP
         throw new Error(err.error || 'Failed to save');
       }
 
-      toast.success('Saved to research items');
-      onSaved?.();
+      setJustBookmarked(true);
+      toast.success('Bookmarked');
+      onBookmark?.();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to save');
     } finally {
-      setSaving(false);
+      setBookmarking(false);
     }
   }
 
-  const snippet =
-    result.snippet.length > 200
-      ? result.snippet.slice(0, 200) + '...'
-      : result.snippet;
+  const isLongSnippet = result.snippet.length > 200;
+  const displaySnippet = isLongSnippet && !snippetExpanded
+    ? result.snippet.slice(0, 200) + '...'
+    : result.snippet;
 
   const previewUrl = buildPreviewUrl(result);
   const providerConfig = getProviderConfig(result.providerId);
@@ -93,22 +99,28 @@ export function SearchResultCard({ result, onSaved, onAskAi }: SearchResultCardP
                   <h3 className="text-sm font-medium leading-snug">{result.title}</h3>
                 </div>
                 {result.relevanceScore != null && (
-                  <div className="shrink-0 flex items-center gap-2">
-                    <div className="h-1.5 w-16 overflow-hidden rounded-full bg-muted">
-                      <div
-                        className="h-full rounded-full bg-primary"
-                        style={{ width: `${result.relevanceScore * 100}%` }}
-                      />
-                    </div>
-                    <span className="text-xs font-medium text-muted-foreground">
-                      {Math.round(result.relevanceScore * 100)}%
-                    </span>
-                  </div>
+                  <RelevanceBadge score={result.relevanceScore} />
                 )}
               </div>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground">{snippet}</p>
+              <p className="text-sm text-muted-foreground transition-all duration-150">
+                {displaySnippet}
+                {isLongSnippet && (
+                  <>
+                    {' '}
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSnippetExpanded(!snippetExpanded); }}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); setSnippetExpanded(!snippetExpanded); } }}
+                      className="text-xs text-primary cursor-pointer hover:underline"
+                    >
+                      {snippetExpanded ? 'Show less' : 'Show more'}
+                    </span>
+                  </>
+                )}
+              </p>
               {result.extractedData && (
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {result.extractedData.name && (
@@ -135,31 +147,58 @@ export function SearchResultCard({ result, onSaved, onAskAi }: SearchResultCardP
               )}
             </CardContent>
             <CardFooter className="flex gap-2">
-              <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); e.preventDefault(); handleSave(); }} disabled={saving}>
-                <Plus className="size-3.5" />
-                {saving ? 'Saving...' : 'Save'}
-              </Button>
+              {saved ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-flex items-center gap-1.5 rounded-md bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+                      <BookmarkCheck className="size-3.5" />
+                      Saved
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>Already in your bookmarks</TooltipContent>
+                </Tooltip>
+              ) : (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); e.preventDefault(); handleBookmark(); }} disabled={bookmarking}>
+                      <Bookmark className="size-3.5" />
+                      {bookmarking ? 'Bookmarking...' : 'Bookmark'}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Save to bookmarks</TooltipContent>
+                </Tooltip>
+              )}
               {result.url && (
-                <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); e.preventDefault(); window.open(result.url, '_blank', 'noopener,noreferrer'); }}>
-                  <ExternalLink className="size-3.5" />
-                  View
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); e.preventDefault(); window.open(result.url, '_blank', 'noopener,noreferrer'); }}>
+                      <ExternalLink className="size-3.5" />
+                      View
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Open original source</TooltipContent>
+                </Tooltip>
               )}
               {onAskAi && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    onAskAi(
-                      `Tell me more about this record: "${result.title}" from ${providerConfig.label}. URL: ${result.url}. Snippet: ${result.snippet}`
-                    );
-                  }}
-                >
-                  <Sparkles className="size-3.5" />
-                  Ask AI
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        onAskAi(
+                          `Tell me more about this record: "${result.title}" from ${providerConfig.label}. URL: ${result.url}. Snippet: ${result.snippet}`
+                        );
+                      }}
+                    >
+                      <Sparkles className="size-3.5" />
+                      Ask AI
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Ask AI about this record</TooltipContent>
+                </Tooltip>
               )}
             </CardFooter>
           </Card>
@@ -175,11 +214,11 @@ export function SearchResultCard({ result, onSaved, onAskAi }: SearchResultCardP
         </ContextMenuItem>
 
         <ContextMenuItem
-          onSelect={handleSave}
-          disabled={saving}
+          onSelect={handleBookmark}
+          disabled={saved || bookmarking}
         >
-          <Plus className="size-4" />
-          {saving ? 'Saving...' : 'Save to Research'}
+          {saved ? <BookmarkCheck className="size-4" /> : <Bookmark className="size-4" />}
+          {saved ? 'Already bookmarked' : bookmarking ? 'Bookmarking...' : 'Bookmark'}
         </ContextMenuItem>
 
         {result.url && (
@@ -229,5 +268,30 @@ export function SearchResultCard({ result, onSaved, onAskAi }: SearchResultCardP
         )}
       </ContextMenuContent>
     </ContextMenu>
+  );
+}
+
+/* ── Relevance tier badge ── */
+
+function RelevanceBadge({ score }: { score: number }) {
+  const pct = Math.round(score * 100);
+  let label: string;
+  let className: string;
+
+  if (score >= 0.75) {
+    label = 'High';
+    className = 'bg-status-success-bg text-status-success-text';
+  } else if (score >= 0.5) {
+    label = 'Med';
+    className = 'bg-status-warning-bg text-status-warning-text';
+  } else {
+    label = 'Low';
+    className = 'bg-muted text-muted-foreground';
+  }
+
+  return (
+    <span className={`shrink-0 inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium ${className}`}>
+      {label} {pct}%
+    </span>
   );
 }

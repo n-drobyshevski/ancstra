@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -10,16 +10,16 @@ import { InboxItemCard } from './inbox-item-card';
 export function InboxTab() {
   const { items, total, isLoading, refetch } = useInbox();
   const router = useRouter();
+  const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
+  const committedRef = useRef<Set<string>>(new Set());
 
-  const handleAssign = useCallback((itemId: string) => {
+  const handleReview = useCallback((itemId: string) => {
     router.push(`/research/item/${itemId}`);
   }, [router]);
 
-  const handleCreateFactsheet = useCallback((itemId: string) => {
-    router.push(`/research/item/${itemId}`);
-  }, [router]);
-
-  const handleDismiss = useCallback(async (itemId: string) => {
+  const commitDismiss = useCallback(async (itemId: string) => {
+    if (committedRef.current.has(itemId)) return;
+    committedRef.current.add(itemId);
     try {
       const res = await fetch(`/api/research/items`, {
         method: 'PUT',
@@ -27,12 +27,30 @@ export function InboxTab() {
         body: JSON.stringify({ id: itemId, status: 'dismissed' }),
       });
       if (!res.ok) throw new Error('Failed');
-      toast.success('Item dismissed');
       refetch();
     } catch {
       toast.error('Failed to dismiss');
+      setHiddenIds((prev) => { const next = new Set(prev); next.delete(itemId); return next; });
+      committedRef.current.delete(itemId);
     }
   }, [refetch]);
+
+  const handleDismiss = useCallback((itemId: string) => {
+    setHiddenIds((prev) => new Set(prev).add(itemId));
+    committedRef.current.delete(itemId);
+    toast('Item dismissed', {
+      action: {
+        label: 'Undo',
+        onClick: () => {
+          committedRef.current.add(itemId); // prevent onAutoClose from firing
+          setHiddenIds((prev) => { const next = new Set(prev); next.delete(itemId); return next; });
+        },
+      },
+      duration: 4000,
+      onAutoClose: () => commitDismiss(itemId),
+      onDismiss: () => commitDismiss(itemId),
+    });
+  }, [commitDismiss]);
 
   if (isLoading) {
     return (
@@ -49,7 +67,7 @@ export function InboxTab() {
       <div className="py-16 text-center">
         <p className="text-sm font-medium mb-1">Inbox is empty</p>
         <p className="text-xs text-muted-foreground mb-4 max-w-xs mx-auto">
-          When you search without selecting a person first, saved items appear here for triage.
+          When you search without selecting a person first, bookmarks appear here for triage.
         </p>
         <Button variant="outline" size="sm" asChild>
           <a href="/research">Go to Search</a>
@@ -67,12 +85,11 @@ export function InboxTab() {
         </p>
       </div>
       <div className="space-y-2">
-        {items.map((item) => (
+        {items.filter((item) => !hiddenIds.has(item.id)).map((item) => (
           <InboxItemCard
             key={item.id}
             item={item}
-            onAssign={() => handleAssign(item.id)}
-            onCreateFactsheet={() => handleCreateFactsheet(item.id)}
+            onReview={() => handleReview(item.id)}
             onDismiss={() => handleDismiss(item.id)}
           />
         ))}

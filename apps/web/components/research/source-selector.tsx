@@ -9,6 +9,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
 export interface ProviderConfig {
   id: string;
@@ -231,7 +232,6 @@ export function SourceSelector({ onSelectionChange }: SourceSelectorProps) {
                           type="button"
                           onClick={() => toggle(provider.id)}
                           className="flex items-center gap-2 px-2 py-1.5 rounded text-xs hover:bg-muted transition-colors text-left group"
-                          title={HEALTH_LABELS[health]}
                         >
                           <div className={`size-3.5 rounded border flex items-center justify-center shrink-0 ${
                             selected.has(provider.id)
@@ -245,10 +245,16 @@ export function SourceSelector({ onSelectionChange }: SourceSelectorProps) {
                           <span className={`flex-1 ${selected.has(provider.id) ? 'text-foreground' : 'text-muted-foreground'}`}>
                             {provider.name}
                           </span>
-                          <span
-                            className={`size-1.5 rounded-full shrink-0 ${HEALTH_DOT_COLORS[health]}`}
-                            title={HEALTH_LABELS[health]}
-                          />
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span
+                                className={`size-2 rounded-full shrink-0 ${HEALTH_DOT_COLORS[health]}`}
+                              />
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="text-xs">
+                              {provider.name}: {HEALTH_LABELS[health]}
+                            </TooltipContent>
+                          </Tooltip>
                         </button>
                       );
                     })}
