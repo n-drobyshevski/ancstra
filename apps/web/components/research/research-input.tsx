@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Search, X, Link, Loader2, CheckCircle2, FileText, Clock } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useRef, forwardRef, useImperativeHandle } from 'react';
+import { Search, X, Link, Loader2, CheckCircle2, Clock } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +15,11 @@ import {
 
 const URL_REGEX = /^https?:\/\//;
 
+export interface ResearchInputHandle {
+  focusUrlMode: () => void;
+  focus: () => void;
+}
+
 interface ResearchInputProps {
   onSearch: (query: string) => void;
   onBookmark?: () => void;
@@ -23,13 +28,14 @@ interface ResearchInputProps {
   externalQuery?: string;
 }
 
-export function ResearchInput({
-  onSearch,
-  onBookmark,
-  onOpenTextModal,
-  placeholder = 'Search records or paste a URL...',
-  externalQuery,
-}: ResearchInputProps) {
+export const ResearchInput = forwardRef<ResearchInputHandle, ResearchInputProps>(
+  function ResearchInput({
+    onSearch,
+    onBookmark,
+    onOpenTextModal,
+    placeholder = 'Search records or paste a URL...',
+    externalQuery,
+  }, ref) {
   const [value, setValue] = useState('');
   const [isUrlMode, setIsUrlMode] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -37,6 +43,21 @@ export function ResearchInput({
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { scrape, status, result, error, isLoading, elapsed, reset } = useScrapeUrl();
+
+  useImperativeHandle(ref, () => ({
+    focusUrlMode() {
+      setValue('https://');
+      setIsUrlMode(true);
+      inputRef.current?.focus();
+      requestAnimationFrame(() => {
+        const input = inputRef.current;
+        if (input) input.setSelectionRange(input.value.length, input.value.length);
+      });
+    },
+    focus() {
+      inputRef.current?.focus();
+    },
+  }));
 
   // Sync external query (e.g. from example search clicks)
   useEffect(() => {
@@ -149,16 +170,6 @@ export function ResearchInput({
             >
               Search
             </button>
-          ) : !hasValue ? (
-            <button
-              type="button"
-              onClick={onOpenTextModal}
-              className="rounded-md border border-border bg-muted/50 px-2 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              aria-label="Paste text from clipboard"
-            >
-              <FileText className="mr-1 inline size-3" />
-              Paste Text
-            </button>
           ) : null}
         </div>
 
@@ -260,7 +271,7 @@ export function ResearchInput({
       )}
     </div>
   );
-}
+});
 
 /* ── Suggestion dropdown ── */
 

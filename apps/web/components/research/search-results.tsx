@@ -149,7 +149,7 @@ export function SearchResults({
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">
+      <p aria-live="polite" className="text-sm text-muted-foreground">
         {results.length} result{results.length !== 1 ? 's' : ''} found
       </p>
       {groups.map((group) => {
