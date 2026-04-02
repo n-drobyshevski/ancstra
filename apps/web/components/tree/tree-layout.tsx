@@ -8,6 +8,7 @@ import { PersonPalette } from './person-palette';
 import { TreeDetailPanel } from './tree-detail-panel';
 import { MobileDetailSheet } from './mobile-detail-sheet';
 import { MobileTreeToolbar } from './mobile-tree-toolbar';
+import { useSidebar } from '@/components/ui/sidebar';
 
 const TreeCanvas = dynamic(
   () => import('./tree-canvas').then((m) => ({ default: m.TreeCanvas })),
@@ -58,6 +59,8 @@ export function TreeLayout({ treeData, focusPersonId }: TreeLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
 
+  const { open: sidebarOpen, setOpen: setSidebarOpen, isMobile: sidebarMobile } = useSidebar();
+
   const view = (searchParams.get('view') ?? 'canvas') as 'canvas' | 'table';
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [selectedPerson, setSelectedPerson] = useState<PersonListItem | null>(null);
@@ -97,15 +100,21 @@ export function TreeLayout({ treeData, focusPersonId }: TreeLayoutProps) {
     setSelectedPerson(null);
   }, []);
 
+  const dismissSidebar = useCallback(() => {
+    if (sidebarOpen && !sidebarMobile) {
+      setSidebarOpen(false);
+    }
+  }, [sidebarOpen, sidebarMobile, setSidebarOpen]);
+
   const relationships = useMemo(() => buildRelationships(treeData), [treeData]);
 
   // Hide palette in table view
   const showPalette = paletteOpen && view === 'canvas';
 
   return (
-    <div className="h-full overflow-hidden">
+    <div className="h-full min-w-0 overflow-hidden">
       {/* Desktop layout */}
-      <div className="hidden h-full md:flex">
+      <div className="hidden h-full min-w-0 md:flex" onClick={dismissSidebar}>
         {showPalette && <PersonPalette onClose={() => setPaletteOpen(false)} />}
 
         {view === 'canvas' ? (
@@ -176,7 +185,7 @@ export function TreeLayout({ treeData, focusPersonId }: TreeLayoutProps) {
               )}
             />
             <MobileDetailSheet
-              person={selectedPerson}
+              person={sidebarMobile ? selectedPerson : null}
               treeData={treeData}
               onClose={clearSelection}
               onFocusNode={handleFocusNode}
