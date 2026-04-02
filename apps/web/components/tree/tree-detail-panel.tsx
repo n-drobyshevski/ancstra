@@ -186,7 +186,7 @@ function DetailActionStrip({
         variant="ghost"
         size="sm"
         className="h-7 text-xs gap-1.5"
-        onClick={() => router.push(`/persons/${personId}/edit`)}
+        onClick={() => router.push(`/persons/${personId}`)}
       >
         <FileText className="size-3.5" />
         Full Page
