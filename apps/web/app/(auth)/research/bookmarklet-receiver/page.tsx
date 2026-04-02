@@ -10,9 +10,12 @@ export default function BookmarkletReceiverPage() {
   const [redirectUrl, setRedirectUrl] = useState<string | null>(null);
 
   useEffect(() => {
+    let received = false;
+
     function handleMessage(event: MessageEvent) {
       // Only accept messages from the same window opener or any origin (bookmarklet runs on external sites)
       if (event.data?.type !== 'ancstra-bookmarklet') return;
+      received = true;
 
       const { html, text, url, title } = event.data;
       if (!html && !text) {
@@ -22,7 +25,7 @@ export default function BookmarkletReceiverPage() {
       }
 
       setStatus('saving');
-      setMessage('Saving content...');
+      setMessage('Bookmarking...');
 
       // Build form data and POST to the API (same-origin, cookies included)
       const formData = new FormData();
@@ -41,14 +44,14 @@ export default function BookmarkletReceiverPage() {
           const match = body.match(/location\.href="([^"]+)"/);
           if (res.ok && match?.[1]) {
             setStatus('done');
-            setMessage('Content saved!');
+            setMessage('Bookmarked!');
             setRedirectUrl(match[1]);
             setTimeout(() => {
               window.location.href = match[1];
             }, 1500);
           } else if (res.ok) {
             setStatus('done');
-            setMessage('Content saved!');
+            setMessage('Bookmarked!');
           } else {
             setStatus('error');
             setMessage('Failed to save. Make sure you are logged in.');
@@ -60,8 +63,19 @@ export default function BookmarkletReceiverPage() {
         });
     }
 
+    // Timeout: if no message received within 15s, show error
+    const timeout = setTimeout(() => {
+      if (!received) {
+        setStatus('error');
+        setMessage('No response from bookmarklet. Try running it again from the source page.');
+      }
+    }, 15_000);
+
     window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
+    return () => {
+      clearTimeout(timeout);
+      window.removeEventListener('message', handleMessage);
+    };
   }, []);
 
   return (

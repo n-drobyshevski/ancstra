@@ -15,6 +15,7 @@ import {
 import { WorkspaceTabs, type WorkspaceView } from './workspace-tabs';
 import { ResearchBreadcrumb } from '../breadcrumb';
 import { useBadgeCounts } from '@/lib/research/badge-counts-client';
+import { setLastWorkspace } from '@/lib/research/activity';
 import { RecordTab } from '../record/record-tab';
 import { BoardTab } from '../board/board-tab';
 import { ConflictsTab } from '../conflicts/conflicts-tab';
@@ -25,7 +26,6 @@ import { CanvasTab } from '../canvas/canvas-tab';
 import { ProofTab } from '../proof/proof-tab';
 import { FactsheetsTab } from '../factsheets/factsheets-tab';
 import { ResearchBiographyTab } from '../biography/biography-tab';
-import { CitationsTab } from '../citations/citations-tab';
 
 interface WorkspaceShellProps {
   person: PersonDetail;
@@ -46,7 +46,7 @@ function formatDates(birthDate: string | null | undefined, deathDate: string | n
 }
 
 const TAB_ORDER: WorkspaceView[] = [
-  'record', 'timeline', 'conflicts', 'board', 'matrix', 'factsheets', 'hints', 'canvas', 'proof', 'biography', 'citations',
+  'record', 'timeline', 'conflicts', 'board', 'matrix', 'factsheets', 'hints', 'canvas', 'proof', 'biography',
 ];
 
 function ShellInner({ person, children }: WorkspaceShellProps) {
@@ -65,8 +65,13 @@ function ShellInner({ person, children }: WorkspaceShellProps) {
     if (view === 'record') params.delete('view');
     else params.set('view', view);
     const qs = params.toString();
-    router.push(qs ? `${pathname}?${qs}` : pathname);
+    router.replace(qs ? `${pathname}?${qs}` : pathname);
   }, [searchParams, router, pathname]);
+
+  // Track last workspace for "Continue where you left off"
+  useEffect(() => {
+    setLastWorkspace({ personId: person.id, personName, view: activeView });
+  }, [person.id, personName, activeView]);
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -108,12 +113,12 @@ function ShellInner({ person, children }: WorkspaceShellProps) {
                 )}
               </Avatar>
               <div>
-                <h1 className="text-xl md:text-2xl font-semibold tracking-tight">{personName}</h1>
+                <h1 className="text-xl md:text-2xl font-semibold leading-tight tracking-tight">{personName}</h1>
                 {dates && (
                   <p className="text-sm text-muted-foreground leading-snug">{dates}</p>
                 )}
                 {(birthPlace || deathPlace) && (
-                  <p className="text-xs text-muted-foreground/70 leading-snug mt-0.5">
+                  <p className="text-xs text-muted-foreground leading-snug mt-0.5">
                     {birthPlace && deathPlace
                       ? `${birthPlace} – ${deathPlace}`
                       : birthPlace ?? deathPlace}
@@ -179,7 +184,7 @@ function ShellInner({ person, children }: WorkspaceShellProps) {
       />
 
       {/* Tab content — keyed for enter animation */}
-      <div key={activeView} className="animate-tab-enter">
+      <div key={activeView} className="animate-tab-enter scroll-mt-24" data-view={activeView}>
         {children ?? (
           <>
             {activeView === 'record' && <RecordTab person={person} />}
@@ -210,7 +215,6 @@ function ShellInner({ person, children }: WorkspaceShellProps) {
             {activeView === 'biography' && (
               <ResearchBiographyTab personId={person.id} personName={personName} />
             )}
-            {activeView === 'citations' && <CitationsTab personId={person.id} />}
           </>
         )}
       </div>

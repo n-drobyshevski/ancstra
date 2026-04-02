@@ -17,7 +17,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { signOut } from 'next-auth/react';
-import { useInboxCount, useFactsheetCount } from '@/lib/research/factsheet-client';
+import { useFactsheetCount } from '@/lib/research/factsheet-client';
 import {
   Sidebar,
   SidebarContent,
@@ -108,12 +108,10 @@ function NavGroup({
 
 export function AppSidebar() {
   const pathname = usePathname();
-  const { count: inboxCount } = useInboxCount();
   const { count: factsheetCount } = useFactsheetCount();
 
   // Inject live badge counts into nav items
   const researchWithBadges = researchItems.map((item) => {
-    if (item.href === '/research') return { ...item, badge: inboxCount };
     if (item.href === '/research/factsheets') return { ...item, badge: factsheetCount };
     return item;
   });

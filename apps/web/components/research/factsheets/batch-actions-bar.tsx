@@ -30,7 +30,7 @@ export function BatchActionsBar({
       </div>
 
       {/* Mobile: floating bottom bar */}
-      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background px-4 pb-[env(safe-area-inset-bottom,0px)] pt-2 shadow-lg md:hidden">
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background px-4 pb-[env(safe-area-inset-bottom,0px)] pt-2 shadow-lg md:hidden">
         <div className="flex items-center justify-between mb-2">
           <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={onCancel}>
             Cancel

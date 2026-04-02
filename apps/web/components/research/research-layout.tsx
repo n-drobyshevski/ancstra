@@ -2,52 +2,111 @@
 
 import { useState, useCallback, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Search, Sparkles, Inbox } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { ResearchHub } from './research-hub';
-import { ChatPanel } from './chat-panel';
-import { InboxTab } from './inbox/inbox-tab';
-import { useInboxCount } from '@/lib/research/factsheet-client';
-import { Badge } from '@/components/ui/badge';
-
-type ResearchView = 'search' | 'chat' | 'inbox';
+import { AiSlidePanel } from './ai-slide-panel';
+import { MobileBottomBar } from './mobile-bottom-bar';
+import { MobileAiSheet } from './mobile-ai-sheet';
+import { TextPasteModal } from './text-paste-modal';
+import { useResearchItems } from '@/lib/research/search-client';
+import { useMediaQuery } from '@/lib/hooks/use-media-query';
 
 interface SearchContext {
   query: string;
   topResults: { title: string; providerId: string }[];
 }
 
-const tabs: { value: ResearchView; label: string; icon: typeof Search }[] = [
-  { value: 'search', label: 'Search', icon: Search },
-  { value: 'chat', label: 'AI Chat', icon: Sparkles },
-  { value: 'inbox', label: 'Inbox', icon: Inbox },
-];
-
 function ResearchLayoutInner() {
-  const [activeView, setActiveView] = useState<ResearchView>('search');
+  const [aiPanelOpen, setAiPanelOpen] = useState(false);
+  const [mobileAiOpen, setMobileAiOpen] = useState(false);
   const [pendingAiPrompt, setPendingAiPrompt] = useState<string | null>(null);
   const [searchContext, setSearchContext] = useState<SearchContext | null>(null);
-  const { count: inboxCount } = useInboxCount();
+  const [mobileTextModalOpen, setMobileTextModalOpen] = useState(false);
 
   const searchParams = useSearchParams();
   const router = useRouter();
+  const isDesktop = useMediaQuery('(min-width: 1024px)');
+  const { data: itemsData } = useResearchItems();
+  const bookmarkCount = itemsData?.items?.length ?? 0;
 
   const handleAskAi = useCallback((prompt: string) => {
     setPendingAiPrompt(prompt);
-    setActiveView('chat');
-  }, []);
+    if (isDesktop) {
+      setAiPanelOpen(true);
+    } else {
+      setMobileAiOpen(true);
+    }
+  }, [isDesktop]);
 
   const handlePromptConsumed = useCallback(() => {
     setPendingAiPrompt(null);
   }, []);
+
+  const handleOpenAiPanel = useCallback(() => {
+    if (isDesktop) {
+      setAiPanelOpen(true);
+    } else {
+      setMobileAiOpen(true);
+    }
+  }, [isDesktop]);
+
+  const handleCloseAiPanel = useCallback(() => {
+    setAiPanelOpen(false);
+  }, []);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      const target = e.target as HTMLElement;
+      const inInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+
+      // Ctrl+Shift+A — toggle AI panel
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'A') {
+        e.preventDefault();
+        if (isDesktop) {
+          setAiPanelOpen((prev) => !prev);
+        } else {
+          setMobileAiOpen((prev) => !prev);
+        }
+        return;
+      }
+
+      // Ctrl+K — focus search
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        document.querySelector<HTMLInputElement>('[aria-label="Search records or paste a URL"]')?.focus();
+        return;
+      }
+
+      // / — focus search (only when not in input)
+      if (e.key === '/' && !inInput && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault();
+        document.querySelector<HTMLInputElement>('[aria-label="Search records or paste a URL"]')?.focus();
+        return;
+      }
+
+      // Escape — close AI panel
+      if (e.key === 'Escape' && aiPanelOpen) {
+        setAiPanelOpen(false);
+        return;
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [aiPanelOpen, isDesktop]);
 
   // Read ?askAi= param on mount (from item detail "Ask AI" button)
   useEffect(() => {
     const askAi = searchParams.get('askAi');
     if (askAi) {
       setPendingAiPrompt(askAi);
-      setActiveView('chat');
-      // Clean the URL
+      if (isDesktop) {
+        setAiPanelOpen(true);
+      } else {
+        setMobileAiOpen(true);
+      }
       const params = new URLSearchParams(searchParams.toString());
       params.delete('askAi');
       const qs = params.toString();
@@ -57,65 +116,95 @@ function ResearchLayoutInner() {
 
   return (
     <div className="flex h-full flex-col">
-      {/* Tab bar */}
-      <div className="flex gap-1 border-b border-border px-4">
-        {tabs.map((tab) => {
-          const Icon = tab.icon;
-          return (
+      {/* Skip to main content */}
+      <a
+        href="#research-main"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground focus:shadow-lg"
+      >
+        Skip to main content
+      </a>
+
+      {/* Desktop top bar with AI toggle */}
+      <div className="hidden items-center gap-3 border-b border-border px-4 py-3 lg:flex">
+        <h1 className="text-lg font-bold whitespace-nowrap">Research</h1>
+        <div className="flex-1" />
+        <Tooltip>
+          <TooltipTrigger asChild>
             <button
-              key={tab.value}
-              onClick={() => setActiveView(tab.value)}
+              type="button"
+              onClick={handleOpenAiPanel}
               className={cn(
-                'relative inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors',
-                'hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                activeView === tab.value
-                  ? 'text-foreground after:absolute after:inset-x-0 after:bottom-0 after:h-[2.5px] after:rounded-full after:bg-primary'
-                  : 'text-muted-foreground'
+                'flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                aiPanelOpen
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-accent text-accent-foreground border border-border hover:bg-accent/80'
               )}
             >
-              <Icon className="size-3.5" />
-              {tab.label}
-              {tab.value === 'inbox' && inboxCount > 0 && (
-                <Badge className="ml-1 h-4 min-w-4 px-1 text-[10px] bg-primary/20 text-primary">
-                  {inboxCount}
-                </Badge>
-              )}
+              <Sparkles className="size-4" />
+              AI Chat
             </button>
-          );
-        })}
+          </TooltipTrigger>
+          <TooltipContent side="bottom">
+            Toggle AI Chat <kbd className="ml-1.5 rounded bg-muted px-1 py-0.5 text-[10px] font-mono text-muted-foreground">Ctrl+Shift+A</kbd>
+          </TooltipContent>
+        </Tooltip>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-hidden">
-        {activeView === 'search' && (
-          <div className="h-full overflow-y-auto p-6">
-            <ResearchHub
-              onAskAi={handleAskAi}
-              onSearchContextChange={setSearchContext}
-            />
-          </div>
+      {/* Main content area */}
+      <div
+        id="research-main"
+        role="main"
+        className={cn(
+          'flex-1 overflow-y-auto p-4 pb-[calc(60px+env(safe-area-inset-bottom))] lg:pb-4',
+          aiPanelOpen && isDesktop && 'lg:pr-[346px]'
         )}
-        {activeView === 'chat' && (
-          <Suspense
-            fallback={
-              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                Loading chat...
-              </div>
-            }
-          >
-            <ChatPanel
-              initialPrompt={pendingAiPrompt}
-              onPromptConsumed={handlePromptConsumed}
-              searchContext={searchContext}
-            />
-          </Suspense>
-        )}
-        {activeView === 'inbox' && (
-          <div className="h-full overflow-y-auto p-6">
-            <InboxTab />
-          </div>
-        )}
+      >
+        <ResearchHub
+          onAskAi={handleAskAi}
+          onOpenAiPanel={handleOpenAiPanel}
+          onSearchContextChange={setSearchContext}
+          aiPanelOpen={aiPanelOpen}
+        />
       </div>
+
+      {/* Desktop AI slide-over panel */}
+      <AiSlidePanel
+        open={aiPanelOpen && !!isDesktop}
+        onClose={handleCloseAiPanel}
+        initialPrompt={pendingAiPrompt}
+        onPromptConsumed={handlePromptConsumed}
+        searchContext={searchContext}
+      />
+
+      {/* Mobile bottom bar */}
+      <div className="lg:hidden">
+        <MobileBottomBar
+          onPasteText={() => setMobileTextModalOpen(true)}
+          onScrapeUrl={() => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            setTimeout(() => {
+              document.querySelector<HTMLInputElement>('[aria-label="Search records or paste a URL"]')?.focus();
+            }, 300);
+          }}
+          onOpenAi={() => setMobileAiOpen(true)}
+          bookmarkCount={bookmarkCount}
+        />
+      </div>
+
+      {/* Mobile AI half-sheet */}
+      <MobileAiSheet
+        open={mobileAiOpen}
+        onOpenChange={setMobileAiOpen}
+        initialPrompt={pendingAiPrompt}
+        onPromptConsumed={handlePromptConsumed}
+        searchContext={searchContext}
+      />
+
+      {/* Mobile text paste modal (triggered from bottom bar) */}
+      <TextPasteModal
+        open={mobileTextModalOpen}
+        onOpenChange={setMobileTextModalOpen}
+      />
     </div>
   );
 }

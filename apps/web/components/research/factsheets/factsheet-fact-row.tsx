@@ -76,7 +76,7 @@ export function FactsheetFactRow({
       </div>
 
       {sourceTitle && (
-        <p className="mt-0.5 text-[10px] text-muted-foreground/70">
+        <p className="mt-0.5 text-[10px] text-muted-foreground">
           From: {sourceTitle}
         </p>
       )}
