@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { ResearchHub } from './research-hub';
 import { AiSlidePanel } from './ai-slide-panel';
 import { MobileBottomBar } from './mobile-bottom-bar';
@@ -115,30 +116,49 @@ function ResearchLayoutInner() {
 
   return (
     <div className="flex h-full flex-col">
+      {/* Skip to main content */}
+      <a
+        href="#research-main"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground focus:shadow-lg"
+      >
+        Skip to main content
+      </a>
+
       {/* Desktop top bar with AI toggle */}
       <div className="hidden items-center gap-3 border-b border-border px-4 py-3 lg:flex">
         <h1 className="text-lg font-bold whitespace-nowrap">Research</h1>
         <div className="flex-1" />
-        <button
-          type="button"
-          onClick={handleOpenAiPanel}
-          className={cn(
-            'flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-            aiPanelOpen
-              ? 'bg-primary text-primary-foreground'
-              : 'bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-800 hover:bg-violet-100 dark:hover:bg-violet-950/50'
-          )}
-        >
-          <Sparkles className="size-4" />
-          AI Chat
-        </button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={handleOpenAiPanel}
+              className={cn(
+                'flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                aiPanelOpen
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-accent text-accent-foreground border border-border hover:bg-accent/80'
+              )}
+            >
+              <Sparkles className="size-4" />
+              AI Chat
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">
+            Toggle AI Chat <kbd className="ml-1.5 rounded bg-muted px-1 py-0.5 text-[10px] font-mono text-muted-foreground">Ctrl+Shift+A</kbd>
+          </TooltipContent>
+        </Tooltip>
       </div>
 
       {/* Main content area */}
-      <div className={cn(
-        'flex-1 overflow-y-auto p-4',
-        aiPanelOpen && isDesktop && 'lg:pr-[346px]'
-      )}>
+      <div
+        id="research-main"
+        role="main"
+        className={cn(
+          'flex-1 overflow-y-auto p-4 pb-[calc(60px+env(safe-area-inset-bottom))] lg:pb-4',
+          aiPanelOpen && isDesktop && 'lg:pr-[346px]'
+        )}
+      >
         <ResearchHub
           onAskAi={handleAskAi}
           onOpenAiPanel={handleOpenAiPanel}

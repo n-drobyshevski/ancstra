@@ -1,9 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { Bookmark } from 'lucide-react';
+import { Bookmark, Search } from 'lucide-react';
 import { useResearchItems } from '@/lib/research/search-client';
 import { ResearchItemCard } from './research-item-card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 interface BookmarksPanelProps {
@@ -34,13 +36,31 @@ export function BookmarksPanel({ mode, refreshKey }: BookmarksPanelProps) {
       </div>
 
       {isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading...</p>
+        <div className="flex flex-col gap-2" aria-busy="true">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="rounded-lg border border-border p-3 space-y-2">
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-3 w-1/2" />
+            </div>
+          ))}
+        </div>
       ) : items.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-border p-4 text-center">
-          <Bookmark className="mx-auto mb-2 size-5 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">
-            Bookmark results to track them here.
+        <div className="rounded-lg border border-dashed border-border p-5 text-center">
+          <Bookmark className="mx-auto mb-2 size-6 text-muted-foreground/50" />
+          <p className="text-sm font-medium text-foreground mb-1">
+            No bookmarks yet
           </p>
+          <p className="text-xs text-muted-foreground mb-3">
+            Search for records and bookmark them to track your research.
+          </p>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => document.querySelector<HTMLInputElement>('[aria-label="Search records or paste a URL"]')?.focus()}
+          >
+            <Search className="size-3.5" />
+            Start searching
+          </Button>
         </div>
       ) : (
         <div className={cn('flex flex-col', mode === 'sidebar' ? 'gap-2' : 'gap-2.5')}>

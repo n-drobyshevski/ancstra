@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { ClipboardPaste, Link, Sparkles, Bookmark } from 'lucide-react';
 
 interface MobileBottomBarProps {
@@ -16,6 +17,7 @@ const items = [
 ] as const;
 
 export function MobileBottomBar({ onPasteText, onScrapeUrl, onOpenAi, bookmarkCount }: MobileBottomBarProps) {
+  const router = useRouter();
   const handlers = { onPasteText, onScrapeUrl, onOpenAi };
 
   return (
@@ -41,7 +43,8 @@ export function MobileBottomBar({ onPasteText, onScrapeUrl, onOpenAi, bookmarkCo
       {/* Bookmarks with badge */}
       <button
         type="button"
-        onClick={() => {/* Navigate to bookmarks or scroll to section */}}
+        onClick={() => router.push('/research/bookmarks')}
+        aria-label={`Bookmarks${bookmarkCount > 0 ? ` (${bookmarkCount})` : ''}`}
         className="relative flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-0.5 rounded-lg px-3 py-1.5 text-muted-foreground transition-colors hover:text-foreground"
       >
         <Bookmark className="size-5" />

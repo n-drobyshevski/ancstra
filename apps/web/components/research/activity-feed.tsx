@@ -53,7 +53,7 @@ export function ActivityFeed({ onRerunSearch }: ActivityFeedProps) {
       <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         Recent Activity
       </h2>
-      <div className="flex flex-col gap-1.5">
+      <div className="flex max-h-[300px] flex-col gap-1.5 overflow-y-auto">
         {entries.map((entry, i) => {
           const config = TYPE_CONFIG[entry.type];
           const Icon = config.icon;
@@ -68,7 +68,8 @@ export function ActivityFeed({ onRerunSearch }: ActivityFeedProps) {
                   router.push(`/research/item/${entry.itemId}`);
                 }
               }}
-              className="flex items-center gap-2.5 rounded-md bg-muted/50 px-3 py-2 text-left text-sm transition-colors hover:bg-muted"
+              aria-label={`${entry.type === 'search' ? 'Re-run search' : 'Open'}: ${entry.title}`}
+              className="flex items-center gap-2.5 rounded-md bg-muted/50 px-3 py-2 text-left text-sm transition-all hover:bg-muted active:scale-[0.98]"
             >
               <Icon className={cn('size-4 shrink-0', config.className)} />
               <div className="min-w-0 flex-1">

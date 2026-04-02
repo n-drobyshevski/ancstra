@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import { Search } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { getSuggestions, getFallbackSuggestions, type SearchSuggestion } from '@/lib/research/suggestions';
 
 interface SmartSuggestionsProps {
@@ -28,7 +29,18 @@ export function SmartSuggestions({ onSelect }: SmartSuggestionsProps) {
     return () => { cancelled = true; };
   }, []);
 
-  if (!loaded) return null;
+  if (!loaded) {
+    return (
+      <div className="flex flex-col gap-1" aria-busy="true">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="flex items-center gap-2.5 px-3 py-2">
+            <Skeleton className="size-3.5 shrink-0 rounded-full" />
+            <Skeleton className="h-4 flex-1" />
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   if (suggestions.length > 0) {
     return (

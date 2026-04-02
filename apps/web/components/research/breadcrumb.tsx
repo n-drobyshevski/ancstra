@@ -44,7 +44,7 @@ function BreadcrumbInner({ personName }: ResearchBreadcrumbProps) {
 
   return (
     <nav aria-label="Breadcrumb">
-      <ol className="flex items-center gap-1 text-xs">
+      <ol className="flex items-center gap-1 text-sm md:text-xs">
         <li>
           <Link
             href="/persons"

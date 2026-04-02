@@ -43,7 +43,7 @@ export function AiSlidePanel({
       className={cn(
         'fixed inset-y-0 right-0 z-40 w-[330px] border-l border-border bg-background shadow-lg',
         'flex flex-col',
-        'motion-safe:transition-transform motion-safe:duration-250 motion-safe:ease-out',
+        'motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-spring',
         'motion-reduce:transition-none',
         open ? 'translate-x-0' : 'translate-x-full'
       )}

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { CommandCenter } from './command-center';
 import { SearchResults } from './search-results';
 import { BookmarksPanel } from './bookmarks-panel';
@@ -22,6 +22,8 @@ interface ResearchHubProps {
 
 export function ResearchHub({ onAskAi, onOpenAiPanel, onSearchContextChange, aiPanelOpen }: ResearchHubProps) {
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const [query, setQuery] = useState(() => searchParams.get('q') ?? '');
   const [textModalOpen, setTextModalOpen] = useState(false);
   const [selectedProviders, setSelectedProviders] = useState<string[]>([]);
@@ -49,14 +51,15 @@ export function ResearchHub({ onAskAi, onOpenAiPanel, onSearchContextChange, aiP
       addRecentSearch(q.trim());
       addActivity({ type: 'search', title: q.trim() });
     }
-    const url = new URL(window.location.href);
+    const params = new URLSearchParams(searchParams.toString());
     if (q) {
-      url.searchParams.set('q', q);
+      params.set('q', q);
     } else {
-      url.searchParams.delete('q');
+      params.delete('q');
     }
-    window.history.replaceState(null, '', url.toString());
-  }, []);
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname);
+  }, [searchParams, router, pathname]);
 
   const handleBookmark = useCallback(() => {
     refetchItems();
@@ -148,6 +151,7 @@ export function ResearchHub({ onAskAi, onOpenAiPanel, onSearchContextChange, aiP
             onPasteText={handlePasteText}
             onOpenAi={onOpenAiPanel ?? (() => {})}
             bookmarkRefreshKey={bookmarkRefreshKey}
+            aiPanelOpen={aiPanelOpen}
           />
         )}
       </div>

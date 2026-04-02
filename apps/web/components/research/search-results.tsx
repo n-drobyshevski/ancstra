@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState, useCallback } from 'react';
+import { cn } from '@/lib/utils';
 
 const COLLAPSED_STORAGE_KEY = 'ancstra:collapsed-providers';
 
@@ -45,6 +46,7 @@ export function SearchResults({
   bookmarkedUrls,
 }: SearchResultsProps) {
   const [collapsed, setCollapsed] = useState<Set<string>>(loadCollapsed);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   const groups = useMemo(() => {
     if (!results || results.length === 0) return [];
@@ -87,7 +89,7 @@ export function SearchResults({
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-4" aria-busy="true" aria-label="Loading search results">
         <Skeleton className="h-4 w-28" />
         {[0, 1].map((g) => (
           <div key={g} className="space-y-2">
@@ -139,8 +141,13 @@ export function SearchResults({
 
   if (results && results.length === 0) {
     return (
-      <div className="py-12 text-center text-sm text-muted-foreground">
-        No results found for &ldquo;{query}&rdquo;. Try a different search term.
+      <div className="py-12 text-center">
+        <p className="text-sm text-muted-foreground mb-3">
+          No results found for &ldquo;{query}&rdquo;.
+        </p>
+        <p className="text-xs text-muted-foreground">
+          Try different search terms, broaden your source selection, or paste a direct URL.
+        </p>
       </div>
     );
   }
@@ -173,19 +180,41 @@ export function SearchResults({
               <span>{group.label}</span>
               <span className="text-xs font-normal">({group.results.length})</span>
             </button>
-            {!isCollapsed && (
-              <div className="space-y-3">
-                {group.results.map((result) => (
-                  <SearchResultCard
-                    key={`${result.providerId}-${result.externalId}`}
-                    result={result}
-                    onBookmark={onBookmark}
-                    onAskAi={onAskAi}
-                    isBookmarked={!!result.url && !!bookmarkedUrls?.has(result.url)}
-                  />
-                ))}
-              </div>
-            )}
+            {!isCollapsed && (() => {
+              const INITIAL_SHOW = 5;
+              const isExpanded = expanded.has(group.providerId);
+              const visibleResults = isExpanded ? group.results : group.results.slice(0, INITIAL_SHOW);
+              const hasMore = group.results.length > INITIAL_SHOW;
+              const remaining = group.results.length - INITIAL_SHOW;
+
+              return (
+                <div className="space-y-3">
+                  {visibleResults.map((result, i) => (
+                    <div
+                      key={`${result.providerId}-${result.externalId}`}
+                      className="animate-fade-slide-in"
+                      style={{ animationDelay: `${i * 50}ms`, animationFillMode: 'backwards' }}
+                    >
+                      <SearchResultCard
+                        result={result}
+                        onBookmark={onBookmark}
+                        onAskAi={onAskAi}
+                        isBookmarked={!!result.url && !!bookmarkedUrls?.has(result.url)}
+                      />
+                    </div>
+                  ))}
+                  {hasMore && !isExpanded && (
+                    <button
+                      type="button"
+                      onClick={() => setExpanded((prev) => new Set([...prev, group.providerId]))}
+                      className="w-full rounded-lg border border-dashed border-border py-2 text-sm text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+                    >
+                      Show {remaining} more from {group.label}
+                    </button>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         );
       })}

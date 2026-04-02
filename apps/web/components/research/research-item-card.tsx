@@ -109,11 +109,11 @@ export function ResearchItemCard({ item, onUpdated, compact = false }: ResearchI
       <ContextMenu>
         <ContextMenuTrigger asChild>
           <Link href={`/research/item/${item.id}`} className="block">
-            <Card size="sm" className={cn('group relative transition-shadow hover:shadow-sm', compact ? 'p-2' : 'p-3')}>
+            <Card size="sm" className={cn('group relative transition-all hover:shadow-sm active:scale-[0.99]', compact ? 'p-2' : 'p-3')}>
               <button
                 type="button"
                 onClick={handleQuickRemove}
-                className="absolute right-1.5 top-1.5 z-10 flex size-5 items-center justify-center rounded-sm opacity-0 transition-opacity hover:bg-muted group-hover:opacity-100"
+                className="absolute -right-1 -top-1 z-10 flex size-8 items-center justify-center rounded-sm opacity-0 transition-opacity hover:bg-muted group-hover:opacity-100"
                 aria-label="Remove bookmark"
               >
                 <X className="size-3 text-muted-foreground" />

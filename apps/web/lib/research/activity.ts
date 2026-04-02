@@ -30,3 +30,29 @@ export function addActivity(entry: Omit<ActivityEntry, 'timestamp'>): void {
 export function clearActivity(): void {
   localStorage.removeItem(STORAGE_KEY);
 }
+
+/* ── Last workspace context ── */
+
+const LAST_WORKSPACE_KEY = 'ancstra:last-workspace';
+
+export interface LastWorkspace {
+  personId: string;
+  personName: string;
+  view: string;
+  timestamp: number;
+}
+
+export function getLastWorkspace(): LastWorkspace | null {
+  if (typeof localStorage === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(LAST_WORKSPACE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+export function setLastWorkspace(data: Omit<LastWorkspace, 'timestamp'>): void {
+  localStorage.setItem(LAST_WORKSPACE_KEY, JSON.stringify({ ...data, timestamp: Date.now() }));
+}

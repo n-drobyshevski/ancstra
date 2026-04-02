@@ -13,13 +13,13 @@ import {
   Layers,
   UserPen,
   BookMarked,
-  Quote,
   ChevronsUpDown,
   Check,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import {
   Sheet,
   SheetContent,
@@ -38,8 +38,7 @@ export type WorkspaceView =
   | 'hints'
   | 'canvas'
   | 'proof'
-  | 'biography'
-  | 'citations';
+  | 'biography';
 
 interface TabDef {
   value: WorkspaceView;
@@ -77,7 +76,6 @@ const TAB_GROUPS: TabGroup[] = [
     tabs: [
       { value: 'proof',      label: 'Proof',      icon: FileText,   description: 'Proof statement builder' },
       { value: 'biography',  label: 'Biography',  icon: BookMarked, description: 'AI-generated narrative' },
-      { value: 'citations',  label: 'Citations',  icon: Quote,      description: 'Source citations' },
     ],
   },
 ];
@@ -110,7 +108,7 @@ function getBadge(
     return (
       <Badge
         variant="destructive"
-        className={cn('ml-1 h-4 min-w-4 px-1 text-[10px]', conflictCount > 0 && 'animate-subtle-pulse')}
+        className={cn('ml-1 h-4 min-w-4 px-1 text-[10px]', conflictCount > 0 && 'motion-safe:animate-subtle-pulse')}
       >
         {conflictCount}
       </Badge>
@@ -158,7 +156,7 @@ export function WorkspaceTabs({
         params.set('view', view);
       }
       const qs = params.toString();
-      router.push(qs ? `${pathname}?${qs}` : pathname);
+      router.replace(qs ? `${pathname}?${qs}` : pathname);
     },
     [searchParams, router, pathname],
   );
@@ -226,6 +224,7 @@ export function WorkspaceTabs({
         <div
           ref={scrollRef}
           role="tablist"
+          aria-label="Workspace views"
           onKeyDown={handleKeyDown}
           className="relative flex gap-0.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
@@ -241,28 +240,38 @@ export function WorkspaceTabs({
               {group.tabs.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeView === tab.value;
+                const tabIndex = ALL_TABS.findIndex((t) => t.value === tab.value);
+                const shortcut = tabIndex < 9 ? `Ctrl+${tabIndex + 1}` : undefined;
 
                 return (
-                  <button
-                    key={tab.value}
-                    ref={setTabRef(tab.value)}
-                    role="tab"
-                    aria-selected={isActive}
-                    tabIndex={isActive ? 0 : -1}
-                    onClick={() => setView(tab.value)}
-                    className={cn(
-                      'relative inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap px-3 py-2',
-                      'text-sm font-medium rounded-md',
-                      'transition-all duration-150',
-                      'hover:bg-muted/50 active:scale-[0.98]',
-                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                      isActive ? 'text-foreground' : 'text-muted-foreground',
+                  <Tooltip key={tab.value}>
+                    <TooltipTrigger asChild>
+                      <button
+                        ref={setTabRef(tab.value)}
+                        role="tab"
+                        aria-selected={isActive}
+                        tabIndex={isActive ? 0 : -1}
+                        onClick={() => setView(tab.value)}
+                        className={cn(
+                          'relative inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap px-3 py-2',
+                          'text-sm font-medium rounded-md',
+                          'transition-all duration-150',
+                          'hover:bg-muted/50 active:scale-[0.98]',
+                          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                          isActive ? 'text-foreground' : 'text-muted-foreground',
+                        )}
+                      >
+                        <Icon className="size-3.5" />
+                        {tab.label}
+                        {getBadge(tab.value, conflictCount, hintCount, factsheetCount)}
+                      </button>
+                    </TooltipTrigger>
+                    {shortcut && (
+                      <TooltipContent side="bottom" className="text-xs">
+                        {tab.description} <kbd className="ml-1.5 rounded bg-muted px-1 py-0.5 text-[10px] font-mono text-muted-foreground">{shortcut}</kbd>
+                      </TooltipContent>
                     )}
-                  >
-                    <Icon className="size-3.5" />
-                    {tab.label}
-                    {getBadge(tab.value, conflictCount, hintCount, factsheetCount)}
-                  </button>
+                  </Tooltip>
                 );
               })}
             </div>
@@ -281,6 +290,7 @@ export function WorkspaceTabs({
       <div className="border-b border-border md:hidden">
         <div
           role="tablist"
+          aria-label="Workspace views"
           className="relative flex items-center overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {mobileTabs.map((tab) => {
@@ -331,7 +341,7 @@ export function WorkspaceTabs({
 
       {/* ── Mobile: all-tabs sheet with group headings ── */}
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent side="bottom" className="max-h-[70dvh]">
+        <SheetContent side="bottom" className="max-h-[85dvh]">
           <SheetHeader>
             <SheetTitle>All Views</SheetTitle>
             <SheetDescription className="sr-only">
@@ -342,7 +352,7 @@ export function WorkspaceTabs({
           <div className="overflow-y-auto pb-4">
             {TAB_GROUPS.map((group) => (
               <div key={group.label}>
-                <p className="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                <p className="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                   {group.label}
                 </p>
 

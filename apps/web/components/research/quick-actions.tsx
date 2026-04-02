@@ -52,7 +52,8 @@ export function QuickActions({ onScrapeUrl, onPasteText, onOpenAi }: QuickAction
               key={item.key}
               type="button"
               onClick={handlers[item.action]}
-              className="flex items-center gap-3 rounded-lg border border-border p-3 text-left transition-colors hover:bg-muted/50"
+              aria-label={`${item.title}: ${item.subtitle}`}
+              className="flex items-center gap-3 rounded-lg border border-border p-3 text-left transition-all hover:bg-muted/50 active:scale-[0.98]"
             >
               <div className={`flex size-7 items-center justify-center rounded-md ${item.iconBg}`}>
                 <Icon className="size-4" />

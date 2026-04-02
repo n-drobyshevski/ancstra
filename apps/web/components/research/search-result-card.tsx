@@ -49,6 +49,8 @@ export function SearchResultCard({ result, onBookmark, onAskAi, isBookmarked }: 
   const router = useRouter();
 
   async function handleBookmark() {
+    // Optimistic: show saved immediately
+    setJustBookmarked(true);
     setBookmarking(true);
     try {
       const res = await fetch('/api/research/items', {
@@ -69,10 +71,11 @@ export function SearchResultCard({ result, onBookmark, onAskAi, isBookmarked }: 
         throw new Error(err.error || 'Failed to save');
       }
 
-      setJustBookmarked(true);
       toast.success('Bookmarked');
       onBookmark?.();
     } catch (err) {
+      // Rollback optimistic state
+      setJustBookmarked(false);
       toast.error(err instanceof Error ? err.message : 'Failed to save');
     } finally {
       setBookmarking(false);
@@ -91,7 +94,7 @@ export function SearchResultCard({ result, onBookmark, onAskAi, isBookmarked }: 
     <ContextMenu>
       <ContextMenuTrigger asChild>
         <Link href={previewUrl} className="block">
-          <Card size="sm" className={`border-l-3 ${providerConfig.borderClass} transition-shadow hover:shadow-sm`}>
+          <Card size="sm" className={`border-l-3 ${providerConfig.borderClass} transition-all hover:shadow-sm active:scale-[0.99]`}>
             <CardHeader>
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 space-y-1">
@@ -104,7 +107,7 @@ export function SearchResultCard({ result, onBookmark, onAskAi, isBookmarked }: 
               </div>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground transition-all duration-150">
+              <p className="text-sm leading-relaxed text-muted-foreground transition-all duration-150">
                 {displaySnippet}
                 {isLongSnippet && (
                   <>

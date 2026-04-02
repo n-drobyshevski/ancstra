@@ -231,7 +231,7 @@ export function SourceSelector({ onSelectionChange }: SourceSelectorProps) {
                           key={provider.id}
                           type="button"
                           onClick={() => toggle(provider.id)}
-                          className="flex items-center gap-2 px-2 py-1.5 rounded text-xs hover:bg-muted transition-colors text-left group"
+                          className="flex min-h-[44px] items-center gap-2 px-2 py-1.5 rounded text-xs hover:bg-muted transition-colors text-left group"
                         >
                           <div className={`size-3.5 rounded border flex items-center justify-center shrink-0 ${
                             selected.has(provider.id)
