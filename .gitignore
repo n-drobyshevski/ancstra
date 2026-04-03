@@ -17,5 +17,6 @@ dist/
 *.png
 .playwright-mcp/
 
-# Superpowers plans
-docs/superpowers/plans/
+# Superpowers artifacts (plans, specs, brainstorms)
+docs/superpowers/
+.env*.local

@@ -6,7 +6,8 @@
     "build": "turbo build",
     "typecheck": "turbo typecheck",
     "lint": "turbo lint",
-    "test": "turbo test"
+    "test": "turbo test",
+    "postinstall": "node scripts/fix-tailwind-oxide.mjs"
   },
   "devDependencies": {
     "@types/sanitize-html": "^2.16.1",
