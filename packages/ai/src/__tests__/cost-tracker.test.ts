@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
-import * as schema from '@ancstra/db';
+import * as schema from '@ancstra/db/schema';
 import { sql } from 'drizzle-orm';
 import { calculateCost, checkBudget, recordUsage, getUsageStats } from '../context/cost-tracker';
 

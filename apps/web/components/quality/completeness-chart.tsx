@@ -51,8 +51,8 @@ function CompletenessChartImpl({ data }: CompletenessChartProps) {
               label={{ value: 'Avg Score %', angle: -90, position: 'insideLeft' }}
             />
             <Tooltip
-              formatter={(value: number) => [`${value}%`, 'Avg Score']}
-              labelFormatter={(label: number) => `Generation ${label}`}
+              formatter={(value) => [`${value}%`, 'Avg Score']}
+              labelFormatter={(label) => `Generation ${label}`}
             />
             <Bar dataKey="avgScore" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
           </BarChart>

@@ -22,7 +22,7 @@ async function AuthGate({ children }: { children: React.ReactNode }) {
           <AppSidebar />
           <SidebarInset>
             <AppHeader />
-            <div className="flex-1">{children}</div>
+            <div className="min-w-0 flex-1">{children}</div>
           </SidebarInset>
         </SidebarProvider>
       </HeaderProvider>

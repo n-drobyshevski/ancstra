@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import Database from 'better-sqlite3';
-import * as schema from '@ancstra/db';
+import * as schema from '@ancstra/db/schema';
 import {
   createResearchItem,
   getResearchItem,
@@ -23,9 +23,12 @@ beforeEach(() => {
     CREATE TABLE users (
       id TEXT PRIMARY KEY,
       email TEXT NOT NULL UNIQUE,
-      password_hash TEXT NOT NULL,
-      name TEXT,
-      created_at TEXT NOT NULL
+      password_hash TEXT,
+      name TEXT NOT NULL,
+      avatar_url TEXT,
+      email_verified INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
     );
     CREATE TABLE persons (
       id TEXT PRIMARY KEY,
@@ -36,7 +39,8 @@ beforeEach(() => {
       created_by TEXT REFERENCES users(id),
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
-      deleted_at TEXT
+      deleted_at TEXT,
+      version INTEGER NOT NULL DEFAULT 1
     );
     CREATE TABLE sources (
       id TEXT PRIMARY KEY,
@@ -50,7 +54,8 @@ beforeEach(() => {
       notes TEXT,
       created_by TEXT REFERENCES users(id),
       created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL
+      updated_at TEXT NOT NULL,
+      version INTEGER NOT NULL DEFAULT 1
     );
     CREATE TABLE source_citations (
       id TEXT PRIMARY KEY,
@@ -62,7 +67,8 @@ beforeEach(() => {
       event_id TEXT,
       family_id TEXT,
       person_name_id TEXT,
-      created_at TEXT NOT NULL
+      created_at TEXT NOT NULL,
+      version INTEGER NOT NULL DEFAULT 1
     );
     CREATE TABLE search_providers (
       id TEXT PRIMARY KEY,
@@ -111,6 +117,7 @@ beforeEach(() => {
       passwordHash: '$2a$10$fakehash',
       name: 'Test User',
       createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     })
     .run();
 
@@ -143,8 +150,8 @@ afterEach(() => {
 });
 
 describe('Research Items CRUD queries', () => {
-  it('creates a research item', () => {
-    const result = createResearchItem(db as any, {
+  it('creates a research item', async () => {
+    const result = await createResearchItem(db as any, {
       title: 'Census Record 1850',
       discoveryMethod: 'search',
       createdBy: 'test-user-1',
@@ -156,18 +163,18 @@ describe('Research Items CRUD queries', () => {
     expect(result.createdAt).toBeDefined();
   });
 
-  it('gets a research item by id with personIds', () => {
-    const created = createResearchItem(db as any, {
+  it('gets a research item by id with personIds', async () => {
+    const created = await createResearchItem(db as any, {
       title: 'Birth Certificate',
       discoveryMethod: 'paste_url',
       url: 'https://example.com/record',
       createdBy: 'test-user-1',
     });
 
-    tagPersonToItem(db as any, created.id, 'person-1');
-    tagPersonToItem(db as any, created.id, 'person-2');
+    await tagPersonToItem(db as any, created.id, 'person-1');
+    await tagPersonToItem(db as any, created.id, 'person-2');
 
-    const item = getResearchItem(db as any, created.id);
+    const item = await getResearchItem(db as any, created.id);
     expect(item).toBeDefined();
     expect(item!.title).toBe('Birth Certificate');
     expect(item!.url).toBe('https://example.com/record');
@@ -176,95 +183,95 @@ describe('Research Items CRUD queries', () => {
     expect(item!.personIds).toContain('person-2');
   });
 
-  it('returns null for nonexistent research item', () => {
-    const item = getResearchItem(db as any, 'nonexistent');
+  it('returns null for nonexistent research item', async () => {
+    const item = await getResearchItem(db as any, 'nonexistent');
     expect(item).toBeNull();
   });
 
-  it('lists research items filtered by personId', () => {
-    const item1 = createResearchItem(db as any, {
+  it('lists research items filtered by personId', async () => {
+    const item1 = await createResearchItem(db as any, {
       title: 'Item for Person 1',
       discoveryMethod: 'search',
       createdBy: 'test-user-1',
     });
-    const item2 = createResearchItem(db as any, {
+    const item2 = await createResearchItem(db as any, {
       title: 'Item for Person 2',
       discoveryMethod: 'search',
       createdBy: 'test-user-1',
     });
-    tagPersonToItem(db as any, item1.id, 'person-1');
-    tagPersonToItem(db as any, item2.id, 'person-2');
+    await tagPersonToItem(db as any, item1.id, 'person-1');
+    await tagPersonToItem(db as any, item2.id, 'person-2');
 
-    const person1Items = listResearchItems(db as any, { personId: 'person-1' });
+    const person1Items = await listResearchItems(db as any, { personId: 'person-1' });
     expect(person1Items).toHaveLength(1);
     expect(person1Items[0].title).toBe('Item for Person 1');
   });
 
-  it('lists items ordered by createdAt desc', () => {
-    createResearchItem(db as any, {
+  it('lists items ordered by createdAt desc', async () => {
+    await createResearchItem(db as any, {
       title: 'First',
       discoveryMethod: 'search',
       createdBy: 'test-user-1',
     });
-    createResearchItem(db as any, {
+    await createResearchItem(db as any, {
       title: 'Second',
       discoveryMethod: 'search',
       createdBy: 'test-user-1',
     });
 
-    const items = listResearchItems(db as any);
+    const items = await listResearchItems(db as any);
     // Most recent first
     expect(items[0].title).toBe('Second');
     expect(items[1].title).toBe('First');
   });
 
-  it('updates notes', () => {
-    const created = createResearchItem(db as any, {
+  it('updates notes', async () => {
+    const created = await createResearchItem(db as any, {
       title: 'With Notes',
       discoveryMethod: 'search',
       createdBy: 'test-user-1',
     });
 
-    updateResearchItemNotes(db as any, created.id, 'Important finding');
+    await updateResearchItemNotes(db as any, created.id, 'Important finding');
 
-    const item = getResearchItem(db as any, created.id);
+    const item = await getResearchItem(db as any, created.id);
     expect(item!.notes).toBe('Important finding');
   });
 
-  it('tags and untags persons', () => {
-    const created = createResearchItem(db as any, {
+  it('tags and untags persons', async () => {
+    const created = await createResearchItem(db as any, {
       title: 'Tagging Test',
       discoveryMethod: 'search',
       createdBy: 'test-user-1',
     });
 
-    tagPersonToItem(db as any, created.id, 'person-1');
-    let item = getResearchItem(db as any, created.id);
+    await tagPersonToItem(db as any, created.id, 'person-1');
+    let item = await getResearchItem(db as any, created.id);
     expect(item!.personIds).toHaveLength(1);
     expect(item!.personIds).toContain('person-1');
 
-    tagPersonToItem(db as any, created.id, 'person-2');
-    item = getResearchItem(db as any, created.id);
+    await tagPersonToItem(db as any, created.id, 'person-2');
+    item = await getResearchItem(db as any, created.id);
     expect(item!.personIds).toHaveLength(2);
 
-    untagPersonFromItem(db as any, created.id, 'person-1');
-    item = getResearchItem(db as any, created.id);
+    await untagPersonFromItem(db as any, created.id, 'person-1');
+    item = await getResearchItem(db as any, created.id);
     expect(item!.personIds).toHaveLength(1);
     expect(item!.personIds).toContain('person-2');
   });
 
-  it('deletes an item', () => {
-    const created = createResearchItem(db as any, {
+  it('deletes an item', async () => {
+    const created = await createResearchItem(db as any, {
       title: 'To Delete',
       discoveryMethod: 'search',
       createdBy: 'test-user-1',
     });
 
-    tagPersonToItem(db as any, created.id, 'person-1');
+    await tagPersonToItem(db as any, created.id, 'person-1');
 
-    deleteResearchItem(db as any, created.id);
+    await deleteResearchItem(db as any, created.id);
 
-    const item = getResearchItem(db as any, created.id);
+    const item = await getResearchItem(db as any, created.id);
     expect(item).toBeNull();
   });
 });

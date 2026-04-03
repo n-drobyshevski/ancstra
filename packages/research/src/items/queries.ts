@@ -18,6 +18,7 @@ export interface CreateResearchItemInput {
 export interface ResearchItemFilters {
   personId?: string;
   createdBy?: string;
+  status?: string;
 }
 
 export async function createResearchItem(db: Database, input: CreateResearchItemInput) {
@@ -80,6 +81,10 @@ export async function listResearchItems(db: Database, filters?: ResearchItemFilt
 
   if (filters?.createdBy) {
     conditions.push(eq(researchItems.createdBy, filters.createdBy));
+  }
+
+  if (filters?.status) {
+    conditions.push(eq(researchItems.status, filters.status as 'draft'));
   }
 
   // If filtering by personId, we need a subquery

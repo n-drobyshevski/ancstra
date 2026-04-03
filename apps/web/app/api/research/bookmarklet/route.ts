@@ -148,7 +148,7 @@ export async function POST(request: Request) {
     }
 
     const redirectUrl = `/research/item/${itemId}`;
-    return new Response(bookmarkletPage('Content saved!', redirectUrl), {
+    return new Response(bookmarkletPage('Bookmarked!', redirectUrl), {
       headers: { 'Content-Type': 'text/html' },
     });
   } catch (err) {

@@ -51,8 +51,8 @@ export function FactsheetPromote({
       );
       toast.success('Promoted to tree');
       onPromoted();
-    } catch (err: any) {
-      toast.error(err.message ?? 'Promotion failed');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Promotion failed');
     } finally {
       setPromoting(false);
     }

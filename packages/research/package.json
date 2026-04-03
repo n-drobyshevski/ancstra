@@ -7,21 +7,23 @@
   "types": "./src/index.ts",
   "scripts": {
     "test": "vitest run",
-    "build": "tsup src/index.ts --format esm --dts"
+    "build": "tsup src/index.ts --format esm --dts",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@ancstra/db": "workspace:^",
     "@ancstra/shared": "workspace:^",
-    "drizzle-orm": "^0.45.1",
     "cheerio": "^1.0.0",
+    "drizzle-orm": "^0.45.1",
     "sharp": "^0.33.0",
     "zod": "^3.24.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
     "better-sqlite3": "^12.8.0",
-    "vitest": "^3.1.0",
+    "playwright": "^1.50.0",
+    "tsup": "^8.4.0",
     "typescript": "^5.8.0",
-    "tsup": "^8.4.0"
+    "vitest": "^3.1.0"
   }
 }

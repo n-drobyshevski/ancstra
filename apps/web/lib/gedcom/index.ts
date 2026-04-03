@@ -2,6 +2,9 @@ export { parseGedcomFile, parseGedcomString } from './parse';
 export { serializeToGedcom, type GedcomExportData, type GedcomExportEvent, type ExportMode } from './serialize';
 export { serializeGedcom70 } from './serialize-70';
 
+import { serializeToGedcom as _serializeToGedcom } from './serialize';
+import { serializeGedcom70 as _serializeGedcom70 } from './serialize-70';
+
 export type GedcomVersion = '5.5.1' | '7.0';
 
 /**
@@ -12,7 +15,7 @@ export function serializeGedcom(
   options: { version: GedcomVersion; mode: import('./serialize').ExportMode },
 ): string {
   if (options.version === '7.0') {
-    return serializeGedcom70(data, options.mode);
+    return _serializeGedcom70(data, options.mode);
   }
-  return serializeToGedcom(data, options.mode);
+  return _serializeToGedcom(data, options.mode);
 }

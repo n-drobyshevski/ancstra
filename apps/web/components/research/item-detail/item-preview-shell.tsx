@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ArrowLeft, ChevronRight, ExternalLink, Plus, Sparkles, Loader2 } from 'lucide-react';
+import { ArrowLeft, ChevronRight, ExternalLink, Bookmark, Sparkles, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -30,7 +30,7 @@ interface ItemPreviewShellProps {
 
 export function ItemPreviewShell({ result }: ItemPreviewShellProps) {
   const router = useRouter();
-  const [saving, setSaving] = useState(false);
+  const [bookmarking, setBookmarking] = useState(false);
   const { setHeaderContent } = useHeaderContent();
 
   // Push breadcrumb into the app header bar
@@ -55,8 +55,8 @@ export function ItemPreviewShell({ result }: ItemPreviewShellProps) {
     return () => setHeaderContent(null);
   }, [result.title, setHeaderContent]);
 
-  async function handleSave() {
-    setSaving(true);
+  async function handleBookmark() {
+    setBookmarking(true);
     try {
       const res = await fetch('/api/research/items', {
         method: 'POST',
@@ -77,11 +77,11 @@ export function ItemPreviewShell({ result }: ItemPreviewShellProps) {
       }
 
       const data = await res.json();
-      toast.success('Saved to research items');
+      toast.success('Bookmarked');
       router.push(`/research/item/${data.id}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to save');
-      setSaving(false);
+      setBookmarking(false);
     }
   }
 
@@ -124,19 +124,19 @@ export function ItemPreviewShell({ result }: ItemPreviewShellProps) {
           </Button>
           <Button
             size="sm"
-            onClick={handleSave}
-            disabled={saving}
+            onClick={handleBookmark}
+            disabled={bookmarking}
             className="bg-accent text-accent-foreground hover:bg-accent/90"
           >
-            {saving ? (
+            {bookmarking ? (
               <>
                 <Loader2 className="size-3.5 animate-spin" />
-                Saving...
+                Bookmarking...
               </>
             ) : (
               <>
-                <Plus className="size-3.5" />
-                Save to Research
+                <Bookmark className="size-3.5" />
+                Bookmark
               </>
             )}
           </Button>
@@ -177,25 +177,25 @@ export function ItemPreviewShell({ result }: ItemPreviewShellProps) {
             fullText={null}
             emptyState={
               <div className="rounded-lg border border-dashed border-primary/30 bg-primary/5 p-6 text-center">
-                <p className="text-sm font-medium text-foreground">Save this item to unlock more features</p>
+                <p className="text-sm font-medium text-foreground">Bookmark this item to unlock more features</p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   Extract facts, add notes, link to people in your tree, and archive the full text.
                 </p>
                 <Button
                   size="sm"
-                  onClick={handleSave}
-                  disabled={saving}
+                  onClick={handleBookmark}
+                  disabled={bookmarking}
                   className="mt-3 bg-accent text-accent-foreground hover:bg-accent/90"
                 >
-                  {saving ? (
+                  {bookmarking ? (
                     <>
                       <Loader2 className="size-3.5 animate-spin" />
-                      Saving...
+                      Bookmarking...
                     </>
                   ) : (
                     <>
-                      <Plus className="size-3.5" />
-                      Save to Research
+                      <Bookmark className="size-3.5" />
+                      Bookmark
                     </>
                   )}
                 </Button>

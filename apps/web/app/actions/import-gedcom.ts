@@ -119,7 +119,7 @@ export async function commitGedcomImport(
       eventType: e.eventType,
       dateOriginal: e.dateOriginal,
       dateSort: e.dateSort,
-      dateModifier: e.dateModifier as any,
+      dateModifier: e.dateModifier as 'exact' | 'about' | 'estimated' | 'before' | 'after' | 'between' | 'calculated' | 'interpreted' | null,
       dateEndSort: e.dateEndSort,
       placeText: e.placeText,
       personId: e.personId,

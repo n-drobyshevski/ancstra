@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import Database from 'better-sqlite3';
-import * as schema from '@ancstra/db';
+import * as schema from '@ancstra/db/schema';
 import { createFact } from '../facts/queries';
 import { detectConflicts, resolveConflict, MULTI_VALUED_TYPES } from '../facts/conflicts';
 
@@ -16,9 +16,12 @@ beforeEach(() => {
     CREATE TABLE users (
       id TEXT PRIMARY KEY,
       email TEXT NOT NULL UNIQUE,
-      password_hash TEXT NOT NULL,
-      name TEXT,
-      created_at TEXT NOT NULL
+      password_hash TEXT,
+      name TEXT NOT NULL,
+      avatar_url TEXT,
+      email_verified INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
     );
     CREATE TABLE persons (
       id TEXT PRIMARY KEY,
@@ -29,7 +32,8 @@ beforeEach(() => {
       created_by TEXT REFERENCES users(id),
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
-      deleted_at TEXT
+      deleted_at TEXT,
+      version INTEGER NOT NULL DEFAULT 1
     );
     CREATE TABLE sources (
       id TEXT PRIMARY KEY,
@@ -43,7 +47,8 @@ beforeEach(() => {
       notes TEXT,
       created_by TEXT REFERENCES users(id),
       created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL
+      updated_at TEXT NOT NULL,
+      version INTEGER NOT NULL DEFAULT 1
     );
     CREATE TABLE source_citations (
       id TEXT PRIMARY KEY,
@@ -55,7 +60,8 @@ beforeEach(() => {
       event_id TEXT,
       family_id TEXT,
       person_name_id TEXT,
-      created_at TEXT NOT NULL
+      created_at TEXT NOT NULL,
+      version INTEGER NOT NULL DEFAULT 1
     );
     CREATE TABLE search_providers (
       id TEXT PRIMARY KEY,
@@ -102,6 +108,8 @@ beforeEach(() => {
       fact_date_sort INTEGER,
       research_item_id TEXT REFERENCES research_items(id),
       source_citation_id TEXT REFERENCES source_citations(id),
+      factsheet_id TEXT,
+      accepted INTEGER,
       confidence TEXT NOT NULL DEFAULT 'medium',
       extraction_method TEXT NOT NULL DEFAULT 'manual',
       created_at TEXT NOT NULL,
@@ -120,6 +128,7 @@ beforeEach(() => {
       passwordHash: '$2a$10$fakehash',
       name: 'Test User',
       createdAt: now,
+      updatedAt: now,
     })
     .run();
 
@@ -163,15 +172,15 @@ afterEach(() => {
 });
 
 describe('Conflict Detection', () => {
-  it('detects conflicting birth dates from different sources', () => {
-    createFact(db as any, {
+  it('detects conflicting birth dates from different sources', async () => {
+    await createFact(db as any, {
       personId: 'person-1',
       factType: 'birth_date',
       factValue: '1850-03-15',
       researchItemId: 'item-1',
       confidence: 'medium',
     });
-    createFact(db as any, {
+    await createFact(db as any, {
       personId: 'person-1',
       factType: 'birth_date',
       factValue: '1851-06-20',
@@ -179,7 +188,7 @@ describe('Conflict Detection', () => {
       confidence: 'low',
     });
 
-    const conflicts = detectConflicts(db as any, 'person-1');
+    const conflicts = await detectConflicts(db as any, 'person-1');
     expect(conflicts).toHaveLength(1);
     expect(conflicts[0].factType).toBe('birth_date');
     const values = [conflicts[0].valueA, conflicts[0].valueB].sort();
@@ -188,51 +197,51 @@ describe('Conflict Detection', () => {
     expect(conflicts[0].factBId).toBeDefined();
   });
 
-  it('does NOT flag matching values as conflicts', () => {
-    createFact(db as any, {
+  it('does NOT flag matching values as conflicts', async () => {
+    await createFact(db as any, {
       personId: 'person-1',
       factType: 'birth_date',
       factValue: '1850-03-15',
       researchItemId: 'item-1',
     });
-    createFact(db as any, {
+    await createFact(db as any, {
       personId: 'person-1',
       factType: 'birth_date',
       factValue: '1850-03-15',
       researchItemId: 'item-2',
     });
 
-    const conflicts = detectConflicts(db as any, 'person-1');
+    const conflicts = await detectConflicts(db as any, 'person-1');
     expect(conflicts).toHaveLength(0);
   });
 
-  it('excludes multi-valued types (residence with different values = no conflict)', () => {
-    createFact(db as any, {
+  it('excludes multi-valued types (residence with different values = no conflict)', async () => {
+    await createFact(db as any, {
       personId: 'person-1',
       factType: 'residence',
       factValue: 'New York, NY',
       researchItemId: 'item-1',
     });
-    createFact(db as any, {
+    await createFact(db as any, {
       personId: 'person-1',
       factType: 'residence',
       factValue: 'Boston, MA',
       researchItemId: 'item-2',
     });
 
-    const conflicts = detectConflicts(db as any, 'person-1');
+    const conflicts = await detectConflicts(db as any, 'person-1');
     expect(conflicts).toHaveLength(0);
   });
 
-  it('excludes all MULTI_VALUED_TYPES from conflict detection', () => {
+  it('excludes all MULTI_VALUED_TYPES from conflict detection', async () => {
     for (const factType of MULTI_VALUED_TYPES) {
-      createFact(db as any, {
+      await createFact(db as any, {
         personId: 'person-1',
         factType: factType as any,
         factValue: 'Value A',
         researchItemId: 'item-1',
       });
-      createFact(db as any, {
+      await createFact(db as any, {
         personId: 'person-1',
         factType: factType as any,
         factValue: 'Value B',
@@ -240,21 +249,21 @@ describe('Conflict Detection', () => {
       });
     }
 
-    const conflicts = detectConflicts(db as any, 'person-1');
+    const conflicts = await detectConflicts(db as any, 'person-1');
     expect(conflicts).toHaveLength(0);
   });
 });
 
 describe('Conflict Resolution', () => {
-  it('resolveConflict sets winner to high, loser to disputed', () => {
-    const factA = createFact(db as any, {
+  it('resolveConflict sets winner to high, loser to disputed', async () => {
+    const factA = await createFact(db as any, {
       personId: 'person-1',
       factType: 'birth_date',
       factValue: '1850-03-15',
       confidence: 'medium',
       researchItemId: 'item-1',
     });
-    const factB = createFact(db as any, {
+    const factB = await createFact(db as any, {
       personId: 'person-1',
       factType: 'birth_date',
       factValue: '1851-06-20',
@@ -262,7 +271,7 @@ describe('Conflict Resolution', () => {
       researchItemId: 'item-2',
     });
 
-    resolveConflict(db as any, factA.id, factB.id);
+    await resolveConflict(db as any, factA.id, factB.id);
 
     const facts = sqlite.prepare('SELECT id, confidence FROM research_facts ORDER BY id').all() as any[];
     const winner = facts.find((f: any) => f.id === factA.id);

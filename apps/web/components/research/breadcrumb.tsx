@@ -5,7 +5,7 @@ import { useSearchParams, usePathname } from 'next/navigation';
 import {
   ChevronRight,
   UserPen, LayoutGrid, Table2, GitCompareArrows, Clock,
-  PenTool, BookOpen, FileText, Layers, BookMarked, Quote,
+  PenTool, BookOpen, FileText, Layers, BookMarked,
   type LucideIcon,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -22,14 +22,13 @@ const VIEW_LABELS: Record<WorkspaceView, string> = {
   proof: 'Proof',
   factsheets: 'Factsheets',
   biography: 'Biography',
-  citations: 'Citations',
 };
 
 const VIEW_ICONS: Record<WorkspaceView, LucideIcon> = {
   record: UserPen, board: LayoutGrid, matrix: Table2,
   conflicts: GitCompareArrows, timeline: Clock, canvas: PenTool,
   hints: BookOpen, proof: FileText, factsheets: Layers,
-  biography: BookMarked, citations: Quote,
+  biography: BookMarked,
 };
 
 interface ResearchBreadcrumbProps {

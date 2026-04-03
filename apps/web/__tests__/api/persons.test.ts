@@ -2,12 +2,15 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import Database from 'better-sqlite3';
 import { eq, and, isNull, inArray, sql } from 'drizzle-orm';
-import * as schema from '@ancstra/db';
+import * as schema from '@ancstra/db/schema';
+import { centralSchema } from '@ancstra/db';
+import type { Database as LibsqlDatabase } from '@ancstra/db';
 import { parseDateToSort } from '@ancstra/shared';
 import { createPersonSchema } from '../../lib/validation';
 import { searchPersonsFts } from '../../lib/queries';
 
-const { persons, personNames, events, users } = schema;
+const { persons, personNames, events } = schema;
+const { users } = centralSchema;
 
 let sqlite: InstanceType<typeof Database>;
 let db: ReturnType<typeof drizzle>;
@@ -352,31 +355,31 @@ describe('Person CRUD (integration)', () => {
     expect(result).toHaveLength(0);
   });
 
-  it('filters persons by surname with FTS5 search', () => {
+  it('filters persons by surname with FTS5 search', async () => {
     createPerson({ givenName: 'Alice', surname: 'Smith', sex: 'F', isLiving: true });
     createPerson({ givenName: 'Bob', surname: 'Jones', sex: 'M', isLiving: true });
     createPerson({ givenName: 'Charlie', surname: 'Smith', sex: 'M', isLiving: true });
 
-    const smithRows = searchPersonsFts(db as any,'Smith', 100);
+    const smithRows = await searchPersonsFts(db as unknown as LibsqlDatabase,'Smith', 100);
     expect(smithRows).toHaveLength(2);
     expect(smithRows.every((r) => r.surname === 'Smith')).toBe(true);
   });
 
-  it('filters persons by given name with FTS5 search', () => {
+  it('filters persons by given name with FTS5 search', async () => {
     createPerson({ givenName: 'Alice', surname: 'Smith', sex: 'F', isLiving: true });
     createPerson({ givenName: 'Bob', surname: 'Jones', sex: 'M', isLiving: true });
 
-    const aliceRows = searchPersonsFts(db as any,'Alice', 100);
+    const aliceRows = await searchPersonsFts(db as unknown as LibsqlDatabase,'Alice', 100);
     expect(aliceRows).toHaveLength(1);
     expect(aliceRows[0].givenName).toBe('Alice');
   });
 
-  it('FTS5 supports prefix matching', () => {
+  it('FTS5 supports prefix matching', async () => {
     createPerson({ givenName: 'Alice', surname: 'Smith', sex: 'F', isLiving: true });
     createPerson({ givenName: 'Bob', surname: 'Smithson', sex: 'M', isLiving: true });
 
     // "Smi" should match both Smith and Smithson via prefix
-    const prefixRows = searchPersonsFts(db as any,'Smi', 100);
+    const prefixRows = await searchPersonsFts(db as unknown as LibsqlDatabase,'Smi', 100);
     expect(prefixRows).toHaveLength(2);
   });
 

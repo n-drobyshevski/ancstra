@@ -31,7 +31,7 @@ function scoreColor(score: number): string {
 }
 
 function PersonNodeComponent({ data, selected }: NodeProps<PersonNodeType>) {
-  const dimmed = !!(data as any).dimmed;
+  const dimmed = !!data.dimmed;
   const colors = sexColors[data.sex] ?? sexColors.U;
   const initials = `${data.givenName[0] ?? ''}${data.surname[0] ?? ''}`.toUpperCase();
   const showGaps = !!data.showGaps;

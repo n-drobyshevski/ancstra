@@ -115,9 +115,9 @@ export function ProviderCard({ provider, onUpdate }: ProviderCardProps) {
   const [baseUrl, setBaseUrl] = useState<string>(provider.baseUrl ?? '');
 
   // Debounce timer refs
-  const apiKeyTimerRef = useRef<ReturnType<typeof setTimeout>>();
-  const rateLimitTimerRef = useRef<ReturnType<typeof setTimeout>>();
-  const baseUrlTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const apiKeyTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const rateLimitTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const baseUrlTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   // Cleanup timers
   useEffect(() => {

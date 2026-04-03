@@ -18,6 +18,7 @@
       ]
     },
     "dev": { "cache": false, "persistent": true },
+    "typecheck": { "dependsOn": ["^build"] },
     "lint": { "dependsOn": ["^build"] },
     "test": { "dependsOn": ["^build"] },
     "db:generate": { "cache": false },

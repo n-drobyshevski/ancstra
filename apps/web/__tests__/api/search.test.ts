@@ -2,11 +2,14 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { eq } from 'drizzle-orm';
 import Database from 'better-sqlite3';
-import * as schema from '@ancstra/db';
+import * as schema from '@ancstra/db/schema';
+import { centralSchema } from '@ancstra/db';
+import type { Database as LibsqlDatabase } from '@ancstra/db';
 import { parseDateToSort } from '@ancstra/shared';
 import { searchPersonsFts } from '../../lib/queries';
 
-const { persons, personNames, events, users } = schema;
+const { persons, personNames, events } = schema;
+const { users } = centralSchema;
 
 let sqlite: InstanceType<typeof Database>;
 let db: ReturnType<typeof drizzle>;
@@ -173,28 +176,28 @@ function createPerson(data: {
 }
 
 describe('searchPersonsFts', () => {
-  it('finds persons by surname prefix', () => {
+  it('finds persons by surname prefix', async () => {
     createPerson({ givenName: 'Alice', surname: 'Smith', sex: 'F', isLiving: true });
     createPerson({ givenName: 'Bob', surname: 'Smith', sex: 'M', isLiving: true });
     createPerson({ givenName: 'Charlie', surname: 'Jones', sex: 'M', isLiving: true });
 
-    const results = searchPersonsFts(db as any, 'smith');
+    const results = await searchPersonsFts(db as unknown as LibsqlDatabase, 'smith');
     expect(results).toHaveLength(2);
     expect(results.every((r) => r.surname === 'Smith')).toBe(true);
   });
 
-  it('finds by given name prefix (jo matches John and Jonathan)', () => {
+  it('finds by given name prefix (jo matches John and Jonathan)', async () => {
     createPerson({ givenName: 'John', surname: 'Doe', sex: 'M', isLiving: false });
     createPerson({ givenName: 'Jonathan', surname: 'Adams', sex: 'M', isLiving: true });
     createPerson({ givenName: 'Alice', surname: 'Walker', sex: 'F', isLiving: true });
 
-    const results = searchPersonsFts(db as any, 'jo');
+    const results = await searchPersonsFts(db as unknown as LibsqlDatabase, 'jo');
     expect(results).toHaveLength(2);
     const names = results.map((r) => r.givenName).sort();
     expect(names).toEqual(['John', 'Jonathan']);
   });
 
-  it('excludes soft-deleted persons', () => {
+  it('excludes soft-deleted persons', async () => {
     const id = createPerson({ givenName: 'Deleted', surname: 'Person', sex: 'U', isLiving: false });
 
     // Soft delete
@@ -203,38 +206,38 @@ describe('searchPersonsFts', () => {
       .where(eq(persons.id, id))
       .run();
 
-    const results = searchPersonsFts(db as any, 'deleted');
+    const results = await searchPersonsFts(db as unknown as LibsqlDatabase, 'deleted');
     expect(results).toHaveLength(0);
   });
 
-  it('returns empty for no match', () => {
+  it('returns empty for no match', async () => {
     createPerson({ givenName: 'Alice', surname: 'Smith', sex: 'F', isLiving: true });
 
-    const results = searchPersonsFts(db as any, 'zzzznotfound');
+    const results = await searchPersonsFts(db as unknown as LibsqlDatabase, 'zzzznotfound');
     expect(results).toHaveLength(0);
   });
 
-  it('returns empty for empty/special-char-only query', () => {
+  it('returns empty for empty/special-char-only query', async () => {
     createPerson({ givenName: 'Alice', surname: 'Smith', sex: 'F', isLiving: true });
 
-    expect(searchPersonsFts(db as any, '')).toHaveLength(0);
-    expect(searchPersonsFts(db as any, '***')).toHaveLength(0);
-    expect(searchPersonsFts(db as any, '"\'()')).toHaveLength(0);
+    expect(await searchPersonsFts(db as unknown as LibsqlDatabase, '')).toHaveLength(0);
+    expect(await searchPersonsFts(db as unknown as LibsqlDatabase, '***')).toHaveLength(0);
+    expect(await searchPersonsFts(db as unknown as LibsqlDatabase, '"\'()')).toHaveLength(0);
   });
 
-  it('auto-syncs on insert (FTS trigger fires)', () => {
+  it('auto-syncs on insert (FTS trigger fires)', async () => {
     // Search before inserting - nothing found
-    expect(searchPersonsFts(db as any, 'newperson')).toHaveLength(0);
+    expect(await searchPersonsFts(db as unknown as LibsqlDatabase, 'newperson')).toHaveLength(0);
 
     // Insert after FTS setup
     createPerson({ givenName: 'NewPerson', surname: 'Test', sex: 'M', isLiving: true });
 
-    const results = searchPersonsFts(db as any, 'newperson');
+    const results = await searchPersonsFts(db as unknown as LibsqlDatabase, 'newperson');
     expect(results).toHaveLength(1);
     expect(results[0].givenName).toBe('NewPerson');
   });
 
-  it('includes birth and death dates in results', () => {
+  it('includes birth and death dates in results', async () => {
     createPerson({
       givenName: 'John',
       surname: 'Smith',
@@ -244,7 +247,7 @@ describe('searchPersonsFts', () => {
       deathDate: '23 Nov 1923',
     });
 
-    const results = searchPersonsFts(db as any, 'john');
+    const results = await searchPersonsFts(db as unknown as LibsqlDatabase, 'john');
     expect(results).toHaveLength(1);
     expect(results[0].birthDate).toBe('15 Mar 1845');
     expect(results[0].deathDate).toBe('23 Nov 1923');

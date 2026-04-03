@@ -37,7 +37,7 @@ export const researchItems = sqliteTable('research_items', {
   }).notNull(),
   searchQuery: text('search_query'),
   status: text('status', {
-    enum: ['draft'],
+    enum: ['draft', 'ready', 'promoted', 'merged', 'dismissed'],
   }).notNull().default('draft'),
   // @deprecated — column retained for backward compat, no longer written
   promotedSourceId: text('promoted_source_id').references(() => sources.id),

@@ -56,8 +56,8 @@ function ShellInner({ person, children }: WorkspaceShellProps) {
   const activeView = (searchParams.get('view') as WorkspaceView) || 'record';
   const { conflictCount, hintCount, factsheetCount } = useBadgeCounts(person.id);
   const dates = formatDates(person.birthDate, person.deathDate);
-  const birthPlace = (person as any).birthPlace as string | null | undefined;
-  const deathPlace = (person as any).deathPlace as string | null | undefined;
+  const birthPlace = person.birthPlace;
+  const deathPlace = person.deathPlace;
   const personName = `${person.givenName} ${person.surname}`.trim();
 
   const setView = useCallback((view: WorkspaceView) => {

@@ -39,7 +39,7 @@ function insertChild(db: any, id: string, familyId: string, personId: string) {
 }
 
 function getAncestorPaths(db: any) {
-  return db.all<{ ancestor_id: string; descendant_id: string; depth: number }>(
+  return db.all(
     sql`SELECT ancestor_id, descendant_id, depth FROM ancestor_paths ORDER BY ancestor_id, descendant_id, depth`
   );
 }

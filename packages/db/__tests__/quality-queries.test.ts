@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import Database from 'better-sqlite3';
+import { drizzle } from 'drizzle-orm/better-sqlite3';
+import * as schema from '../src/family-schema';
 import { getQualitySummary, getPriorities } from '../src/quality-queries';
 
 function createSchema(db: Database.Database) {
@@ -122,50 +124,52 @@ function seedData(db: Database.Database) {
 }
 
 describe('quality-queries', () => {
-  let db: Database.Database;
+  let sqlite: Database.Database;
+  let db: ReturnType<typeof drizzle>;
 
   beforeEach(() => {
-    db = new Database(':memory:');
-    createSchema(db);
-    seedData(db);
+    sqlite = new Database(':memory:');
+    createSchema(sqlite);
+    seedData(sqlite);
+    db = drizzle(sqlite, { schema }) as any;
   });
 
   afterEach(() => {
-    db.close();
+    sqlite.close();
   });
 
   describe('getQualitySummary', () => {
-    it('returns correct totalPersons count', () => {
-      const summary = getQualitySummary(db);
+    it('returns correct totalPersons count', async () => {
+      const summary = await getQualitySummary(db as any);
       expect(summary.totalPersons).toBe(3);
     });
 
-    it('returns correct name metric (all 3 have names)', () => {
-      const summary = getQualitySummary(db);
+    it('returns correct name metric (all 3 have names)', async () => {
+      const summary = await getQualitySummary(db as any);
       const nameMetric = summary.metrics.find((m) => m.label === 'Has Name');
       expect(nameMetric).toBeDefined();
       expect(nameMetric!.count).toBe(3);
       expect(nameMetric!.value).toBe(100); // 3/3 = 100%
     });
 
-    it('returns correct birth date metric (2 of 3 have birth)', () => {
-      const summary = getQualitySummary(db);
+    it('returns correct birth date metric (2 of 3 have birth)', async () => {
+      const summary = await getQualitySummary(db as any);
       const birthMetric = summary.metrics.find((m) => m.label === 'Has Birth Date');
       expect(birthMetric).toBeDefined();
       expect(birthMetric!.count).toBe(2);
       expect(birthMetric!.value).toBe(67); // round(2/3 * 100) = 67
     });
 
-    it('returns correct birth place metric (1 of 3 has birth place)', () => {
-      const summary = getQualitySummary(db);
+    it('returns correct birth place metric (1 of 3 has birth place)', async () => {
+      const summary = await getQualitySummary(db as any);
       const placeMetric = summary.metrics.find((m) => m.label === 'Has Birth Place');
       expect(placeMetric).toBeDefined();
       expect(placeMetric!.count).toBe(1);
       expect(placeMetric!.value).toBe(33); // round(1/3 * 100) = 33
     });
 
-    it('returns correct death metric relative to non-living persons', () => {
-      const summary = getQualitySummary(db);
+    it('returns correct death metric relative to non-living persons', async () => {
+      const summary = await getQualitySummary(db as any);
       const deathMetric = summary.metrics.find((m) => m.label === 'Has Death Date');
       expect(deathMetric).toBeDefined();
       // Only 1 non-living person (person-complete), who has a death event
@@ -174,43 +178,44 @@ describe('quality-queries', () => {
       expect(deathMetric!.value).toBe(100); // 1/1 = 100%
     });
 
-    it('returns correct source metric (1 of 3 has source)', () => {
-      const summary = getQualitySummary(db);
+    it('returns correct source metric (1 of 3 has source)', async () => {
+      const summary = await getQualitySummary(db as any);
       const sourceMetric = summary.metrics.find((m) => m.label === 'Has Source');
       expect(sourceMetric).toBeDefined();
       expect(sourceMetric!.count).toBe(1);
       expect(sourceMetric!.value).toBe(33); // round(1/3 * 100) = 33
     });
 
-    it('computes an overall score as average of metric percentages', () => {
-      const summary = getQualitySummary(db);
+    it('computes an overall score as average of metric percentages', async () => {
+      const summary = await getQualitySummary(db as any);
       // name=100, birth=67, birthPlace=33, death=100, source=33
       // average = round((100 + 67 + 33 + 100 + 33) / 5) = round(66.6) = 67
       expect(summary.overallScore).toBe(67);
     });
 
-    it('excludes soft-deleted persons', () => {
-      db.prepare(
+    it('excludes soft-deleted persons', async () => {
+      sqlite.prepare(
         `UPDATE persons SET deleted_at = '2025-06-01T00:00:00Z' WHERE id = 'person-minimal'`,
       ).run();
-      const summary = getQualitySummary(db);
+      const summary = await getQualitySummary(db as any);
       expect(summary.totalPersons).toBe(2);
     });
 
-    it('returns empty metrics for empty database', () => {
-      const emptyDb = new Database(':memory:');
-      createSchema(emptyDb);
-      const summary = getQualitySummary(emptyDb);
+    it('returns empty metrics for empty database', async () => {
+      const emptySqlite = new Database(':memory:');
+      createSchema(emptySqlite);
+      const emptyDb = drizzle(emptySqlite, { schema }) as any;
+      const summary = await getQualitySummary(emptyDb);
       expect(summary.totalPersons).toBe(0);
       expect(summary.overallScore).toBe(0);
       expect(summary.metrics).toEqual([]);
-      emptyDb.close();
+      emptySqlite.close();
     });
   });
 
   describe('getPriorities', () => {
-    it('returns persons sorted by lowest score first', () => {
-      const result = getPriorities(db, 1, 20);
+    it('returns persons sorted by lowest score first', async () => {
+      const result = await getPriorities(db as any, 1, 20);
       expect(result.persons).toHaveLength(3);
       // person-minimal: name only = 20
       // person-partial: name(20) + birth(25) = 45
@@ -223,8 +228,8 @@ describe('quality-queries', () => {
       expect(result.persons[2]!.score).toBe(100);
     });
 
-    it('includes correct missing fields', () => {
-      const result = getPriorities(db, 1, 20);
+    it('includes correct missing fields', async () => {
+      const result = await getPriorities(db as any, 1, 20);
       // person-minimal: missing birthDate, birthPlace, deathDate, source
       const minimal = result.persons.find((p) => p.id === 'person-minimal')!;
       expect(minimal.missingFields).toContain('birthDate');
@@ -238,20 +243,20 @@ describe('quality-queries', () => {
       expect(complete.missingFields).toEqual([]);
     });
 
-    it('returns correct givenName and surname', () => {
-      const result = getPriorities(db, 1, 20);
+    it('returns correct givenName and surname', async () => {
+      const result = await getPriorities(db as any, 1, 20);
       const complete = result.persons.find((p) => p.id === 'person-complete')!;
       expect(complete.givenName).toBe('John');
       expect(complete.surname).toBe('Smith');
     });
 
-    it('returns correct total count', () => {
-      const result = getPriorities(db, 1, 20);
+    it('returns correct total count', async () => {
+      const result = await getPriorities(db as any, 1, 20);
       expect(result.total).toBe(3);
     });
 
-    it('paginates correctly - page 1 with pageSize 2', () => {
-      const result = getPriorities(db, 1, 2);
+    it('paginates correctly - page 1 with pageSize 2', async () => {
+      const result = await getPriorities(db as any, 1, 2);
       expect(result.persons).toHaveLength(2);
       expect(result.page).toBe(1);
       expect(result.pageSize).toBe(2);
@@ -261,24 +266,24 @@ describe('quality-queries', () => {
       expect(result.persons[1]!.id).toBe('person-partial');
     });
 
-    it('paginates correctly - page 2 with pageSize 2', () => {
-      const result = getPriorities(db, 2, 2);
+    it('paginates correctly - page 2 with pageSize 2', async () => {
+      const result = await getPriorities(db as any, 2, 2);
       expect(result.persons).toHaveLength(1);
       expect(result.page).toBe(2);
       expect(result.persons[0]!.id).toBe('person-complete');
     });
 
-    it('returns empty page when beyond range', () => {
-      const result = getPriorities(db, 5, 20);
+    it('returns empty page when beyond range', async () => {
+      const result = await getPriorities(db as any, 5, 20);
       expect(result.persons).toHaveLength(0);
       expect(result.total).toBe(3);
     });
 
-    it('excludes soft-deleted persons', () => {
-      db.prepare(
+    it('excludes soft-deleted persons', async () => {
+      sqlite.prepare(
         `UPDATE persons SET deleted_at = '2025-06-01T00:00:00Z' WHERE id = 'person-minimal'`,
       ).run();
-      const result = getPriorities(db, 1, 20);
+      const result = await getPriorities(db as any, 1, 20);
       expect(result.persons).toHaveLength(2);
       expect(result.total).toBe(2);
       expect(result.persons.find((p) => p.id === 'person-minimal')).toBeUndefined();

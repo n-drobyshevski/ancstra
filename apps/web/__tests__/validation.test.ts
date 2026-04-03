@@ -5,8 +5,6 @@ import {
   updatePersonSchema,
   createFamilySchema,
   createEventSchema,
-  createSourceSchema,
-  createCitationSchema,
   createLayoutSchema,
 } from '../lib/validation';
 
@@ -117,32 +115,6 @@ describe('createEventSchema', () => {
   });
   it('rejects missing personId and familyId', () => {
     expect(createEventSchema.safeParse({ eventType: 'birth' }).success).toBe(false);
-  });
-});
-
-describe('createSourceSchema', () => {
-  it('accepts valid source', () => {
-    expect(createSourceSchema.safeParse({ title: 'Census 1880' }).success).toBe(true);
-  });
-  it('rejects missing title', () => {
-    expect(createSourceSchema.safeParse({}).success).toBe(false);
-  });
-  it('accepts source with all fields', () => {
-    expect(createSourceSchema.safeParse({
-      title: 'Census', author: 'US Gov', sourceType: 'census',
-    }).success).toBe(true);
-  });
-});
-
-describe('createCitationSchema', () => {
-  it('accepts citation with personId', () => {
-    expect(createCitationSchema.safeParse({ sourceId: 's1', personId: 'p1' }).success).toBe(true);
-  });
-  it('rejects missing sourceId', () => {
-    expect(createCitationSchema.safeParse({ personId: 'p1' }).success).toBe(false);
-  });
-  it('rejects missing entity link', () => {
-    expect(createCitationSchema.safeParse({ sourceId: 's1' }).success).toBe(false);
   });
 });
 

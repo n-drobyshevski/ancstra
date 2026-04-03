@@ -64,7 +64,7 @@ export function BookmarksPanel({ mode, refreshKey }: BookmarksPanelProps) {
         </div>
       ) : (
         <div className={cn('flex flex-col', mode === 'sidebar' ? 'gap-2' : 'gap-2.5')}>
-          {displayItems.map((item: any) => (
+          {displayItems.map((item) => (
             <ResearchItemCard
               key={item.id}
               item={item}

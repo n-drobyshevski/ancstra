@@ -29,14 +29,18 @@ describe('POST /jobs/scrape-url', () => {
     const res = await app.request('/jobs/scrape-url', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: 'https://example.com/page' }),
+      body: JSON.stringify({
+        jobId: 'job-1',
+        itemId: 'item-1',
+        url: 'https://example.com/page',
+        dbFilename: 'test-family.db',
+      }),
     });
 
     expect(res.status).toBe(202);
     const body = await res.json();
     expect(body.status).toBe('accepted');
-    expect(body.jobId).toBeDefined();
-    expect(typeof body.jobId).toBe('string');
+    expect(body.jobId).toBe('job-1');
   });
 
   it('returns 202 with optional fields', async () => {
@@ -44,9 +48,11 @@ describe('POST /jobs/scrape-url', () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        jobId: 'job-2',
+        itemId: 'item-2',
         url: 'https://example.com/page',
+        dbFilename: 'test-family.db',
         extractEntities: true,
-        personId: 'person-123',
       }),
     });
 
@@ -59,7 +65,7 @@ describe('POST /jobs/scrape-url', () => {
     const res = await app.request('/jobs/scrape-url', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({}),
+      body: JSON.stringify({ jobId: 'job-x', itemId: 'item-x', dbFilename: 'test.db' }),
     });
 
     expect(res.status).toBe(400);
@@ -69,7 +75,7 @@ describe('POST /jobs/scrape-url', () => {
     const res = await app.request('/jobs/scrape-url', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: 'not-a-url' }),
+      body: JSON.stringify({ jobId: 'job-x', itemId: 'item-x', url: 'not-a-url', dbFilename: 'test.db' }),
     });
 
     expect(res.status).toBe(400);
