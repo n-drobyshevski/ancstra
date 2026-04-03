@@ -1,8 +1,8 @@
 import { cacheLife, cacheTag } from 'next/cache';
 import { getFamilyDb } from './db';
 import { assemblePersonDetail, getTreeData } from './queries';
-import { persons, personNames, events } from '@ancstra/db';
-import { eq, and, isNull, sql } from 'drizzle-orm';
+import { persons, personNames, events, families, getQualitySummary } from '@ancstra/db';
+import { eq, and, isNull, sql, gte } from 'drizzle-orm';
 import type { PersonListItem } from '@ancstra/shared';
 
 // ---------------------------------------------------------------------------
@@ -97,5 +97,26 @@ export async function getCachedDashboardData(dbFilename: string) {
     createdAt: r.createdAt,
   }));
 
-  return { recentPersons, totalPersons };
+  // Count families (relationships) where deleted_at IS NULL
+  const familyCountRows = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(families)
+    .where(isNull(families.deletedAt))
+    .all();
+  const totalFamilies = familyCountRows[0]?.count ?? 0;
+
+  // Count persons added in the last 30 days
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const recentAdditionsRows = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(persons)
+    .where(and(isNull(persons.deletedAt), gte(persons.createdAt, thirtyDaysAgo)))
+    .all();
+  const recentAdditionsCount = recentAdditionsRows[0]?.count ?? 0;
+
+  // Get overall quality score
+  const qualitySummary = await getQualitySummary(db);
+  const overallQualityScore = qualitySummary.overallScore;
+
+  return { recentPersons, totalPersons, totalFamilies, recentAdditionsCount, overallQualityScore };
 }
