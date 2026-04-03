@@ -1,9 +1,0 @@
-[    4606ms] [ERROR] Manifest: Line: 1, column: 1, Syntax error. @ http://localhost:3000/manifest.webmanifest:0
-[    5346ms] [ERROR] Manifest: Line: 1, column: 1, Syntax error. @ http://localhost:3000/manifest.webmanifest:0
-[    5495ms] [ERROR] The script resource is behind a redirect, which is disallowed. @ :0
-[   23042ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/api/auth/providers:0
-[   23045ms] [ERROR] ClientFetchError: There was a problem with the server configuration. Check the server logs for more information.. Read more at https://errors.authjs.dev#autherror
-    at fetchData (http://localhost:3000/_next/static/chunks/_worktrees_settings-mobile-heroicons_0i9vys.._.js:819:22)
-    at async signIn (http://localhost:3000/_next/static/chunks/_worktrees_settings-mobile-heroicons_0i9vys.._.js:1009:23)
-    at async handleSubmit (http://localhost:3000/_next/static/chunks/_worktrees_settings-mobile-heroicons_0i9vys.._.js:353:24) @ http://localhost:3000/_next/static/chunks/13j9_next_dist_01dltj8._.js:1915
-[   23107ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/api/auth/error:0

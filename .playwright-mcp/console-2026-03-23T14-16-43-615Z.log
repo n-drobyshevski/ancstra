@@ -1,7 +1,0 @@
-[     406ms] [ERROR] Manifest: Line: 1, column: 1, Syntax error. @ http://localhost:3000/manifest.webmanifest:0
-[     541ms] [ERROR] The script resource is behind a redirect, which is disallowed. @ :0
-[     544ms] [ERROR] Manifest: Line: 1, column: 1, Syntax error. @ http://localhost:3000/manifest.webmanifest:0
-[  519653ms] [ERROR] Manifest: Line: 1, column: 1, Syntax error. @ http://localhost:3000/manifest.webmanifest:0
-[  536003ms] [ERROR] Manifest: Line: 1, column: 1, Syntax error. @ http://localhost:3000/manifest.webmanifest:0
-[  536131ms] [ERROR] The script resource is behind a redirect, which is disallowed. @ :0
-[  536135ms] [ERROR] Manifest: Line: 1, column: 1, Syntax error. @ http://localhost:3000/manifest.webmanifest:0
