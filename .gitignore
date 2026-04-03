@@ -16,3 +16,6 @@ dist/
 # Dev screenshots & Playwright MCP logs
 *.png
 .playwright-mcp/
+
+# Superpowers plans
+docs/superpowers/plans/
