@@ -1,5 +1,5 @@
 import { tool } from 'ai';
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import { sql, eq, and } from 'drizzle-orm';
 import { proposedRelationships, persons } from '@ancstra/db';
 import type { Database } from '@ancstra/db';
@@ -94,7 +94,7 @@ export async function executeProposeRelationship(
 export function createProposeRelationshipTool(db: Database) {
   return tool({
     description: 'Propose a relationship between two people based on discovered evidence. Creates a pending proposal for editor validation — does NOT directly modify the family tree.',
-    parameters: z.object({
+    inputSchema: z.object({
       person1Id: z.string().describe('First person ID (parent for parent-child)'),
       person2Id: z.string().describe('Second person ID (child for parent-child)'),
       relationshipType: z.enum(['parent_child', 'partner', 'sibling'])

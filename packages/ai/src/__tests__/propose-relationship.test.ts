@@ -13,15 +13,22 @@ beforeEach(() => {
 
   sqlite.exec(`
     CREATE TABLE users (
-      id TEXT PRIMARY KEY, email TEXT NOT NULL UNIQUE,
-      password_hash TEXT NOT NULL, name TEXT, created_at TEXT NOT NULL
+      id TEXT PRIMARY KEY,
+      email TEXT NOT NULL UNIQUE,
+      password_hash TEXT,
+      name TEXT NOT NULL,
+      avatar_url TEXT,
+      email_verified INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
     );
     CREATE TABLE persons (
       id TEXT PRIMARY KEY, sex TEXT NOT NULL DEFAULT 'U',
       is_living INTEGER NOT NULL DEFAULT 1,
       privacy_level TEXT NOT NULL DEFAULT 'private', notes TEXT,
       created_by TEXT, created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL, deleted_at TEXT
+      updated_at TEXT NOT NULL, deleted_at TEXT,
+      version INTEGER NOT NULL DEFAULT 1
     );
     CREATE TABLE person_names (
       id TEXT PRIMARY KEY,
@@ -40,7 +47,8 @@ beforeEach(() => {
       confidence REAL,
       status TEXT NOT NULL DEFAULT 'pending',
       validated_by TEXT, validated_at TEXT, rejection_reason TEXT,
-      created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+      created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+      version INTEGER NOT NULL DEFAULT 1
     );
     CREATE INDEX idx_proposed_rels_status ON proposed_relationships(status);
     CREATE INDEX idx_proposed_rels_person1 ON proposed_relationships(person1_id);
@@ -49,7 +57,7 @@ beforeEach(() => {
 
   const now = new Date().toISOString();
   db.insert(schema.users)
-    .values({ id: 'user-1', email: 'test@test.com', passwordHash: 'hash', name: 'Test', createdAt: now })
+    .values({ id: 'user-1', email: 'test@test.com', name: 'Test', createdAt: now, updatedAt: now })
     .run();
   db.insert(schema.persons)
     .values({ id: 'p-1', sex: 'M', isLiving: false, createdBy: 'user-1', createdAt: now, updatedAt: now })

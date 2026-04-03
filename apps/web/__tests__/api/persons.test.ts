@@ -24,9 +24,12 @@ beforeEach(() => {
     CREATE TABLE users (
       id TEXT PRIMARY KEY,
       email TEXT NOT NULL UNIQUE,
-      password_hash TEXT NOT NULL,
-      name TEXT,
-      created_at TEXT NOT NULL
+      password_hash TEXT,
+      name TEXT NOT NULL,
+      avatar_url TEXT,
+      email_verified INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
     );
     CREATE TABLE persons (
       id TEXT PRIMARY KEY,
@@ -37,7 +40,8 @@ beforeEach(() => {
       created_by TEXT REFERENCES users(id),
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
-      deleted_at TEXT
+      deleted_at TEXT,
+      version INTEGER NOT NULL DEFAULT 1
     );
     CREATE TABLE person_names (
       id TEXT PRIMARY KEY,
@@ -50,7 +54,8 @@ beforeEach(() => {
       nickname TEXT,
       is_primary INTEGER NOT NULL DEFAULT 0,
       sort_order INTEGER NOT NULL DEFAULT 0,
-      created_at TEXT NOT NULL
+      created_at TEXT NOT NULL,
+      version INTEGER NOT NULL DEFAULT 1
     );
     CREATE TABLE events (
       id TEXT PRIMARY KEY,
@@ -64,6 +69,22 @@ beforeEach(() => {
       person_id TEXT REFERENCES persons(id) ON DELETE CASCADE,
       family_id TEXT,
       created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      version INTEGER NOT NULL DEFAULT 1
+    );
+
+    CREATE TABLE person_summary (
+      person_id TEXT PRIMARY KEY REFERENCES persons(id) ON DELETE CASCADE,
+      given_name TEXT NOT NULL DEFAULT '',
+      surname TEXT NOT NULL DEFAULT '',
+      sex TEXT NOT NULL,
+      is_living INTEGER NOT NULL,
+      birth_date TEXT, death_date TEXT,
+      birth_date_sort INTEGER, death_date_sort INTEGER,
+      birth_place TEXT, death_place TEXT,
+      spouse_count INTEGER NOT NULL DEFAULT 0,
+      child_count INTEGER NOT NULL DEFAULT 0,
+      parent_count INTEGER NOT NULL DEFAULT 0,
       updated_at TEXT NOT NULL
     );
 
@@ -88,6 +109,7 @@ beforeEach(() => {
       passwordHash: '$2a$10$fakehash',
       name: 'Test User',
       createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     })
     .run();
 });

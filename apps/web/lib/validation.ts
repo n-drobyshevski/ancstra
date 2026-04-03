@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from 'zod/v3';
 
 export const createPersonSchema = z.object({
   givenName: z.string().min(1, 'Given name is required'),

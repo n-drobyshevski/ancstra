@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
 import { searchProviders } from '@ancstra/db';
 import { eq } from 'drizzle-orm';
-import { z } from 'zod';
+import { z } from 'zod/v3';
 
 const updateProviderSchema = z.object({
   isEnabled: z.boolean().optional(),

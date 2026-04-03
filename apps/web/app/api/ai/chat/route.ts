@@ -1,4 +1,4 @@
-import { streamText } from 'ai';
+import { streamText, stepCountIs, type ToolSet } from 'ai';
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
@@ -107,25 +107,26 @@ export async function POST(request: Request) {
       model,
       system: systemPrompt,
       messages,
-      tools,
-      maxSteps: 5,
+      tools: tools as unknown as ToolSet,
+      stopWhen: stepCountIs(5),
+
       onFinish: async ({ usage }) => {
         // Record usage after stream completes
         try {
           await recordUsage(familyDb, {
             userId,
             model: 'claude-sonnet-4-5',
-            inputTokens: usage.promptTokens,
-            outputTokens: usage.completionTokens,
+            inputTokens: usage.inputTokens ?? 0,
+            outputTokens: usage.outputTokens ?? 0,
             taskType: 'chat',
           });
         } catch (err) {
           console.error('Failed to record AI usage:', err);
         }
-      },
+      }
     });
 
-    return result.toDataStreamResponse();
+    return result.toUIMessageStreamResponse();
   } catch (err) {
     try { return handleAuthError(err); } catch { /* not an auth error */ }
     console.error('[ai/chat POST]', err);

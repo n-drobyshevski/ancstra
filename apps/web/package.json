@@ -11,7 +11,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^1.2.0",
+    "@ai-sdk/anthropic": "^3.0.66",
+    "@ai-sdk/react": "^2.0.168",
     "@ancstra/ai": "workspace:^",
     "@ancstra/auth": "workspace:*",
     "@ancstra/db": "workspace:^",
@@ -23,7 +24,7 @@
     "@sentry/nextjs": "^10.45.0",
     "@tailwindcss/typography": "^0.5.19",
     "@xyflow/react": "^12.10.1",
-    "ai": "^4.3.0",
+    "ai": "^6.0.145",
     "bcryptjs": "^3.0.3",
     "cheerio": "^1.0.0",
     "class-variance-authority": "^0.7.1",

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
 import { createResearchItem, getResearchItem, updateResearchItemContent, createScrapeJob, findActiveScrapeJob } from '@ancstra/research';
-import { z } from 'zod';
+import { z } from 'zod/v3';
 
 const requestSchema = z.object({
   url: z.string().url('Invalid URL'),

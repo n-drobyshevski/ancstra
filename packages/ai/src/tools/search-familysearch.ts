@@ -1,5 +1,5 @@
 import { tool } from 'ai';
-import { z } from 'zod';
+import { z } from 'zod/v3';
 
 /**
  * Create the searchFamilySearch tool.
@@ -10,7 +10,7 @@ export function createSearchFamilySearchTool(options?: {
 }) {
   return tool({
     description: 'Search FamilySearch.org records for historical records matching a person',
-    parameters: z.object({
+    inputSchema: z.object({
       givenName: z.string().describe('Given name'),
       surname: z.string().describe('Surname'),
       birthDate: z.string().optional().describe('Birth date (year or full date)'),

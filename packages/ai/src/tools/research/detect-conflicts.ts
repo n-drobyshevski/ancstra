@@ -1,5 +1,5 @@
 import { tool } from 'ai';
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import { detectConflicts as detectConflictsQuery } from '@ancstra/research';
 import type { Database } from '@ancstra/db';
 
@@ -82,7 +82,7 @@ function getSuggestion(factType: string): string {
 export function createDetectConflictsTool(db: Database) {
   return tool({
     description: 'Detect conflicting facts for a person in the research workspace (e.g., different birth dates from different sources)',
-    parameters: z.object({
+    inputSchema: z.object({
       personId: z.string().describe('The person ID to check for conflicting facts'),
     }),
     execute: async ({ personId }) => executeDetectConflicts(db, personId),

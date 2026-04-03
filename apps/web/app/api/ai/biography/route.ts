@@ -120,8 +120,8 @@ export async function POST(request: Request) {
       if (!family) continue;
       for (const partnerId of [family.partner1Id, family.partner2Id]) {
         if (!partnerId) continue;
-        const pName = await familyDb.select().from(personNames).where(and(eq(personNames.personId, partnerId), eq(personNames.isPrimary, true))).get()
-          || await familyDb.select().from(personNames).where(eq(personNames.personId, partnerId)).get();
+        const pName = (await familyDb.select().from(personNames).where(and(eq(personNames.personId, partnerId), eq(personNames.isPrimary, true))).get())
+          || (await familyDb.select().from(personNames).where(eq(personNames.personId, partnerId)).get());
         if (pName) {
           const pBirth = await familyDb.select().from(events).where(and(eq(events.personId, partnerId), eq(events.eventType, 'birth'))).get();
           parentNames.push({
@@ -141,8 +141,8 @@ export async function POST(request: Request) {
     for (const fam of allFamilies) {
       const spouseId = fam.partner1Id === personId ? fam.partner2Id : fam.partner1Id;
       if (!spouseId) continue;
-      const sName = await familyDb.select().from(personNames).where(and(eq(personNames.personId, spouseId), eq(personNames.isPrimary, true))).get()
-        || await familyDb.select().from(personNames).where(eq(personNames.personId, spouseId)).get();
+      const sName = (await familyDb.select().from(personNames).where(and(eq(personNames.personId, spouseId), eq(personNames.isPrimary, true))).get())
+        || (await familyDb.select().from(personNames).where(eq(personNames.personId, spouseId)).get());
       if (sName) {
         const marriageEvent = await familyDb.select().from(events).where(and(eq(events.familyId, fam.id), eq(events.eventType, 'marriage'))).get();
         spouseNames.push({
@@ -157,8 +157,8 @@ export async function POST(request: Request) {
     for (const fam of allFamilies) {
       const familyChildren = await familyDb.select().from(children).where(eq(children.familyId, fam.id)).all();
       for (const child of familyChildren) {
-        const cName = await familyDb.select().from(personNames).where(and(eq(personNames.personId, child.personId), eq(personNames.isPrimary, true))).get()
-          || await familyDb.select().from(personNames).where(eq(personNames.personId, child.personId)).get();
+        const cName = (await familyDb.select().from(personNames).where(and(eq(personNames.personId, child.personId), eq(personNames.isPrimary, true))).get())
+          || (await familyDb.select().from(personNames).where(eq(personNames.personId, child.personId)).get());
         if (cName) {
           const cBirth = await familyDb.select().from(events).where(and(eq(events.personId, child.personId), eq(events.eventType, 'birth'))).get();
           childNames.push({
@@ -225,7 +225,7 @@ export async function POST(request: Request) {
       onFinish: async ({ text, usage }) => {
         try {
           const modelName = 'claude-sonnet-4-5';
-          const costUsd = calculateCost(modelName, usage.promptTokens, usage.completionTokens);
+          const costUsd = calculateCost(modelName, usage.inputTokens ?? 0, usage.outputTokens ?? 0);
 
           // Cache biography (INSERT OR REPLACE via unique constraint)
           await familyDb
@@ -237,8 +237,8 @@ export async function POST(request: Request) {
               focus: options.focus,
               content: text,
               model: modelName,
-              inputTokens: usage.promptTokens,
-              outputTokens: usage.completionTokens,
+              inputTokens: usage.inputTokens ?? 0,
+              outputTokens: usage.outputTokens ?? 0,
               costUsd,
             })
             .onConflictDoUpdate({
@@ -246,8 +246,8 @@ export async function POST(request: Request) {
               set: {
                 content: text,
                 model: modelName,
-                inputTokens: usage.promptTokens,
-                outputTokens: usage.completionTokens,
+                inputTokens: usage.inputTokens ?? 0,
+                outputTokens: usage.outputTokens ?? 0,
                 costUsd,
                 createdAt: new Date().toISOString(),
               },
@@ -258,8 +258,8 @@ export async function POST(request: Request) {
           await recordUsage(familyDb, {
             userId,
             model: modelName,
-            inputTokens: usage.promptTokens,
-            outputTokens: usage.completionTokens,
+            inputTokens: usage.inputTokens ?? 0,
+            outputTokens: usage.outputTokens ?? 0,
             taskType: 'biography',
           });
         } catch (err) {
@@ -268,7 +268,7 @@ export async function POST(request: Request) {
       },
     });
 
-    return result.toDataStreamResponse();
+    return result.toUIMessageStreamResponse();
   } catch (err) {
     try { return handleAuthError(err); } catch { /* not an auth error */ }
     console.error('[ai/biography POST]', err);

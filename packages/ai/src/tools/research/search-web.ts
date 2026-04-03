@@ -1,5 +1,5 @@
 import { tool } from 'ai';
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import type { ProviderRegistry, SearchResult } from '@ancstra/research';
 
 interface WebSearchToolResult {
@@ -68,7 +68,7 @@ export async function executeSearchWeb(
 export function createSearchWebTool(registry: ProviderRegistry) {
   return tool({
     description: 'Search the web across multiple genealogy record providers for historical records and information',
-    parameters: z.object({
+    inputSchema: z.object({
       query: z.string().describe('Search query text'),
       providers: z.array(z.string()).optional().describe('Specific provider IDs to search (e.g., ["nara", "chronicling_america"])'),
       maxResults: z.number().default(10).describe('Maximum number of results to return'),

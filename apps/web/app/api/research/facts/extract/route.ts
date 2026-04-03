@@ -4,7 +4,7 @@ import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
 //   pnpm add ai @ai-sdk/anthropic
 // import { generateObject } from 'ai';
 // import { anthropic } from '@ai-sdk/anthropic';
-import { z } from 'zod';
+import { z } from 'zod/v3';
 
 const factSchema = z.object({
   facts: z.array(z.object({
