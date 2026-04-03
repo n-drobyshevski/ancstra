@@ -2,6 +2,9 @@ import { withSentryConfig } from '@sentry/nextjs';
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
+  experimental: {
+    viewTransition: true,
+  },
   cacheComponents: true,
   cacheLife: {
     // Genealogy data changes infrequently — invalidated on mutation

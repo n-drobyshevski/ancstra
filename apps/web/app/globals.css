@@ -342,3 +342,49 @@ body {
     @apply font-sans;
   }
 }
+
+/* ── View Transitions ────────────────────────────────────── */
+
+/* Default crossfade for page content */
+::view-transition-old(page-content) {
+  animation: vt-fade-out 200ms ease-in;
+}
+::view-transition-new(page-content) {
+  animation: vt-fade-in 200ms ease-out;
+}
+
+@keyframes vt-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+@keyframes vt-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/*
+ * Shared element morph timing — applies to all named view transitions
+ * (person-{id}, research-{id}, sidebar-active).
+ * The page-content group uses its own fade timing defined above.
+ */
+::view-transition-group(*) {
+  animation-duration: 250ms;
+  animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+}
+/* Override: page crossfade uses its own 200ms timing */
+::view-transition-group(page-content) {
+  animation-duration: 200ms;
+}
+/* Override: sidebar is snappier */
+::view-transition-group(sidebar-active) {
+  animation-duration: 150ms;
+}
+
+/* Respect reduced motion — disable all view transitions */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
