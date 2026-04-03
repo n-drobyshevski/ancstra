@@ -108,7 +108,8 @@ export async function getActivityFeed(
     .all();
 
   const hasMore = rows.length > limit;
-  const items: ActivityEntry[] = rows.slice(0, limit).map((row) => ({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const items: ActivityEntry[] = rows.slice(0, limit).map((row: any) => ({
     id: row.id,
     familyId: row.familyId,
     userId: row.userId,

@@ -74,18 +74,18 @@ export function TreeTable({ treeData, relationships, onSelectPerson }: TreeTable
           return cmp * mult;
         }
         case 'birthDate': {
-          const aSort = (a as any).birthDateSort ?? 0;
-          const bSort = (b as any).birthDateSort ?? 0;
-          return (aSort - bSort) * mult;
+          const aSort = (a as PersonListItem & Record<string, unknown>).birthDateSort ?? 0;
+          const bSort = (b as PersonListItem & Record<string, unknown>).birthDateSort ?? 0;
+          return ((aSort as number) - (bSort as number)) * mult;
         }
         case 'deathDate': {
-          const aSort = (a as any).deathDateSort ?? 0;
-          const bSort = (b as any).deathDateSort ?? 0;
-          return (aSort - bSort) * mult;
+          const aSort = (a as PersonListItem & Record<string, unknown>).deathDateSort ?? 0;
+          const bSort = (b as PersonListItem & Record<string, unknown>).deathDateSort ?? 0;
+          return ((aSort as number) - (bSort as number)) * mult;
         }
         case 'birthPlace': {
-          const aPlace = ((a as any).birthPlace ?? '') as string;
-          const bPlace = ((b as any).birthPlace ?? '') as string;
+          const aPlace = ((a as PersonListItem & Record<string, unknown>).birthPlace ?? '') as string;
+          const bPlace = ((b as PersonListItem & Record<string, unknown>).birthPlace ?? '') as string;
           return aPlace.localeCompare(bPlace) * mult;
         }
         case 'sex':
@@ -200,7 +200,7 @@ export function TreeTable({ treeData, relationships, onSelectPerson }: TreeTable
                     </TableCell>
                     <TableCell>{person.birthDate ?? ''}</TableCell>
                     <TableCell>{person.deathDate ?? ''}</TableCell>
-                    <TableCell>{(person as any).birthPlace ?? ''}</TableCell>
+                    <TableCell>{((person as PersonListItem & Record<string, unknown>).birthPlace as string | null | undefined) ?? ''}</TableCell>
                     <TableCell>
                       <Badge variant="secondary">{person.sex}</Badge>
                     </TableCell>

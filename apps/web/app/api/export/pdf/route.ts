@@ -24,7 +24,7 @@ export async function POST(request: Request) {
     const gotenberg = new GotenbergClient();
     const available = await gotenberg.isAvailable();
 
-    let html: string;
+    let html: string | null;
 
     if (template === 'person-biography') {
       if (!personId) {
@@ -50,9 +50,9 @@ export async function POST(request: Request) {
       });
     }
 
-    const pdfBuffer = await gotenberg.htmlToPdf(html);
+    const pdfBuffer = await gotenberg.htmlToPdf(html!);
 
-    return new NextResponse(pdfBuffer, {
+    return new NextResponse(new Uint8Array(pdfBuffer), {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="${template}.pdf"`,
@@ -70,7 +70,7 @@ export async function POST(request: Request) {
 async function buildPersonBiographyHtml(
   familyDb: ReturnType<typeof import('@ancstra/db').createFamilyDb>,
   personId: string,
-): string | null {
+): Promise<string | null> {
   const person = await familyDb.select().from(persons).where(eq(persons.id, personId)).get();
   if (!person) return null;
 
@@ -162,7 +162,7 @@ async function buildFamilyHistoryHtml(
   familyDb: ReturnType<typeof import('@ancstra/db').createFamilyDb>,
   compiledBy: string,
   familyName?: string,
-): string {
+): Promise<string> {
   // Gather all persons with primary names, biographies, and events
   const allPersons = await familyDb.select().from(persons).all();
 

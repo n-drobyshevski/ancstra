@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import Database from 'better-sqlite3';
-import * as schema from '@ancstra/db';
+import * as schema from '@ancstra/db/schema';
 import {
   createFact,
   getFactsByPerson,
@@ -21,9 +21,12 @@ beforeEach(() => {
     CREATE TABLE users (
       id TEXT PRIMARY KEY,
       email TEXT NOT NULL UNIQUE,
-      password_hash TEXT NOT NULL,
-      name TEXT,
-      created_at TEXT NOT NULL
+      password_hash TEXT,
+      name TEXT NOT NULL,
+      avatar_url TEXT,
+      email_verified INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
     );
     CREATE TABLE persons (
       id TEXT PRIMARY KEY,
@@ -34,7 +37,8 @@ beforeEach(() => {
       created_by TEXT REFERENCES users(id),
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
-      deleted_at TEXT
+      deleted_at TEXT,
+      version INTEGER NOT NULL DEFAULT 1
     );
     CREATE TABLE sources (
       id TEXT PRIMARY KEY,
@@ -48,7 +52,8 @@ beforeEach(() => {
       notes TEXT,
       created_by TEXT REFERENCES users(id),
       created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL
+      updated_at TEXT NOT NULL,
+      version INTEGER NOT NULL DEFAULT 1
     );
     CREATE TABLE source_citations (
       id TEXT PRIMARY KEY,
@@ -60,7 +65,8 @@ beforeEach(() => {
       event_id TEXT,
       family_id TEXT,
       person_name_id TEXT,
-      created_at TEXT NOT NULL
+      created_at TEXT NOT NULL,
+      version INTEGER NOT NULL DEFAULT 1
     );
     CREATE TABLE search_providers (
       id TEXT PRIMARY KEY,
@@ -107,6 +113,8 @@ beforeEach(() => {
       fact_date_sort INTEGER,
       research_item_id TEXT REFERENCES research_items(id),
       source_citation_id TEXT REFERENCES source_citations(id),
+      factsheet_id TEXT,
+      accepted INTEGER,
       confidence TEXT NOT NULL DEFAULT 'medium',
       extraction_method TEXT NOT NULL DEFAULT 'manual',
       created_at TEXT NOT NULL,
@@ -124,6 +132,7 @@ beforeEach(() => {
       passwordHash: '$2a$10$fakehash',
       name: 'Test User',
       createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     })
     .run();
 
@@ -178,8 +187,8 @@ afterEach(() => {
 });
 
 describe('Research Facts CRUD queries', () => {
-  it('creates a fact and returns it with generated ID', () => {
-    const result = createFact(db as any, {
+  it('creates a fact and returns it with generated ID', async () => {
+    const result = await createFact(db as any, {
       personId: 'person-1',
       factType: 'birth_date',
       factValue: '1850-03-15',
@@ -197,20 +206,20 @@ describe('Research Facts CRUD queries', () => {
     expect(result.createdAt).toBeDefined();
   });
 
-  it('getFactsByPerson returns all facts ordered by factDateSort ASC', () => {
-    createFact(db as any, {
+  it('getFactsByPerson returns all facts ordered by factDateSort ASC', async () => {
+    await createFact(db as any, {
       personId: 'person-1',
       factType: 'death_date',
       factValue: '1920-11-01',
       factDateSort: 19201101,
     });
-    createFact(db as any, {
+    await createFact(db as any, {
       personId: 'person-1',
       factType: 'birth_date',
       factValue: '1850-03-15',
       factDateSort: 18500315,
     });
-    createFact(db as any, {
+    await createFact(db as any, {
       personId: 'person-1',
       factType: 'marriage_date',
       factValue: '1875-06-20',
@@ -218,14 +227,14 @@ describe('Research Facts CRUD queries', () => {
     });
 
     // Different person -- should not appear
-    createFact(db as any, {
+    await createFact(db as any, {
       personId: 'person-2',
       factType: 'birth_date',
       factValue: '1855-01-01',
       factDateSort: 18550101,
     });
 
-    const facts = getFactsByPerson(db as any, 'person-1');
+    const facts = await getFactsByPerson(db as any, 'person-1');
     expect(facts).toHaveLength(3);
     // Ordered by factDateSort ASC
     expect(facts[0].factType).toBe('birth_date');
@@ -233,41 +242,41 @@ describe('Research Facts CRUD queries', () => {
     expect(facts[2].factType).toBe('death_date');
   });
 
-  it('getFactsByResearchItem returns facts linked to item', () => {
-    createFact(db as any, {
+  it('getFactsByResearchItem returns facts linked to item', async () => {
+    await createFact(db as any, {
       personId: 'person-1',
       factType: 'residence',
       factValue: 'New York, NY',
       researchItemId: 'item-1',
     });
-    createFact(db as any, {
+    await createFact(db as any, {
       personId: 'person-1',
       factType: 'occupation',
       factValue: 'Farmer',
       researchItemId: 'item-1',
     });
     // Different item -- should not appear
-    createFact(db as any, {
+    await createFact(db as any, {
       personId: 'person-1',
       factType: 'birth_date',
       factValue: '1850-03-15',
       researchItemId: 'item-2',
     });
 
-    const facts = getFactsByResearchItem(db as any, 'item-1');
+    const facts = await getFactsByResearchItem(db as any, 'item-1');
     expect(facts).toHaveLength(2);
     expect(facts.map((f) => f.factType).sort()).toEqual(['occupation', 'residence']);
   });
 
-  it('updateFact changes confidence and value', () => {
-    const created = createFact(db as any, {
+  it('updateFact changes confidence and value', async () => {
+    const created = await createFact(db as any, {
       personId: 'person-1',
       factType: 'birth_place',
       factValue: 'Boston, MA',
       confidence: 'low',
     });
 
-    const updated = updateFact(db as any, created.id, {
+    const updated = await updateFact(db as any, created.id, {
       confidence: 'high',
       factValue: 'Boston, Massachusetts',
     });
@@ -278,16 +287,16 @@ describe('Research Facts CRUD queries', () => {
     expect(updated!.updatedAt).not.toBe(created.updatedAt);
   });
 
-  it('deleteFact removes a fact', () => {
-    const created = createFact(db as any, {
+  it('deleteFact removes a fact', async () => {
+    const created = await createFact(db as any, {
       personId: 'person-1',
       factType: 'occupation',
       factValue: 'Blacksmith',
     });
 
-    deleteFact(db as any, created.id);
+    await deleteFact(db as any, created.id);
 
-    const facts = getFactsByPerson(db as any, 'person-1');
+    const facts = await getFactsByPerson(db as any, 'person-1');
     expect(facts).toHaveLength(0);
   });
 });

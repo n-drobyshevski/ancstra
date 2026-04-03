@@ -18,9 +18,9 @@ export async function GET(request: Request) {
     const { familyDb } = await withAuth('ai:research');
     const url = new URL(request.url);
     const personId = url.searchParams.get('personId');
-    const tone = url.searchParams.get('tone') || 'conversational';
-    const length = url.searchParams.get('length') || 'standard';
-    const focus = url.searchParams.get('focus') || 'life_overview';
+    const tone = (url.searchParams.get('tone') || 'conversational') as 'formal' | 'conversational' | 'storytelling';
+    const length = (url.searchParams.get('length') || 'standard') as 'brief' | 'standard' | 'detailed';
+    const focus = (url.searchParams.get('focus') || 'life_overview') as 'life_overview' | 'immigration' | 'military' | 'family_life' | 'career';
 
     if (!personId) {
       return NextResponse.json({ error: 'personId required' }, { status: 400 });

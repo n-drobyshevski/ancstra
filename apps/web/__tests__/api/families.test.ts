@@ -2,10 +2,12 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import Database from 'better-sqlite3';
 import { eq, and, isNull } from 'drizzle-orm';
-import * as schema from '@ancstra/db';
+import * as schema from '@ancstra/db/schema';
+import { centralSchema } from '@ancstra/db';
 import { createFamilySchema, updateFamilySchema, addChildSchema } from '../../lib/validation';
 
-const { persons, personNames, events, users, families, children } = schema;
+const { persons, personNames, events, families, children } = schema;
+const { users } = centralSchema;
 
 let sqlite: InstanceType<typeof Database>;
 let db: ReturnType<typeof drizzle>;

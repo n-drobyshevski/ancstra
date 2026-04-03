@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { getCachedTreeData } from '@/lib/cached-queries';
 import { getAuthContext } from '@/lib/auth/context';
 import { TreePageClient } from '@/components/tree/tree-page-client';
@@ -20,12 +21,12 @@ export default async function TreePage({
           <p className="text-sm text-muted-foreground">
             Add your first person to start building your family tree.
           </p>
-          <a
+          <Link
             href="/persons/new"
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
           >
             Add First Person
-          </a>
+          </Link>
         </div>
       </div>
     );

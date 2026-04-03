@@ -2,10 +2,9 @@ import { eq, and, sql } from 'drizzle-orm';
 import { pendingContributions, persons } from '@ancstra/db/family-schema';
 import type { ContributionOperation, ContributionEntityType } from './types';
 
-type FamilyDb = Parameters<typeof pendingContributions._.columns.id.$defaultFn>[0] extends never
-  ? never
-  : // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    any;
+// Accept any Drizzle DB instance (works with both better-sqlite3 and libsql drivers)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type FamilyDb = any;
 
 export interface Contribution {
   id: string;

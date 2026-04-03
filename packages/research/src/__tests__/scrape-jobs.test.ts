@@ -20,9 +20,12 @@ beforeEach(() => {
     CREATE TABLE users (
       id TEXT PRIMARY KEY,
       email TEXT NOT NULL UNIQUE,
-      password_hash TEXT NOT NULL,
-      name TEXT,
-      created_at TEXT NOT NULL
+      password_hash TEXT,
+      name TEXT NOT NULL,
+      avatar_url TEXT,
+      email_verified INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
     );
     CREATE TABLE persons (
       id TEXT PRIMARY KEY,
@@ -33,7 +36,8 @@ beforeEach(() => {
       created_by TEXT REFERENCES users(id),
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
-      deleted_at TEXT
+      deleted_at TEXT,
+      version INTEGER NOT NULL DEFAULT 1
     );
     CREATE TABLE sources (
       id TEXT PRIMARY KEY,
@@ -47,7 +51,8 @@ beforeEach(() => {
       notes TEXT,
       created_by TEXT REFERENCES users(id),
       created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL
+      updated_at TEXT NOT NULL,
+      version INTEGER NOT NULL DEFAULT 1
     );
     CREATE TABLE source_citations (
       id TEXT PRIMARY KEY,
@@ -59,7 +64,8 @@ beforeEach(() => {
       event_id TEXT,
       family_id TEXT,
       person_name_id TEXT,
-      created_at TEXT NOT NULL
+      created_at TEXT NOT NULL,
+      version INTEGER NOT NULL DEFAULT 1
     );
     CREATE TABLE search_providers (
       id TEXT PRIMARY KEY,
@@ -118,8 +124,8 @@ beforeEach(() => {
   // Seed test user and research item via raw SQL (FK required for scrape_jobs.item_id)
   const now = new Date().toISOString();
   sqlite.prepare(
-    `INSERT INTO users (id, email, password_hash, name, created_at) VALUES (?, ?, ?, ?, ?)`
-  ).run('test-user-1', 'test@ancstra.app', '$2a$10$fakehash', 'Test User', now);
+    `INSERT INTO users (id, email, password_hash, name, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`
+  ).run('test-user-1', 'test@ancstra.app', '$2a$10$fakehash', 'Test User', now, now);
   sqlite.prepare(
     `INSERT INTO research_items (id, title, discovery_method, status, created_by, created_at, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?)`

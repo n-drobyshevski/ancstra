@@ -337,7 +337,7 @@ export function applyFilters(nodes: Node[], filterState: FilterState): Node[] {
 }
 
 export function applyEdgeFilters(edges: Edge[], nodes: Node[]): Edge[] {
-  const dimmedIds = new Set(nodes.filter((n) => (n.data as any)?.dimmed).map((n) => n.id));
+  const dimmedIds = new Set(nodes.filter((n) => (n.data as PersonNodeData)?.dimmed).map((n) => n.id));
   return edges.map((edge) => ({
     ...edge,
     style: {

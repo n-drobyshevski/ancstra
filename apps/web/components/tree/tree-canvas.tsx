@@ -273,7 +273,7 @@ function TreeCanvasInner({ treeData, focusPersonId, focusKey, paletteOpen, onTog
         x: event.clientX,
         y: event.clientY,
         edgeType: edge.type as string,
-        edgeFamilyId: (edge.data as any)?.familyId as string | undefined,
+        edgeFamilyId: (edge.data as { familyId?: string })?.familyId,
         edgeChildId: edge.type === 'parentChild' ? edge.target : undefined,
         type: 'edge',
         edgeId: edge.id,
@@ -559,7 +559,7 @@ function TreeCanvasInner({ treeData, focusPersonId, focusKey, paletteOpen, onTog
 
   const deleteRelationship = useCallback((edge: Edge) => {
     const edgeType = edge.type;
-    const familyId = (edge.data as any)?.familyId as string | undefined;
+    const familyId = (edge.data as { familyId?: string })?.familyId;
     if (!familyId) return;
 
     // Optimistic: remove edge immediately
@@ -671,7 +671,7 @@ function TreeCanvasInner({ treeData, focusPersonId, focusKey, paletteOpen, onTog
       }
       if ((e.metaKey || e.ctrlKey) && e.key === 'a') {
         e.preventDefault();
-        setNodes(nds => nds.map(n => ({ ...n, selected: !(n.data as any)?.dimmed })));
+        setNodes(nds => nds.map(n => ({ ...n, selected: !n.data?.dimmed })));
       }
     };
     window.addEventListener('keydown', handler);

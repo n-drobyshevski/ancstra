@@ -121,7 +121,7 @@ export function layoutClusterNodes(nodes: Node[], edges: Edge[]): Node[] {
 
   for (const edge of edges) {
     // Only use parent_child edges for hierarchical layout
-    if ((edge.data as any)?.relationshipType === 'parent_child') {
+    if ((edge.data as { relationshipType?: string })?.relationshipType === 'parent_child') {
       g.setEdge(edge.source, edge.target);
     }
   }

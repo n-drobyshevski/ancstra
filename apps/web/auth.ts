@@ -2,6 +2,7 @@ import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import Google from 'next-auth/providers/google';
 import Apple from 'next-auth/providers/apple';
+import type { Provider } from 'next-auth/providers';
 import { createCentralDb } from '@ancstra/db';
 import { centralSchema } from '@ancstra/db';
 import { eq } from 'drizzle-orm';
@@ -17,7 +18,7 @@ function getCentralDb() {
 }
 
 // Build providers list dynamically — skip OAuth providers if env vars missing
-const providers: any[] = [
+const providers: Provider[] = [
   Credentials({
     credentials: {
       email: { label: 'Email', type: 'email' },

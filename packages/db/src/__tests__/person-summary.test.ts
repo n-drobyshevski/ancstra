@@ -44,12 +44,12 @@ function insertEvent(db: any, id: string, personId: string, eventType: string, o
 }
 
 function getSummary(db: any, personId: string) {
-  const rows = db.all<any>(sql`SELECT * FROM person_summary WHERE person_id = ${personId}`);
+  const rows = db.all(sql`SELECT * FROM person_summary WHERE person_id = ${personId}`);
   return rows.length > 0 ? rows[0] : null;
 }
 
 function getAllSummaries(db: any) {
-  return db.all<any>(sql`SELECT * FROM person_summary ORDER BY person_id`);
+  return db.all(sql`SELECT * FROM person_summary ORDER BY person_id`);
 }
 
 describe('rebuildAllSummaries', () => {

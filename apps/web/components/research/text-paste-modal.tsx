@@ -43,22 +43,22 @@ const CONFIDENCE_COLORS: Record<string, 'default' | 'secondary' | 'outline'> = {
   low: 'outline',
 };
 
-type ModalStep = 'input' | 'saving' | 'extracting' | 'results' | 'saved' | 'error';
+type ModalStep = 'input' | 'saving' | 'extracting' | 'results' | 'bookmarked' | 'error';
 
 interface TextPasteModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSaved?: () => void;
+  onBookmark?: () => void;
   personId?: string;
 }
 
-export function TextPasteModal({ open, onOpenChange, onSaved, personId }: TextPasteModalProps) {
+export function TextPasteModal({ open, onOpenChange, onBookmark, personId }: TextPasteModalProps) {
   const [text, setText] = useState('');
   const [documentType, setDocumentType] = useState<string>('');
   const [step, setStep] = useState<ModalStep>('input');
   const [facts, setFacts] = useState<ExtractedFact[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [savedItemId, setSavedItemId] = useState<string | null>(null);
+  const [bookmarkItemId, setBookmarkItemId] = useState<string | null>(null);
 
   const resetState = useCallback(() => {
     setText('');
@@ -66,7 +66,7 @@ export function TextPasteModal({ open, onOpenChange, onSaved, personId }: TextPa
     setStep('input');
     setFacts([]);
     setError(null);
-    setSavedItemId(null);
+    setBookmarkItemId(null);
   }, []);
 
   const handleOpenChange = useCallback((nextOpen: boolean) => {
@@ -76,7 +76,7 @@ export function TextPasteModal({ open, onOpenChange, onSaved, personId }: TextPa
     onOpenChange(nextOpen);
   }, [onOpenChange, resetState]);
 
-  const handleSave = useCallback(async () => {
+  const handleBookmark = useCallback(async () => {
     if (!text.trim()) return;
 
     setStep('saving');
@@ -100,7 +100,7 @@ export function TextPasteModal({ open, onOpenChange, onSaved, personId }: TextPa
       }
 
       const item = await res.json();
-      setSavedItemId(item.id);
+      setBookmarkItemId(item.id);
 
       // Attempt AI extraction
       setStep('extracting');
@@ -124,13 +124,13 @@ export function TextPasteModal({ open, onOpenChange, onSaved, personId }: TextPa
       }
 
       // AI extraction not available or returned no facts -- still a success
-      setStep('saved');
-      onSaved?.();
+      setStep('bookmarked');
+      onBookmark?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save text');
       setStep('error');
     }
-  }, [text, documentType, personId, onSaved]);
+  }, [text, documentType, personId, onBookmark]);
 
   const handleExtract = useCallback(async () => {
     setStep('extracting');
@@ -161,9 +161,9 @@ export function TextPasteModal({ open, onOpenChange, onSaved, personId }: TextPa
   }, [text, documentType]);
 
   const handleConfirmResults = useCallback(() => {
-    setStep('saved');
-    onSaved?.();
-  }, [onSaved]);
+    setStep('bookmarked');
+    onBookmark?.();
+  }, [onBookmark]);
 
   const isProcessing = step === 'saving' || step === 'extracting';
 
@@ -173,7 +173,7 @@ export function TextPasteModal({ open, onOpenChange, onSaved, personId }: TextPa
         <DialogHeader>
           <DialogTitle>Paste Text</DialogTitle>
           <DialogDescription>
-            Paste document text to save as a research item and extract genealogical facts.
+            Paste document text to bookmark as a research item and extract genealogical facts.
           </DialogDescription>
         </DialogHeader>
 
@@ -213,7 +213,7 @@ export function TextPasteModal({ open, onOpenChange, onSaved, personId }: TextPa
           <div className="flex flex-col items-center gap-3 py-8">
             <Loader2 className="size-6 animate-spin text-primary" />
             <p className="text-sm text-muted-foreground">
-              {step === 'saving' ? 'Saving...' : 'Extracting facts with AI...'}
+              {step === 'saving' ? 'Bookmarking...' : 'Extracting facts with AI...'}
             </p>
           </div>
         )}
@@ -245,11 +245,11 @@ export function TextPasteModal({ open, onOpenChange, onSaved, personId }: TextPa
           </div>
         )}
 
-        {/* Saved step */}
-        {step === 'saved' && (
+        {/* Bookmarked step */}
+        {step === 'bookmarked' && (
           <div className="flex flex-col items-center gap-3 py-8">
             <CheckCircle2 className="size-8 text-green-500" />
-            <p className="text-sm font-medium">Saved as research item</p>
+            <p className="text-sm font-medium">Bookmarked</p>
           </div>
         )}
 
@@ -263,8 +263,8 @@ export function TextPasteModal({ open, onOpenChange, onSaved, personId }: TextPa
 
         <DialogFooter>
           {step === 'input' && (
-            <Button onClick={handleSave} disabled={!text.trim()}>
-              Save & Extract
+            <Button onClick={handleBookmark} disabled={!text.trim()}>
+              Bookmark & Extract
             </Button>
           )}
           {step === 'results' && (
@@ -272,7 +272,7 @@ export function TextPasteModal({ open, onOpenChange, onSaved, personId }: TextPa
               Done
             </Button>
           )}
-          {step === 'saved' && (
+          {step === 'bookmarked' && (
             <Button variant="outline" onClick={() => handleOpenChange(false)}>
               Close
             </Button>
@@ -282,9 +282,9 @@ export function TextPasteModal({ open, onOpenChange, onSaved, personId }: TextPa
               <Button variant="outline" onClick={() => setStep('input')}>
                 Try Again
               </Button>
-              {savedItemId && (
-                <Button variant="outline" onClick={() => { setStep('saved'); onSaved?.(); }}>
-                  Keep Saved Item
+              {bookmarkItemId && (
+                <Button variant="outline" onClick={() => { setStep('bookmarked'); onBookmark?.(); }}>
+                  Keep Bookmark
                 </Button>
               )}
             </>

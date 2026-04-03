@@ -32,12 +32,13 @@ export async function withAuth(permission: Permission, request?: Request) {
  * Returns 409 with current data if version conflicts.
  */
 export async function withOptimisticLock(
-  db: any,
+  db: ReturnType<typeof createFamilyDb>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- generic table with id+version columns
   table: any,
   id: string,
   expectedVersion: number,
   updates: Record<string, unknown>,
-): Promise<{ success: boolean; current?: any }> {
+): Promise<{ success: boolean; current?: unknown }> {
   const now = new Date().toISOString();
   const result = await db
     .update(table)
@@ -50,7 +51,7 @@ export async function withOptimisticLock(
     .run();
 
   // Handle both better-sqlite3 (result.changes) and libsql (result.rowsAffected) drivers
-  const rowsChanged = result.changes ?? result.rowsAffected ?? 0;
+  const rowsChanged = (result as unknown as Record<string, number>).changes ?? result.rowsAffected ?? 0;
   if (rowsChanged === 0) {
     const current = await db.select().from(table).where(eq(table.id, id)).get();
     return { success: false, current };

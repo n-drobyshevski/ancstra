@@ -23,10 +23,11 @@ export async function GET() {
     results.envDatabaseUrl = process.env.DATABASE_URL?.substring(0, 30) || '(not set)';
 
     results.status = 'ok';
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const err = error instanceof Error ? error : new Error(String(error));
     results.status = 'error';
-    results.error = error.message;
-    results.cause = error.cause?.message;
+    results.error = err.message;
+    results.cause = err.cause instanceof Error ? err.cause.message : undefined;
   }
 
   return NextResponse.json(results);

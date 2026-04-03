@@ -8,7 +8,7 @@ import {
   type EdgeProps,
 } from '@xyflow/react';
 
-interface FactsheetLinkEdgeData {
+interface FactsheetLinkEdgeData extends Record<string, unknown> {
   relationshipType: string;
   linkId: string;
 }

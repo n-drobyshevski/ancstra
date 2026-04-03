@@ -79,7 +79,7 @@ export async function PATCH(request: Request, { params }: Params) {
     // Update the role
     await centralDb
       .update(centralSchema.familyMembers)
-      .set({ role: newRole })
+      .set({ role: newRole as 'owner' | 'admin' | 'editor' | 'viewer' })
       .where(eq(centralSchema.familyMembers.id, targetMember.id))
       .run();
 

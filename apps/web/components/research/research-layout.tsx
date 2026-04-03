@@ -112,7 +112,7 @@ function ResearchLayoutInner() {
       const qs = params.toString();
       router.replace(qs ? `?${qs}` : '/research');
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps — only on mount
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="flex h-full flex-col">

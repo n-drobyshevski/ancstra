@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import Database from 'better-sqlite3';
-import * as schema from '@ancstra/db';
+import * as schema from '@ancstra/db/schema';
 import { executeProposeRelationship } from '../tools/propose-relationship';
 
 let sqlite: InstanceType<typeof Database>;

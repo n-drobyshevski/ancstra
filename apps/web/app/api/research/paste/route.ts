@@ -34,7 +34,7 @@ export async function POST(request: Request) {
     // Create a snippet from the first 300 chars
     const snippet = text.length > 300 ? text.slice(0, 297) + '...' : text;
 
-    const item = createResearchItem(familyDb, {
+    const item = await createResearchItem(familyDb, {
       title,
       snippet,
       fullText: text,
