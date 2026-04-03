@@ -40,6 +40,7 @@ export function PersonTable({ persons }: { persons: PersonListItem[] }) {
               <Link
                 href={`/persons/${person.id}`}
                 className="font-medium text-primary underline-offset-4 hover:underline"
+                style={{ viewTransitionName: `person-${person.id}` }}
               >
                 {person.givenName} {person.surname}
               </Link>

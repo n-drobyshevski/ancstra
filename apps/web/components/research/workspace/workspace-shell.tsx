@@ -113,7 +113,12 @@ function ShellInner({ person, children }: WorkspaceShellProps) {
                 )}
               </Avatar>
               <div>
-                <h1 className="text-xl md:text-2xl font-semibold leading-tight tracking-tight">{personName}</h1>
+                <h1
+                  className="text-xl md:text-2xl font-semibold leading-tight tracking-tight"
+                  style={{ viewTransitionName: `person-${person.id}` }}
+                >
+                  {personName}
+                </h1>
                 {dates && (
                   <p className="text-sm text-muted-foreground leading-snug">{dates}</p>
                 )}
