@@ -6,6 +6,10 @@ export const proxy = auth((request) => {
   const session = request.auth;
 
   if (!session?.user?.id) {
+    // API routes get 401 JSON; browser pages get redirected to login
+    if (request.nextUrl.pathname.startsWith('/api/')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
