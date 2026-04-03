@@ -1,7 +1,0 @@
-[     657ms] [ERROR] Failed to load resource: net::ERR_NAME_NOT_RESOLVED @ https://ogads-pa.clients6.google.com/$rpc/google.internal.onegoogle.asyncdata.v1.AsyncDataService/GetAsyncData:0
-[    3836ms] [ERROR] Failed to load resource: net::ERR_NAME_NOT_RESOLVED @ https://www.googletagmanager.com/gtag/js?id=G-K2FCTVRB44:0
-[    3916ms] ReferenceError: __name is not defined
-    at http://uupm.cc/:10:11
-    at http://uupm.cc/:17:11
-[    5092ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://uupm.cc/api/auth/me:0
-[   36554ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://uupm.cc/api/auth/me:0
