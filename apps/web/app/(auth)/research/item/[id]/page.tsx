@@ -17,5 +17,5 @@ export default async function ResearchItemPage({
   const item = await getResearchItem(db, id);
   if (!item) notFound();
 
-  return <PagePadding><ItemDetailShell item={item} /></PagePadding>;
+  return <PagePadding><div style={{ viewTransitionName: `research-${id}` }}><ItemDetailShell item={item} /></div></PagePadding>;
 }

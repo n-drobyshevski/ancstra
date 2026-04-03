@@ -109,7 +109,7 @@ export function ResearchItemCard({ item, onUpdated, compact = false }: ResearchI
       <ContextMenu>
         <ContextMenuTrigger asChild>
           <Link href={`/research/item/${item.id}`} className="block">
-            <Card size="sm" className={cn('group relative transition-all hover:shadow-sm active:scale-[0.99]', compact ? 'p-2' : 'p-3')}>
+            <Card size="sm" className={cn('group relative transition-all hover:shadow-sm active:scale-[0.99]', compact ? 'p-2' : 'p-3')} style={{ viewTransitionName: `research-${item.id}` }}>
               <button
                 type="button"
                 onClick={handleQuickRemove}
