@@ -2,7 +2,10 @@ import { cacheLife, cacheTag } from 'next/cache';
 import { getFamilyDb } from './db';
 import { assemblePersonDetail, getTreeData } from './queries';
 import { persons, personNames, events, families, getQualitySummary } from '@ancstra/db';
-import { eq, and, isNull, sql, gte } from 'drizzle-orm';
+import { createCentralDb } from '@ancstra/db';
+import { users } from '@ancstra/db/central-schema';
+import { getActivityFeed } from '@ancstra/auth';
+import { eq, and, isNull, sql, gte, inArray } from 'drizzle-orm';
 import type { PersonListItem } from '@ancstra/shared';
 
 // ---------------------------------------------------------------------------
@@ -119,4 +122,35 @@ export async function getCachedDashboardData(dbFilename: string) {
   const overallQualityScore = qualitySummary.overallScore;
 
   return { recentPersons, totalPersons, totalFamilies, recentAdditionsCount, overallQualityScore };
+}
+
+// ---------------------------------------------------------------------------
+// Cached: activity feed (activity profile — 2min revalidate)
+// ---------------------------------------------------------------------------
+export async function getCachedActivityFeed(familyId: string, limit = 20) {
+  'use cache';
+  cacheLife('activity');
+  cacheTag('activity', `activity-${familyId}`);
+
+  const centralDb = createCentralDb();
+  const feed = await getActivityFeed(centralDb, { familyId, limit });
+
+  // Resolve user names
+  const uniqueUserIds = [...new Set(feed.items.map((item) => item.userId).filter(Boolean))] as string[];
+  const userRows =
+    uniqueUserIds.length > 0
+      ? await centralDb.select({ id: users.id, name: users.name, avatarUrl: users.avatarUrl }).from(users).where(inArray(users.id, uniqueUserIds))
+      : [];
+  const userMap = new Map(userRows.map((u) => [u.id, { name: u.name, avatarUrl: u.avatarUrl }]));
+
+  const enrichedItems = feed.items.map((item) => {
+    const resolved = item.userId ? userMap.get(item.userId) : undefined;
+    return {
+      ...item,
+      userName: resolved?.name ?? 'Unknown',
+      userAvatarUrl: resolved?.avatarUrl ?? null,
+    };
+  });
+
+  return { items: enrichedItems, nextCursor: feed.nextCursor };
 }

@@ -1,9 +1,11 @@
 'use server';
 
-import { createDb, persons, personNames, families, children, events } from '@ancstra/db';
+import { createDb, persons, personNames, families, children, events, createCentralDb } from '@ancstra/db';
 import { isNull, sql } from 'drizzle-orm';
 import { auth } from '@/auth';
-import { updateTag } from 'next/cache';
+import { updateTag, revalidateTag } from 'next/cache';
+import { logActivity, type ActivityAction } from '@ancstra/auth';
+import { getAuthContext } from '@/lib/auth/context';
 import { parseGedcomFile } from '@/lib/gedcom/parse';
 import { mapGedcomToImport } from '@/lib/gedcom/mapper';
 import type { GedcomPreview } from '@/lib/gedcom/types';
@@ -135,6 +137,22 @@ export async function commitGedcomImport(
   updateTag('persons');
   updateTag('tree-data');
   updateTag('dashboard');
+
+  // Log activity if auth context is available
+  const authCtx = await getAuthContext();
+  if (authCtx) {
+    const centralDb = createCentralDb();
+    await logActivity(centralDb, {
+      familyId: authCtx.familyId,
+      userId: authCtx.userId,
+      action: 'gedcom_imported' as ActivityAction,
+      entityType: 'import',
+      summary: `Imported GEDCOM file (${data.persons.length} people, ${data.families.length} families)`,
+      metadata: { persons: data.persons.length, families: data.families.length, events: data.events.length },
+    });
+    revalidateTag('activity', 'max');
+  }
+
   return {
     imported: {
       persons: data.persons.length,

@@ -25,6 +25,12 @@ const nextConfig: NextConfig = {
       revalidate: 300,   // 5 min
       expire: 3600,      // 1 hour
     },
+    // Activity feed — event-driven, needs freshness
+    activity: {
+      stale: 30,         // 30s
+      revalidate: 120,   // 2 min
+      expire: 1800,      // 30 min
+    },
   },
   typescript: {
     // Skip type checking during build — the libsql driver migration

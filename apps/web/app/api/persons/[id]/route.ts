@@ -5,7 +5,7 @@ import { eq, and, isNull } from 'drizzle-orm';
 import { assemblePersonDetail } from '@/lib/queries';
 import { updatePersonSchema } from '@/lib/validation';
 import { parseDateToSort } from '@ancstra/shared';
-import { withAuth, withOptimisticLock, handleAuthError } from '@/lib/auth/api-guard';
+import { withAuth, withOptimisticLock, handleAuthError, logAndInvalidate } from '@/lib/auth/api-guard';
 
 export async function GET(
   _request: Request,
@@ -27,7 +27,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { familyDb } = await withAuth('person:edit');
+    const { ctx, familyDb, centralDb } = await withAuth('person:edit');
 
     const { id } = await params;
     const body = await request.json();
@@ -165,6 +165,12 @@ export async function PUT(
     revalidateTag(`person-${id}`, 'max');
     revalidateTag('persons', 'max');
     revalidateTag('tree-data', 'max');
+    await logAndInvalidate(centralDb, ctx, {
+      action: 'person_edited',
+      entityType: 'person',
+      entityId: id,
+      summary: `Edited ${updated?.givenName ?? ''} ${updated?.surname ?? ''}`.trim() || 'Edited person',
+    });
     return NextResponse.json(updated);
   } catch (error) {
     return handleAuthError(error);
@@ -176,7 +182,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { familyDb } = await withAuth('person:delete');
+    const { ctx, familyDb, centralDb } = await withAuth('person:delete');
 
     const { id } = await params;
 
@@ -199,6 +205,12 @@ export async function DELETE(
     revalidateTag('persons', 'max');
     revalidateTag('tree-data', 'max');
     revalidateTag('dashboard', 'max');
+    await logAndInvalidate(centralDb, ctx, {
+      action: 'person_deleted',
+      entityType: 'person',
+      entityId: id,
+      summary: 'Removed a person from the tree',
+    });
     return NextResponse.json({ success: true });
   } catch (error) {
     return handleAuthError(error);

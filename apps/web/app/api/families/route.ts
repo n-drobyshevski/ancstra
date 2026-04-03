@@ -3,11 +3,11 @@ import { revalidateTag } from 'next/cache';
 import { persons, families, refreshSummary } from '@ancstra/db';
 import { and, eq, or, isNull } from 'drizzle-orm';
 import { createFamilySchema } from '@/lib/validation';
-import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
+import { withAuth, handleAuthError, logAndInvalidate } from '@/lib/auth/api-guard';
 
 export async function POST(request: Request) {
   try {
-    const { familyDb } = await withAuth('family:create');
+    const { ctx, familyDb, centralDb } = await withAuth('family:create');
 
     const body = await request.json();
     const parsed = createFamilySchema.safeParse(body);
@@ -97,6 +97,13 @@ export async function POST(request: Request) {
     if (data.partner2Id) await refreshSummary(familyDb, data.partner2Id);
     revalidateTag('tree-data', 'max');
     revalidateTag('persons', 'max');
+    await logAndInvalidate(centralDb, ctx, {
+      action: 'relationship_added',
+      entityType: 'family',
+      entityId: familyId,
+      summary: 'Added a family relationship',
+      metadata: { relationshipType: data.relationshipType },
+    });
     return NextResponse.json(created, { status: 201 });
   } catch (error) {
     return handleAuthError(error);

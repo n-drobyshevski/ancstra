@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
 import { persons, families, children, addChildToFamily, refreshRelatedSummaries, refreshSummary } from '@ancstra/db';
 import { and, eq, isNull } from 'drizzle-orm';
-import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
+import { withAuth, handleAuthError, logAndInvalidate } from '@/lib/auth/api-guard';
 import { z } from 'zod/v3';
 
 const schema = z.object({
@@ -12,7 +12,7 @@ const schema = z.object({
 
 export async function POST(request: Request) {
   try {
-    const { familyDb } = await withAuth('family:create');
+    const { ctx, familyDb, centralDb } = await withAuth('family:create');
 
     const body = await request.json();
     const parsed = schema.safeParse(body);
@@ -83,6 +83,12 @@ export async function POST(request: Request) {
 
     revalidateTag('tree-data', 'max');
     revalidateTag('persons', 'max');
+    await logAndInvalidate(centralDb, ctx, {
+      action: 'relationship_added',
+      entityType: 'family',
+      entityId: familyId,
+      summary: 'Created a parent-child relationship',
+    });
     return NextResponse.json({ familyId }, { status: 201 });
   } catch (error) {
     return handleAuthError(error);

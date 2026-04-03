@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardAction } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { formatRelativeTime } from '@/lib/format';
+import { getActionConfig } from '@/lib/activity-config';
 
 interface ActivityEntry {
   id: string;
@@ -13,17 +15,6 @@ interface ActivityEntry {
   entityId: string | null;
   summary: string;
   createdAt: string;
-}
-
-function timeAgo(dateStr: string): string {
-  const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
-  if (seconds < 60) return 'just now';
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
 }
 
 export function RecentActivity({ familyId }: { familyId: string }) {
@@ -80,15 +71,18 @@ export function RecentActivity({ familyId }: { familyId: string }) {
           <p className="text-sm text-muted-foreground py-2">No recent activity</p>
         ) : (
           <ul role="list" className="space-y-0">
-            {items.map((item) => (
-              <li key={item.id} className="flex items-center gap-3 py-2">
-                <div className="size-2 shrink-0 rounded-full bg-primary" />
-                <span className="text-sm flex-1 min-w-0 truncate">{item.summary}</span>
-                <span className="text-xs text-muted-foreground shrink-0">
-                  {timeAgo(item.createdAt)}
-                </span>
-              </li>
-            ))}
+            {items.map((item) => {
+              const config = getActionConfig(item.action);
+              return (
+                <li key={item.id} className="flex items-center gap-3 py-2">
+                  <div className={`size-2 shrink-0 rounded-full ${config.color.replace('text-', 'bg-')}`} />
+                  <span className="text-sm flex-1 min-w-0 truncate">{item.summary}</span>
+                  <span className="text-xs text-muted-foreground shrink-0">
+                    {formatRelativeTime(item.createdAt)}
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         )}
       </CardContent>

@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { requireAuthContext } from '@/lib/auth/context';
-import { requirePermission, reviewContribution } from '@ancstra/auth';
-import { createFamilyDb } from '@ancstra/db';
+import { requirePermission, reviewContribution, logActivity, type ActivityAction } from '@ancstra/auth';
+import { createFamilyDb, createCentralDb } from '@ancstra/db';
 
 export async function POST(
   request: Request,
@@ -24,6 +25,16 @@ export async function POST(
   if (result.alreadyReviewed) {
     return NextResponse.json({ error: 'Already reviewed' }, { status: 409 });
   }
+
+  const centralDb = createCentralDb();
+  await logActivity(centralDb, {
+    familyId: ctx.familyId,
+    userId: ctx.userId,
+    action: (body.action === 'approve' ? 'contribution_approved' : 'contribution_rejected') as ActivityAction,
+    summary: `${body.action === 'approve' ? 'Approved' : 'Rejected'} a contribution`,
+    metadata: { contributionId, comment: body.comment },
+  });
+  revalidateTag('activity', 'max');
 
   return NextResponse.json(result);
 }

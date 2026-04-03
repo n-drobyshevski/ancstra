@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { requireAuthContext } from '@/lib/auth/context';
-import { requirePermission, createInvitation, revokeInvite } from '@ancstra/auth';
+import { requirePermission, createInvitation, revokeInvite, logActivity, type ActivityAction } from '@ancstra/auth';
 import { createCentralDb, centralSchema } from '@ancstra/db';
 import { eq, and, isNull, gt } from 'drizzle-orm';
 
@@ -75,6 +76,15 @@ export async function POST(
 
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
     const link = `${baseUrl}/invite/${invitation.token}`;
+
+    await logActivity(centralDb, {
+      familyId,
+      userId: ctx.userId,
+      action: 'invite_sent' as ActivityAction,
+      summary: `Sent an invitation${email ? ` to ${email}` : ''} as ${role}`,
+      metadata: { email, role, invitationId: invitation.id },
+    });
+    revalidateTag('activity', 'max');
 
     return NextResponse.json({ ...invitation, link }, { status: 201 });
   } catch (error) {

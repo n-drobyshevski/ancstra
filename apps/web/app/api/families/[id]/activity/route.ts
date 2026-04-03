@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { requireAuthContext } from '@/lib/auth/context';
 import { requirePermission, getActivityFeed, redactActivityForViewer } from '@ancstra/auth';
 import { createCentralDb } from '@ancstra/db';
+import { users } from '@ancstra/db/central-schema';
+import { inArray } from 'drizzle-orm';
 
 export async function GET(
   request: Request,
@@ -25,5 +27,23 @@ export async function GET(
     feed.items = redactActivityForViewer(feed.items, new Set());
   }
 
-  return NextResponse.json(feed);
+  const uniqueUserIds = [...new Set(feed.items.map((item) => item.userId).filter(Boolean))] as string[];
+
+  const userRows =
+    uniqueUserIds.length > 0
+      ? await centralDb.select({ id: users.id, name: users.name, avatarUrl: users.avatarUrl }).from(users).where(inArray(users.id, uniqueUserIds))
+      : [];
+
+  const userMap = new Map(userRows.map((u) => [u.id, { name: u.name, avatarUrl: u.avatarUrl }]));
+
+  const enrichedItems = feed.items.map((item) => {
+    const resolved = item.userId ? userMap.get(item.userId) : undefined;
+    return {
+      ...item,
+      userName: resolved?.name ?? 'Unknown',
+      userAvatarUrl: resolved?.avatarUrl ?? null,
+    };
+  });
+
+  return NextResponse.json({ ...feed, items: enrichedItems });
 }

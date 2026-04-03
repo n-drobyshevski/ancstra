@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import * as Sentry from '@sentry/nextjs';
 import { requireAuthContext, type AuthContext } from './context';
 import {
@@ -70,6 +71,29 @@ export async function withTiming<T>(label: string, fn: () => Promise<T>): Promis
     console.warn(`[SLOW] ${label}: ${duration.toFixed(0)}ms`);
   }
   return result;
+}
+
+/**
+ * Log activity and invalidate the activity cache in one call.
+ * Fills familyId/userId from the auth context automatically.
+ */
+export async function logAndInvalidate(
+  centralDb: ReturnType<typeof createCentralDb>,
+  ctx: { familyId: string; userId: string },
+  entry: {
+    action: ActivityAction;
+    summary: string;
+    entityType?: string;
+    entityId?: string;
+    metadata?: Record<string, unknown>;
+  }
+) {
+  await logActivity(centralDb, {
+    ...entry,
+    familyId: ctx.familyId,
+    userId: ctx.userId,
+  });
+  revalidateTag('activity', 'max');
 }
 
 /**

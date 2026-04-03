@@ -5,11 +5,11 @@ import { and, isNull, sql } from 'drizzle-orm';
 import { createPersonSchema } from '@/lib/validation';
 import { parseDateToSort } from '@ancstra/shared';
 import { searchPersonsFts } from '@/lib/queries';
-import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
+import { withAuth, handleAuthError, logAndInvalidate } from '@/lib/auth/api-guard';
 
 export async function POST(request: Request) {
   try {
-    const { ctx, familyDb } = await withAuth('person:create');
+    const { ctx, familyDb, centralDb } = await withAuth('person:create');
 
     const body = await request.json();
     const parsed = createPersonSchema.safeParse(body);
@@ -86,6 +86,13 @@ export async function POST(request: Request) {
     revalidateTag('persons', 'max');
     revalidateTag('tree-data', 'max');
     revalidateTag('dashboard', 'max');
+    await logAndInvalidate(centralDb, ctx, {
+      action: 'person_added',
+      entityType: 'person',
+      entityId: personId,
+      summary: `Added ${data.givenName} ${data.surname}`,
+      metadata: { sex: data.sex, isLiving: data.isLiving },
+    });
     return NextResponse.json(
       {
         id: personId,

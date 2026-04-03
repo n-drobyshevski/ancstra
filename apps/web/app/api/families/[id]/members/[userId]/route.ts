@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { requireAuthContext } from '@/lib/auth/context';
-import { requirePermission, ForbiddenError, type Role } from '@ancstra/auth';
+import { requirePermission, ForbiddenError, logActivity, type Role, type ActivityAction } from '@ancstra/auth';
 import { createCentralDb, createFamilyDb, centralSchema, familyUserCache } from '@ancstra/db';
+import { revalidateTag } from 'next/cache';
 import { eq, and } from 'drizzle-orm';
 
 type Params = { params: Promise<{ id: string; userId: string }> };
@@ -101,6 +102,15 @@ export async function PATCH(request: Request, { params }: Params) {
       .where(eq(centralSchema.familyMembers.id, targetMember.id))
       .get();
 
+    await logActivity(centralDb, {
+      familyId,
+      userId: ctx.userId,
+      action: 'role_changed' as ActivityAction,
+      summary: `Changed ${updated?.name ?? 'a member'}'s role to ${newRole}`,
+      metadata: { targetUserId, oldRole: targetMember.role, newRole },
+    });
+    revalidateTag('activity', 'max');
+
     return NextResponse.json(updated);
   } catch (error) {
     if (error instanceof ForbiddenError) {
@@ -187,6 +197,15 @@ export async function DELETE(_request: Request, { params }: Params) {
     } catch {
       // Family DB may not exist yet — not critical
     }
+
+    await logActivity(centralDb, {
+      familyId,
+      userId: ctx.userId,
+      action: 'member_removed' as ActivityAction,
+      summary: 'Removed a member from the family',
+      metadata: { targetUserId, role: targetMember.role },
+    });
+    revalidateTag('activity', 'max');
 
     return new NextResponse(null, { status: 204 });
   } catch (error) {

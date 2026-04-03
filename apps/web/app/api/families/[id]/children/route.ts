@@ -3,14 +3,14 @@ import { revalidateTag } from 'next/cache';
 import { persons, families, children, addChildToFamily, refreshRelatedSummaries } from '@ancstra/db';
 import { and, eq, isNull } from 'drizzle-orm';
 import { addChildSchema } from '@/lib/validation';
-import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
+import { withAuth, handleAuthError, logAndInvalidate } from '@/lib/auth/api-guard';
 
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { familyDb } = await withAuth('family:edit');
+    const { ctx, familyDb, centralDb } = await withAuth('family:edit');
 
     const { id: familyId } = await params;
     const body = await request.json();
@@ -76,6 +76,12 @@ export async function POST(
 
     revalidateTag('tree-data', 'max');
     revalidateTag('persons', 'max');
+    await logAndInvalidate(centralDb, ctx, {
+      action: 'relationship_added',
+      entityType: 'family',
+      entityId: familyId,
+      summary: 'Linked a child to a family',
+    });
     return NextResponse.json({ success: true }, { status: 201 });
   } catch (error) {
     return handleAuthError(error);
