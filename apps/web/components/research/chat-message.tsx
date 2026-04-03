@@ -1,17 +1,25 @@
 'use client';
 
-import type { Message } from 'ai';
+import type { UIMessage } from 'ai';
 import ReactMarkdown from 'react-markdown';
 import { User, Bot } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ToolCallIndicator } from './tool-call-indicator';
 
 interface ChatMessageProps {
-  message: Message;
+  message: UIMessage;
+}
+
+function getTextContent(message: UIMessage): string {
+  return message.parts
+    .filter((p): p is Extract<typeof p, { type: 'text' }> => p.type === 'text')
+    .map((p) => p.text)
+    .join('');
 }
 
 export function ChatMessage({ message }: ChatMessageProps) {
   const isUser = message.role === 'user';
+  const textContent = getTextContent(message);
 
   return (
     <div
@@ -40,7 +48,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
         )}
       >
         {/* Text content */}
-        {message.content && (
+        {textContent && (
           <div
             className={cn(
               'rounded-2xl px-4 py-2.5 text-sm',
@@ -50,52 +58,33 @@ export function ChatMessage({ message }: ChatMessageProps) {
             )}
           >
             {isUser ? (
-              <p className="whitespace-pre-wrap">{message.content}</p>
+              <p className="whitespace-pre-wrap">{textContent}</p>
             ) : (
               <div className="prose prose-sm dark:prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
-                <ReactMarkdown>{message.content}</ReactMarkdown>
+                <ReactMarkdown>{textContent}</ReactMarkdown>
               </div>
             )}
           </div>
         )}
 
         {/* Tool invocations */}
-        {message.parts?.map((part, i) => {
-          if (part.type === 'tool-invocation') {
-            const toolInvocation = part.toolInvocation;
-            const status =
-              toolInvocation.state === 'result'
-                ? 'complete'
-                : toolInvocation.state === 'call'
-                  ? 'calling'
-                  : 'calling';
+        {message.parts.map((part, i) => {
+          if (part.type.startsWith('tool-')) {
+            const toolPart = part as { toolCallId: string; toolName: string; state: string; input?: unknown; output?: unknown };
+            const status = toolPart.state === 'result' ? 'complete' : 'calling';
 
             return (
               <ToolCallIndicator
                 key={`tool-${i}`}
-                toolName={toolInvocation.toolName}
+                toolName={toolPart.toolName}
                 status={status}
-                args={toolInvocation.args}
-                result={
-                  toolInvocation.state === 'result'
-                    ? toolInvocation.result
-                    : undefined
-                }
+                args={toolPart.input as Record<string, unknown> | undefined}
+                result={toolPart.state === 'result' ? toolPart.output : undefined}
               />
             );
           }
           return null;
         })}
-
-        {/* Timestamp on hover */}
-        {message.createdAt && (
-          <p className="px-1 text-[10px] text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100">
-            {new Date(message.createdAt).toLocaleTimeString([], {
-              hour: '2-digit',
-              minute: '2-digit',
-            })}
-          </p>
-        )}
       </div>
     </div>
   );

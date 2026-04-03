@@ -14,28 +14,36 @@ beforeEach(() => {
 
   sqlite.exec(`
     CREATE TABLE users (
-      id TEXT PRIMARY KEY, email TEXT NOT NULL UNIQUE,
-      password_hash TEXT NOT NULL, name TEXT, created_at TEXT NOT NULL
+      id TEXT PRIMARY KEY,
+      email TEXT NOT NULL UNIQUE,
+      password_hash TEXT,
+      name TEXT NOT NULL,
+      avatar_url TEXT,
+      email_verified INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
     );
     CREATE TABLE persons (
       id TEXT PRIMARY KEY, sex TEXT NOT NULL DEFAULT 'U',
       is_living INTEGER NOT NULL DEFAULT 1,
       privacy_level TEXT NOT NULL DEFAULT 'private', notes TEXT,
       created_by TEXT, created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL, deleted_at TEXT
+      updated_at TEXT NOT NULL, deleted_at TEXT,
+      version INTEGER NOT NULL DEFAULT 1
     );
     CREATE TABLE sources (
       id TEXT PRIMARY KEY, title TEXT NOT NULL,
       author TEXT, publisher TEXT, publication_date TEXT,
       repository_name TEXT, repository_url TEXT, source_type TEXT, notes TEXT,
-      created_by TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+      created_by TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+      version INTEGER NOT NULL DEFAULT 1
     );
     CREATE TABLE source_citations (
       id TEXT PRIMARY KEY, source_id TEXT NOT NULL,
       citation_detail TEXT, citation_text TEXT,
       confidence TEXT NOT NULL DEFAULT 'medium',
       person_id TEXT, event_id TEXT, family_id TEXT, person_name_id TEXT,
-      created_at TEXT NOT NULL
+      created_at TEXT NOT NULL, version INTEGER NOT NULL DEFAULT 1
     );
     CREATE TABLE search_providers (
       id TEXT PRIMARY KEY, name TEXT NOT NULL, provider_type TEXT NOT NULL,
@@ -56,11 +64,19 @@ beforeEach(() => {
       research_item_id TEXT NOT NULL, person_id TEXT NOT NULL,
       PRIMARY KEY (research_item_id, person_id)
     );
+    CREATE TABLE factsheets (
+      id TEXT PRIMARY KEY, title TEXT NOT NULL,
+      entity_type TEXT NOT NULL DEFAULT 'person',
+      status TEXT NOT NULL DEFAULT 'draft',
+      notes TEXT, promoted_person_id TEXT, promoted_at TEXT,
+      created_by TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+    );
     CREATE TABLE research_facts (
-      id TEXT PRIMARY KEY, person_id TEXT NOT NULL,
+      id TEXT PRIMARY KEY, person_id TEXT,
       fact_type TEXT NOT NULL, fact_value TEXT NOT NULL,
       fact_date_sort INTEGER, research_item_id TEXT,
-      source_citation_id TEXT,
+      source_citation_id TEXT, factsheet_id TEXT,
+      accepted INTEGER,
       confidence TEXT NOT NULL DEFAULT 'medium',
       extraction_method TEXT NOT NULL DEFAULT 'manual',
       created_at TEXT NOT NULL, updated_at TEXT NOT NULL
@@ -71,7 +87,7 @@ beforeEach(() => {
 
   const now = new Date().toISOString();
   db.insert(schema.users)
-    .values({ id: 'user-1', email: 'test@test.com', passwordHash: 'hash', name: 'Test', createdAt: now })
+    .values({ id: 'user-1', email: 'test@test.com', name: 'Test', createdAt: now, updatedAt: now })
     .run();
 
   db.insert(schema.persons)

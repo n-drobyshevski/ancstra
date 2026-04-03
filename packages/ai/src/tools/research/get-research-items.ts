@@ -1,5 +1,5 @@
 import { tool } from 'ai';
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import { listResearchItems } from '@ancstra/research';
 import type { Database } from '@ancstra/db';
 
@@ -9,7 +9,7 @@ import type { Database } from '@ancstra/db';
 export function createGetResearchItemsTool(db: Database) {
   return tool({
     description: 'Retrieve research items (records, notes, scraped pages) from the research workspace, optionally filtered by person or status',
-    parameters: z.object({
+    inputSchema: z.object({
       personId: z.string().optional().describe('Filter by person ID'),
       status: z.enum(['draft', 'promoted', 'dismissed']).optional().describe('Filter by status'),
     }),

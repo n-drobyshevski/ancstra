@@ -1,12 +1,12 @@
 import { tool } from 'ai';
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import { sql } from 'drizzle-orm';
 import type { Database } from '@ancstra/db';
 
 interface SearchSuggestion {
   query: string;
   provider: string;
-  reasoning: string;
+  reasoningText: string;
   priority: 'high' | 'medium' | 'low';
 }
 
@@ -75,7 +75,7 @@ export async function executeSuggestSearches(
       suggestions.push({
         query,
         provider: 'familysearch',
-        reasoning: `No birth date recorded for ${fullName}. Birth or baptismal records could establish this.`,
+        reasoningText: `No birth date recorded for ${fullName}. Birth or baptismal records could establish this.`,
         priority: 'high',
       });
     }
@@ -88,7 +88,7 @@ export async function executeSuggestSearches(
       suggestions.push({
         query,
         provider: 'web_search',
-        reasoning: `No death date recorded for ${fullName}. Search for obituaries or death notices.`,
+        reasoningText: `No death date recorded for ${fullName}. Search for obituaries or death notices.`,
         priority: 'medium',
       });
     }
@@ -107,7 +107,7 @@ export async function executeSuggestSearches(
           suggestions.push({
             query,
             provider: 'familysearch',
-            reasoning: `${fullName} would have been ${year - birthYear} years old during the ${year} US Census.`,
+            reasoningText: `${fullName} would have been ${year - birthYear} years old during the ${year} US Census.`,
             priority: 'medium',
           });
           break; // Only suggest one census year to avoid flooding
@@ -130,7 +130,7 @@ export async function executeSuggestSearches(
           suggestions.push({
             query,
             provider: 'nara',
-            reasoning: `${fullName} (born ${birthYear}) was of military age during the ${war.name}. Search NARA for service records.`,
+            reasoningText: `${fullName} (born ${birthYear}) was of military age during the ${war.name}. Search NARA for service records.`,
             priority: 'medium',
           });
         }
@@ -148,7 +148,7 @@ export async function executeSuggestSearches(
       suggestions.push({
         query,
         provider: 'familysearch',
-        reasoning: `No parents recorded for ${fullName}. Search family records to identify parents.`,
+        reasoningText: `No parents recorded for ${fullName}. Search family records to identify parents.`,
         priority: 'high',
       });
     }
@@ -160,7 +160,7 @@ export async function executeSuggestSearches(
     suggestions.push({
       query,
       provider: 'chronicling_america',
-      reasoning: `Search historical newspapers for mentions of ${fullName} — may find obituaries, announcements, or legal notices.`,
+      reasoningText: `Search historical newspapers for mentions of ${fullName} — may find obituaries, announcements, or legal notices.`,
       priority: 'low',
     });
   }
@@ -176,7 +176,7 @@ export async function executeSuggestSearches(
 export function createSuggestSearchesTool(db: Database) {
   return tool({
     description: 'Analyze a person\'s existing data and suggest targeted searches to fill research gaps',
-    parameters: z.object({
+    inputSchema: z.object({
       personId: z.string().describe('The person ID to generate search suggestions for'),
       maxSuggestions: z.number().default(5).describe('Maximum number of suggestions to return'),
     }),

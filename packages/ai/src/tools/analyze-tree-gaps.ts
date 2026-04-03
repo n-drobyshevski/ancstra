@@ -1,5 +1,5 @@
 import { tool } from 'ai';
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import { sql } from 'drizzle-orm';
 import type { Database } from '@ancstra/db';
 
@@ -137,7 +137,7 @@ export async function executeAnalyzeTreeGaps(
 export function createAnalyzeTreeGapsTool(db: Database) {
   return tool({
     description: 'Analyze the family tree for research gaps and suggest priorities',
-    parameters: z.object({
+    inputSchema: z.object({
       personId: z.string().optional().describe('Focus on a specific person\'s line'),
       maxGenerations: z.number().default(5).describe('How many generations to analyze'),
     }),

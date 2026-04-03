@@ -143,7 +143,7 @@ export async function POST(request: Request) {
     }
 
     // Calculate cost
-    const costUsd = calculateCost(modelName, usage.promptTokens, usage.completionTokens);
+    const costUsd = calculateCost(modelName, usage.inputTokens ?? 0, usage.outputTokens ?? 0);
 
     // Cache in historicalContext table (INSERT OR REPLACE via unique constraint on personId)
     await familyDb
@@ -169,8 +169,8 @@ export async function POST(request: Request) {
     await recordUsage(familyDb, {
       userId,
       model: modelName,
-      inputTokens: usage.promptTokens,
-      outputTokens: usage.completionTokens,
+      inputTokens: usage.inputTokens ?? 0,
+      outputTokens: usage.outputTokens ?? 0,
       taskType: 'historical_context',
     });
 

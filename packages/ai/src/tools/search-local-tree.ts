@@ -1,5 +1,5 @@
 import { tool } from 'ai';
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import { sql } from 'drizzle-orm';
 import type { Database } from '@ancstra/db';
 
@@ -122,7 +122,7 @@ export async function executeSearchLocalTree(
 export function createSearchLocalTreeTool(db: Database) {
   return tool({
     description: 'Search the local family tree database for persons matching a query',
-    parameters: z.object({
+    inputSchema: z.object({
       givenName: z.string().optional().describe('Given/first name to search'),
       surname: z.string().optional().describe('Family/last name to search'),
       birthYear: z.number().optional().describe('Approximate birth year'),

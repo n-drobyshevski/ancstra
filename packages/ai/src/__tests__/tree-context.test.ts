@@ -15,9 +15,12 @@ beforeEach(() => {
     CREATE TABLE users (
       id TEXT PRIMARY KEY,
       email TEXT NOT NULL UNIQUE,
-      password_hash TEXT NOT NULL,
-      name TEXT,
-      created_at TEXT NOT NULL
+      password_hash TEXT,
+      name TEXT NOT NULL,
+      avatar_url TEXT,
+      email_verified INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
     );
     CREATE TABLE persons (
       id TEXT PRIMARY KEY,
@@ -28,7 +31,8 @@ beforeEach(() => {
       created_by TEXT REFERENCES users(id),
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
-      deleted_at TEXT
+      deleted_at TEXT,
+      version INTEGER NOT NULL DEFAULT 1
     );
     CREATE INDEX idx_persons_sex ON persons(sex);
     CREATE TABLE person_names (
@@ -42,7 +46,8 @@ beforeEach(() => {
       nickname TEXT,
       is_primary INTEGER NOT NULL DEFAULT 0,
       sort_order INTEGER NOT NULL DEFAULT 0,
-      created_at TEXT NOT NULL
+      created_at TEXT NOT NULL,
+      version INTEGER NOT NULL DEFAULT 1
     );
     CREATE INDEX idx_person_names_person ON person_names(person_id);
     CREATE TABLE families (
@@ -53,7 +58,8 @@ beforeEach(() => {
       validation_status TEXT NOT NULL DEFAULT 'confirmed',
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
-      deleted_at TEXT
+      deleted_at TEXT,
+      version INTEGER NOT NULL DEFAULT 1
     );
     CREATE TABLE children (
       id TEXT PRIMARY KEY,
@@ -64,6 +70,7 @@ beforeEach(() => {
       relationship_to_parent2 TEXT NOT NULL DEFAULT 'biological',
       validation_status TEXT NOT NULL DEFAULT 'confirmed',
       created_at TEXT NOT NULL,
+      version INTEGER NOT NULL DEFAULT 1,
       UNIQUE(family_id, person_id)
     );
     CREATE TABLE events (
@@ -78,7 +85,8 @@ beforeEach(() => {
       person_id TEXT REFERENCES persons(id) ON DELETE CASCADE,
       family_id TEXT REFERENCES families(id) ON DELETE CASCADE,
       created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL
+      updated_at TEXT NOT NULL,
+      version INTEGER NOT NULL DEFAULT 1
     );
     CREATE INDEX idx_events_person ON events(person_id, date_sort);
     CREATE TABLE sources (
@@ -93,7 +101,8 @@ beforeEach(() => {
       notes TEXT,
       created_by TEXT REFERENCES users(id),
       created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL
+      updated_at TEXT NOT NULL,
+      version INTEGER NOT NULL DEFAULT 1
     );
     CREATE TABLE source_citations (
       id TEXT PRIMARY KEY,
@@ -105,7 +114,8 @@ beforeEach(() => {
       event_id TEXT,
       family_id TEXT,
       person_name_id TEXT,
-      created_at TEXT NOT NULL
+      created_at TEXT NOT NULL,
+      version INTEGER NOT NULL DEFAULT 1
     );
   `);
 
@@ -113,7 +123,7 @@ beforeEach(() => {
 
   // Seed test user
   db.insert(schema.users)
-    .values({ id: 'user-1', email: 'test@ancstra.app', passwordHash: '$2a$10$fakehash', name: 'Test User', createdAt: now })
+    .values({ id: 'user-1', email: 'test@ancstra.app', name: 'Test User', createdAt: now, updatedAt: now })
     .run();
 
   // Seed grandparent

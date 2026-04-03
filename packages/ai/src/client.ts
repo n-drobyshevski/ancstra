@@ -1,4 +1,5 @@
 import { createAnthropic } from '@ai-sdk/anthropic';
+import type { LanguageModelV3 } from '@ai-sdk/provider';
 
 /**
  * Create an Anthropic model instance for use with the Vercel AI SDK.
@@ -13,7 +14,7 @@ export function createAnthropicClient() {
 /**
  * Pre-configured model instances for different task types.
  */
-export function getModel(task: 'chat' | 'extraction' | 'analysis' | 'citation' = 'chat') {
+export function getModel(task: 'chat' | 'extraction' | 'analysis' | 'citation' = 'chat'): LanguageModelV3 {
   const anthropic = createAnthropicClient();
 
   switch (task) {

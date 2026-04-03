@@ -13,15 +13,22 @@ beforeEach(() => {
 
   sqlite.exec(`
     CREATE TABLE users (
-      id TEXT PRIMARY KEY, email TEXT NOT NULL UNIQUE,
-      password_hash TEXT NOT NULL, name TEXT, created_at TEXT NOT NULL
+      id TEXT PRIMARY KEY,
+      email TEXT NOT NULL UNIQUE,
+      password_hash TEXT,
+      name TEXT NOT NULL,
+      avatar_url TEXT,
+      email_verified INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
     );
     CREATE TABLE persons (
       id TEXT PRIMARY KEY, sex TEXT NOT NULL DEFAULT 'U',
       is_living INTEGER NOT NULL DEFAULT 1,
       privacy_level TEXT NOT NULL DEFAULT 'private', notes TEXT,
       created_by TEXT, created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL, deleted_at TEXT
+      updated_at TEXT NOT NULL, deleted_at TEXT,
+      version INTEGER NOT NULL DEFAULT 1
     );
     CREATE TABLE person_names (
       id TEXT PRIMARY KEY,
@@ -30,46 +37,51 @@ beforeEach(() => {
       given_name TEXT NOT NULL, surname TEXT NOT NULL,
       suffix TEXT, nickname TEXT,
       is_primary INTEGER NOT NULL DEFAULT 0,
-      sort_order INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL
+      sort_order INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL,
+      version INTEGER NOT NULL DEFAULT 1
     );
     CREATE TABLE families (
       id TEXT PRIMARY KEY, partner1_id TEXT, partner2_id TEXT,
       relationship_type TEXT NOT NULL DEFAULT 'unknown',
       validation_status TEXT NOT NULL DEFAULT 'confirmed',
-      created_at TEXT NOT NULL, updated_at TEXT NOT NULL, deleted_at TEXT
+      created_at TEXT NOT NULL, updated_at TEXT NOT NULL, deleted_at TEXT,
+      version INTEGER NOT NULL DEFAULT 1
     );
     CREATE TABLE children (
       id TEXT PRIMARY KEY, family_id TEXT NOT NULL, person_id TEXT NOT NULL,
       child_order INTEGER, relationship_to_parent1 TEXT NOT NULL DEFAULT 'biological',
       relationship_to_parent2 TEXT NOT NULL DEFAULT 'biological',
       validation_status TEXT NOT NULL DEFAULT 'confirmed',
-      created_at TEXT NOT NULL, UNIQUE(family_id, person_id)
+      created_at TEXT NOT NULL, version INTEGER NOT NULL DEFAULT 1,
+      UNIQUE(family_id, person_id)
     );
     CREATE TABLE events (
       id TEXT PRIMARY KEY, event_type TEXT NOT NULL,
       date_original TEXT, date_sort INTEGER, date_modifier TEXT DEFAULT 'exact',
       date_end_sort INTEGER, place_text TEXT, description TEXT,
       person_id TEXT, family_id TEXT,
-      created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+      created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+      version INTEGER NOT NULL DEFAULT 1
     );
     CREATE TABLE sources (
       id TEXT PRIMARY KEY, title TEXT NOT NULL,
       author TEXT, publisher TEXT, publication_date TEXT,
       repository_name TEXT, repository_url TEXT, source_type TEXT, notes TEXT,
-      created_by TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+      created_by TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+      version INTEGER NOT NULL DEFAULT 1
     );
     CREATE TABLE source_citations (
       id TEXT PRIMARY KEY, source_id TEXT NOT NULL,
       citation_detail TEXT, citation_text TEXT,
       confidence TEXT NOT NULL DEFAULT 'medium',
       person_id TEXT, event_id TEXT, family_id TEXT, person_name_id TEXT,
-      created_at TEXT NOT NULL
+      created_at TEXT NOT NULL, version INTEGER NOT NULL DEFAULT 1
     );
   `);
 
   const now = new Date().toISOString();
   db.insert(schema.users)
-    .values({ id: 'user-1', email: 'test@test.com', passwordHash: 'hash', name: 'Test', createdAt: now })
+    .values({ id: 'user-1', email: 'test@test.com', name: 'Test', createdAt: now, updatedAt: now })
     .run();
 
   // Complete person (has birth, death, parents, sources)

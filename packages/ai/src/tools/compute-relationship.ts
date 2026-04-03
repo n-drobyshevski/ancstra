@@ -1,5 +1,5 @@
 import { tool } from 'ai';
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import { sql } from 'drizzle-orm';
 import type { Database } from '@ancstra/db';
 
@@ -127,7 +127,7 @@ export async function executeComputeRelationship(
 export function createComputeRelationshipTool(db: Database) {
   return tool({
     description: 'Compute and explain the relationship between two people in the tree',
-    parameters: z.object({
+    inputSchema: z.object({
       person1Id: z.string().describe('First person ID'),
       person2Id: z.string().describe('Second person ID'),
     }),

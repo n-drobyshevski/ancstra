@@ -1,7 +1,8 @@
 'use client';
 
-import { useRef, useEffect, useCallback, type KeyboardEvent } from 'react';
-import { useChat } from 'ai/react';
+import { useRef, useEffect, useCallback, type KeyboardEvent, useState } from 'react';
+import { useChat } from '@ai-sdk/react';
+import { DefaultChatTransport } from 'ai';
 import {
   Send,
   RotateCcw,
@@ -33,25 +34,20 @@ export function ChatPanel({ focusPersonId, initialPrompt, onPromptConsumed, sear
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  const [input, setInput] = useState('');
+
   const {
     messages,
-    input,
-    handleInputChange,
-    handleSubmit,
-    isLoading,
+    sendMessage,
+    status,
     error,
-    reload,
     setMessages,
-    append,
   } = useChat({
-    api: '/api/ai/chat',
-    body: {
-      focusPersonId,
-      ...(searchContext && {
-        searchContext: `User was searching for: "${searchContext.query}". Top results: ${searchContext.topResults.map((r) => `${r.title} (${r.providerId})`).join(', ')}`,
-      }),
-    },
+    // @ts-expect-error -- DefaultChatTransport from ai@6 is structurally compatible with ai@5 ChatTransport at runtime; pnpm dual-version causes TS mismatch
+    transport: new DefaultChatTransport({ api: '/api/ai/chat' }),
   });
+
+  const isLoading = status === 'streaming' || status === 'submitted';
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
@@ -63,7 +59,17 @@ export function ChatPanel({ focusPersonId, initialPrompt, onPromptConsumed, sear
   // Auto-send initial prompt from "Ask AI" button
   useEffect(() => {
     if (initialPrompt) {
-      append({ role: 'user', content: initialPrompt });
+      sendMessage(
+        { text: initialPrompt },
+        {
+          body: {
+            focusPersonId,
+            ...(searchContext && {
+              searchContext: `User was searching for: "${searchContext.query}". Top results: ${searchContext.topResults.map((r) => `${r.title} (${r.providerId})`).join(', ')}`,
+            }),
+          },
+        }
+      );
       onPromptConsumed?.();
     }
   }, [initialPrompt]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -74,11 +80,22 @@ export function ChatPanel({ focusPersonId, initialPrompt, onPromptConsumed, sear
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         if (!isLoading && input.trim()) {
-          handleSubmit(e as unknown as React.FormEvent<HTMLFormElement>);
+          sendMessage(
+            { text: input },
+            {
+              body: {
+                focusPersonId,
+                ...(searchContext && {
+                  searchContext: `User was searching for: "${searchContext.query}". Top results: ${searchContext.topResults.map((r) => `${r.title} (${r.providerId})`).join(', ')}`,
+                }),
+              },
+            }
+          );
+          setInput('');
         }
       }
     },
-    [isLoading, input, handleSubmit]
+    [isLoading, input, sendMessage, focusPersonId, searchContext]
   );
 
   const handleNewChat = useCallback(() => {
@@ -87,9 +104,19 @@ export function ChatPanel({ focusPersonId, initialPrompt, onPromptConsumed, sear
 
   const handleStarterClick = useCallback(
     (prompt: string) => {
-      append({ role: 'user', content: prompt });
+      sendMessage(
+        { text: prompt },
+        {
+          body: {
+            focusPersonId,
+            ...(searchContext && {
+              searchContext: `User was searching for: "${searchContext.query}". Top results: ${searchContext.topResults.map((r) => `${r.title} (${r.providerId})`).join(', ')}`,
+            }),
+          },
+        }
+      );
     },
-    [append]
+    [sendMessage, focusPersonId, searchContext]
   );
 
   const isEmpty = messages.length === 0;
@@ -117,7 +144,6 @@ export function ChatPanel({ focusPersonId, initialPrompt, onPromptConsumed, sear
           )}
         </div>
       </div>
-
       {/* Messages */}
       <div
         ref={scrollRef}
@@ -173,28 +199,35 @@ export function ChatPanel({ focusPersonId, initialPrompt, onPromptConsumed, sear
                 ? 'Monthly AI budget reached. Increase your limit in settings.'
                 : 'Something went wrong.'}
             </p>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => reload()}
-              className="mt-2 h-7 text-xs"
-            >
-              Retry
-            </Button>
           </div>
         )}
       </div>
-
       {/* Input */}
       <div className="border-t border-border p-4">
         <form
-          onSubmit={handleSubmit}
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!isLoading && input.trim()) {
+              sendMessage(
+                { text: input },
+                {
+                  body: {
+                    focusPersonId,
+                    ...(searchContext && {
+                      searchContext: `User was searching for: "${searchContext.query}". Top results: ${searchContext.topResults.map((r) => `${r.title} (${r.providerId})`).join(', ')}`,
+                    }),
+                  },
+                }
+              );
+              setInput('');
+            }
+          }}
           className="flex items-end gap-2"
         >
           <Textarea
             ref={textareaRef}
             value={input}
-            onChange={handleInputChange}
+            onChange={e => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Ask about your family tree..."
             className="min-h-10 max-h-32 resize-none"

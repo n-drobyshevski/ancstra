@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
 import { createResearchItem, tagPersonToItem } from '@ancstra/research';
-import { z } from 'zod';
+import { z } from 'zod/v3';
 
 const requestSchema = z.object({
   text: z.string().min(1, 'Text is required').max(50000, 'Text exceeds 50,000 character limit'),

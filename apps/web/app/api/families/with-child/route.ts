@@ -3,7 +3,7 @@ import { revalidateTag } from 'next/cache';
 import { persons, families, children, addChildToFamily, refreshRelatedSummaries, refreshSummary } from '@ancstra/db';
 import { and, eq, isNull } from 'drizzle-orm';
 import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
-import { z } from 'zod';
+import { z } from 'zod/v3';
 
 const schema = z.object({
   parentId: z.string().min(1),

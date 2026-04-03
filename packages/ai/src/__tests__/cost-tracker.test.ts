@@ -10,15 +10,16 @@ function createTestDb() {
   raw.exec(`
     CREATE TABLE users (
       id TEXT PRIMARY KEY,
-      name TEXT,
       email TEXT NOT NULL UNIQUE,
-      password_hash TEXT NOT NULL,
-      role TEXT DEFAULT 'owner',
+      password_hash TEXT,
+      name TEXT NOT NULL,
+      avatar_url TEXT,
+      email_verified INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT '',
       updated_at TEXT NOT NULL DEFAULT ''
     );
-    INSERT INTO users (id, name, email, password_hash, created_at, updated_at)
-    VALUES ('user1', 'Test', 'test@test.com', 'hash', '2025-01-01', '2025-01-01');
+    INSERT INTO users (id, name, email, created_at, updated_at)
+    VALUES ('user1', 'Test', 'test@test.com', '2025-01-01', '2025-01-01');
 
     CREATE TABLE ai_usage (
       id TEXT PRIMARY KEY,

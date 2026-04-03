@@ -1,5 +1,5 @@
 import { tool } from 'ai';
-import { z } from 'zod';
+import { z } from 'zod/v3';
 
 interface ScrapeResult {
   title: string | null;
@@ -19,7 +19,7 @@ export function createScrapeUrlTool(options?: {
 }) {
   return tool({
     description: 'Scrape a URL to extract its text content and metadata for genealogy research',
-    parameters: z.object({
+    inputSchema: z.object({
       url: z.string().url().describe('The URL to scrape'),
       extractEntities: z.boolean().default(false).describe('Whether to attempt entity extraction from the page content'),
     }),

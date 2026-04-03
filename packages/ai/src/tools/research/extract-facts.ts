@@ -1,5 +1,5 @@
 import { tool } from 'ai';
-import { z } from 'zod';
+import { z } from 'zod/v3';
 
 /** The 17 valid fact types from the research_facts schema. */
 const VALID_FACT_TYPES = [
@@ -63,7 +63,7 @@ export function parseExtractedFacts(
 export function createExtractFactsTool() {
   return tool({
     description: 'Extract genealogical facts (names, dates, places, relationships) from text content using AI analysis',
-    parameters: z.object({
+    inputSchema: z.object({
       text: z.string().describe('The text content to extract facts from'),
       documentType: z.string().optional().describe('Type of document (census, obituary, vital record, etc.)'),
       personContext: z.string().optional().describe('Context about the person this document relates to'),

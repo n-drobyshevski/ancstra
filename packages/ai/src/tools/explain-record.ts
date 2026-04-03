@@ -1,5 +1,5 @@
 import { tool } from 'ai';
-import { z } from 'zod';
+import { z } from 'zod/v3';
 
 /**
  * Explain a historical record in context.
@@ -8,7 +8,7 @@ import { z } from 'zod';
  */
 export const explainRecordTool = tool({
   description: 'Explain a historical record in context — what it means, what to look for, and related records',
-  parameters: z.object({
+  inputSchema: z.object({
     recordType: z.string().describe('Type of record (census, will, ship manifest, etc.)'),
     recordContent: z.string().describe('Text or summary of the record'),
     year: z.number().optional().describe('Year of the record'),
