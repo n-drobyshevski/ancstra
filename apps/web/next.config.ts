@@ -9,7 +9,6 @@ const withAnalyzer = withBundleAnalyzer({
 const nextConfig: NextConfig = {
   experimental: {
     viewTransition: true,
-    ppr: true,
   },
   cacheComponents: true,
   cacheLife: {
