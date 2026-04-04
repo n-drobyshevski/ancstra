@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Star, Plus, Copy, ChevronRight } from 'lucide-react';
+import { Star, Plus, Copy, ChevronRight, ChevronDown } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import {
   FACT_TYPE_LABELS,
   SHORTCUT_TYPES,
@@ -25,6 +26,7 @@ interface FactContextMenuProps {
 export function FactContextMenu({ state, onSelect, onDismiss }: FactContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [showMore, setShowMore] = useState(false);
+  const isMobile = useIsMobile();
 
   // Position adjustment to keep menu within viewport
   useEffect(() => {
@@ -94,6 +96,88 @@ export function FactContextMenu({ state, onSelect, onDismiss }: FactContextMenuP
     onDismiss();
   }
 
+  // --- Mobile: bottom action sheet ---
+  if (isMobile) {
+    return (
+      <>
+        {/* Backdrop */}
+        <div className="fixed inset-0 z-40 bg-black/20" onClick={onDismiss} />
+        {/* Bottom sheet */}
+        <div className="fixed inset-x-0 bottom-0 z-50 rounded-t-xl border-t border-border bg-popover p-2 pb-[env(safe-area-inset-bottom)] shadow-lg animate-in slide-in-from-bottom duration-200">
+          {/* Header: selected text */}
+          <div className="flex items-center gap-2 rounded-md bg-primary/10 px-3 py-2 text-sm font-medium text-foreground">
+            <Plus className="size-3.5 shrink-0" />
+            <span className="truncate">&ldquo;{truncatedText}&rdquo;</span>
+          </div>
+
+          <div className="my-1 h-px bg-border" />
+
+          {/* Suggested type (if any) */}
+          {state.suggestedType && (
+            <>
+              <div className="px-3 py-1 text-[10px] font-medium uppercase tracking-wider text-primary">
+                <Star className="mr-1 inline size-3" />
+                Suggested
+              </div>
+              <button
+                className="flex w-full items-center rounded-md bg-primary/10 px-3 py-3 text-sm text-primary hover:bg-primary/20"
+                onClick={() => onSelect(state.suggestedType!)}
+              >
+                <span>{FACT_TYPE_LABELS[state.suggestedType]}</span>
+              </button>
+              <div className="my-1 h-px bg-border" />
+            </>
+          )}
+
+          {/* Quick-assign types */}
+          {QUICK_TYPES.filter((t) => t !== state.suggestedType).map((type) => (
+            <button
+              key={type}
+              className="flex w-full items-center rounded-md px-3 py-3 text-sm text-muted-foreground hover:bg-primary/10 hover:text-foreground"
+              onClick={() => onSelect(type)}
+            >
+              <span>{FACT_TYPE_LABELS[type]}</span>
+            </button>
+          ))}
+
+          {/* More types — inline expandable */}
+          <button
+            className="flex w-full items-center justify-between rounded-md px-3 py-3 text-sm text-muted-foreground hover:bg-primary/10 hover:text-foreground"
+            onClick={() => setShowMore(!showMore)}
+          >
+            <span>More types</span>
+            <ChevronDown className={`size-3.5 transition-transform ${showMore ? 'rotate-180' : ''}`} />
+          </button>
+          {showMore && (
+            <div className="pl-2">
+              {moreTypes.map((type) => (
+                <button
+                  key={type}
+                  className="flex w-full items-center rounded-md px-3 py-3 text-sm text-muted-foreground hover:bg-primary/10 hover:text-foreground"
+                  onClick={() => onSelect(type)}
+                >
+                  {FACT_TYPE_LABELS[type]}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <div className="my-1 h-px bg-border" />
+
+          {/* Copy */}
+          <button
+            className="flex w-full items-center rounded-md px-3 py-3 text-sm text-muted-foreground/60 hover:bg-primary/10 hover:text-foreground"
+            onClick={handleCopy}
+          >
+            <Copy className="mr-2 size-3.5" />
+            Copy
+          </button>
+        </div>
+      </>
+    );
+  }
+
+  // --- Desktop: positioned popup ---
   return (
     <div
       ref={menuRef}

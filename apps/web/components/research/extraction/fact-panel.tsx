@@ -167,7 +167,7 @@ export function FactPanelBadge({
   return (
     <button
       onClick={onClick}
-      className="fixed right-4 bottom-4 z-40 flex items-center gap-1.5 rounded-full border border-border bg-popover px-3 py-1.5 shadow-lg hover:bg-accent"
+      className="fixed right-4 bottom-20 md:bottom-4 z-40 flex items-center gap-1.5 rounded-full border border-border bg-popover px-3 py-1.5 shadow-lg hover:bg-accent"
     >
       <ClipboardList className="size-4" style={{ color: accentColor }} />
       <span className="text-xs font-medium text-foreground">{count} facts</span>

@@ -3,10 +3,12 @@
 import { useState, useCallback, useRef } from 'react';
 import { Loader2, ClipboardPaste, X, ChevronDown, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer';
 import { ItemNotesEditor } from './item-notes-editor';
 import { ContentViewer } from './content-viewer';
 import { useScrapeUrl } from '@/lib/research/scrape-client';
 import { toast } from 'sonner';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { useFactExtraction } from '../extraction/use-fact-extraction';
 import { useTextHighlighter } from '../extraction/use-text-highlighter';
 import { FactContextMenu } from '../extraction/fact-context-menu';
@@ -37,6 +39,8 @@ export function ItemContent({ item, onNotesChange, onRefresh, onScrapeJobStarted
   const [saving, setSaving] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [iframeKey, setIframeKey] = useState(0);
+  const isMobile = useIsMobile();
+  const [factPanelSnap, setFactPanelSnap] = useState<number | string | null>(0.35);
 
   // --- Fact extraction ---
   const extraction = useFactExtraction({
@@ -170,132 +174,274 @@ export function ItemContent({ item, onNotesChange, onRefresh, onScrapeJobStarted
       </details>
 
       {/* Content & Preview — reusable tabbed viewer + extraction panel */}
-      <div className="flex gap-0 overflow-hidden rounded-lg border border-border/80">
-      <div className="min-w-0 flex-1">
-      <ContentViewer
-        url={item.url}
-        fullText={item.fullText}
-        showBookmarklet={!!item.url}
-        iframeKey={iframeKey}
-        onSrcDocIframeRef={handleSrcDocIframeRef}
-        onPlainTextRef={handlePlainTextRef}
-        className=""
-        sourceActions={
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-6 px-2 text-xs"
-            onClick={() => setIframeKey((k) => k + 1)}
-          >
-            <RefreshCw className="size-3" />
-            Reload
-          </Button>
-        }
-        emptyState={
-          item.url ? (
-            <div className="space-y-3 text-center">
-              {scrapeFailed && (
-                <p className="text-xs text-muted-foreground">
-                  {error?.message ?? 'Could not extract text automatically. Try pasting text from the page instead.'}
-                  {' '}
-                  <a href="/settings" className="text-primary hover:underline">Configure scrape worker</a>
-                </p>
+      {isMobile ? (
+        <>
+          <div className="overflow-hidden rounded-lg border border-border/80">
+            <ContentViewer
+              url={item.url}
+              fullText={item.fullText}
+              showBookmarklet={!!item.url}
+              iframeKey={iframeKey}
+              onSrcDocIframeRef={handleSrcDocIframeRef}
+              onPlainTextRef={handlePlainTextRef}
+              className=""
+              sourceActions={
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 px-2 text-xs"
+                  onClick={() => setIframeKey((k) => k + 1)}
+                >
+                  <RefreshCw className="size-3" />
+                  Reload
+                </Button>
+              }
+              emptyState={
+                item.url ? (
+                  <div className="space-y-3 text-center">
+                    {scrapeFailed && (
+                      <p className="text-xs text-muted-foreground">
+                        {error?.message ?? 'Could not extract text automatically. Try pasting text from the page instead.'}
+                        {' '}
+                        <a href="/settings" className="text-primary hover:underline">Configure scrape worker</a>
+                      </p>
+                    )}
+                    <div className="flex items-center justify-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleScrape}
+                        disabled={isActivelyScraping}
+                      >
+                        {isActivelyScraping ? (
+                          <>
+                            <Loader2 className="size-3.5 animate-spin" />
+                            Scraping...
+                          </>
+                        ) : scrapeAttempted ? (
+                          'Retry Scrape'
+                        ) : (
+                          'Scrape URL'
+                        )}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setShowPasteArea(true);
+                          setTimeout(() => textareaRef.current?.focus(), 50);
+                        }}
+                      >
+                        <ClipboardPaste className="size-3.5" />
+                        Paste Text
+                      </Button>
+                    </div>
+                  </div>
+                ) : undefined
+              }
+            >
+              {/* Paste text area — rendered as children (below content) */}
+              {showPasteArea && (
+                <div className="mt-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-muted-foreground">
+                      Open the URL, copy the page text, and paste it here.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => { setShowPasteArea(false); setPasteText(''); }}
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="size-3.5" />
+                    </button>
+                  </div>
+                  <textarea
+                    ref={textareaRef}
+                    value={pasteText}
+                    onChange={(e) => setPasteText(e.target.value)}
+                    placeholder="Paste page text here..."
+                    className="w-full rounded-md border border-border bg-background p-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                    rows={6}
+                  />
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">
+                      {pasteText.length > 0 ? `${pasteText.length.toLocaleString()} characters` : ''}
+                    </span>
+                    <Button
+                      size="sm"
+                      onClick={handleSavePastedText}
+                      disabled={!pasteText.trim() || saving}
+                    >
+                      {saving ? (
+                        <>
+                          <Loader2 className="size-3.5 animate-spin" />
+                          Saving...
+                        </>
+                      ) : (
+                        'Save Text'
+                      )}
+                    </Button>
+                  </div>
+                </div>
               )}
-              <div className="flex items-center justify-center gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleScrape}
-                  disabled={isActivelyScraping}
-                >
-                  {isActivelyScraping ? (
-                    <>
-                      <Loader2 className="size-3.5 animate-spin" />
-                      Scraping...
-                    </>
-                  ) : scrapeAttempted ? (
-                    'Retry Scrape'
-                  ) : (
-                    'Scrape URL'
-                  )}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    setShowPasteArea(true);
-                    setTimeout(() => textareaRef.current?.focus(), 50);
-                  }}
-                >
-                  <ClipboardPaste className="size-3.5" />
-                  Paste Text
-                </Button>
-              </div>
-            </div>
-          ) : undefined
-        }
-      >
-        {/* Paste text area — rendered as children (below content) */}
-        {showPasteArea && (
-          <div className="mt-3 space-y-2">
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-muted-foreground">
-                Open the URL, copy the page text, and paste it here.
-              </p>
-              <button
-                type="button"
-                onClick={() => { setShowPasteArea(false); setPasteText(''); }}
-                className="text-muted-foreground hover:text-foreground"
-              >
-                <X className="size-3.5" />
-              </button>
-            </div>
-            <textarea
-              ref={textareaRef}
-              value={pasteText}
-              onChange={(e) => setPasteText(e.target.value)}
-              placeholder="Paste page text here..."
-              className="w-full rounded-md border border-border bg-background p-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              rows={6}
-            />
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">
-                {pasteText.length > 0 ? `${pasteText.length.toLocaleString()} characters` : ''}
-              </span>
-              <Button
-                size="sm"
-                onClick={handleSavePastedText}
-                disabled={!pasteText.trim() || saving}
-              >
-                {saving ? (
-                  <>
-                    <Loader2 className="size-3.5 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  'Save Text'
-                )}
-              </Button>
-            </div>
+            </ContentViewer>
           </div>
-        )}
-      </ContentViewer>
-      </div>
+          {extraction.panelVisible && (
+            <Drawer
+              open={extraction.panelVisible}
+              onOpenChange={(open) => { if (!open) extraction.setPanelVisible(false); }}
+              snapPoints={[0.35, 0.7]}
+              activeSnapPoint={factPanelSnap}
+              setActiveSnapPoint={setFactPanelSnap}
+              modal={false}
+              shouldScaleBackground={false}
+            >
+              <DrawerContent overlay={false} className="data-[vaul-drawer-direction=bottom]:h-dvh data-[vaul-drawer-direction=bottom]:max-h-dvh">
+                <DrawerTitle className="sr-only">Extracted Facts</DrawerTitle>
+                <div className="flex h-full flex-col [&>*]:w-full [&>*]:flex-1">
+                  <FactPanel
+                    session={extraction.session}
+                    onRemoveFact={extraction.removeFact}
+                    onUpdateFact={extraction.updateDraftFact}
+                    onClearAll={extraction.clearAllFacts}
+                    onSave={handleSaveToFactsheet}
+                    onCollapse={() => extraction.setPanelVisible(false)}
+                    onTitleChange={extraction.updateFactsheetTitle}
+                    researchItemTitle={item.title}
+                  />
+                </div>
+              </DrawerContent>
+            </Drawer>
+          )}
+        </>
+      ) : (
+        <div className="flex gap-0 overflow-hidden rounded-lg border border-border/80">
+          <div className="min-w-0 flex-1">
+            <ContentViewer
+              url={item.url}
+              fullText={item.fullText}
+              showBookmarklet={!!item.url}
+              iframeKey={iframeKey}
+              onSrcDocIframeRef={handleSrcDocIframeRef}
+              onPlainTextRef={handlePlainTextRef}
+              className=""
+              sourceActions={
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 px-2 text-xs"
+                  onClick={() => setIframeKey((k) => k + 1)}
+                >
+                  <RefreshCw className="size-3" />
+                  Reload
+                </Button>
+              }
+              emptyState={
+                item.url ? (
+                  <div className="space-y-3 text-center">
+                    {scrapeFailed && (
+                      <p className="text-xs text-muted-foreground">
+                        {error?.message ?? 'Could not extract text automatically. Try pasting text from the page instead.'}
+                        {' '}
+                        <a href="/settings" className="text-primary hover:underline">Configure scrape worker</a>
+                      </p>
+                    )}
+                    <div className="flex items-center justify-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleScrape}
+                        disabled={isActivelyScraping}
+                      >
+                        {isActivelyScraping ? (
+                          <>
+                            <Loader2 className="size-3.5 animate-spin" />
+                            Scraping...
+                          </>
+                        ) : scrapeAttempted ? (
+                          'Retry Scrape'
+                        ) : (
+                          'Scrape URL'
+                        )}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setShowPasteArea(true);
+                          setTimeout(() => textareaRef.current?.focus(), 50);
+                        }}
+                      >
+                        <ClipboardPaste className="size-3.5" />
+                        Paste Text
+                      </Button>
+                    </div>
+                  </div>
+                ) : undefined
+              }
+            >
+              {/* Paste text area — rendered as children (below content) */}
+              {showPasteArea && (
+                <div className="mt-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-muted-foreground">
+                      Open the URL, copy the page text, and paste it here.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => { setShowPasteArea(false); setPasteText(''); }}
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="size-3.5" />
+                    </button>
+                  </div>
+                  <textarea
+                    ref={textareaRef}
+                    value={pasteText}
+                    onChange={(e) => setPasteText(e.target.value)}
+                    placeholder="Paste page text here..."
+                    className="w-full rounded-md border border-border bg-background p-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                    rows={6}
+                  />
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">
+                      {pasteText.length > 0 ? `${pasteText.length.toLocaleString()} characters` : ''}
+                    </span>
+                    <Button
+                      size="sm"
+                      onClick={handleSavePastedText}
+                      disabled={!pasteText.trim() || saving}
+                    >
+                      {saving ? (
+                        <>
+                          <Loader2 className="size-3.5 animate-spin" />
+                          Saving...
+                        </>
+                      ) : (
+                        'Save Text'
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </ContentViewer>
+          </div>
 
-      {/* Fact extraction panel */}
-      {extraction.panelVisible && (
-        <FactPanel
-          session={extraction.session}
-          onRemoveFact={extraction.removeFact}
-          onUpdateFact={extraction.updateDraftFact}
-          onClearAll={extraction.clearAllFacts}
-          onSave={handleSaveToFactsheet}
-          onCollapse={() => extraction.setPanelVisible(false)}
-          onTitleChange={extraction.updateFactsheetTitle}
-          researchItemTitle={item.title}
-        />
+          {/* Fact extraction panel */}
+          {extraction.panelVisible && (
+            <FactPanel
+              session={extraction.session}
+              onRemoveFact={extraction.removeFact}
+              onUpdateFact={extraction.updateDraftFact}
+              onClearAll={extraction.clearAllFacts}
+              onSave={handleSaveToFactsheet}
+              onCollapse={() => extraction.setPanelVisible(false)}
+              onTitleChange={extraction.updateFactsheetTitle}
+              researchItemTitle={item.title}
+            />
+          )}
+        </div>
       )}
-      </div>
 
       {/* Collapsed panel badge */}
       {!extraction.panelVisible && (
