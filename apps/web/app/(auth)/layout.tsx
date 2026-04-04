@@ -1,4 +1,4 @@
-import { Suspense, ViewTransition } from 'react';
+import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import { getAuthContext } from '@/lib/auth/context';
@@ -22,9 +22,7 @@ async function AuthGate({ children }: { children: React.ReactNode }) {
           <AppSidebar />
           <SidebarInset>
             <AppHeader />
-            <ViewTransition name="page-content">
-              <div className="min-w-0 flex-1">{children}</div>
-            </ViewTransition>
+            <div className="min-w-0 flex-1">{children}</div>
           </SidebarInset>
         </SidebarProvider>
       </HeaderProvider>

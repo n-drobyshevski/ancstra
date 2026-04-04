@@ -87,7 +87,6 @@ function NavGroup({
                 asChild
                 isActive={isActive}
                 tooltip={item.title}
-                style={isActive ? { viewTransitionName: 'sidebar-active' } : undefined}
               >
                 <Link href={item.href}>
                   <item.icon />
