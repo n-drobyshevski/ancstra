@@ -7,7 +7,7 @@ export function WebVitalsReporter() {
   useReportWebVitals((metric) => {
     Sentry.metrics.distribution(metric.name, metric.value, {
       unit: 'millisecond',
-      tags: {
+      attributes: {
         rating: metric.rating,
         navigationType: metric.navigationType,
       },
