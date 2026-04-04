@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import type { PersonListItem, TreeData } from '@ancstra/shared';
-import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer';
+import { Drawer, DrawerPortal, DrawerTitle } from '@/components/ui/drawer';
+import { Drawer as DrawerPrimitive } from 'vaul';
 import {
   usePersonDetail,
   DetailHeaderCompact,
@@ -119,6 +120,22 @@ export function MobileDetailSheet({
     }
   }, [person?.id]);
 
+  // Radix Dialog (used by Vaul) sets pointer-events:none on <body> when open.
+  // For our non-modal drawer this blocks touch on the canvas underneath.
+  // Counteract by observing and removing the style.
+  useEffect(() => {
+    if (!person) return;
+    const restore = () => {
+      if (document.body.style.pointerEvents === 'none') {
+        document.body.style.removeProperty('pointer-events');
+      }
+    };
+    restore();
+    const obs = new MutationObserver(restore);
+    obs.observe(document.body, { attributeFilter: ['style'] });
+    return () => obs.disconnect();
+  }, [person]);
+
   return (
     <Drawer
       open={!!person}
@@ -132,16 +149,27 @@ export function MobileDetailSheet({
       modal={false}
       shouldScaleBackground={false}
     >
-      <DrawerContent className="data-[vaul-drawer-direction=bottom]:max-h-[85dvh]">
-        {person && (
-          <SheetContent
-            person={person}
-            treeData={treeData}
-            snap={snap}
-            onFocusNode={onFocusNode}
-          />
-        )}
-      </DrawerContent>
+      {/*
+        Non-modal drawer: use Vaul Content directly WITHOUT the overlay.
+        The default DrawerContent renders a full-screen DrawerOverlay that
+        sets pointer-events:none on <body>, blocking touch on the canvas.
+      */}
+      <DrawerPortal>
+        <DrawerPrimitive.Content
+          data-slot="drawer-content"
+          className="group/drawer-content fixed z-50 flex h-auto flex-col bg-popover text-sm text-popover-foreground data-[vaul-drawer-direction=bottom]:inset-x-0 data-[vaul-drawer-direction=bottom]:bottom-0 data-[vaul-drawer-direction=bottom]:mt-24 data-[vaul-drawer-direction=bottom]:max-h-[85dvh] data-[vaul-drawer-direction=bottom]:rounded-t-xl data-[vaul-drawer-direction=bottom]:border-t"
+        >
+          <div className="mx-auto mt-4 h-1 w-[100px] shrink-0 rounded-full bg-muted" />
+          {person && (
+            <SheetContent
+              person={person}
+              treeData={treeData}
+              snap={snap}
+              onFocusNode={onFocusNode}
+            />
+          )}
+        </DrawerPrimitive.Content>
+      </DrawerPortal>
     </Drawer>
   );
 }

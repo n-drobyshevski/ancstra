@@ -833,7 +833,8 @@ function TreeCanvasInner({ treeData, focusPersonId, focusKey, paletteOpen, onTog
           nodesConnectable={!isMobile}
           zoomOnScroll={!isMobile}
           zoomOnDoubleClick={!isMobile}
-          panOnDrag
+          panOnDrag={!isMobile}
+          panOnScroll={isMobile}
           zoomOnPinch
         >
           <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
