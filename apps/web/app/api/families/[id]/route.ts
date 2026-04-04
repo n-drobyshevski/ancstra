@@ -127,8 +127,8 @@ export async function PUT(
     await familyDb.update(families).set(updates).where(eq(families.id, id)).run();
 
     const [updated] = await familyDb.select().from(families).where(eq(families.id, id)).all();
-    revalidateTag('tree-data');
-    revalidateTag('persons');
+    revalidateTag('tree-data', 'max');
+    revalidateTag('persons', 'max');
     return NextResponse.json(updated);
   } catch (error) {
     return handleAuthError(error);
@@ -166,8 +166,8 @@ export async function DELETE(
 
     if (existing.partner1Id) await refreshSummary(familyDb, existing.partner1Id);
     if (existing.partner2Id) await refreshSummary(familyDb, existing.partner2Id);
-    revalidateTag('tree-data');
-    revalidateTag('persons');
+    revalidateTag('tree-data', 'max');
+    revalidateTag('persons', 'max');
     return NextResponse.json({ success: true });
   } catch (error) {
     return handleAuthError(error);

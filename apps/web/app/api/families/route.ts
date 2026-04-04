@@ -95,8 +95,8 @@ export async function POST(request: Request) {
 
     if (data.partner1Id) await refreshSummary(familyDb, data.partner1Id);
     if (data.partner2Id) await refreshSummary(familyDb, data.partner2Id);
-    revalidateTag('tree-data');
-    revalidateTag('persons');
+    revalidateTag('tree-data', 'max');
+    revalidateTag('persons', 'max');
     await logAndInvalidate(centralDb, ctx, {
       action: 'relationship_added',
       entityType: 'family',

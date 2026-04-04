@@ -74,8 +74,8 @@ export async function POST(
     await addChildToFamily(familyDb, familyId, data.personId);
     await refreshRelatedSummaries(familyDb, data.personId);
 
-    revalidateTag('tree-data');
-    revalidateTag('persons');
+    revalidateTag('tree-data', 'max');
+    revalidateTag('persons', 'max');
     await logAndInvalidate(centralDb, ctx, {
       action: 'relationship_added',
       entityType: 'family',

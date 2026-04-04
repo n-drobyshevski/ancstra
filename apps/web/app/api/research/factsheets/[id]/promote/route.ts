@@ -15,9 +15,9 @@ export async function POST(
     // Cluster promotion
     if (body.cluster === true) {
       const result = await promoteFactsheetCluster(familyDb, factsheetId, ctx.userId);
-      revalidateTag('persons');
-      revalidateTag('tree-data');
-      revalidateTag('dashboard-stats');
+      revalidateTag('persons', 'max');
+      revalidateTag('tree-data', 'max');
+      revalidateTag('dashboard-stats', 'max');
       return NextResponse.json(result);
     }
 
@@ -38,9 +38,9 @@ export async function POST(
       userId: ctx.userId,
     });
 
-    revalidateTag('persons');
-    revalidateTag('tree-data');
-    revalidateTag('dashboard-stats');
+    revalidateTag('persons', 'max');
+    revalidateTag('tree-data', 'max');
+    revalidateTag('dashboard-stats', 'max');
     return NextResponse.json(result);
   } catch (err) {
     try { return handleAuthError(err); } catch { /* not auth */ }

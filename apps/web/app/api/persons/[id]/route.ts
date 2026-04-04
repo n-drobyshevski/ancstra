@@ -162,10 +162,10 @@ export async function PUT(
 
     await refreshSummary(familyDb, id);
     const updated = await assemblePersonDetail(familyDb, id);
-    revalidateTag(`person-${id}`);
-    revalidateTag('persons');
-    revalidateTag('persons-list');
-    revalidateTag('tree-data');
+    revalidateTag(`person-${id}`, 'max');
+    revalidateTag('persons', 'max');
+    revalidateTag('persons-list', 'max');
+    revalidateTag('tree-data', 'max');
     await logAndInvalidate(centralDb, ctx, {
       action: 'person_edited',
       entityType: 'person',
@@ -202,11 +202,11 @@ export async function DELETE(
       .run();
 
     await refreshSummary(familyDb, id);
-    revalidateTag(`person-${id}`);
-    revalidateTag('persons');
-    revalidateTag('persons-list');
-    revalidateTag('tree-data');
-    revalidateTag('dashboard-stats');
+    revalidateTag(`person-${id}`, 'max');
+    revalidateTag('persons', 'max');
+    revalidateTag('persons-list', 'max');
+    revalidateTag('tree-data', 'max');
+    revalidateTag('dashboard-stats', 'max');
     await logAndInvalidate(centralDb, ctx, {
       action: 'person_deleted',
       entityType: 'person',

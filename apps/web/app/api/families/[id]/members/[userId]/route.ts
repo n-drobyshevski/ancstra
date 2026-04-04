@@ -109,7 +109,7 @@ export async function PATCH(request: Request, { params }: Params) {
       summary: `Changed ${updated?.name ?? 'a member'}'s role to ${newRole}`,
       metadata: { targetUserId, oldRole: targetMember.role, newRole },
     });
-    revalidateTag('activity');
+    revalidateTag('activity', 'max');
 
     return NextResponse.json(updated);
   } catch (error) {
@@ -205,7 +205,7 @@ export async function DELETE(_request: Request, { params }: Params) {
       summary: 'Removed a member from the family',
       metadata: { targetUserId, role: targetMember.role },
     });
-    revalidateTag('activity');
+    revalidateTag('activity', 'max');
 
     return new NextResponse(null, { status: 204 });
   } catch (error) {
