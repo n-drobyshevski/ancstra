@@ -1,7 +1,7 @@
 import { requireAuthContext } from '@/lib/auth/context';
 import { ActivityFeed } from '@/components/activity/activity-feed';
 import { PagePadding } from '@/components/page-padding';
-import { getCachedActivityFeed } from '@/lib/cached-queries';
+import { getCachedActivityFeed } from '@/lib/cache/activity';
 
 export const metadata = { title: 'Activity' };
 

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { getCachedTreeData } from '@/lib/cached-queries';
+import { getCachedTreeData } from '@/lib/cache/tree';
 import { getAuthContext } from '@/lib/auth/context';
 import { TreePageClient } from '@/components/tree/tree-page-client';
 

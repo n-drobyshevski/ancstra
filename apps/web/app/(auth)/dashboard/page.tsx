@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ContributionQueue } from '@/components/moderation/contribution-queue';
 import { WelcomeCard } from '@/components/onboarding/welcome-card';
-import { getCachedDashboardData } from '@/lib/cached-queries';
+import { getCachedStatCards, getCachedRecentPersons, getCachedQualityScore } from '@/lib/cache/dashboard';
 import { hasPermission } from '@ancstra/auth';
 import { getAuthContext } from '@/lib/auth/context';
 import { PagePadding } from '@/components/page-padding';
@@ -20,13 +20,15 @@ export default async function DashboardPage() {
   if (!authContext) return null;
   const canReview = hasPermission(authContext.role, 'contributions:review');
 
-  const {
+  const [
+    { totalPersons, totalFamilies, recentAdditionsCount },
     recentPersons,
-    totalPersons,
-    totalFamilies,
-    recentAdditionsCount,
     overallQualityScore,
-  } = await getCachedDashboardData(authContext.dbFilename);
+  ] = await Promise.all([
+    getCachedStatCards(authContext.dbFilename),
+    getCachedRecentPersons(authContext.dbFilename),
+    getCachedQualityScore(authContext.dbFilename),
+  ]);
 
   return (
     <PagePadding>

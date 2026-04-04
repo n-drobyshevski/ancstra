@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { getCachedPersonDetail } from '@/lib/cached-queries';
+import { getCachedPersonDetail } from '@/lib/cache/person';
 import { WorkspaceShell } from '@/components/research/workspace/workspace-shell';
 import { getAuthContext } from '@/lib/auth/context';
 import { PagePadding } from '@/components/page-padding';
