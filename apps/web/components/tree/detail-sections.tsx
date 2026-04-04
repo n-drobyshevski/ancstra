@@ -6,37 +6,34 @@ import type { Person, Event as PersonEvent, PersonListItem, TreeData } from '@an
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BookOpen } from 'lucide-react';
+import { fetchPersonDetailAction } from '@/app/actions/person-detail';
 
 /* -------------------------------------------------------------------------- */
 /*  usePersonDetail                                                            */
 /* -------------------------------------------------------------------------- */
 
-export interface PersonDetail {
+export interface PersonDetailState {
   person: Person | null;
   events: PersonEvent[];
   citationCount: number;
   isLoading: boolean;
 }
 
-export function usePersonDetail(personId: string): PersonDetail & { refresh: () => void } {
-  const [data, setData] = useState<PersonDetail>({
+export function usePersonDetail(personId: string): PersonDetailState & { refresh: () => void } {
+  const [data, setData] = useState<PersonDetailState>({
     person: null, events: [], citationCount: 0, isLoading: true,
   });
 
   const fetchData = useCallback(async () => {
     setData((prev) => ({ ...prev, isLoading: true }));
     try {
-      const [personRes, eventsRes, citationsRes] = await Promise.all([
-        fetch(`/api/persons/${personId}`),
-        fetch(`/api/persons/${personId}/events`),
-        fetch(`/api/persons/${personId}/citations-count`),
-      ]);
-      const [person, events, citations] = await Promise.all([
-        personRes.ok ? personRes.json() : null,
-        eventsRes.ok ? eventsRes.json() : [],
-        citationsRes.ok ? citationsRes.json() : { count: 0 },
-      ]);
-      setData({ person, events, citationCount: citations.count, isLoading: false });
+      const { detail, citationCount } = await fetchPersonDetailAction(personId);
+      setData({
+        person: detail ?? null,
+        events: detail?.events ?? [],
+        citationCount,
+        isLoading: false,
+      });
     } catch {
       setData((prev) => ({ ...prev, isLoading: false }));
     }

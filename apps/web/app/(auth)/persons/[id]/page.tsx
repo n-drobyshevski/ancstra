@@ -15,9 +15,10 @@ export async function generateMetadata({
   if (!authContext) return { title: 'Person' };
   const person = await getCachedPersonDetail(authContext.dbFilename, id);
   if (!person) return { title: 'Person not found' };
-  const name = person.primaryName
-    ? `${person.primaryName.givenName ?? ''} ${person.primaryName.surname ?? ''}`.trim()
-    : null;
+  const name =
+    person.givenName || person.surname
+      ? `${person.givenName ?? ''} ${person.surname ?? ''}`.trim()
+      : null;
   return { title: name || 'Person' };
 }
 

@@ -1,8 +1,8 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { useCallback } from 'react';
 import { TreeTable } from './tree-table';
-import type { TreeData } from '@ancstra/shared';
+import type { TreeData, PersonListItem } from '@ancstra/shared';
 
 interface TreeTableWrapperProps {
   treeData: TreeData;
@@ -10,15 +10,23 @@ interface TreeTableWrapperProps {
     parents: Record<string, { id: string; name: string }[]>;
     spouses: Record<string, { id: string; name: string }[]>;
   };
+  onSelectPerson: (person: PersonListItem) => void;
 }
 
-export function TreeTableWrapper({ treeData, relationships }: TreeTableWrapperProps) {
-  const router = useRouter();
+export function TreeTableWrapper({ treeData, relationships, onSelectPerson }: TreeTableWrapperProps) {
+  const handleSelect = useCallback(
+    (personId: string) => {
+      const person = treeData.persons.find((p) => p.id === personId);
+      if (person) onSelectPerson(person);
+    },
+    [treeData.persons, onSelectPerson],
+  );
+
   return (
     <TreeTable
       treeData={treeData}
       relationships={relationships}
-      onSelectPerson={(id) => router.push(`/persons/${id}`)}
+      onSelectPerson={handleSelect}
     />
   );
 }

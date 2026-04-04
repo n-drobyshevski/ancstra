@@ -130,7 +130,6 @@ export function TreeLayout({ treeData, focusPersonId }: TreeLayoutProps) {
           />
         ) : (
           <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-            {/* Table view gets same toolbar via TreeCanvas but we need a minimal toolbar */}
             <div className="flex items-center justify-between border-b border-border bg-background px-4 py-2">
               <div className="flex items-center gap-1.5">
                 <div className="flex overflow-hidden rounded-lg border border-border">
@@ -150,7 +149,7 @@ export function TreeLayout({ treeData, focusPersonId }: TreeLayoutProps) {
               </div>
             </div>
             <div className="flex-1 overflow-hidden">
-              <TreeTableWrapper treeData={treeData} relationships={relationships} />
+              <TreeTableWrapper treeData={treeData} relationships={relationships} onSelectPerson={handleSelectPerson} />
             </div>
           </div>
         )}
@@ -184,12 +183,6 @@ export function TreeLayout({ treeData, focusPersonId }: TreeLayoutProps) {
                 <MobileTreeToolbar {...toolbarProps} />
               )}
             />
-            <MobileDetailSheet
-              person={sidebarMobile ? selectedPerson : null}
-              treeData={treeData}
-              onClose={clearSelection}
-              onFocusNode={handleFocusNode}
-            />
           </>
         ) : (
           <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
@@ -197,10 +190,16 @@ export function TreeLayout({ treeData, focusPersonId }: TreeLayoutProps) {
               <span className="flex-1 text-sm font-semibold truncate px-1">Family Tree</span>
             </div>
             <div className="flex-1 overflow-hidden">
-              <TreeTableWrapper treeData={treeData} relationships={relationships} />
+              <TreeTableWrapper treeData={treeData} relationships={relationships} onSelectPerson={handleSelectPerson} />
             </div>
           </div>
         )}
+        <MobileDetailSheet
+          person={sidebarMobile ? selectedPerson : null}
+          treeData={treeData}
+          onClose={clearSelection}
+          onFocusNode={handleFocusNode}
+        />
       </div>
     </div>
   );

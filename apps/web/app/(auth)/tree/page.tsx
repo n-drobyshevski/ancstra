@@ -10,7 +10,25 @@ const TreePageClient = dynamic(
   { loading: () => null }
 );
 
-export default async function TreePage({
+export default function TreePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ focus?: string }>;
+}) {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex h-full items-center justify-center">
+          <Skeleton className="h-[60vh] w-full rounded-lg" />
+        </div>
+      }
+    >
+      <TreePageContent searchParams={searchParams} />
+    </Suspense>
+  );
+}
+
+async function TreePageContent({
   searchParams,
 }: {
   searchParams: Promise<{ focus?: string }>;
@@ -39,15 +57,5 @@ export default async function TreePage({
     );
   }
 
-  return (
-    <Suspense
-      fallback={
-        <div className="flex h-full items-center justify-center">
-          <Skeleton className="h-[60vh] w-full rounded-lg" />
-        </div>
-      }
-    >
-      <TreePageClient treeData={treeData} focusPersonId={focus} />
-    </Suspense>
-  );
+  return <TreePageClient treeData={treeData} focusPersonId={focus} />;
 }

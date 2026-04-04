@@ -1,8 +1,8 @@
 import { cacheLife, cacheTag } from 'next/cache';
 import { getFamilyDb } from '../db';
 import { assemblePersonDetail, searchPersonsFts } from '../queries';
-import { persons, personNames, events } from '@ancstra/db';
-import { isNull, sql } from 'drizzle-orm';
+import { persons, personNames, events, sourceCitations } from '@ancstra/db';
+import { isNull, sql, eq, count } from 'drizzle-orm';
 import type { PersonListItem } from '@ancstra/shared';
 
 // ---------------------------------------------------------------------------
@@ -15,6 +15,23 @@ export async function getCachedPersonDetail(dbFilename: string, personId: string
 
   const db = await getFamilyDb(dbFilename);
   return assemblePersonDetail(db, personId);
+}
+
+// ---------------------------------------------------------------------------
+// Cached: citation count for a person (genealogy profile — 1hr revalidate)
+// ---------------------------------------------------------------------------
+export async function getCachedCitationCount(dbFilename: string, personId: string) {
+  'use cache';
+  cacheLife('genealogy');
+  cacheTag(`person-${personId}`, 'persons');
+
+  const db = await getFamilyDb(dbFilename);
+  const result = await db
+    .select({ value: count() })
+    .from(sourceCitations)
+    .where(eq(sourceCitations.personId, personId))
+    .get();
+  return result?.value ?? 0;
 }
 
 // ---------------------------------------------------------------------------
