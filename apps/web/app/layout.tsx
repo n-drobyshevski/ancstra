@@ -15,8 +15,15 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Ancstra",
-  description: "AI-Powered Personal Genealogy App",
+  title: {
+    default: 'Ancstra',
+    template: '%s | Ancstra',
+  },
+  description: 'AI-Powered Personal Genealogy App',
+  openGraph: {
+    siteName: 'Ancstra',
+    type: 'website',
+  },
 };
 
 export default function RootLayout({

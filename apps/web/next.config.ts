@@ -7,8 +7,10 @@ const withAnalyzer = withBundleAnalyzer({
 });
 
 const nextConfig: NextConfig = {
+  serverExternalPackages: ['better-sqlite3'],
   experimental: {
     viewTransition: true,
+    optimizePackageImports: ['lucide-react', 'recharts', '@xyflow/react', 'date-fns'],
   },
   cacheComponents: true,
   cacheLife: {

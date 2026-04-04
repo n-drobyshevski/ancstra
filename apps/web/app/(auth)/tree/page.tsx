@@ -1,9 +1,14 @@
 import { Suspense } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { getCachedTreeData } from '@/lib/cache/tree';
 import { getAuthContext } from '@/lib/auth/context';
 import { Skeleton } from '@/components/ui/skeleton';
-import { TreePageClient } from '@/components/tree/tree-page-client';
+
+const TreePageClient = dynamic(
+  () => import('@/components/tree/tree-page-client').then(m => m.TreePageClient),
+  { loading: () => null }
+);
 
 export default async function TreePage({
   searchParams,
