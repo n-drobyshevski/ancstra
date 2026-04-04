@@ -25,9 +25,10 @@ interface ItemContentProps {
   onRefresh: () => Promise<{ fullText: string | null } | null>;
   onScrapeJobStarted: (jobId: string) => void;
   scrapeJobStatus: string | null;
+  hideNotes?: boolean;
 }
 
-export function ItemContent({ item, onNotesChange, onRefresh, onScrapeJobStarted, scrapeJobStatus }: ItemContentProps) {
+export function ItemContent({ item, onNotesChange, onRefresh, onScrapeJobStarted, scrapeJobStatus, hideNotes }: ItemContentProps) {
   const { scrape, isLoading: scraping, error } = useScrapeUrl();
   const [scrapeAttempted, setScrapeAttempted] = useState(false);
   const [scrapeFailed, setScrapeFailed] = useState(false);
@@ -312,13 +313,15 @@ export function ItemContent({ item, onNotesChange, onRefresh, onScrapeJobStarted
       />
 
       {/* Notes */}
-      <div className="rounded-lg border border-border/80 p-4">
-        <ItemNotesEditor
-          itemId={item.id}
-          initialNotes={item.notes}
-          onNotesChange={onNotesChange}
-        />
-      </div>
+      {!hideNotes && (
+        <div className="rounded-lg border border-border/80 p-4">
+          <ItemNotesEditor
+            itemId={item.id}
+            initialNotes={item.notes}
+            onNotesChange={onNotesChange}
+          />
+        </div>
+      )}
     </div>
   );
 }

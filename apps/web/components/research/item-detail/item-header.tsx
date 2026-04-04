@@ -86,7 +86,7 @@ export function ItemHeader({ item, onStatusChange, onDeleted }: ItemHeaderProps)
   return (
     <div className="space-y-3">
       {/* Title + Badges */}
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
         <h1 className="text-xl font-bold">{item.title}</h1>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
           {item.providerId && <ProviderBadge providerId={item.providerId} />}
@@ -100,7 +100,7 @@ export function ItemHeader({ item, onStatusChange, onDeleted }: ItemHeaderProps)
       </div>
 
       {/* Actions */}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="hidden md:flex flex-wrap items-center gap-2">
         {item.url && (
           <Button size="sm" variant="outline" asChild>
             <a href={item.url} target="_blank" rel="noopener noreferrer">
