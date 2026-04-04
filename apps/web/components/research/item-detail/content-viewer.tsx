@@ -5,6 +5,7 @@ import { ExternalLink, FileText, Globe, Loader2, Copy, Check } from 'lucide-reac
 import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { BookmarkletTip } from './bookmarklet-tip';
 import { useResizeHandle } from './use-resize-handle';
 
@@ -149,6 +150,7 @@ export function ContentViewer({
   className,
 }: ContentViewerProps) {
   const { resolvedTheme } = useTheme();
+  const isMobile = useIsMobile();
   const [showPreview, setShowPreview] = useState(false);
   const [iframeLoading, setIframeLoading] = useState(true);
 
@@ -189,12 +191,12 @@ export function ContentViewer({
         <div className="flex items-center justify-between px-4 pt-3 pb-0">
           <TabsList>
             {url && (
-              <TabsTrigger value="preview">
+              <TabsTrigger value="preview" className="min-h-[44px]">
                 <Globe className="size-3.5" />
                 Source Page
               </TabsTrigger>
             )}
-            <TabsTrigger value="content">
+            <TabsTrigger value="content" className="min-h-[44px]">
               <FileText className="size-3.5" />
               Extracted Text
             </TabsTrigger>
@@ -222,21 +224,27 @@ export function ContentViewer({
                   srcDoc={srcDoc}
                   title="Extracted content"
                   className="w-full overflow-auto border-0"
-                  style={{ height: contentResize.height }}
+                  style={{
+                    height: isMobile ? '50dvh' : contentResize.height,
+                    ...(isMobile ? { touchAction: 'pan-y pinch-zoom' } : {}),
+                  }}
                   sandbox="allow-same-origin"
                 />
               ) : (
                 <div
                   ref={(el) => onPlainTextRef?.(el)}
                   className="overflow-auto p-3"
-                  style={{ height: contentResize.height }}
+                  style={{
+                    height: isMobile ? '50dvh' : contentResize.height,
+                    ...(isMobile ? { WebkitOverflowScrolling: 'touch' } : {}),
+                  }}
                 >
                   <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
                     {fullText}
                   </p>
                 </div>
               )}
-              <DragBar onPointerDown={contentResize.onPointerDown} />
+              {!isMobile && <DragBar onPointerDown={contentResize.onPointerDown} />}
             </div>
           ) : (
             <div className="px-4 py-6">
@@ -312,7 +320,10 @@ export function ContentViewer({
                     src={url}
                     title="Page preview"
                     className="w-full border-0"
-                    style={{ height: previewResize.height }}
+                    style={{
+                      height: isMobile ? '60dvh' : previewResize.height,
+                      ...(isMobile ? { touchAction: 'pan-y pinch-zoom' } : {}),
+                    }}
                     sandbox="allow-scripts allow-same-origin"
                     onLoad={() => setIframeLoading(false)}
                   />
@@ -320,12 +331,12 @@ export function ContentViewer({
               ) : (
                 <div
                   className="flex items-center justify-center text-sm text-muted-foreground"
-                  style={{ height: previewResize.height }}
+                  style={{ height: isMobile ? '60dvh' : previewResize.height }}
                 >
                   <Loader2 className="size-5 animate-spin" />
                 </div>
               )}
-              <DragBar onPointerDown={previewResize.onPointerDown} />
+              {!isMobile && <DragBar onPointerDown={previewResize.onPointerDown} />}
             </div>
 
             {/* Bookmarklet tip */}

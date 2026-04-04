@@ -1,11 +1,15 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { ItemHeader } from './item-header';
 import { ItemContent } from './item-content';
 import { ItemSidebar } from './item-sidebar';
+import { ItemDetailBottomBar } from './item-detail-bottom-bar';
+import { ItemDetailDrawer } from './item-detail-drawer';
 import { useScrapeJob } from '@/lib/research/scrape-job-poller';
 
 interface ResearchItemData {
@@ -34,6 +38,9 @@ export function ItemDetailShell({ item: initialItem }: ItemDetailShellProps) {
   const [item, setItem] = useState(initialItem);
   const [scrapeJobId, setScrapeJobId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const isMobile = useIsMobile();
+  const router = useRouter();
 
   const handleStatusChange = (newStatus: string) => {
     setItem((prev) => ({ ...prev, status: newStatus }));
@@ -45,6 +52,21 @@ export function ItemDetailShell({ item: initialItem }: ItemDetailShellProps) {
 
   const handleDeleted = () => {
     // Navigation happens in ItemHeader
+  };
+
+  const askAiPrompt = `Tell me more about this record: "${item.title}"${
+    item.providerId ? ` from ${item.providerId}` : ''
+  }${item.url ? `. URL: ${item.url}` : ''}`;
+
+  const handleDelete = async () => {
+    try {
+      const res = await fetch(`/api/research/items/${item.id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to delete');
+      toast.success('Item deleted');
+      router.push('/research');
+    } catch {
+      toast.error('Failed to delete item');
+    }
   };
 
   const refreshItem = useCallback(async (): Promise<ResearchItemData | null> => {
@@ -81,7 +103,7 @@ export function ItemDetailShell({ item: initialItem }: ItemDetailShellProps) {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-20 md:pb-0">
       <ItemHeader
         item={item}
         onStatusChange={handleStatusChange}
@@ -98,11 +120,33 @@ export function ItemDetailShell({ item: initialItem }: ItemDetailShellProps) {
             </div>
           </div>
         )}
-        <ItemContent item={item} onNotesChange={handleNotesChange} onRefresh={refreshItem} onScrapeJobStarted={setScrapeJobId} scrapeJobStatus={scrapeJobId ? scrapeJob.status : null} />
-        {/* Mobile separator between content and sidebar */}
-        <hr className="border-border lg:hidden" />
-        <ItemSidebar item={item} />
+        <ItemContent item={item} onNotesChange={handleNotesChange} onRefresh={refreshItem} onScrapeJobStarted={setScrapeJobId} scrapeJobStatus={scrapeJobId ? scrapeJob.status : null} hideNotes={isMobile} />
+        {!isMobile && (
+          <>
+            {/* Desktop separator between content and sidebar */}
+            <hr className="border-border lg:hidden" />
+            <ItemSidebar item={item} />
+          </>
+        )}
       </div>
+
+      {isMobile && (
+        <>
+          <ItemDetailDrawer
+            open={drawerOpen}
+            onOpenChange={setDrawerOpen}
+            item={item}
+            onNotesChange={handleNotesChange}
+          />
+          <ItemDetailBottomBar
+            url={item.url}
+            askAiPrompt={askAiPrompt}
+            onOpenDetails={() => setDrawerOpen(true)}
+            onDelete={handleDelete}
+            factCount={0}
+          />
+        </>
+      )}
     </div>
   );
 }
