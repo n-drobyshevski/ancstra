@@ -1,12 +1,16 @@
-import { Suspense } from "react";
 import type { Metadata } from "next";
+import dynamic from "next/dynamic";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
-import { CommandPalette } from "@/components/command-palette";
 import { ServiceWorkerRegister } from "@/components/sw-register";
+
+const CommandPalette = dynamic(
+  () => import('@/components/command-palette').then(mod => ({ default: mod.CommandPalette })),
+  { ssr: false }
+);
 
 const inter = Inter({
   subsets: ["latin"],
@@ -33,9 +37,7 @@ export default function RootLayout({
             disableTransitionOnChange
           >
             {children}
-            <Suspense>
-              <CommandPalette />
-            </Suspense>
+            <CommandPalette />
             <Toaster />
             <ServiceWorkerRegister />
           </ThemeProvider>

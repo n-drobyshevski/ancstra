@@ -1,7 +1,20 @@
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { getCachedTreeData } from '@/lib/cache/tree';
 import { getAuthContext } from '@/lib/auth/context';
-import { TreePageClient } from '@/components/tree/tree-page-client';
+import { Skeleton } from '@/components/ui/skeleton';
+
+const TreePageClient = dynamic(
+  () => import('@/components/tree/tree-page-client').then(mod => ({ default: mod.TreePageClient })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-full items-center justify-center">
+        <Skeleton className="h-[60vh] w-full rounded-lg" />
+      </div>
+    ),
+  }
+);
 
 export default async function TreePage({
   searchParams,
