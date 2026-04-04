@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ServiceWorkerRegister } from "@/components/sw-register";
+import { WebVitalsReporter } from './web-vitals';
 
 const CommandPalette = dynamic(
   () => import('@/components/command-palette').then(mod => ({ default: mod.CommandPalette })),
@@ -36,6 +37,7 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
+            <WebVitalsReporter />
             {children}
             <CommandPalette />
             <Toaster />
