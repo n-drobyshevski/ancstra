@@ -8,9 +8,9 @@ export async function POST() {
     const { familyDb } = await withAuth('settings:manage');
     await rebuildClosureTable(familyDb);
     await rebuildAllSummaries(familyDb);
-    revalidateTag('tree-data', 'max');
-    revalidateTag('persons', 'max');
-    revalidateTag('dashboard', 'max');
+    revalidateTag('tree-data');
+    revalidateTag('persons');
+    revalidateTag('dashboard-stats');
     return NextResponse.json({ success: true, message: 'Closure table and summaries rebuilt' });
   } catch (error) {
     console.error('[tree/rebuild] error:', error);

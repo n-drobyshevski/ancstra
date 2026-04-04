@@ -31,8 +31,8 @@ export async function DELETE(
     await removeChildFromFamily(familyDb, familyId, personId);
     await refreshRelatedSummaries(familyDb, personId);
 
-    revalidateTag('tree-data', 'max');
-    revalidateTag('persons', 'max');
+    revalidateTag('tree-data');
+    revalidateTag('persons');
     return NextResponse.json({ success: true });
   } catch (error) {
     return handleAuthError(error);

@@ -83,9 +83,10 @@ export async function POST(request: Request) {
     });
 
     await refreshSummary(familyDb, personId);
-    revalidateTag('persons', 'max');
-    revalidateTag('tree-data', 'max');
-    revalidateTag('dashboard', 'max');
+    revalidateTag('persons');
+    revalidateTag('persons-list');
+    revalidateTag('tree-data');
+    revalidateTag('dashboard-stats');
     await logAndInvalidate(centralDb, ctx, {
       action: 'person_added',
       entityType: 'person',

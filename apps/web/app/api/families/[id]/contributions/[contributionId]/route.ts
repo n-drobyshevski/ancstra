@@ -34,7 +34,7 @@ export async function POST(
     summary: `${body.action === 'approve' ? 'Approved' : 'Rejected'} a contribution`,
     metadata: { contributionId, comment: body.comment },
   });
-  revalidateTag('activity', 'max');
+  revalidateTag('activity');
 
   return NextResponse.json(result);
 }

@@ -84,7 +84,7 @@ export async function POST(
       summary: `Sent an invitation${email ? ` to ${email}` : ''} as ${role}`,
       metadata: { email, role, invitationId: invitation.id },
     });
-    revalidateTag('activity', 'max');
+    revalidateTag('activity');
 
     return NextResponse.json({ ...invitation, link }, { status: 201 });
   } catch (error) {

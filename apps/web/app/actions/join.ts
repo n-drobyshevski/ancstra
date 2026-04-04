@@ -15,7 +15,7 @@ export async function acceptInviteAction(token: string, userId: string) {
       action: 'invite_accepted' as ActivityAction,
       summary: 'Joined the family',
     });
-    revalidateTag('activity', 'max');
+    revalidateTag('activity');
     redirect(`/dashboard?family=${result.familyId}`);
   }
   throw new Error('Failed to accept invitation');

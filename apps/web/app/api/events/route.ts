@@ -59,8 +59,8 @@ export async function POST(request: Request) {
       .where(eq(events.id, eventId))
       .all();
 
-    revalidateTag('persons', 'max');
-    revalidateTag('dashboard', 'max');
+    revalidateTag('persons');
+    revalidateTag('dashboard-stats');
     return NextResponse.json(created, { status: 201 });
   } catch (error) {
     return handleAuthError(error);

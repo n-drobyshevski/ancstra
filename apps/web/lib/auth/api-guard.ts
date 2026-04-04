@@ -93,7 +93,7 @@ export async function logAndInvalidate(
     familyId: ctx.familyId,
     userId: ctx.userId,
   });
-  revalidateTag('activity', 'max');
+  revalidateTag('activity');
 }
 
 /**

@@ -64,7 +64,7 @@ export async function PUT(
       .where(eq(events.id, id))
       .all();
 
-    revalidateTag('persons', 'max');
+    revalidateTag('persons');
     return NextResponse.json(updated);
   } catch (error) {
     return handleAuthError(error);
@@ -92,7 +92,7 @@ export async function DELETE(
 
     await familyDb.delete(events).where(eq(events.id, id)).run();
 
-    revalidateTag('persons', 'max');
+    revalidateTag('persons');
     return NextResponse.json({ success: true });
   } catch (error) {
     return handleAuthError(error);

@@ -150,7 +150,7 @@ export async function commitGedcomImport(
       summary: `Imported GEDCOM file (${data.persons.length} people, ${data.families.length} families)`,
       metadata: { persons: data.persons.length, families: data.families.length, events: data.events.length },
     });
-    revalidateTag('activity', 'max');
+    revalidateTag('activity');
   }
 
   return {
