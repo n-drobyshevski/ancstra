@@ -69,11 +69,12 @@ interface TreeCanvasProps {
   onSetView: (v: 'canvas' | 'table') => void;
   isMobile?: boolean;
   isDetailOpen?: boolean;
+  /** External filter state — when provided, canvas uses these instead of internal state */
+  filterState?: FilterState;
+  onFilterStateChange?: (fs: FilterState) => void;
+  showGaps?: boolean;
+  onShowGapsChange?: (v: boolean) => void;
   mobileToolbarSlot?: (props: {
-    filterState: FilterState;
-    onToggleFilter: (category: 'sex' | 'living', key: string) => void;
-    showGaps: boolean;
-    onToggleGaps: () => void;
     onAutoLayout: () => void;
     onExportPng: () => void;
     onExportSvg: () => void;
@@ -81,7 +82,7 @@ interface TreeCanvasProps {
   }) => React.ReactNode;
 }
 
-function TreeCanvasInner({ treeData, focusPersonId, focusKey, paletteOpen, onTogglePalette, onSelectPerson, view, onSetView, isMobile, isDetailOpen, mobileToolbarSlot }: TreeCanvasProps) {
+function TreeCanvasInner({ treeData, focusPersonId, focusKey, paletteOpen, onTogglePalette, onSelectPerson, view, onSetView, isMobile, isDetailOpen, filterState: externalFilterState, onFilterStateChange, showGaps: externalShowGaps, onShowGapsChange, mobileToolbarSlot }: TreeCanvasProps) {
   const { fitView, screenToFlowPosition, getNodes } = useReactFlow();
   const router = useRouter();
   const connectionLock = useConnectionLock();
@@ -118,8 +119,14 @@ function TreeCanvasInner({ treeData, focusPersonId, focusKey, paletteOpen, onTog
   const [activeLayoutId, setActiveLayoutId] = useState<string | null>(null);
   const [activeLayoutName, setActiveLayoutName] = useState<string | null>(null);
 
-  const [filterState, setFilterState] = useState<FilterState>(DEFAULT_FILTERS);
-  const [showGaps, setShowGaps] = useState(false);
+  const [internalFilterState, setInternalFilterState] = useState<FilterState>(DEFAULT_FILTERS);
+  const [internalShowGaps, setInternalShowGaps] = useState(false);
+
+  // Use external state when provided, otherwise fall back to internal
+  const filterState = externalFilterState ?? internalFilterState;
+  const setFilterState = onFilterStateChange ?? setInternalFilterState;
+  const showGaps = externalShowGaps ?? internalShowGaps;
+  const setShowGaps = onShowGapsChange ?? setInternalShowGaps;
   const [showMinimap, setShowMinimap] = useState(true);
   const [nodeStyle, setNodeStyle] = useState<NodeStyle>('wide');
   const effectiveNodeStyle = isMobile ? 'compact' : nodeStyle;
@@ -156,14 +163,15 @@ function TreeCanvasInner({ treeData, focusPersonId, focusKey, paletteOpen, onTog
   }, [treeData, rawNodes, rawEdges, setNodes, setEdges, showGaps, effectiveNodeStyle]);
 
   const handleToggleFilter = useCallback((category: 'sex' | 'living', key: string) => {
-    setFilterState(prev => ({
-      ...prev,
+    const next = {
+      ...filterState,
       [category]: {
-        ...prev[category],
-        [key]: !prev[category][key as keyof typeof prev[typeof category]],
+        ...filterState[category],
+        [key]: !filterState[category][key as keyof typeof filterState[typeof category]],
       },
-    }));
-  }, []);
+    };
+    setFilterState(next);
+  }, [filterState, setFilterState]);
 
   const autoSaveRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -760,10 +768,6 @@ function TreeCanvasInner({ treeData, focusPersonId, focusKey, paletteOpen, onTog
   return (
     <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
       {isMobile ? mobileToolbarSlot?.({
-        filterState,
-        onToggleFilter: handleToggleFilter,
-        showGaps,
-        onToggleGaps: () => setShowGaps(v => !v),
         onAutoLayout: handleAutoLayout,
         onExportPng: exportPng,
         onExportSvg: exportSvg,
@@ -784,7 +788,7 @@ function TreeCanvasInner({ treeData, focusPersonId, focusKey, paletteOpen, onTog
         filterState={filterState}
         onToggleFilter={handleToggleFilter}
         showGaps={showGaps}
-        onToggleGaps={() => setShowGaps(v => !v)}
+        onToggleGaps={() => setShowGaps(!showGaps)}
         showMinimap={showMinimap}
         onToggleMinimap={() => setShowMinimap(v => !v)}
         view={view}

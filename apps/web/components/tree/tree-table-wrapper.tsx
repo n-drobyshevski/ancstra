@@ -3,6 +3,7 @@
 import { useCallback } from 'react';
 import { TreeTable } from './tree-table';
 import type { TreeData, PersonListItem } from '@ancstra/shared';
+import type { FilterState } from './tree-utils';
 
 interface TreeTableWrapperProps {
   treeData: TreeData;
@@ -11,9 +12,10 @@ interface TreeTableWrapperProps {
     spouses: Record<string, { id: string; name: string }[]>;
   };
   onSelectPerson: (person: PersonListItem) => void;
+  filterState?: FilterState;
 }
 
-export function TreeTableWrapper({ treeData, relationships, onSelectPerson }: TreeTableWrapperProps) {
+export function TreeTableWrapper({ treeData, relationships, onSelectPerson, filterState }: TreeTableWrapperProps) {
   const handleSelect = useCallback(
     (personId: string) => {
       const person = treeData.persons.find((p) => p.id === personId);
@@ -27,6 +29,7 @@ export function TreeTableWrapper({ treeData, relationships, onSelectPerson }: Tr
       treeData={treeData}
       relationships={relationships}
       onSelectPerson={handleSelect}
+      filterState={filterState}
     />
   );
 }

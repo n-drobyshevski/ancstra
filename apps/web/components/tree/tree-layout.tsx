@@ -7,8 +7,15 @@ import type { PersonListItem, TreeData } from '@ancstra/shared';
 import { PersonPalette } from './person-palette';
 import { TreeDetailPanel } from './tree-detail-panel';
 import { MobileDetailSheet } from './mobile-detail-sheet';
-import { MobileTreeToolbar } from './mobile-tree-toolbar';
+import { MobileViewBar } from './mobile-view-bar';
+import { TreeTableToolbar } from './tree-table-toolbar';
 import { useSidebar } from '@/components/ui/sidebar';
+import {
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
+import { LayoutGrid, Download } from 'lucide-react';
+import { DEFAULT_FILTERS, type FilterState } from './tree-utils';
 
 const TreeCanvas = dynamic(
   () => import('./tree-canvas').then((m) => ({ default: m.TreeCanvas })),
@@ -67,6 +74,10 @@ export function TreeLayout({ treeData, focusPersonId }: TreeLayoutProps) {
   const [focusKey, setFocusKey] = useState(0);
   const [runtimeFocusId, setRuntimeFocusId] = useState<string | undefined>(undefined);
 
+  // Shared filter state — lifted from TreeCanvas so both views can use it
+  const [filterState, setFilterState] = useState<FilterState>(DEFAULT_FILTERS);
+  const [showGaps, setShowGaps] = useState(false);
+
   const setView = useCallback(
     (v: 'canvas' | 'table') => {
       const params = new URLSearchParams(searchParams.toString());
@@ -75,6 +86,20 @@ export function TreeLayout({ treeData, focusPersonId }: TreeLayoutProps) {
     },
     [searchParams, router, pathname],
   );
+
+  const handleToggleFilter = useCallback((category: 'sex' | 'living', key: string) => {
+    setFilterState((prev) => ({
+      ...prev,
+      [category]: {
+        ...prev[category],
+        [key]: !prev[category][key as keyof typeof prev[typeof category]],
+      },
+    }));
+  }, []);
+
+  const handleToggleGaps = useCallback(() => {
+    setShowGaps((v) => !v);
+  }, []);
 
   const handleTogglePalette = useCallback(() => {
     setPaletteOpen((v) => !v);
@@ -127,29 +152,28 @@ export function TreeLayout({ treeData, focusPersonId }: TreeLayoutProps) {
             view={view}
             onSetView={setView}
             isMobile={false}
+            filterState={filterState}
+            onFilterStateChange={setFilterState}
+            showGaps={showGaps}
+            onShowGapsChange={setShowGaps}
           />
         ) : (
           <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-            <div className="flex items-center justify-between border-b border-border bg-background px-4 py-2">
-              <div className="flex items-center gap-1.5">
-                <div className="flex overflow-hidden rounded-lg border border-border">
-                  <button
-                    onClick={() => setView('canvas')}
-                    className="px-3 py-1 text-xs font-medium transition-colors text-muted-foreground hover:text-foreground"
-                  >
-                    Canvas
-                  </button>
-                  <button
-                    onClick={() => setView('table')}
-                    className="px-3 py-1 text-xs font-medium transition-colors bg-primary text-primary-foreground"
-                  >
-                    Table
-                  </button>
-                </div>
-              </div>
-            </div>
+            <TreeTableToolbar
+              view={view}
+              onSetView={setView}
+              filterState={filterState}
+              onToggleFilter={handleToggleFilter}
+              showGaps={showGaps}
+              onToggleGaps={handleToggleGaps}
+            />
             <div className="flex-1 overflow-hidden">
-              <TreeTableWrapper treeData={treeData} relationships={relationships} onSelectPerson={handleSelectPerson} />
+              <TreeTableWrapper
+                treeData={treeData}
+                relationships={relationships}
+                onSelectPerson={handleSelectPerson}
+                filterState={filterState}
+              />
             </div>
           </div>
         )}
@@ -179,18 +203,61 @@ export function TreeLayout({ treeData, focusPersonId }: TreeLayoutProps) {
               onSetView={setView}
               isMobile
               isDetailOpen={!!selectedPerson}
-              mobileToolbarSlot={(toolbarProps) => (
-                <MobileTreeToolbar {...toolbarProps} />
+              filterState={filterState}
+              onFilterStateChange={setFilterState}
+              showGaps={showGaps}
+              onShowGapsChange={setShowGaps}
+              mobileToolbarSlot={(canvasActions) => (
+                <MobileViewBar
+                  view={view}
+                  onSetView={setView}
+                  filterState={filterState}
+                  onToggleFilter={handleToggleFilter}
+                  showGaps={showGaps}
+                  onToggleGaps={handleToggleGaps}
+                  extraMenuItems={
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onSelect={canvasActions.onAutoLayout}>
+                        <LayoutGrid className="mr-2 size-4" />
+                        Auto Layout
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onSelect={canvasActions.onExportPng}>
+                        <Download className="mr-2 size-4" />
+                        Export PNG
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onSelect={canvasActions.onExportSvg}>
+                        <Download className="mr-2 size-4" />
+                        Export SVG
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onSelect={canvasActions.onExportPdf}>
+                        <Download className="mr-2 size-4" />
+                        Export PDF
+                      </DropdownMenuItem>
+                    </>
+                  }
+                />
               )}
             />
           </>
         ) : (
           <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-            <div className="flex h-11 items-center border-b border-border bg-background px-2 gap-1">
-              <span className="flex-1 text-sm font-semibold truncate px-1">Family Tree</span>
-            </div>
+            <MobileViewBar
+              view={view}
+              onSetView={setView}
+              filterState={filterState}
+              onToggleFilter={handleToggleFilter}
+              showGaps={showGaps}
+              onToggleGaps={handleToggleGaps}
+            />
             <div className="flex-1 overflow-hidden">
-              <TreeTableWrapper treeData={treeData} relationships={relationships} onSelectPerson={handleSelectPerson} />
+              <TreeTableWrapper
+                treeData={treeData}
+                relationships={relationships}
+                onSelectPerson={handleSelectPerson}
+                filterState={filterState}
+              />
             </div>
           </div>
         )}

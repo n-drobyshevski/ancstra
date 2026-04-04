@@ -12,6 +12,8 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import type { TreeData, PersonListItem } from '@ancstra/shared';
+import type { FilterState } from './tree-utils';
+import { TreePersonCard } from './tree-person-card';
 
 type SortKey = 'name' | 'birthDate' | 'deathDate' | 'birthPlace' | 'sex' | 'childCount';
 type SortDir = 'ascending' | 'descending';
@@ -23,18 +25,17 @@ interface TreeTableProps {
     spouses: Record<string, { id: string; name: string }[]>;
   };
   onSelectPerson: (personId: string) => void;
+  filterState?: FilterState;
 }
 
 function getChildCount(personId: string, treeData: TreeData): number {
-  // Find families where this person is a partner
   const familyIds = treeData.families
     .filter((f) => f.partner1Id === personId || f.partner2Id === personId)
     .map((f) => f.id);
-  // Count children in those families
   return treeData.childLinks.filter((cl) => familyIds.includes(cl.familyId)).length;
 }
 
-export function TreeTable({ treeData, relationships, onSelectPerson }: TreeTableProps) {
+export function TreeTable({ treeData, relationships, onSelectPerson, filterState }: TreeTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>('name');
   const [sortDir, setSortDir] = useState<SortDir>('ascending');
   const [search, setSearch] = useState('');
@@ -54,14 +55,31 @@ export function TreeTable({ treeData, relationships, onSelectPerson }: TreeTable
   };
 
   const filtered = useMemo(() => {
-    if (!search.trim()) return treeData.persons;
-    const q = search.toLowerCase();
-    return treeData.persons.filter(
-      (p) =>
-        p.givenName.toLowerCase().includes(q) ||
-        p.surname.toLowerCase().includes(q)
-    );
-  }, [treeData.persons, search]);
+    let result = treeData.persons;
+
+    // Apply text search
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      result = result.filter(
+        (p) =>
+          p.givenName.toLowerCase().includes(q) ||
+          p.surname.toLowerCase().includes(q),
+      );
+    }
+
+    // Apply toolbar filters
+    if (filterState) {
+      result = result.filter((p) => {
+        const sexVisible = filterState.sex[p.sex as 'M' | 'F' | 'U'] ?? true;
+        const livingVisible = p.isLiving
+          ? filterState.living.living
+          : filterState.living.deceased;
+        return sexVisible && livingVisible;
+      });
+    }
+
+    return result;
+  }, [treeData.persons, search, filterState]);
 
   const sorted = useMemo(() => {
     const mult = sortDir === 'ascending' ? 1 : -1;
@@ -69,7 +87,7 @@ export function TreeTable({ treeData, relationships, onSelectPerson }: TreeTable
       switch (sortKey) {
         case 'name': {
           const cmp = `${a.surname} ${a.givenName}`.localeCompare(
-            `${b.surname} ${b.givenName}`
+            `${b.surname} ${b.givenName}`,
           );
           return cmp * mult;
         }
@@ -111,7 +129,7 @@ export function TreeTable({ treeData, relationships, onSelectPerson }: TreeTable
 
   return (
     <div className="flex flex-col h-full">
-      <div className="p-4 border-b">
+      <div className="p-4 md:p-4 px-3 py-2 border-b">
         <Input
           placeholder="Filter by name..."
           value={search}
@@ -121,7 +139,8 @@ export function TreeTable({ treeData, relationships, onSelectPerson }: TreeTable
         />
       </div>
 
-      <div className="flex-1 overflow-auto">
+      {/* Desktop: full table */}
+      <div className="hidden md:flex flex-1 overflow-auto">
         <Table role="table">
           <TableHeader>
             <TableRow>
@@ -245,6 +264,24 @@ export function TreeTable({ treeData, relationships, onSelectPerson }: TreeTable
             )}
           </TableBody>
         </Table>
+      </div>
+
+      {/* Mobile: card list */}
+      <div className="flex-1 overflow-auto md:hidden" role="list" aria-label="People in your family tree">
+        {sorted.length === 0 ? (
+          <div className="flex items-center justify-center p-8">
+            <p className="text-muted-foreground text-sm">No persons match your filter.</p>
+          </div>
+        ) : (
+          sorted.map((person) => (
+            <TreePersonCard
+              key={person.id}
+              person={person}
+              birthPlace={((person as PersonListItem & Record<string, unknown>).birthPlace as string | null | undefined) ?? undefined}
+              onSelect={() => onSelectPerson(person.id)}
+            />
+          ))
+        )}
       </div>
 
       <div className="p-3 border-t text-sm text-muted-foreground">

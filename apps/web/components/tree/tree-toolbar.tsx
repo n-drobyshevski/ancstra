@@ -12,6 +12,7 @@ import { Star, ChevronDown, BarChart3, Map } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import type { FilterState, NodeStyle } from './tree-utils';
 import { TreeExport } from './tree-export';
+import { TreeViewToggle } from './tree-view-toggle';
 
 interface TreeToolbarProps {
   onAutoLayout: () => void;
@@ -65,29 +66,7 @@ export function TreeToolbar({
   return (
     <div className="flex items-center justify-between border-b border-border bg-background px-4 py-2">
       <div className="flex items-center gap-1.5">
-        {/* Segmented view toggle — matches factsheets Detail/Graph pattern */}
-        <div className="flex overflow-hidden rounded-lg border border-border">
-          <button
-            onClick={() => onSetView('canvas')}
-            className={`px-3 py-1 text-xs font-medium transition-colors ${
-              view === 'canvas'
-                ? 'bg-primary text-primary-foreground'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            Canvas
-          </button>
-          <button
-            onClick={() => onSetView('table')}
-            className={`px-3 py-1 text-xs font-medium transition-colors ${
-              view === 'table'
-                ? 'bg-primary text-primary-foreground'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            Table
-          </button>
-        </div>
+        <TreeViewToggle view={view} onSetView={onSetView} />
 
         <Separator orientation="vertical" className="h-5 mx-0.5" />
 
