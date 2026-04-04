@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import type { PersonListItem, TreeData } from '@ancstra/shared';
-import { Drawer, DrawerPortal, DrawerTitle } from '@/components/ui/drawer';
-import { Drawer as DrawerPrimitive } from 'vaul';
+import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer';
 import {
   usePersonDetail,
   DetailHeaderCompact,
@@ -149,27 +148,17 @@ export function MobileDetailSheet({
       modal={false}
       shouldScaleBackground={false}
     >
-      {/*
-        Non-modal drawer: use Vaul Content directly WITHOUT the overlay.
-        The default DrawerContent renders a full-screen DrawerOverlay that
-        sets pointer-events:none on <body>, blocking touch on the canvas.
-      */}
-      <DrawerPortal>
-        <DrawerPrimitive.Content
-          data-slot="drawer-content"
-          className="group/drawer-content fixed z-50 flex h-auto flex-col bg-popover text-sm text-popover-foreground data-[vaul-drawer-direction=bottom]:inset-x-0 data-[vaul-drawer-direction=bottom]:bottom-0 data-[vaul-drawer-direction=bottom]:mt-24 data-[vaul-drawer-direction=bottom]:max-h-[85dvh] data-[vaul-drawer-direction=bottom]:rounded-t-xl data-[vaul-drawer-direction=bottom]:border-t"
-        >
-          <div className="mx-auto mt-4 h-1 w-[100px] shrink-0 rounded-full bg-muted" />
-          {person && (
-            <SheetContent
-              person={person}
-              treeData={treeData}
-              snap={snap}
-              onFocusNode={onFocusNode}
-            />
-          )}
-        </DrawerPrimitive.Content>
-      </DrawerPortal>
+      {/* overlay={false}: skip opaque overlay so canvas stays visible and touchable */}
+      <DrawerContent overlay={false} className="data-[vaul-drawer-direction=bottom]:h-dvh data-[vaul-drawer-direction=bottom]:max-h-dvh">
+        {person && (
+          <SheetContent
+            person={person}
+            treeData={treeData}
+            snap={snap}
+            onFocusNode={onFocusNode}
+          />
+        )}
+      </DrawerContent>
     </Drawer>
   );
 }
