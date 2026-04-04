@@ -4,17 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Users, UserPlus, Upload } from 'lucide-react';
 import { PersonAvatar } from './person-avatar';
+import { getCachedRecentPersons, getCachedStatCards } from '@/lib/cache/dashboard';
 
 interface RecentPersonsProps {
-  persons: Array<{
-    id: string;
-    givenName: string;
-    surname: string;
-    sex: 'M' | 'F' | 'U';
-    birthDate?: string | null;
-    createdAt: string;
-  }>;
-  totalPersons: number;
+  dbFilename: string;
 }
 
 const SEX_LABELS: Record<'M' | 'F' | 'U', string> = {
@@ -23,7 +16,12 @@ const SEX_LABELS: Record<'M' | 'F' | 'U', string> = {
   U: 'Unknown',
 };
 
-export function RecentPersons({ persons, totalPersons }: RecentPersonsProps) {
+export async function RecentPersons({ dbFilename }: RecentPersonsProps) {
+  const [recentPersons, { totalPersons }] = await Promise.all([
+    getCachedRecentPersons(dbFilename),
+    getCachedStatCards(dbFilename),
+  ]);
+
   return (
     <Card>
       <CardHeader>
@@ -37,7 +35,7 @@ export function RecentPersons({ persons, totalPersons }: RecentPersonsProps) {
         )}
       </CardHeader>
       <CardContent>
-        {persons.length === 0 ? (
+        {recentPersons.length === 0 ? (
           <div className="py-12 text-center">
             <Users className="mx-auto size-16 text-muted-foreground/30" />
             <p className="text-lg font-semibold mt-4">Start building your tree</p>
@@ -61,7 +59,7 @@ export function RecentPersons({ persons, totalPersons }: RecentPersonsProps) {
           </div>
         ) : (
           <ul role="list" className="space-y-0">
-            {persons.map((person) => (
+            {recentPersons.map((person) => (
               <li
                 key={person.id}
                 className="flex items-center gap-3 rounded-lg px-2 -mx-2 py-2.5 hover:bg-muted/50 transition-colors min-h-[44px]"

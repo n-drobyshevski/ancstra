@@ -2,8 +2,15 @@ import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardAction } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { scoreColor } from '@/lib/quality-utils';
+import { getCachedQualityScore } from '@/lib/cache/dashboard';
 
-export function QualityWidget({ score }: { score: number }) {
+interface QualityWidgetProps {
+  dbFilename: string;
+}
+
+export async function QualityWidget({ dbFilename }: QualityWidgetProps) {
+  const score = await getCachedQualityScore(dbFilename);
+
   return (
     <Card size="sm">
       <CardHeader>

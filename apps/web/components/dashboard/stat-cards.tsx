@@ -8,20 +8,21 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { scoreColor } from '@/lib/quality-utils';
+import { getCachedStatCards, getCachedQualityScore } from '@/lib/cache/dashboard';
 
-interface DashboardStatCardsProps {
-  totalPersons: number;
-  totalFamilies: number;
-  overallQualityScore: number;
-  recentAdditionsCount: number;
+interface StatCardsProps {
+  dbFilename: string;
 }
 
-export function StatCards({
-  totalPersons,
-  totalFamilies,
-  overallQualityScore,
-  recentAdditionsCount,
-}: DashboardStatCardsProps) {
+export async function StatCards({ dbFilename }: StatCardsProps) {
+  const [
+    { totalPersons, totalFamilies, recentAdditionsCount },
+    overallQualityScore,
+  ] = await Promise.all([
+    getCachedStatCards(dbFilename),
+    getCachedQualityScore(dbFilename),
+  ]);
+
   return (
     <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
       <Card size="sm">

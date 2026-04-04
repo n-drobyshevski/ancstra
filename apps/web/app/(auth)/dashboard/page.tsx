@@ -1,11 +1,12 @@
+import { Suspense } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ContributionQueue } from '@/components/moderation/contribution-queue';
 import { WelcomeCard } from '@/components/onboarding/welcome-card';
-import { getCachedStatCards, getCachedRecentPersons, getCachedQualityScore } from '@/lib/cache/dashboard';
 import { hasPermission } from '@ancstra/auth';
 import { getAuthContext } from '@/lib/auth/context';
 import { PagePadding } from '@/components/page-padding';
+import { getCachedStatCards } from '@/lib/cache/dashboard';
 
 import { StatCards } from '@/components/dashboard/stat-cards';
 import { RecentPersons } from '@/components/dashboard/recent-persons';
@@ -15,27 +16,23 @@ import { RecentActivity } from '@/components/dashboard/recent-activity';
 import { EmptyDashboard } from '@/components/dashboard/empty-dashboard';
 import { MobileAddButton } from '@/components/dashboard/mobile-add-button';
 
+import { StatCardsSkeleton } from '@/components/skeletons/stat-cards-skeleton';
+import { RecentPersonsSkeleton } from '@/components/skeletons/recent-persons-skeleton';
+import { QualityWidgetSkeleton } from '@/components/skeletons/quality-widget-skeleton';
+import { RecentActivitySkeleton } from '@/components/skeletons/recent-activity-skeleton';
+
 export default async function DashboardPage() {
   const authContext = await getAuthContext();
   if (!authContext) return null;
   const canReview = hasPermission(authContext.role, 'contributions:review');
 
-  const [
-    { totalPersons, totalFamilies, recentAdditionsCount },
-    recentPersons,
-    overallQualityScore,
-  ] = await Promise.all([
-    getCachedStatCards(authContext.dbFilename),
-    getCachedRecentPersons(authContext.dbFilename),
-    getCachedQualityScore(authContext.dbFilename),
-  ]);
+  const { totalPersons } = await getCachedStatCards(authContext.dbFilename);
 
   return (
     <PagePadding>
       <div className="space-y-4 md:space-y-6">
         <WelcomeCard />
 
-        {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-semibold">Welcome to Ancstra</h1>
@@ -53,34 +50,28 @@ export default async function DashboardPage() {
           <EmptyDashboard />
         ) : (
           <>
-            {/* Stats row */}
-            <StatCards
-              totalPersons={totalPersons}
-              totalFamilies={totalFamilies}
-              overallQualityScore={overallQualityScore}
-              recentAdditionsCount={recentAdditionsCount}
-            />
+            <Suspense fallback={<StatCardsSkeleton />}>
+              <StatCards dbFilename={authContext.dbFilename} />
+            </Suspense>
 
-            {/* Quick actions */}
             <QuickActions />
 
-            {/* Main content grid */}
             <div className="grid gap-4 md:gap-6 lg:grid-cols-[1fr_320px]">
-              {/* Left: Recent Persons */}
-              <RecentPersons
-                persons={recentPersons}
-                totalPersons={totalPersons}
-              />
+              <Suspense fallback={<RecentPersonsSkeleton />}>
+                <RecentPersons dbFilename={authContext.dbFilename} />
+              </Suspense>
 
-              {/* Right: Quality + Activity */}
               <div className="space-y-4 md:space-y-6">
-                <QualityWidget score={overallQualityScore} />
+                <Suspense fallback={<QualityWidgetSkeleton />}>
+                  <QualityWidget dbFilename={authContext.dbFilename} />
+                </Suspense>
 
-                <RecentActivity familyId={authContext.familyId} />
+                <Suspense fallback={<RecentActivitySkeleton />}>
+                  <RecentActivity familyId={authContext.familyId} />
+                </Suspense>
               </div>
             </div>
 
-            {/* Pending Reviews (conditional) */}
             {canReview && (
               <ContributionQueue familyId={authContext.familyId} />
             )}
@@ -88,7 +79,6 @@ export default async function DashboardPage() {
         )}
       </div>
 
-      {/* Mobile floating action button */}
       <MobileAddButton />
     </PagePadding>
   );
