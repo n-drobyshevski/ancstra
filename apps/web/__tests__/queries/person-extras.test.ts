@@ -83,6 +83,19 @@ describe('queryPersonExtras', () => {
     expect(result.get('p1')?.birthPlace).toBe('Chicago, IL');
   });
 
+  it('prefers a dated birth event over an undated one for birthPlace', async () => {
+    insertPerson('p1');
+    insertName('p1', 'Alice', 'Smith');
+    // Undated birth event with a place: must NOT win.
+    insertEvent('e0', 'p1', 'birth', { placeText: 'Unknown' });
+    // Dated birth event: must be selected.
+    insertEvent('e1', 'p1', 'birth', { placeText: 'Chicago, IL', dateSort: 19030101 });
+
+    const result = await queryPersonExtras(db, ['p1']);
+
+    expect(result.get('p1')?.birthPlace).toBe('Chicago, IL');
+  });
+
   it('returns updatedAt from persons row', async () => {
     insertPerson('p1', { updatedAt: LATER });
     insertName('p1', 'Alice', 'Smith');

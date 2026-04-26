@@ -63,6 +63,7 @@ export async function queryPersonExtras(
           AND (f.partner1_id = p.id OR f.partner2_id = p.id)
           AND f.validation_status IN ('proposed', 'disputed')
       ) OR EXISTS (
+        -- children has no deleted_at: rows are CASCADE-deleted when their family is removed
         SELECT 1 FROM children c
         WHERE c.person_id = p.id
           AND c.validation_status IN ('proposed', 'disputed')
@@ -70,7 +71,7 @@ export async function queryPersonExtras(
       (
         SELECT e.place_text FROM events e
         WHERE e.person_id = p.id AND e.event_type = 'birth'
-        ORDER BY e.date_sort
+        ORDER BY e.date_sort NULLS LAST
         LIMIT 1
       ) AS birth_place,
       p.updated_at AS updated_at
