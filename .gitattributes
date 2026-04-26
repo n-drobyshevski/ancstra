@@ -1,0 +1,5 @@
+# Force LF for files that are executed in Linux/Vercel build environments,
+# regardless of core.autocrlf on Windows clients.
+*.sh        text eol=lf
+*.bash      text eol=lf
+Dockerfile  text eol=lf
