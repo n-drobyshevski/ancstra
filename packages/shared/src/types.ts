@@ -41,6 +41,11 @@ export interface PersonListItem {
   isLiving: boolean;
   birthDate?: string | null;
   deathDate?: string | null;
+  sourcesCount?: number;
+  completeness?: number;
+  validation?: 'confirmed' | 'proposed';
+  birthPlace?: string | null;
+  updatedAt?: string;
 }
 
 // Paginated response
