@@ -8,6 +8,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { CommandPalette } from "@/components/command-palette";
 import { ServiceWorkerRegister } from "@/components/sw-register";
 import { WebVitalsReporter } from './web-vitals';
+import { NuqsAdapter } from 'nuqs/adapters/next/app';
 
 const inter = Inter({
   subsets: ["latin"],
@@ -34,6 +35,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className={cn("h-full", "antialiased", "font-sans", inter.variable)}>
       <body className={inter.variable}>
+        <NuqsAdapter>
           <ThemeProvider
             attribute="class"
             defaultTheme="system"
@@ -50,7 +52,8 @@ export default function RootLayout({
             <Toaster />
             <ServiceWorkerRegister />
           </ThemeProvider>
-        </body>
+        </NuqsAdapter>
+      </body>
     </html>
   );
 }
