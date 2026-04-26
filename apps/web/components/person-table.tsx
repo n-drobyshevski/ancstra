@@ -88,7 +88,7 @@ export function PersonTable({ persons }: { persons: PersonListItem[] }) {
               </TableCell>
               <TableCell>
                 {validation === 'proposed' ? (
-                  <Badge variant="outline" className="border-amber-500 text-amber-700 dark:text-amber-400">
+                  <Badge variant="outline" className="border-status-warning-text bg-status-warning-bg text-status-warning-text">
                     Proposed
                   </Badge>
                 ) : (
