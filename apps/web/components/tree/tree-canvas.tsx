@@ -815,6 +815,7 @@ function TreeCanvasInner({ treeData, focusPersonId, focusKey, paletteOpen, onTog
           onReconnect={isMobile ? undefined : onReconnect}
           onReconnectEnd={isMobile ? undefined : onReconnectEnd}
           edgesReconnectable={!isMobile}
+          reconnectRadius={20}
           onDragOver={isMobile ? undefined : onDragOver}
           onDrop={isMobile ? undefined : onDrop}
           fitView

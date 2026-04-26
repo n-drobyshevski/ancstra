@@ -124,8 +124,11 @@ export function FactsheetSidebar({
       {/* Stats bar */}
       <FactsheetStatsBar factsheets={factsheets} />
 
-      {/* Search + filter pills */}
-      <div className="space-y-2 border-b border-border px-3 py-2">
+      {/* Search + filter pills.
+          suppressHydrationWarning: password-manager extensions (e.g. ProtonPass)
+          inject data-* attributes on form-like containers before hydration,
+          producing a benign client/server mismatch. */}
+      <div className="space-y-2 border-b border-border px-3 py-2" suppressHydrationWarning>
         <Input
           placeholder="Search factsheets..."
           value={search}

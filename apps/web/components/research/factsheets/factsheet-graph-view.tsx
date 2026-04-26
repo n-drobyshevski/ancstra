@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useCallback, useEffect } from 'react';
+import { useMemo, useCallback, useEffect, useRef } from 'react';
 import {
   ReactFlow, Background, Controls, MiniMap,
   ConnectionMode,
@@ -15,6 +15,7 @@ import { FactsheetGraphEdge } from './factsheet-graph-edge';
 import type { FactsheetWithCounts, FactsheetLink } from '@/lib/research/factsheet-client';
 import { useConnectionLock } from '@/lib/graph/use-connection-lock';
 import { classifyApiError } from '@/lib/api/classify-error';
+import { useIsMobile } from '@/hooks/use-mobile';
 import {
   validateFactsheetLink,
   formatFactsheetViolation,
@@ -112,6 +113,8 @@ export function FactsheetGraphView({
   // Re-sync when underlying data changes (parent refetches after a link mutation).
   useEffect(() => { setNodes(initialNodes); }, [initialNodes, setNodes]);
   useEffect(() => { setEdges(initialEdges); }, [initialEdges, setEdges]);
+
+  const isMobile = useIsMobile();
 
   const connectionLock = useConnectionLock<typeof LOCK_KEY>({
     symmetricTypes: [LOCK_KEY],
@@ -219,6 +222,80 @@ export function FactsheetGraphView({
     [connectionLock, factsheets, links, onLinksChanged, setEdges],
   );
 
+  // Edge pull-off gesture: drag an edge endpoint to empty canvas to delete the
+  // link. Mirrors the pattern in tree-canvas.tsx (deleteRelationship + reconnect
+  // handlers) — optimistic remove with a 5-second undo window before the API
+  // call fires.
+  const pendingDeletesRef = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+
+  const deleteLink = useCallback((edge: Edge) => {
+    const linkId = edge.id;
+    const fromId = edge.source;
+    if (!linkId || !fromId || linkId.startsWith('pending-')) return;
+
+    setEdges((eds) => eds.filter((e) => e.id !== edge.id));
+
+    const timeoutId = setTimeout(async () => {
+      pendingDeletesRef.current.delete(edge.id);
+      try {
+        const res = await fetch(`/api/research/factsheets/${fromId}/links`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ linkId }),
+        });
+        if (!res.ok && res.status !== 404) {
+          toast.error(classifyApiError(res));
+          setEdges((eds) => [...eds, edge]);
+        } else {
+          onLinksChanged?.();
+        }
+      } catch {
+        toast.error('Network error — check your connection');
+        setEdges((eds) => [...eds, edge]);
+      }
+    }, 5000);
+
+    pendingDeletesRef.current.set(edge.id, timeoutId);
+
+    toast('Link removed', {
+      duration: 5000,
+      action: {
+        label: 'Undo',
+        onClick: () => {
+          const tid = pendingDeletesRef.current.get(edge.id);
+          if (tid) {
+            clearTimeout(tid);
+            pendingDeletesRef.current.delete(edge.id);
+          }
+          setEdges((eds) => [...eds, edge]);
+        },
+      },
+    });
+  }, [setEdges, onLinksChanged]);
+
+  // Cancel any in-flight pending deletes on unmount.
+  useEffect(() => {
+    const pending = pendingDeletesRef.current;
+    return () => {
+      for (const tid of pending.values()) clearTimeout(tid);
+    };
+  }, []);
+
+  const edgeReconnectSuccessful = useRef(true);
+
+  const onReconnectStart = useCallback(() => {
+    edgeReconnectSuccessful.current = false;
+  }, []);
+
+  const onReconnect = useCallback(() => {
+    edgeReconnectSuccessful.current = true;
+  }, []);
+
+  const onReconnectEnd = useCallback((_event: MouseEvent | TouchEvent, edge: Edge) => {
+    if (edgeReconnectSuccessful.current) return;
+    deleteLink(edge);
+  }, [deleteLink]);
+
   return (
     <div className="relative h-full w-full">
       <ReactFlow
@@ -229,6 +306,11 @@ export function FactsheetGraphView({
         onNodeClick={onNodeClick}
         onConnect={onConnect}
         isValidConnection={isValidConnection}
+        edgesReconnectable={!isMobile}
+        reconnectRadius={20}
+        onReconnectStart={onReconnectStart}
+        onReconnect={onReconnect}
+        onReconnectEnd={onReconnectEnd}
         connectionMode={ConnectionMode.Loose}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
