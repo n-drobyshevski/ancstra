@@ -14,6 +14,7 @@ export const persons = sqliteTable('persons', {
   version: integer('version').notNull().default(1),
 }, (table) => [
   index('idx_persons_sex').on(table.sex),
+  index('idx_persons_updated_at').on(table.updatedAt),
 ]);
 
 // ==================== PERSON NAMES ====================

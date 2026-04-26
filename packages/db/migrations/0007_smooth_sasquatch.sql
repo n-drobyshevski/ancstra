@@ -1,0 +1,1 @@
+CREATE INDEX `idx_persons_updated_at` ON `persons` (`updated_at`);
