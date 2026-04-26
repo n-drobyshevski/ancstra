@@ -8,6 +8,8 @@ export interface CreateFactsheetLinkInput {
   relationshipType: 'parent_child' | 'spouse' | 'sibling';
   sourceFactId?: string;
   confidence?: 'high' | 'medium' | 'low';
+  sourceHandle?: string | null;
+  targetHandle?: string | null;
 }
 
 export async function createFactsheetLink(db: Database, input: CreateFactsheetLinkInput) {
@@ -22,6 +24,8 @@ export async function createFactsheetLink(db: Database, input: CreateFactsheetLi
       relationshipType: input.relationshipType,
       sourceFactId: input.sourceFactId ?? null,
       confidence: input.confidence ?? 'medium',
+      sourceHandle: input.sourceHandle ?? null,
+      targetHandle: input.targetHandle ?? null,
       createdAt: now,
     })
     .run();

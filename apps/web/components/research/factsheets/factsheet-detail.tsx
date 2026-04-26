@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react';
 import { MoreHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { FACTSHEET_STATUS_CONFIG } from '@/lib/research/constants';
+import { FACTSHEET_STATUS_CONFIG, FACTSHEET_ENTITY_TYPE_LABELS } from '@/lib/research/constants';
 import { cn } from '@/lib/utils';
 import {
   updateFactsheet,
@@ -14,6 +14,7 @@ import {
 } from '@/lib/research/factsheet-client';
 import { FactsheetFactsSection } from './factsheet-facts-section';
 import { FactsheetLinksSection } from './factsheet-links-section';
+import { FactsheetLinkDialog } from './factsheet-link-dialog';
 import { FactsheetPromote } from './factsheet-promote';
 
 interface FactsheetDetailProps {
@@ -30,6 +31,7 @@ export function FactsheetDetail({
 }: FactsheetDetailProps) {
   const [notes, setNotes] = useState(detail.notes ?? '');
   const [notesTimer, setNotesTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
+  const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const { conflicts, refetch: refetchConflicts } = useFactsheetConflicts(detail.id);
 
   const statusCfg = FACTSHEET_STATUS_CONFIG[detail.status] ?? FACTSHEET_STATUS_CONFIG.draft;
@@ -69,6 +71,11 @@ export function FactsheetDetail({
           <span className={cn('rounded px-1.5 py-0.5 text-[10px] font-medium', statusCfg.className)}>
             {statusCfg.label}
           </span>
+          {detail.entityType !== 'person' && (
+            <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+              {FACTSHEET_ENTITY_TYPE_LABELS[detail.entityType] ?? detail.entityType}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2">
           {!isTerminal && (
@@ -113,7 +120,8 @@ export function FactsheetDetail({
         links={detail.links}
         allFactsheets={allFactsheets}
         onLinkClick={onSelectFactsheet}
-        onCreateLink={() => {}}
+        onCreateLink={() => setLinkDialogOpen(true)}
+        onLinkCreated={handleDataChanged}
       />
 
       {/* Promote */}
@@ -126,6 +134,15 @@ export function FactsheetDetail({
           onPromoted={onDataChanged}
         />
       )}
+
+      <FactsheetLinkDialog
+        open={linkDialogOpen}
+        onOpenChange={setLinkDialogOpen}
+        factsheet={detail}
+        allFactsheets={allFactsheets}
+        existingLinks={detail.links}
+        onLinked={handleDataChanged}
+      />
     </div>
   );
 }

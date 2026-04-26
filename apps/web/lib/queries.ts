@@ -16,7 +16,7 @@ import type {
   ChildLink,
 } from '@ancstra/shared';
 // ---------------------------------------------------------------------------
-// Exported: FTS5 full-text search for persons
+// Exported: Full-text search for persons (FTS5 with LIKE fallback)
 // ---------------------------------------------------------------------------
 export async function searchPersonsFts(
   db: Database,
@@ -26,13 +26,68 @@ export async function searchPersonsFts(
   const sanitized = query.replace(/['"*()]/g, '').trim();
   if (!sanitized) return [];
 
-  const matchExpr = sanitized
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((w) => `${w}*`)
-    .join(' ');
+  // Try FTS5 first, fall back to LIKE if the virtual table doesn't exist
+  try {
+    const matchExpr = sanitized
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((w) => `${w}*`)
+      .join(' ');
 
-  if (!matchExpr) return [];
+    if (!matchExpr) return [];
+
+    const rows = await db.all<{
+      id: string;
+      sex: string;
+      isLiving: number;
+      givenName: string;
+      surname: string;
+      birthDate: string | null;
+      deathDate: string | null;
+    }>(sql`
+      SELECT p.id, p.sex, p.is_living as isLiving,
+             pn.given_name as givenName, pn.surname,
+             ps.birth_date as birthDate, ps.death_date as deathDate
+      FROM persons_fts
+      JOIN person_names pn ON pn.rowid = persons_fts.rowid
+      JOIN persons p ON p.id = pn.person_id
+      LEFT JOIN person_summary ps ON ps.person_id = p.id
+      WHERE persons_fts MATCH ${matchExpr}
+        AND p.deleted_at IS NULL
+        AND pn.is_primary = 1
+      ORDER BY bm25(persons_fts)
+      LIMIT ${limit}
+    `);
+
+    return rows.map((row): PersonListItem => ({
+      id: row.id,
+      givenName: row.givenName,
+      surname: row.surname,
+      sex: row.sex as 'M' | 'F' | 'U',
+      isLiving: Boolean(row.isLiving),
+      birthDate: row.birthDate ?? null,
+      deathDate: row.deathDate ?? null,
+    }));
+  } catch (err) {
+    // FTS5 not available — fall back to LIKE search
+    console.warn(
+      '[search] FTS5 query failed, falling back to LIKE search.',
+      err instanceof Error ? err.message : err,
+    );
+  }
+
+  return searchPersonsLike(db, sanitized, limit);
+}
+
+// ---------------------------------------------------------------------------
+// Private: LIKE-based fallback search (works on all SQLite backends)
+// ---------------------------------------------------------------------------
+async function searchPersonsLike(
+  db: Database,
+  query: string,
+  limit: number,
+): Promise<PersonListItem[]> {
+  const pattern = `%${query}%`;
 
   const rows = await db.all<{
     id: string;
@@ -46,14 +101,13 @@ export async function searchPersonsFts(
     SELECT p.id, p.sex, p.is_living as isLiving,
            pn.given_name as givenName, pn.surname,
            ps.birth_date as birthDate, ps.death_date as deathDate
-    FROM persons_fts
-    JOIN person_names pn ON pn.rowid = persons_fts.rowid
+    FROM person_names pn
     JOIN persons p ON p.id = pn.person_id
     LEFT JOIN person_summary ps ON ps.person_id = p.id
-    WHERE persons_fts MATCH ${matchExpr}
+    WHERE (pn.given_name LIKE ${pattern} OR pn.surname LIKE ${pattern})
       AND p.deleted_at IS NULL
       AND pn.is_primary = 1
-    ORDER BY bm25(persons_fts)
+    ORDER BY pn.surname, pn.given_name
     LIMIT ${limit}
   `);
 

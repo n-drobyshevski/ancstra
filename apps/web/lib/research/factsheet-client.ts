@@ -72,6 +72,8 @@ export interface FactsheetLink {
   relationshipType: 'parent_child' | 'spouse' | 'sibling';
   sourceFactId: string | null;
   confidence: string;
+  sourceHandle: string | null;
+  targetHandle: string | null;
   createdAt: string;
 }
 
@@ -222,14 +224,29 @@ export function useInboxCount() {
 // ---------------------------------------------------------------------------
 
 export async function createFactsheet(
-  title: string,
+  input:
+    | string
+    | {
+        title: string;
+        entityType?: 'person' | 'couple' | 'family_unit';
+        notes?: string;
+      },
   entityType: 'person' | 'couple' | 'family_unit' = 'person'
 ): Promise<Factsheet> {
+  const body =
+    typeof input === 'string'
+      ? { title: input, entityType }
+      : {
+          title: input.title,
+          entityType: input.entityType ?? 'person',
+          notes: input.notes,
+        };
   const res = await fetch('/api/research/factsheets', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ title, entityType }),
+    body: JSON.stringify(body),
   });
+  if (!res.ok) throw new Error(`Failed to create factsheet: ${res.status}`);
   return res.json();
 }
 
@@ -313,7 +330,18 @@ export async function promoteFactsheet(
   return res.json();
 }
 
-export async function fetchLinkSuggestions(factsheetId: string) {
+export interface FactsheetLinkSuggestion {
+  factId: string;
+  factType: string;
+  factValue: string;
+  suggestedFactsheetId: string;
+  suggestedFactsheetTitle: string;
+  relationshipType: 'parent_child' | 'spouse' | 'sibling';
+}
+
+export async function fetchLinkSuggestions(
+  factsheetId: string,
+): Promise<{ suggestions: FactsheetLinkSuggestion[] }> {
   const res = await fetch(
     `/api/research/factsheets/${factsheetId}/links?suggest=true`
   );

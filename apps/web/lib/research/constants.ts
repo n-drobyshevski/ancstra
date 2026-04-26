@@ -41,3 +41,9 @@ export const RELATIONSHIP_TYPE_LABELS: Record<string, string> = {
   spouse: 'spouse',
   sibling: 'sibling',
 };
+
+export const FACTSHEET_ENTITY_TYPE_LABELS: Record<string, string> = {
+  person: 'Person',
+  couple: 'Couple',
+  family_unit: 'Family',
+};

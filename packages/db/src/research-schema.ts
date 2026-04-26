@@ -96,6 +96,10 @@ export const factsheetLinks = sqliteTable('factsheet_links', {
   confidence: text('confidence', {
     enum: ['high', 'medium', 'low'],
   }).notNull().default('medium'),
+  // Persisted React Flow handle attachment (top|right|bottom|left) so the
+  // edge re-renders on the side the user dragged to, not the default top.
+  sourceHandle: text('source_handle'),
+  targetHandle: text('target_handle'),
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
 }, (table) => [
   index('idx_factsheet_links_from').on(table.fromFactsheetId),

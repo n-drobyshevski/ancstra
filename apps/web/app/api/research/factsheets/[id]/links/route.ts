@@ -52,6 +52,8 @@ export async function POST(
       relationshipType: body.relationshipType,
       sourceFactId: body.sourceFactId,
       confidence: body.confidence,
+      sourceHandle: typeof body.sourceHandle === 'string' ? body.sourceHandle : null,
+      targetHandle: typeof body.targetHandle === 'string' ? body.targetHandle : null,
     });
 
     return NextResponse.json(result, { status: 201 });

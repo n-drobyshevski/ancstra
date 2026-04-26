@@ -1,19 +1,30 @@
 'use client';
 
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useEffect } from 'react';
 import {
   ReactFlow, Background, Controls, MiniMap,
+  ConnectionMode,
   useNodesState, useEdgesState,
-  type Node, type Edge,
+  type Node, type Edge, type Connection, type IsValidConnection,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { FactsheetGraphNode, type FactsheetNodeData } from './factsheet-graph-node';
 import { FactsheetGraphEdge } from './factsheet-graph-edge';
 import type { FactsheetWithCounts, FactsheetLink } from '@/lib/research/factsheet-client';
+import { useConnectionLock } from '@/lib/graph/use-connection-lock';
+import { classifyApiError } from '@/lib/api/classify-error';
+import {
+  validateFactsheetLink,
+  formatFactsheetViolation,
+  DEFAULT_LINK_TYPE,
+} from '@/lib/research/validate-factsheet-link';
 
 const nodeTypes = { factsheet: FactsheetGraphNode };
 const edgeTypes = { factsheetEdge: FactsheetGraphEdge };
+
+const LOCK_KEY = 'factsheet-link';
 
 interface FactsheetGraphViewProps {
   factsheets: FactsheetWithCounts[];
@@ -21,6 +32,7 @@ interface FactsheetGraphViewProps {
   selectedId: string | null;
   onSelectFactsheet: (id: string) => void;
   onPromoteCluster?: (factsheets: FactsheetWithCounts[]) => void;
+  onLinksChanged?: () => void;
 }
 
 function computeGridPositions(count: number) {
@@ -58,7 +70,14 @@ function findClusters(factsheets: FactsheetWithCounts[], links: FactsheetLink[])
   return clusters;
 }
 
-export function FactsheetGraphView({ factsheets, links, selectedId, onSelectFactsheet, onPromoteCluster }: FactsheetGraphViewProps) {
+export function FactsheetGraphView({
+  factsheets,
+  links,
+  selectedId,
+  onSelectFactsheet,
+  onPromoteCluster,
+  onLinksChanged,
+}: FactsheetGraphViewProps) {
   const initialNodes = useMemo<Node[]>(() => {
     const positions = computeGridPositions(factsheets.length);
     return factsheets.map((fs, i) => ({
@@ -81,13 +100,22 @@ export function FactsheetGraphView({ factsheets, links, selectedId, onSelectFact
       id: link.id,
       source: link.fromFactsheetId,
       target: link.toFactsheetId,
+      sourceHandle: link.sourceHandle ?? undefined,
+      targetHandle: link.targetHandle ?? undefined,
       type: 'factsheetEdge',
-      data: { relationshipType: link.relationshipType, confidence: link.confidence },
     })),
   [links]);
 
-  const [nodes, , onNodesChange] = useNodesState(initialNodes);
-  const [edges, , onEdgesChange] = useEdgesState(initialEdges);
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+
+  // Re-sync when underlying data changes (parent refetches after a link mutation).
+  useEffect(() => { setNodes(initialNodes); }, [initialNodes, setNodes]);
+  useEffect(() => { setEdges(initialEdges); }, [initialEdges, setEdges]);
+
+  const connectionLock = useConnectionLock<typeof LOCK_KEY>({
+    symmetricTypes: [LOCK_KEY],
+  });
 
   const clusters = useMemo(() => findClusters(factsheets, links), [factsheets, links]);
 
@@ -106,6 +134,91 @@ export function FactsheetGraphView({ factsheets, links, selectedId, onSelectFact
     [onSelectFactsheet]
   );
 
+  const isValidConnection = useCallback<IsValidConnection>(
+    (connection) => {
+      const source = connection.source;
+      const target = connection.target;
+      if (!source || !target) return false;
+      return validateFactsheetLink({ source, target, links }) === null;
+    },
+    [links],
+  );
+
+  const onConnect = useCallback(
+    async (connection: Connection) => {
+      const { source, target, sourceHandle, targetHandle } = connection;
+      if (!source || !target) return;
+
+      if (connectionLock.isLocked(source, target, LOCK_KEY)) {
+        toast.info('Connection already in progress…');
+        return;
+      }
+
+      const violation = validateFactsheetLink({ source, target, links });
+      if (violation) {
+        toast.error(formatFactsheetViolation(violation));
+        return;
+      }
+
+      connectionLock.lock(source, target, LOCK_KEY);
+      const sourceTitle = factsheets.find((fs) => fs.id === source)?.title ?? 'Factsheet';
+      const targetTitle = factsheets.find((fs) => fs.id === target)?.title ?? 'Factsheet';
+      const toastId = toast.loading(`Linking: ${sourceTitle} — ${targetTitle}`);
+
+      const pendingId = `pending-${crypto.randomUUID()}`;
+      const pendingEdge: Edge = {
+        id: pendingId,
+        type: 'factsheetEdge',
+        source,
+        target,
+        sourceHandle: sourceHandle ?? undefined,
+        targetHandle: targetHandle ?? undefined,
+        data: { pending: true },
+      };
+      setEdges((eds) => [...eds, pendingEdge]);
+
+      try {
+        const res = await fetch(`/api/research/factsheets/${source}/links`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            toFactsheetId: target,
+            relationshipType: DEFAULT_LINK_TYPE,
+            sourceHandle: sourceHandle ?? null,
+            targetHandle: targetHandle ?? null,
+          }),
+        });
+        if (!res.ok) {
+          setEdges((eds) => eds.filter((e) => e.id !== pendingId));
+          toast.error(classifyApiError(res), { id: toastId });
+          return;
+        }
+        const created = (await res.json()) as { id?: string };
+        const persistedId = typeof created.id === 'string' ? created.id : `link-${pendingId}`;
+        setEdges((eds) =>
+          eds
+            .filter((e) => e.id !== pendingId)
+            .concat({
+              id: persistedId,
+              type: 'factsheetEdge',
+              source,
+              target,
+              sourceHandle: sourceHandle ?? undefined,
+              targetHandle: targetHandle ?? undefined,
+            }),
+        );
+        toast.success('Linked', { id: toastId });
+        onLinksChanged?.();
+      } catch {
+        setEdges((eds) => eds.filter((e) => e.id !== pendingId));
+        toast.error('Network error — check your connection', { id: toastId });
+      } finally {
+        connectionLock.unlock(source, target, LOCK_KEY);
+      }
+    },
+    [connectionLock, factsheets, links, onLinksChanged, setEdges],
+  );
+
   return (
     <div className="relative h-full w-full">
       <ReactFlow
@@ -114,6 +227,9 @@ export function FactsheetGraphView({ factsheets, links, selectedId, onSelectFact
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onNodeClick={onNodeClick}
+        onConnect={onConnect}
+        isValidConnection={isValidConnection}
+        connectionMode={ConnectionMode.Loose}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         fitView

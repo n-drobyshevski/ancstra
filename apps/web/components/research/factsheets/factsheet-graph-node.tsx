@@ -3,7 +3,7 @@
 import { memo } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { cn } from '@/lib/utils';
-import { FACTSHEET_STATUS_CONFIG } from '@/lib/research/constants';
+import { FACTSHEET_STATUS_CONFIG, FACTSHEET_ENTITY_TYPE_LABELS } from '@/lib/research/constants';
 
 export interface FactsheetNodeData {
   title: string;
@@ -23,6 +23,10 @@ const BORDER_COLORS: Record<string, string> = {
   dismissed: 'border-gray-300',
 };
 
+const HANDLE_BASE =
+  '!h-2.5 !w-2.5 !rounded-full !border !border-background !bg-muted-foreground/40 ' +
+  'opacity-0 transition-opacity group-hover:opacity-100 hover:!bg-primary';
+
 function FactsheetGraphNodeInner({ data }: NodeProps) {
   const nodeData = data as unknown as FactsheetNodeData;
   const statusCfg = FACTSHEET_STATUS_CONFIG[nodeData.status] ?? FACTSHEET_STATUS_CONFIG.draft;
@@ -31,8 +35,11 @@ function FactsheetGraphNodeInner({ data }: NodeProps) {
     : BORDER_COLORS[nodeData.status] ?? 'border-gray-300';
 
   return (
-    <>
-      <Handle type="target" position={Position.Top} className="!invisible" />
+    <div className="group relative">
+      {/* Four-sided connection points; relies on ConnectionMode.Loose so any
+          handle can act as both source and target during a drag. */}
+      <Handle id="top" type="source" position={Position.Top} className={HANDLE_BASE} />
+      <Handle id="left" type="source" position={Position.Left} className={HANDLE_BASE} />
       <div
         className={cn(
           'w-40 rounded-lg border-2 bg-background p-2.5 shadow-sm transition-shadow',
@@ -51,12 +58,15 @@ function FactsheetGraphNodeInner({ data }: NodeProps) {
             {statusCfg.label}
           </span>
           {nodeData.entityType !== 'person' && (
-            <span className="rounded bg-muted px-1 py-0.5 text-[9px]">{nodeData.entityType}</span>
+            <span className="rounded bg-muted px-1 py-0.5 text-[9px]">
+              {FACTSHEET_ENTITY_TYPE_LABELS[nodeData.entityType] ?? nodeData.entityType}
+            </span>
           )}
         </div>
       </div>
-      <Handle type="source" position={Position.Bottom} className="!invisible" />
-    </>
+      <Handle id="right" type="source" position={Position.Right} className={HANDLE_BASE} />
+      <Handle id="bottom" type="source" position={Position.Bottom} className={HANDLE_BASE} />
+    </div>
   );
 }
 

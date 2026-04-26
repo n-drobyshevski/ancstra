@@ -105,6 +105,15 @@ export async function ensureFamilySchema(db: FamilyDatabase, dbKey?: string): Pr
   await db.run(sql`CREATE INDEX IF NOT EXISTS idx_factsheet_links_from ON factsheet_links(from_factsheet_id)`);
   await db.run(sql`CREATE INDEX IF NOT EXISTS idx_factsheet_links_to ON factsheet_links(to_factsheet_id)`);
 
+  // Persisted React Flow handle attachment columns (added 2026-04 — see
+  // factsheet-graph-view.tsx). Older DBs predate these columns, so we ALTER.
+  try {
+    await db.run(sql`ALTER TABLE factsheet_links ADD COLUMN source_handle TEXT`);
+  } catch { /* column already exists */ }
+  try {
+    await db.run(sql`ALTER TABLE factsheet_links ADD COLUMN target_handle TEXT`);
+  } catch { /* column already exists */ }
+
   // Add factsheet columns to research_facts if not present
   try {
     await db.run(sql`ALTER TABLE research_facts ADD COLUMN factsheet_id TEXT REFERENCES factsheets(id)`);
@@ -136,6 +145,44 @@ export async function ensureFamilySchema(db: FamilyDatabase, dbKey?: string): Pr
     )
   `);
 
+  // FTS5 full-text search on person_names — works on all backends (local + Turso)
+  await db.run(sql`
+    CREATE VIRTUAL TABLE IF NOT EXISTS persons_fts USING fts5(
+      given_name, surname,
+      content=person_names,
+      content_rowid=rowid
+    )
+  `);
+  await db.run(sql`
+    CREATE TRIGGER IF NOT EXISTS persons_fts_ai AFTER INSERT ON person_names BEGIN
+      INSERT INTO persons_fts(rowid, given_name, surname)
+        VALUES (new.rowid, new.given_name, new.surname);
+    END
+  `);
+  await db.run(sql`
+    CREATE TRIGGER IF NOT EXISTS persons_fts_ad AFTER DELETE ON person_names BEGIN
+      INSERT INTO persons_fts(persons_fts, rowid, given_name, surname)
+        VALUES ('delete', old.rowid, old.given_name, old.surname);
+    END
+  `);
+  await db.run(sql`
+    CREATE TRIGGER IF NOT EXISTS persons_fts_au AFTER UPDATE ON person_names BEGIN
+      INSERT INTO persons_fts(persons_fts, rowid, given_name, surname)
+        VALUES ('delete', old.rowid, old.given_name, old.surname);
+      INSERT INTO persons_fts(rowid, given_name, surname)
+        VALUES (new.rowid, new.given_name, new.surname);
+    END
+  `);
+  // Only rebuild FTS index if it's empty (table was just created).
+  // Triggers keep it in sync after that. Avoids expensive full scan on every cold start.
+  const [ftsCount] = await db.all<{ n: number }>(
+    sql`SELECT count(*) AS n FROM persons_fts LIMIT 1`,
+  );
+  if (ftsCount && ftsCount.n === 0) {
+    log.info('FTS5 index empty — rebuilding from person_names');
+    await db.run(sql`INSERT INTO persons_fts(persons_fts) VALUES('rebuild')`);
+  }
+
   if (dbKey) _ensuredDbs.add(dbKey);
 }
 
@@ -143,9 +190,10 @@ export type CentralDatabase = ReturnType<typeof createCentralDb>;
 export type FamilyDatabase = ReturnType<typeof createFamilyDb>;
 
 /**
- * Initialise FTS5 full-text search on person_names.
- * Creates the virtual table, auto-sync triggers, and rebuilds the index.
- * Only works in local mode (better-sqlite3); skipped for Turso/web mode.
+ * Legacy FTS5 init via better-sqlite3 (local mode only).
+ * In production, FTS5 is now initialised via ensureFamilySchema() which
+ * works on all backends including Turso. This function is kept for the
+ * CLI seed/migration path where better-sqlite3 is available.
  */
 export function initFts5(url?: string) {
   const dbPath = url || process.env.DATABASE_URL || './ancstra.db';

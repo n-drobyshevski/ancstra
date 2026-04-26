@@ -9,7 +9,6 @@ import type { FactsheetWithCounts } from '@/lib/research/factsheet-client';
 import { batchDismiss, batchLink } from '@/lib/research/factsheet-client';
 import { FactsheetStatsBar } from './factsheet-stats-bar';
 import { FactsheetCard } from './factsheet-card';
-import { CreateFactsheetForm } from './create-factsheet-form';
 import { BatchActionsBar } from './batch-actions-bar';
 
 type StatusFilter = 'all' | 'draft' | 'ready' | 'promoted' | 'unanchored';
@@ -27,6 +26,7 @@ interface FactsheetSidebarProps {
   selectedId: string | null;
   onSelect: (id: string) => void;
   onDataChanged: () => void;
+  onCreate: () => void;
 }
 
 export function FactsheetSidebar({
@@ -34,10 +34,10 @@ export function FactsheetSidebar({
   selectedId,
   onSelect,
   onDataChanged,
+  onCreate,
 }: FactsheetSidebarProps) {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<StatusFilter>('all');
-  const [showCreate, setShowCreate] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [batchMode, setBatchMode] = useState(false);
 
@@ -175,25 +175,12 @@ export function FactsheetSidebar({
             variant="ghost"
             size="sm"
             className="h-6 px-2 text-xs"
-            onClick={() => setShowCreate(true)}
+            onClick={onCreate}
           >
             + New
           </Button>
         </div>
       </div>
-
-      {/* Create form */}
-      {showCreate && (
-        <div className="border-b border-border px-3 py-2">
-          <CreateFactsheetForm
-            onCreated={() => {
-              setShowCreate(false);
-              onDataChanged();
-            }}
-            onCancel={() => setShowCreate(false)}
-          />
-        </div>
-      )}
 
       {/* Scrollable list */}
       <div className="flex-1 overflow-y-auto px-3 py-2 space-y-1.5">
