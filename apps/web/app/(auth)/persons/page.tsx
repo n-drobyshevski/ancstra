@@ -38,7 +38,6 @@ export default async function PersonsPage({
           initialPersons={data.items}
           initialTotal={data.total}
           initialQuery={filters.q}
-          initialPage={filters.page}
           pageSize={filters.size}
         />
       </div>

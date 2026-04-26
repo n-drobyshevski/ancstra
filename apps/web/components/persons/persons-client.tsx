@@ -12,7 +12,6 @@ interface PersonsClientProps {
   initialPersons: PersonListItem[];
   initialTotal: number;
   initialQuery: string;
-  initialPage: number;
   pageSize: number;
 }
 
@@ -20,7 +19,6 @@ export function PersonsClient({
   initialPersons,
   initialTotal,
   initialQuery,
-  initialPage,
   pageSize,
 }: PersonsClientProps) {
   const [filters, setFilters] = useQueryStates(personsParsers, {
@@ -30,6 +28,7 @@ export function PersonsClient({
 
   const [queryInput, setQueryInput] = useState(filters.q || initialQuery);
 
+  // Sync controlled input when browser back/forward changes the URL
   useEffect(() => {
     setQueryInput(filters.q);
   }, [filters.q]);
