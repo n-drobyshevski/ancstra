@@ -40,7 +40,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { PersonLinkPopover } from '@/components/person-link-popover';
+import {
+  PersonLinkDialog,
+  type RelationType,
+} from '@/components/person-link-dialog';
+import { PersonCreateDialog } from '@/components/person-create-dialog';
+import { PersonPreviewPanel } from './person-preview-panel';
 
 interface RecordTabProps {
   person: PersonDetail;
@@ -60,6 +65,23 @@ export function RecordTab({ person }: RecordTabProps) {
   const [isLiving, setIsLiving] = useState(person.isLiving);
   const [notes, setNotes] = useState(person.notes ?? '');
   const [deleting, setDeleting] = useState(false);
+  const [linkDialog, setLinkDialog] = useState<{
+    open: boolean;
+    relation: RelationType;
+  }>({ open: false, relation: 'spouse' });
+  const [createDialog, setCreateDialog] = useState<{
+    open: boolean;
+    relation: RelationType;
+  }>({ open: false, relation: 'spouse' });
+  const [previewPersonId, setPreviewPersonId] = useState<string | null>(null);
+
+  const openLinkDialog = useCallback((relation: RelationType) => {
+    setLinkDialog({ open: true, relation });
+  }, []);
+
+  const openCreateDialog = useCallback((relation: RelationType) => {
+    setCreateDialog({ open: true, relation });
+  }, []);
 
   const handleSaveVitals = useCallback(async () => {
     setSaving(true);
@@ -186,21 +208,37 @@ export function RecordTab({ person }: RecordTabProps) {
       {/* ── Right column: Family ── */}
       <div>
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
+          <CardHeader>
             <CardTitle className="text-base">Family</CardTitle>
-            <PersonLinkPopover
-              personId={person.id}
-              personSex={person.sex}
-              onLinked={() => router.refresh()}
-            />
           </CardHeader>
           <CardContent className="space-y-5">
             <FamilySection
               icon={<Heart className="size-4 text-muted-foreground" />}
               label="Spouses"
               people={person.spouses}
-              addHref={`/persons/new?relation=spouse&of=${person.id}`}
-              addLabel="Add Spouse"
+              tagFn={(p) => p.sex === 'M' ? 'Husband' : p.sex === 'F' ? 'Wife' : null}
+              onPersonClick={setPreviewPersonId}
+              actions={
+                <div className="flex gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => openLinkDialog('spouse')}
+                  >
+                    <Link2 className="mr-1 size-3" />
+                    Link existing
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => openCreateDialog('spouse')}
+                  >
+                    + New
+                  </Button>
+                </div>
+              }
             />
 
             <Separator />
@@ -210,16 +248,59 @@ export function RecordTab({ person }: RecordTabProps) {
               label="Parents"
               people={person.parents}
               emptyText="No parents recorded"
-              actions={
-                <div className="flex gap-2">
-                  <Link href={`/persons/new?relation=father&of=${person.id}`}>
-                    <Button variant="ghost" size="sm" className="h-7 text-xs">+ Father</Button>
-                  </Link>
-                  <Link href={`/persons/new?relation=mother&of=${person.id}`}>
-                    <Button variant="ghost" size="sm" className="h-7 text-xs">+ Mother</Button>
-                  </Link>
-                </div>
-              }
+              tagFn={(p) => p.sex === 'M' ? 'Father' : p.sex === 'F' ? 'Mother' : 'Parent'}
+              onPersonClick={setPreviewPersonId}
+              actions={(() => {
+                const hasFather = person.parents.some((p) => p.sex === 'M');
+                const hasMother = person.parents.some((p) => p.sex === 'F');
+                if (hasFather && hasMother) return null;
+                return (
+                  <div className="flex flex-wrap gap-2">
+                    {!hasFather && (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() => openLinkDialog('father')}
+                        >
+                          <Link2 className="mr-1 size-3" />
+                          Link father
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() => openCreateDialog('father')}
+                        >
+                          + Father
+                        </Button>
+                      </>
+                    )}
+                    {!hasMother && (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() => openLinkDialog('mother')}
+                        >
+                          <Link2 className="mr-1 size-3" />
+                          Link mother
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() => openCreateDialog('mother')}
+                        >
+                          + Mother
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                );
+              })()}
             />
 
             <Separator />
@@ -228,11 +309,61 @@ export function RecordTab({ person }: RecordTabProps) {
               icon={<Users className="size-4 text-muted-foreground" />}
               label="Children"
               people={person.children}
-              addHref={`/persons/new?relation=child&of=${person.id}`}
-              addLabel="Add Child"
+              tagFn={(p) => p.sex === 'M' ? 'Son' : p.sex === 'F' ? 'Daughter' : null}
+              onPersonClick={setPreviewPersonId}
+              actions={
+                <div className="flex gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => openLinkDialog('child')}
+                  >
+                    <Link2 className="mr-1 size-3" />
+                    Link existing
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => openCreateDialog('child')}
+                  >
+                    + New
+                  </Button>
+                </div>
+              }
             />
           </CardContent>
         </Card>
+
+        {/* Shared link dialog — opens with contextual relation type */}
+        <PersonLinkDialog
+          open={linkDialog.open}
+          onOpenChange={(open) => setLinkDialog((prev) => ({ ...prev, open }))}
+          personId={person.id}
+          personName={fullName}
+          personSex={person.sex}
+          relationType={linkDialog.relation}
+          onLinked={() => router.refresh()}
+        />
+
+        {/* Shared create dialog — quick-add new person and link */}
+        <PersonCreateDialog
+          open={createDialog.open}
+          onOpenChange={(open) => setCreateDialog((prev) => ({ ...prev, open }))}
+          personId={person.id}
+          personName={fullName}
+          personSex={person.sex}
+          relationType={createDialog.relation}
+          onCreated={() => router.refresh()}
+        />
+
+        {/* Person preview side panel */}
+        <PersonPreviewPanel
+          personId={previewPersonId}
+          open={previewPersonId !== null}
+          onOpenChange={(open) => { if (!open) setPreviewPersonId(null); }}
+        />
       </div>
     </div>
   );
@@ -423,18 +554,19 @@ function FamilySection({
   icon,
   label,
   people,
-  addHref,
-  addLabel,
   emptyText,
   actions,
+  tagFn,
+  onPersonClick,
 }: {
   icon: React.ReactNode;
   label: string;
   people: PersonListItem[];
-  addHref?: string;
-  addLabel?: string;
   emptyText?: string;
   actions?: React.ReactNode;
+  /** Optional function to derive a contextual tag per person (e.g. "Father"/"Mother") */
+  tagFn?: (person: PersonListItem) => string | null;
+  onPersonClick?: (personId: string) => void;
 }) {
   return (
     <div className="space-y-2">
@@ -447,7 +579,7 @@ function FamilySection({
       {people.length > 0 ? (
         <ul className="space-y-0.5">
           {people.map((p) => (
-            <PersonRow key={p.id} person={p} />
+            <PersonRow key={p.id} person={p} tag={tagFn?.(p) ?? null} onPersonClick={onPersonClick} />
           ))}
         </ul>
       ) : (
@@ -456,24 +588,27 @@ function FamilySection({
         </p>
       )}
 
-      {actions ?? (
-        addHref && addLabel && (
-          <Link href={addHref}>
-            <Button variant="ghost" size="sm" className="h-7 text-xs">
-              + {addLabel}
-            </Button>
-          </Link>
-        )
-      )}
+      {actions}
     </div>
   );
 }
 
-function PersonRow({ person }: { person: PersonListItem }) {
+function PersonRow({ person, tag, onPersonClick }: { person: PersonListItem; tag?: string | null; onPersonClick?: (personId: string) => void }) {
+  // Fall back to sex label if no contextual tag provided
+  const badgeLabel = tag ?? (person.sex !== 'U' ? (person.sex === 'M' ? 'M' : 'F') : null);
+
   return (
     <li className="group">
       <Link
         href={`/persons/${person.id}`}
+        onClick={(e) => {
+          // Let modifier-clicks through for "open in new tab"
+          if (e.ctrlKey || e.metaKey || e.shiftKey) return;
+          if (onPersonClick) {
+            e.preventDefault();
+            onPersonClick(person.id);
+          }
+        }}
         className="flex items-center gap-2 rounded-lg px-2.5 py-2 -mx-2.5 transition-all duration-150 hover:bg-muted/60 hover:shadow-sm"
       >
         {/* Initials avatar */}
@@ -489,9 +624,9 @@ function PersonRow({ person }: { person: PersonListItem }) {
           <span className="text-xs text-muted-foreground">b. {person.birthDate}</span>
         )}
 
-        {person.sex !== 'U' && (
+        {badgeLabel && (
           <Badge variant="secondary" className="text-[10px]">
-            {person.sex === 'M' ? 'M' : 'F'}
+            {badgeLabel}
           </Badge>
         )}
 
