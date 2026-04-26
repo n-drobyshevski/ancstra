@@ -15,7 +15,7 @@ import type { TreeData, PersonListItem } from '@ancstra/shared';
 import type { FilterState } from './tree-utils';
 import { TreePersonCard } from './tree-person-card';
 
-type SortKey = 'name' | 'birthDate' | 'deathDate' | 'birthPlace' | 'sex' | 'childCount';
+type SortKey = 'name' | 'birthDate' | 'deathDate' | 'sex' | 'childCount';
 type SortDir = 'ascending' | 'descending';
 
 interface TreeTableProps {
@@ -101,11 +101,6 @@ export function TreeTable({ treeData, relationships, onSelectPerson, filterState
           const bSort = (b as PersonListItem & Record<string, unknown>).deathDateSort ?? 0;
           return ((aSort as number) - (bSort as number)) * mult;
         }
-        case 'birthPlace': {
-          const aPlace = ((a as PersonListItem & Record<string, unknown>).birthPlace ?? '') as string;
-          const bPlace = ((b as PersonListItem & Record<string, unknown>).birthPlace ?? '') as string;
-          return aPlace.localeCompare(bPlace) * mult;
-        }
         case 'sex':
           return a.sex.localeCompare(b.sex) * mult;
         case 'childCount': {
@@ -167,13 +162,6 @@ export function TreeTable({ treeData, relationships, onSelectPerson, filterState
               </TableHead>
               <TableHead
                 className="cursor-pointer select-none"
-                aria-sort={sortKey === 'birthPlace' ? sortDir : undefined}
-                onClick={() => handleSort('birthPlace')}
-              >
-                Birth Place{sortIndicator('birthPlace')}
-              </TableHead>
-              <TableHead
-                className="cursor-pointer select-none"
                 aria-sort={sortKey === 'sex' ? sortDir : undefined}
                 onClick={() => handleSort('sex')}
               >
@@ -193,7 +181,7 @@ export function TreeTable({ treeData, relationships, onSelectPerson, filterState
           <TableBody>
             {sorted.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                   No persons match your filter.
                 </TableCell>
               </TableRow>
@@ -219,7 +207,6 @@ export function TreeTable({ treeData, relationships, onSelectPerson, filterState
                     </TableCell>
                     <TableCell>{person.birthDate ?? ''}</TableCell>
                     <TableCell>{person.deathDate ?? ''}</TableCell>
-                    <TableCell>{((person as PersonListItem & Record<string, unknown>).birthPlace as string | null | undefined) ?? ''}</TableCell>
                     <TableCell>
                       <Badge variant="secondary">{person.sex}</Badge>
                     </TableCell>
@@ -277,7 +264,7 @@ export function TreeTable({ treeData, relationships, onSelectPerson, filterState
             <TreePersonCard
               key={person.id}
               person={person}
-              birthPlace={((person as PersonListItem & Record<string, unknown>).birthPlace as string | null | undefined) ?? undefined}
+              birthPlace={person.birthPlace ?? undefined}
               onSelect={() => onSelectPerson(person.id)}
             />
           ))
