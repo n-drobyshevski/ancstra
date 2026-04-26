@@ -1,27 +1,27 @@
 import Link from 'next/link';
+import type { SearchParams } from 'nuqs/server';
 import { Button } from '@/components/ui/button';
 import { getAuthContext } from '@/lib/auth/context';
 import { PagePadding } from '@/components/page-padding';
 import { getCachedPersonsList } from '@/lib/cache/person';
 import { PersonsClient } from '@/components/persons/persons-client';
+import { personsCache } from '@/lib/persons/search-params';
 
 export default async function PersonsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; page?: string }>;
+  searchParams: Promise<SearchParams>;
 }) {
   const authContext = await getAuthContext();
   if (!authContext) return null;
 
-  const { q, page: pageParam } = await searchParams;
-  const page = Math.max(1, parseInt(pageParam ?? '1'));
-  const pageSize = 20;
+  const filters = await personsCache.parse(searchParams);
 
   const data = await getCachedPersonsList(
     authContext.dbFilename,
-    page,
-    pageSize,
-    q,
+    filters.page,
+    filters.size,
+    filters.q || undefined,
   );
 
   return (
@@ -37,9 +37,9 @@ export default async function PersonsPage({
         <PersonsClient
           initialPersons={data.items}
           initialTotal={data.total}
-          initialQuery={q ?? ''}
-          initialPage={page}
-          pageSize={pageSize}
+          initialQuery={filters.q}
+          initialPage={filters.page}
+          pageSize={filters.size}
         />
       </div>
     </PagePadding>
