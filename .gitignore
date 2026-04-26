@@ -20,3 +20,12 @@ dist/
 # Superpowers artifacts (plans, specs, brainstorms)
 docs/superpowers/
 .env*.local
+
+# Per-developer Claude Code config
+.claude/
+
+# TypeScript incremental build info
+*.tsbuildinfo
+
+# Playwright/test outputs
+tests/test-results/
