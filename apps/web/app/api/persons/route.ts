@@ -6,6 +6,7 @@ import { createPersonSchema } from '@/lib/validation';
 import { parseDateToSort } from '@ancstra/shared';
 import { searchPersonsFts } from '@/lib/queries';
 import { withAuth, handleAuthError, logAndInvalidate } from '@/lib/auth/api-guard';
+import { queryPersonExtras } from '@/lib/queries/person-extras';
 
 export async function POST(request: Request) {
   try {
@@ -119,77 +120,102 @@ export async function GET(request: Request) {
     const offset = (page - 1) * pageSize;
     const q = searchParams.get('q');
 
-    // When a search query is present, use FTS5 for ranked full-text search
+    let baseItems: Array<{
+      id: string;
+      sex: 'M' | 'F' | 'U';
+      isLiving: boolean;
+      givenName: string;
+      surname: string;
+      birthDate?: string | null;
+      deathDate?: string | null;
+    }>;
+    let total: number;
+
     if (q) {
       const allResults = await searchPersonsFts(familyDb, q, 1000);
-      const total = allResults.length;
-      const items = allResults.slice(offset, offset + pageSize);
-      return NextResponse.json({ items, total, page, pageSize });
+      total = allResults.length;
+      baseItems = allResults.slice(offset, offset + pageSize);
+    } else {
+      const whereClause = isNull(persons.deletedAt);
+
+      const rows = await familyDb
+        .select({
+          id: persons.id,
+          sex: persons.sex,
+          isLiving: persons.isLiving,
+          givenName: personNames.givenName,
+          surname: personNames.surname,
+        })
+        .from(persons)
+        .innerJoin(
+          personNames,
+          sql`${personNames.personId} = ${persons.id} AND ${personNames.isPrimary} = 1`,
+        )
+        .where(whereClause)
+        .limit(pageSize)
+        .offset(offset)
+        .all();
+
+      const [{ count }] = await familyDb
+        .select({ count: sql<number>`count(*)` })
+        .from(persons)
+        .where(whereClause)
+        .all();
+      total = count;
+
+      const personIds = rows.map((r) => r.id);
+      const birthDeathEvents =
+        personIds.length > 0
+          ? await familyDb
+              .select({
+                personId: events.personId,
+                eventType: events.eventType,
+                dateOriginal: events.dateOriginal,
+              })
+              .from(events)
+              .where(
+                sql`${events.personId} IN (${sql.join(
+                  personIds.map((id) => sql`${id}`),
+                  sql`, `,
+                )}) AND ${events.eventType} IN ('birth', 'death')`,
+              )
+              .all()
+          : [];
+
+      const eventsByPerson = new Map<string, { birthDate?: string | null; deathDate?: string | null }>();
+      for (const ev of birthDeathEvents) {
+        if (!ev.personId) continue;
+        const entry = eventsByPerson.get(ev.personId) ?? {};
+        if (ev.eventType === 'birth') entry.birthDate = ev.dateOriginal;
+        if (ev.eventType === 'death') entry.deathDate = ev.dateOriginal;
+        eventsByPerson.set(ev.personId, entry);
+      }
+
+      baseItems = rows.map((r) => ({
+        ...r,
+        birthDate: eventsByPerson.get(r.id)?.birthDate ?? null,
+        deathDate: eventsByPerson.get(r.id)?.deathDate ?? null,
+      }));
     }
 
-    // Unfiltered paginated listing
-    const whereClause = isNull(persons.deletedAt);
+    const extras = await queryPersonExtras(
+      familyDb,
+      baseItems.map((it) => it.id),
+    );
 
-    const rows = await familyDb
-      .select({
-        id: persons.id,
-        sex: persons.sex,
-        isLiving: persons.isLiving,
-        givenName: personNames.givenName,
-        surname: personNames.surname,
-      })
-      .from(persons)
-      .innerJoin(
-        personNames,
-        sql`${personNames.personId} = ${persons.id} AND ${personNames.isPrimary} = 1`
-      )
-      .where(whereClause)
-      .limit(pageSize)
-      .offset(offset)
-      .all();
+    const items = baseItems.map((it) => {
+      const ex = extras.get(it.id);
+      return {
+        ...it,
+        sourcesCount: ex?.sourcesCount ?? 0,
+        completeness: ex?.completeness ?? 0,
+        validation: ex?.validation ?? 'confirmed',
+        birthPlace: ex?.birthPlace ?? null,
+        updatedAt: ex?.updatedAt ?? '',
+      };
+    });
 
-    const [{ count }] = await familyDb
-      .select({ count: sql<number>`count(*)` })
-      .from(persons)
-      .where(whereClause)
-      .all();
-
-    // Add birth/death dates from events
-    const personIds = rows.map((r) => r.id);
-    const birthDeathEvents =
-      personIds.length > 0
-        ? await familyDb
-            .select({
-              personId: events.personId,
-              eventType: events.eventType,
-              dateOriginal: events.dateOriginal,
-            })
-            .from(events)
-            .where(
-              sql`${events.personId} IN (${sql.join(
-                personIds.map((id) => sql`${id}`),
-                sql`, `
-              )}) AND ${events.eventType} IN ('birth', 'death')`
-            )
-            .all()
-        : [];
-
-    const eventsByPerson = new Map<string, { birthDate?: string | null; deathDate?: string | null }>();
-    for (const ev of birthDeathEvents) {
-      if (!ev.personId) continue;
-      const entry = eventsByPerson.get(ev.personId) ?? {};
-      if (ev.eventType === 'birth') entry.birthDate = ev.dateOriginal;
-      if (ev.eventType === 'death') entry.deathDate = ev.dateOriginal;
-      eventsByPerson.set(ev.personId, entry);
-    }
-
-    const items = rows.map((r) => ({
-      ...r,
-      birthDate: eventsByPerson.get(r.id)?.birthDate ?? null,
-      deathDate: eventsByPerson.get(r.id)?.deathDate ?? null,
-    }));
-
-    return NextResponse.json({ items, total: count, page, pageSize });
+    return NextResponse.json({ items, total, page, pageSize });
   } catch (error) {
     return handleAuthError(error);
   }
