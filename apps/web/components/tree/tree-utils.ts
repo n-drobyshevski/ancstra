@@ -2,10 +2,13 @@ import dagre from '@dagrejs/dagre';
 import type { Node, Edge } from '@xyflow/react';
 import type {
   PersonListItem,
-  FamilyRecord,
-  ChildLink,
   TreeData,
 } from '@ancstra/shared';
+import {
+  validateNoSelfRef,
+  validateNoDuplicate,
+  validateAcyclic,
+} from '@/lib/graph/validate-connection';
 
 const NODE_WIDTH = 240;
 const NODE_HEIGHT = 70;
@@ -270,16 +273,26 @@ export function validateConnection(
   targetId: string,
   type: 'spouse' | 'parentChild'
 ): { valid: boolean; error?: string } {
-  if (sourceId === targetId) return { valid: false, error: 'Cannot connect a person to themselves' };
+  if (validateNoSelfRef(sourceId, targetId)) {
+    return { valid: false, error: 'Cannot connect a person to themselves' };
+  }
 
   const { families, childLinks } = treeData;
 
   if (type === 'spouse') {
-    const existing = families.some(
-      (f) => (f.partner1Id === sourceId && f.partner2Id === targetId) ||
-             (f.partner1Id === targetId && f.partner2Id === sourceId)
+    const dup = validateNoDuplicate(
+      sourceId,
+      targetId,
+      'spouse',
+      families,
+      (f) => ({
+        from: f.partner1Id ?? '',
+        to: f.partner2Id ?? '',
+        type: 'spouse',
+        symmetric: true,
+      }),
     );
-    if (existing) return { valid: false, error: 'These persons are already spouses' };
+    if (dup) return { valid: false, error: 'These persons are already spouses' };
   }
 
   if (type === 'parentChild') {
@@ -291,21 +304,25 @@ export function validateConnection(
       }
     }
 
-    function isAncestor(personId: string, ancestorId: string, visited: Set<string>): boolean {
-      if (visited.has(personId)) return false;
-      visited.add(personId);
-      for (const cl of childLinks) {
-        if (cl.personId !== personId) continue;
-        const fam = families.find((f) => f.id === cl.familyId);
-        if (!fam) continue;
-        if (fam.partner1Id === ancestorId || fam.partner2Id === ancestorId) return true;
-        if (fam.partner1Id && isAncestor(fam.partner1Id, ancestorId, visited)) return true;
-        if (fam.partner2Id && isAncestor(fam.partner2Id, ancestorId, visited)) return true;
+    // Build parent → child adjacency from existing child links so that a
+    // proposed source → target edge creates a cycle iff `source` is already
+    // a descendant of `target`.
+    const adjacency = new Map<string, Set<string>>();
+    for (const cl of childLinks) {
+      const fam = families.find((f) => f.id === cl.familyId);
+      if (!fam) continue;
+      for (const parentId of [fam.partner1Id, fam.partner2Id]) {
+        if (!parentId) continue;
+        let bucket = adjacency.get(parentId);
+        if (!bucket) {
+          bucket = new Set();
+          adjacency.set(parentId, bucket);
+        }
+        bucket.add(cl.personId);
       }
-      return false;
     }
 
-    if (isAncestor(sourceId, targetId, new Set())) {
+    if (validateAcyclic(sourceId, targetId, adjacency, 'parentChild')) {
       return { valid: false, error: 'Cannot create circular relationship' };
     }
   }

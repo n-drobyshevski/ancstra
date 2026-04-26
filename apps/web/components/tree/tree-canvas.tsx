@@ -46,14 +46,8 @@ import {
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { useQualityData } from '@/lib/tree/use-quality-data';
-import { useConnectionLock } from './use-connection-lock';
-
-function classifyApiError(res: Response): string {
-  if (res.status === 409) return 'This relationship already exists';
-  if (res.status === 404) return 'Person not found — may have been deleted';
-  if (res.status === 400) return 'Invalid connection data';
-  return 'Server error — please try again';
-}
+import { useConnectionLock } from '@/lib/graph/use-connection-lock';
+import { classifyApiError } from '@/lib/api/classify-error';
 
 const nodeTypes = { person: PersonNode, draftPerson: DraftPersonNode, draftFactsheet: DraftFactsheetNode };
 const edgeTypes = { partner: PartnerEdge, parentChild: ParentChildEdge };
@@ -85,7 +79,9 @@ interface TreeCanvasProps {
 function TreeCanvasInner({ treeData, focusPersonId, focusKey, paletteOpen, onTogglePalette, onSelectPerson, view, onSetView, isMobile, isDetailOpen, filterState: externalFilterState, onFilterStateChange, showGaps: externalShowGaps, onShowGapsChange, mobileToolbarSlot }: TreeCanvasProps) {
   const { fitView, screenToFlowPosition, getNodes } = useReactFlow();
   const router = useRouter();
-  const connectionLock = useConnectionLock();
+  const connectionLock = useConnectionLock<'spouse' | 'parentChild'>({
+    symmetricTypes: ['spouse'],
+  });
 
   const { nodes: rawNodes, edges: rawEdges } = useMemo(
     () => treeDataToFlow(treeData),
