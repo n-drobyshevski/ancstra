@@ -30,6 +30,7 @@ import {
   SidebarMenuButton,
   SidebarMenuBadge,
   SidebarRail,
+  useSidebar,
 } from '@/components/ui/sidebar';
 
 interface NavItem {
@@ -68,6 +69,8 @@ function NavGroup({
   items: NavItem[];
   pathname: string;
 }) {
+  const { setOpenMobile } = useSidebar();
+
   return (
     <SidebarGroup>
       {label && <SidebarGroupLabel>{label}</SidebarGroupLabel>}
@@ -88,7 +91,7 @@ function NavGroup({
                 isActive={isActive}
                 tooltip={item.title}
               >
-                <Link href={item.href}>
+                <Link href={item.href} onClick={() => setOpenMobile(false)}>
                   <item.icon />
                   <span>{item.title}</span>
                 </Link>
@@ -108,6 +111,7 @@ function NavGroup({
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const { setOpenMobile } = useSidebar();
   const { count: factsheetCount } = useFactsheetCount();
 
   // Inject live badge counts into nav items
@@ -122,7 +126,7 @@ export function AppSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
-              <Link href="/dashboard">
+              <Link href="/dashboard" onClick={() => setOpenMobile(false)}>
                 <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                   <span className="text-sm font-bold">A</span>
                 </div>
@@ -142,7 +146,7 @@ export function AppSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton asChild tooltip="Settings">
-              <Link href="/settings">
+              <Link href="/settings" onClick={() => setOpenMobile(false)}>
                 <Settings />
                 <span>Settings</span>
               </Link>

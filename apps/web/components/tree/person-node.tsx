@@ -1,5 +1,6 @@
 import { memo } from 'react';
-import { Handle, Position, type Node, type NodeProps } from '@xyflow/react';
+import { Handle, Position, useConnection, type Node, type NodeProps } from '@xyflow/react';
+import { cn } from '@/lib/utils';
 import type { PersonNodeData } from './tree-utils';
 import {
   Tooltip,
@@ -30,7 +31,7 @@ function scoreColor(score: number): string {
   return 'var(--completion-low)';
 }
 
-function PersonNodeComponent({ data, selected }: NodeProps<PersonNodeType>) {
+function PersonNodeComponent({ id, data, selected }: NodeProps<PersonNodeType>) {
   const dimmed = !!data.dimmed;
   const colors = sexColors[data.sex] ?? sexColors.U;
   const initials = `${data.givenName[0] ?? ''}${data.surname[0] ?? ''}`.toUpperCase();
@@ -39,6 +40,43 @@ function PersonNodeComponent({ data, selected }: NodeProps<PersonNodeType>) {
   const score = data.qualityScore ?? 0;
   const isLiving = data.isLiving;
   const isCompact = data.nodeStyle === 'compact';
+
+  // Drag-connection visual hint: when the user is dragging from another node's
+  // handle, light up only the handles on this node where a drop will succeed,
+  // and dim the rest. Mirrors isValidConnection in tree-canvas.tsx.
+  const connection = useConnection();
+  const dragInProgress = !!connection.inProgress;
+  const isDragSource = dragInProgress && connection.fromNode?.id === id;
+  const fromHandleId = connection.fromHandle?.id ?? null;
+  const fromHandleType = connection.fromHandle?.type ?? null;
+
+  function targetState(myHandleId: 'top' | 'bottom' | 'right' | 'left'):
+    'valid' | 'invalid' | 'neutral' {
+    if (!dragInProgress) return 'neutral';
+    if (isDragSource) return 'invalid';
+    // Spouse drag (right source) → only the left target is valid.
+    if (fromHandleId === 'right' && fromHandleType === 'source') {
+      return myHandleId === 'left' ? 'valid' : 'invalid';
+    }
+    // Parent-child drag (bottom source, no id) → only the top target is valid.
+    if (fromHandleId === null && fromHandleType === 'source') {
+      return myHandleId === 'top' ? 'valid' : 'invalid';
+    }
+    // Drag started from a target-type handle: no valid drops under current rules.
+    return 'invalid';
+  }
+
+  function handleClass(myHandleId: 'top' | 'bottom' | 'right' | 'left') {
+    const base = '!border !border-background transition-all';
+    const state = targetState(myHandleId);
+    if (state === 'valid') {
+      return cn(base, '!w-3 !h-3 !bg-primary !ring-2 !ring-primary/40 animate-pulse');
+    }
+    if (state === 'invalid') {
+      return cn(base, '!w-2 !h-2 !bg-muted-foreground/20 !opacity-30');
+    }
+    return cn(base, '!w-2 !h-2 !bg-muted-foreground/40');
+  }
 
   // Shared: lifespan string for compact layout
   const lifespan = (() => {
@@ -53,25 +91,25 @@ function PersonNodeComponent({ data, selected }: NodeProps<PersonNodeType>) {
     <>
       <Tooltip>
         <TooltipTrigger asChild>
-          <Handle type="target" position={Position.Top} className="!w-2 !h-2 !bg-muted-foreground/40" />
+          <Handle type="target" position={Position.Top} className={handleClass('top')} />
         </TooltipTrigger>
         <TooltipContent side="top" className="text-xs">Parents</TooltipContent>
       </Tooltip>
       <Tooltip>
         <TooltipTrigger asChild>
-          <Handle type="source" position={Position.Bottom} className="!w-2 !h-2 !bg-muted-foreground/40" />
+          <Handle type="source" position={Position.Bottom} className={handleClass('bottom')} />
         </TooltipTrigger>
         <TooltipContent side="bottom" className="text-xs">Children</TooltipContent>
       </Tooltip>
       <Tooltip>
         <TooltipTrigger asChild>
-          <Handle type="source" position={Position.Right} id="right" className="!w-2 !h-2 !bg-muted-foreground/40" />
+          <Handle type="source" position={Position.Right} id="right" className={handleClass('right')} />
         </TooltipTrigger>
         <TooltipContent side="right" className="text-xs">Spouse</TooltipContent>
       </Tooltip>
       <Tooltip>
         <TooltipTrigger asChild>
-          <Handle type="target" position={Position.Left} id="left" className="!w-2 !h-2 !bg-muted-foreground/40" />
+          <Handle type="target" position={Position.Left} id="left" className={handleClass('left')} />
         </TooltipTrigger>
         <TooltipContent side="left" className="text-xs">Spouse</TooltipContent>
       </Tooltip>

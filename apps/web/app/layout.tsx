@@ -40,7 +40,9 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
-            <WebVitalsReporter />
+            <Suspense>
+              <WebVitalsReporter />
+            </Suspense>
             {children}
             <Suspense>
               <CommandPalette />

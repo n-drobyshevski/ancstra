@@ -102,12 +102,12 @@ function ShellInner({ person, children }: WorkspaceShellProps) {
           <ResearchBreadcrumb personName={personName} />
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Avatar className="size-12">
+              <Avatar size="lg" className="size-12">
                 <AvatarFallback className="text-base">
                   {getInitials(person.givenName, person.surname)}
                 </AvatarFallback>
                 {person.sex !== 'U' && (
-                  <AvatarBadge className="size-4 text-[9px] font-bold">
+                  <AvatarBadge className="!size-3.5 text-[8px] font-bold">
                     {person.sex === 'M' ? '♂' : '♀'}
                   </AvatarBadge>
                 )}
