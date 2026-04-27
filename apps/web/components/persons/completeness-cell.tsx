@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, X } from 'lucide-react';
+import { Check, Minus, X } from 'lucide-react';
 import type { PersonListItem } from '@ancstra/shared';
 import { Progress } from '@/components/ui/progress';
 import {
@@ -40,24 +40,40 @@ export function CompletenessCell({ person }: CompletenessCellProps) {
           <div className="font-medium">Completeness {total}%</div>
           <div className="border-t border-current/20" />
           <ul className="flex flex-col gap-0.5">
-            {items.map((it) => (
-              <li
-                key={it.key}
-                className="flex items-center justify-between gap-3"
-              >
-                <span className="flex items-center gap-1.5">
-                  {it.hit ? (
-                    <Check className="size-3" aria-hidden />
-                  ) : (
-                    <X className="size-3 opacity-60" aria-hidden />
-                  )}
-                  {it.label}
-                </span>
-                <span className="tabular-nums">
-                  {it.hit ? it.weight : `0/${it.weight}`}
-                </span>
-              </li>
-            ))}
+            {items.map((it) => {
+              if (!it.applicable) {
+                return (
+                  <li
+                    key={it.key}
+                    className="flex items-center justify-between gap-3 opacity-50"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <Minus className="size-3" aria-hidden />
+                      {it.label}
+                    </span>
+                    <span className="tabular-nums">—</span>
+                  </li>
+                );
+              }
+              return (
+                <li
+                  key={it.key}
+                  className="flex items-center justify-between gap-3"
+                >
+                  <span className="flex items-center gap-1.5">
+                    {it.hit ? (
+                      <Check className="size-3" aria-hidden />
+                    ) : (
+                      <X className="size-3 opacity-60" aria-hidden />
+                    )}
+                    {it.label}
+                  </span>
+                  <span className="tabular-nums">
+                    {it.hit ? it.weight : `0/${it.weight}`}
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         </div>
       </TooltipContent>
