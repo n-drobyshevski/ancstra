@@ -76,6 +76,7 @@ export function PersonsShell({ initialPersons, initialTotal, yearBounds }: Perso
             selection={selection}
             pageIds={pageIds}
             total={initialTotal}
+            filters={filters}
             onClear={clear}
           />
         )}
