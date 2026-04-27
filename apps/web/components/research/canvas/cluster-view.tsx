@@ -15,7 +15,6 @@ import {
   type Node,
   type Edge,
   type Connection,
-  ConnectionMode,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
@@ -141,7 +140,6 @@ export function ClusterView({
         onConnect={onConnect}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
-        connectionMode={ConnectionMode.Loose}
         fitView
         minZoom={0.1}
         maxZoom={2}
