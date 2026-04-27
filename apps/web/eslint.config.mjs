@@ -16,6 +16,13 @@ const eslintConfig = defineConfig([
       "react-hooks/refs": "warn",
     },
   },
+  {
+    // Test files use intentional `any` for in-memory drizzle mocks.
+    files: ["__tests__/**/*.{ts,tsx}", "**/*.test.{ts,tsx}"],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
+    },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:

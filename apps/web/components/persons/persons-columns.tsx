@@ -13,7 +13,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import type { SelectionState } from './use-selection';
 
 declare module '@tanstack/react-table' {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-unnecessary-type-constraint
   interface TableMeta<TData extends unknown> {
     selection?: SelectionState;
     pageIds?: readonly string[];
