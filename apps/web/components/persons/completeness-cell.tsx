@@ -26,11 +26,7 @@ export function CompletenessCell({ person }: CompletenessCellProps) {
           aria-label={`Completeness ${total}%`}
           className="inline-flex items-center gap-2 rounded-sm focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
         >
-          <Progress
-            value={total}
-            aria-label={`Completeness ${total}%`}
-            className="h-2 w-20"
-          />
+          <Progress value={total} className="h-2 w-20" />
           <span
             aria-hidden="true"
             className="text-xs text-muted-foreground tabular-nums"
