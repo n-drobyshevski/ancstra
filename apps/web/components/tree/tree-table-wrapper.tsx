@@ -13,9 +13,10 @@ interface TreeTableWrapperProps {
   };
   onSelectPerson: (person: PersonListItem) => void;
   filterState?: FilterState;
+  topologyVisibleIds?: Set<string> | null;
 }
 
-export function TreeTableWrapper({ treeData, relationships, onSelectPerson, filterState }: TreeTableWrapperProps) {
+export function TreeTableWrapper({ treeData, relationships, onSelectPerson, filterState, topologyVisibleIds }: TreeTableWrapperProps) {
   const handleSelect = useCallback(
     (personId: string) => {
       const person = treeData.persons.find((p) => p.id === personId);
@@ -30,6 +31,7 @@ export function TreeTableWrapper({ treeData, relationships, onSelectPerson, filt
       relationships={relationships}
       onSelectPerson={handleSelect}
       filterState={filterState}
+      topologyVisibleIds={topologyVisibleIds}
     />
   );
 }

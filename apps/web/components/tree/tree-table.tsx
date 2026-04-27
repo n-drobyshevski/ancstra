@@ -26,6 +26,7 @@ interface TreeTableProps {
   };
   onSelectPerson: (personId: string) => void;
   filterState?: FilterState;
+  topologyVisibleIds?: Set<string> | null;
 }
 
 function getChildCount(personId: string, treeData: TreeData): number {
@@ -35,7 +36,7 @@ function getChildCount(personId: string, treeData: TreeData): number {
   return treeData.childLinks.filter((cl) => familyIds.includes(cl.familyId)).length;
 }
 
-export function TreeTable({ treeData, relationships, onSelectPerson, filterState }: TreeTableProps) {
+export function TreeTable({ treeData, relationships, onSelectPerson, filterState, topologyVisibleIds }: TreeTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>('name');
   const [sortDir, setSortDir] = useState<SortDir>('ascending');
   const [search, setSearch] = useState('');
@@ -78,8 +79,12 @@ export function TreeTable({ treeData, relationships, onSelectPerson, filterState
       });
     }
 
+    if (topologyVisibleIds) {
+      result = result.filter((p) => topologyVisibleIds.has(p.id));
+    }
+
     return result;
-  }, [treeData.persons, search, filterState]);
+  }, [treeData.persons, search, filterState, topologyVisibleIds]);
 
   const sorted = useMemo(() => {
     const mult = sortDir === 'ascending' ? 1 : -1;
