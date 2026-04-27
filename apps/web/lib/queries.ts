@@ -7,6 +7,7 @@ import {
   families,
   children,
 } from '@ancstra/db';
+import { completenessScoreExpr } from '@ancstra/db/completeness-sql';
 import type {
   PersonDetail,
   PersonListItem,
@@ -488,11 +489,7 @@ export async function getTreeData(db: Database): Promise<TreeData> {
         p.id,
         pf.has_name, pf.has_birth_event, pf.has_birth_place,
         pf.has_death_event, pf.has_source,
-        (
-          pf.has_name * 20 + pf.has_birth_event * 25
-          + pf.has_birth_place * 20 + pf.has_death_event * 15
-          + pf.has_source * 20
-        ) AS completeness,
+        ${completenessScoreExpr('p', 'pf')} AS completeness,
         CASE WHEN EXISTS (
           SELECT 1 FROM families f
           WHERE f.deleted_at IS NULL
