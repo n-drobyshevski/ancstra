@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { sql } from 'drizzle-orm';
@@ -171,6 +171,14 @@ describe('queryPersonsList', () => {
     expect(r.items.map(it => it.id)).toEqual(['p3', 'p2', 'p1']);
   });
 
+  it('sorts by born asc with NULLS LAST', async () => {
+    p('p1'); n('p1', 'A', 'A'); // no birth event → born_sort = NULL
+    p('p2'); n('p2', 'B', 'B'); ev('e2', 'p2', 'birth', { dateSort: 19000101 });
+    p('p3'); n('p3', 'C', 'C'); ev('e3', 'p3', 'birth', { dateSort: 18500101 });
+    const r = await queryPersonsList(db, { ...baseFilters, sort: 'born', dir: 'asc' });
+    expect(r.items.map(it => it.id)).toEqual(['p3', 'p2', 'p1']);
+  });
+
   it('returns derived fields on each item', async () => {
     p('p1'); n('p1', 'Alice', 'Smith');
     ev('e1', 'p1', 'birth', { dateSort: 19030101, placeText: 'Chicago, IL', dateOriginal: '3 Jan 1903' });
@@ -208,5 +216,12 @@ describe('queryPersonsList', () => {
     const r = await queryPersonsList(db, { ...baseFilters, q: 'Alice' });
     expect(r.total).toBe(1);
     expect(r.items[0].id).toBe('p1');
+  });
+
+  it('returns empty when FTS finds no match', async () => {
+    p('p1'); n('p1', 'Alice', 'Smith');
+    const r = await queryPersonsList(db, { ...baseFilters, q: 'Zxqvnm' });
+    expect(r.items).toEqual([]);
+    expect(r.total).toBe(0);
   });
 });
