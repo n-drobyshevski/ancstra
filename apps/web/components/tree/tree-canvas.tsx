@@ -7,7 +7,6 @@ import {
   Controls,
   Background,
   BackgroundVariant,
-  ConnectionMode,
   useNodesState,
   useEdgesState,
   useReactFlow,
@@ -808,7 +807,6 @@ function TreeCanvasInner({ treeData, focusPersonId, focusKey, paletteOpen, onTog
           onPaneClick={onPaneClick}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
-          connectionMode={isMobile ? undefined : ConnectionMode.Loose}
           isValidConnection={isMobile ? undefined : isValidConnection}
           onConnect={isMobile ? undefined : onConnect}
           onReconnectStart={isMobile ? undefined : onReconnectStart}
