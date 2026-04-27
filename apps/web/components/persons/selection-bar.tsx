@@ -6,6 +6,7 @@ import { Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { DeleteConfirmationDialog } from './delete-confirmation-dialog';
+import { ExportButton } from './export-button';
 import type { SelectionState } from './use-selection';
 import type { PersonsFilters } from '@/lib/persons/search-params';
 
@@ -99,6 +100,7 @@ export function SelectionBar({ selection, total, filters, onClear }: SelectionBa
           {displayCount.toLocaleString()} selected
         </span>
         <div className="flex items-center gap-2">
+          <ExportButton selection={selection} filters={filters} />
           <Button
             variant="destructive"
             size="sm"
