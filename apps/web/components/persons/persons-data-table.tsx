@@ -27,14 +27,29 @@ import {
   HIDE_KEY_TO_COLUMN_ID,
 } from './persons-columns';
 import { ColumnsDropdown } from './columns-dropdown';
+import type { SelectionState } from './use-selection';
+import { SelectAllBanner } from './select-all-banner';
 import type { PersonListItem } from '@ancstra/shared';
 
 interface PersonsDataTableProps {
   data: PersonListItem[];
   total: number;
+  selection: SelectionState;
+  onToggleRow: (id: string) => void;
+  onTogglePage: (pageIds: readonly string[], allChecked: boolean) => void;
+  onSelectAllMatching: () => void;
+  onClearSelection: () => void;
 }
 
-export function PersonsDataTable({ data, total }: PersonsDataTableProps) {
+export function PersonsDataTable({
+  data,
+  total,
+  selection,
+  onToggleRow,
+  onTogglePage,
+  onSelectAllMatching,
+  onClearSelection,
+}: PersonsDataTableProps) {
   const [isPending, startTransition] = useTransition();
   const [filters, setFilters] = useQueryStates(personsParsers, {
     shallow: false,
@@ -61,6 +76,8 @@ export function PersonsDataTable({ data, total }: PersonsDataTableProps) {
     return v;
   }, [filters.hide]);
 
+  const pageIds = useMemo(() => data.map((p) => p.id), [data]);
+
   const pageCount = Math.max(1, Math.ceil(total / filters.size));
 
   const table = useReactTable({
@@ -77,6 +94,12 @@ export function PersonsDataTable({ data, total }: PersonsDataTableProps) {
     enableMultiSort: false,
     getRowId: (row) => row.id,
     getCoreRowModel: getCoreRowModel(),
+    meta: {
+      selection,
+      pageIds,
+      onToggleRow,
+      onTogglePage,
+    },
     onSortingChange: (updater) => {
       const next = typeof updater === 'function' ? updater(sorting) : updater;
       const first = next[0];
@@ -103,6 +126,14 @@ export function PersonsDataTable({ data, total }: PersonsDataTableProps) {
       <div className="flex items-center justify-end gap-2">
         <ColumnsDropdown hidden={filters.hide} onChange={onHideChange} />
       </div>
+
+      <SelectAllBanner
+        selection={selection}
+        pageIds={pageIds}
+        total={total}
+        onSelectAllMatching={onSelectAllMatching}
+        onClear={onClearSelection}
+      />
 
       <div
         className={`rounded-md border ${isPending ? 'motion-safe:opacity-50 motion-safe:transition-opacity' : ''}`}
