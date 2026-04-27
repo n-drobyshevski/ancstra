@@ -188,7 +188,7 @@ describe('queryPersonsList', () => {
     const item = r.items[0];
     expect(item.id).toBe('p1');
     expect(item.givenName).toBe('Alice');
-    expect(item.completeness).toBe(85);
+    expect(item.completeness).toBe(100);
     expect(item.birthDate).toBe('3 Jan 1903');
     expect(item.birthPlace).toBe('Chicago, IL');
     expect(item.sourcesCount).toBe(1);
@@ -240,7 +240,28 @@ describe('queryPersonsList', () => {
     expect(row!.hasBirthPlace).toBe(false);
     expect(row!.hasDeathEvent).toBe(false);
     expect(row!.hasSource).toBe(true);
-    // 20 + 25 + 0 + 0 + 20 = 65
-    expect(row!.completeness).toBe(65);
+    // raw 65, effective-living renormalized: round(65*100/85) = 76
+    expect(row!.completeness).toBe(76);
+  });
+
+  it('renormalizes completeness for effective-living persons', async () => {
+    // All four applicable dimensions hit; living, no death event.
+    p('p-living-full', { isLiving: 1 });
+    n('p-living-full', 'Living', 'Person');
+    ev('e-lf', 'p-living-full', 'birth', { dateOriginal: '1990', dateSort: 19900101, placeText: 'Berlin' });
+    srcCit('c-lf', 'p-living-full');
+
+    // is_living=1 AND has_death_event=1 → effective-deceased; full score
+    p('p-deceased-with-death', { isLiving: 1 });
+    n('p-deceased-with-death', 'Edge', 'Case');
+    ev('e-edb', 'p-deceased-with-death', 'birth', { dateSort: 18000101, placeText: 'X' });
+    ev('e-edd', 'p-deceased-with-death', 'death', { dateSort: 18800101 });
+    srcCit('c-ed', 'p-deceased-with-death');
+
+    const result = await queryPersonsList(db, baseFilters);
+    const living = result.items.find((i) => i.id === 'p-living-full')!;
+    const deceased = result.items.find((i) => i.id === 'p-deceased-with-death')!;
+    expect(living.completeness).toBe(100); // 85 raw / 85 max
+    expect(deceased.completeness).toBe(100); // 100 raw / 100 max
   });
 });

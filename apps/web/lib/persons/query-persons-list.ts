@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import type { Database } from '@ancstra/db';
 import type { PersonListItem } from '@ancstra/shared';
+import { completenessScoreExpr } from '@ancstra/db/completeness-sql';
 import type { PersonsFilters } from './search-params';
 import { buildPersonsWhere } from './filters-to-where';
 import { searchPersonsFts } from '../queries';
@@ -84,11 +85,7 @@ export async function queryPersonsList(
         ) THEN 'proposed' ELSE 'confirmed' END AS validation,
         pflag.has_name, pflag.has_birth_event, pflag.has_birth_place,
         pflag.has_death_event, pflag.has_source,
-        (
-          pflag.has_name * 20 + pflag.has_birth_event * 25
-          + pflag.has_birth_place * 20 + pflag.has_death_event * 15
-          + pflag.has_source * 20
-        ) AS completeness,
+        ${completenessScoreExpr('p', 'pflag')} AS completeness,
         (SELECT date_sort     FROM events e WHERE e.person_id = p.id AND e.event_type = 'birth' ORDER BY e.date_sort NULLS LAST LIMIT 1) AS born_sort,
         (SELECT date_original FROM events e WHERE e.person_id = p.id AND e.event_type = 'birth' ORDER BY e.date_sort NULLS LAST LIMIT 1) AS birth_date,
         (SELECT place_text    FROM events e WHERE e.person_id = p.id AND e.event_type = 'birth' ORDER BY e.date_sort NULLS LAST LIMIT 1) AS birth_place,
