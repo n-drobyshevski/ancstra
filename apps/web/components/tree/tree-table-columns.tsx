@@ -4,7 +4,7 @@ import { ArrowDown, ArrowUp, ShieldAlert, ShieldCheck, Sprout } from 'lucide-rea
 import type { ColumnDef, SortDirection } from '@tanstack/react-table';
 import type { PersonListItem } from '@ancstra/shared';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
+import { CompletenessCell } from '@/components/persons/completeness-cell';
 import {
   Tooltip,
   TooltipContent,
@@ -227,15 +227,7 @@ export const treeTableColumns: ColumnDef<TreePersonRow>[] = [
         onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
       />
     ),
-    cell: ({ row }) => {
-      const value = row.original.completeness ?? 0;
-      return (
-        <div className="flex items-center gap-2">
-          <Progress value={value} className="h-2 w-20" aria-label={`${value}% complete`} />
-          <span className="text-xs text-muted-foreground tabular-nums">{value}%</span>
-        </div>
-      );
-    },
+    cell: ({ row }) => <CompletenessCell person={row.original} />,
     enableSorting: true,
     size: 128,
   },
