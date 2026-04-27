@@ -8,7 +8,11 @@ import {
   DropdownMenuContent,
   DropdownMenuCheckboxItem,
   DropdownMenuSeparator,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
+import type { TopologyMode } from './topology-toggle';
 import { EllipsisVertical, BarChart3 } from 'lucide-react';
 import { TreeViewToggle } from './tree-view-toggle';
 import type { FilterState } from './tree-utils';
@@ -20,6 +24,9 @@ interface MobileViewBarProps {
   onToggleFilter: (category: 'sex' | 'living', key: string) => void;
   showGaps: boolean;
   onToggleGaps: () => void;
+  topologyMode: TopologyMode;
+  onTopologyModeChange: (mode: TopologyMode) => void;
+  topologyReferenceName: string | null;
   /** Render prop for view-specific overflow items (auto layout, export, etc.) */
   extraMenuItems?: ReactNode;
 }
@@ -31,6 +38,9 @@ export function MobileViewBar({
   onToggleFilter,
   showGaps,
   onToggleGaps,
+  topologyMode,
+  onTopologyModeChange,
+  topologyReferenceName,
   extraMenuItems,
 }: MobileViewBarProps) {
   const hasActiveFilter =
@@ -39,7 +49,8 @@ export function MobileViewBar({
     !filterState.sex.U ||
     !filterState.living.living ||
     !filterState.living.deceased ||
-    showGaps;
+    showGaps ||
+    topologyMode !== 'all';
 
   return (
     <div className="flex h-11 items-center gap-1 border-b bg-background px-2 shrink-0">
@@ -98,6 +109,24 @@ export function MobileViewBar({
           >
             Deceased
           </DropdownMenuCheckboxItem>
+
+          <DropdownMenuSeparator />
+
+          <DropdownMenuLabel className="text-xs text-muted-foreground">
+            {topologyReferenceName ? `Topology — ${topologyReferenceName}` : 'Topology (select a person first)'}
+          </DropdownMenuLabel>
+          <DropdownMenuRadioGroup
+            value={topologyMode}
+            onValueChange={(v) => onTopologyModeChange(v as TopologyMode)}
+          >
+            <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
+            <DropdownMenuRadioItem value="ancestors" disabled={!topologyReferenceName}>
+              Ancestors
+            </DropdownMenuRadioItem>
+            <DropdownMenuRadioItem value="descendants" disabled={!topologyReferenceName}>
+              Descendants
+            </DropdownMenuRadioItem>
+          </DropdownMenuRadioGroup>
 
           <DropdownMenuSeparator />
 
