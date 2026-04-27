@@ -7,33 +7,27 @@ import { Button } from '@/components/ui/button';
 import { PersonTable } from '@/components/person-table';
 import { personsParsers } from '@/lib/persons/search-params';
 import type { PersonListItem } from '@ancstra/shared';
+import type { TreeYearBounds } from '@/lib/persons/year-bounds';
 
 interface PersonsClientProps {
   initialPersons: PersonListItem[];
   initialTotal: number;
-  initialQuery: string;
-  pageSize: number;
+  yearBounds: TreeYearBounds;
 }
 
-export function PersonsClient({
-  initialPersons,
-  initialTotal,
-  initialQuery,
-  pageSize,
-}: PersonsClientProps) {
+export function PersonsClient({ initialPersons, initialTotal }: PersonsClientProps) {
   const [filters, setFilters] = useQueryStates(personsParsers, {
     shallow: false,
     history: 'push',
   });
 
-  const [queryInput, setQueryInput] = useState(filters.q || initialQuery);
+  const [queryInput, setQueryInput] = useState(filters.q);
 
-  // Sync controlled input when browser back/forward changes the URL
   useEffect(() => {
     setQueryInput(filters.q);
   }, [filters.q]);
 
-  const totalPages = Math.max(1, Math.ceil(initialTotal / pageSize));
+  const totalPages = Math.max(1, Math.ceil(initialTotal / filters.size));
 
   return (
     <>
@@ -49,9 +43,7 @@ export function PersonsClient({
         }}
         className="max-w-sm"
       />
-
       <PersonTable persons={initialPersons} />
-
       {initialTotal > 0 && (
         <div className="flex items-center justify-between text-sm text-muted-foreground">
           <span>

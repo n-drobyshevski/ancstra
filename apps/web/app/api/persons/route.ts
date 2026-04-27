@@ -6,7 +6,6 @@ import { createPersonSchema } from '@/lib/validation';
 import { parseDateToSort } from '@ancstra/shared';
 import { searchPersonsFts } from '@/lib/queries';
 import { withAuth, handleAuthError, logAndInvalidate } from '@/lib/auth/api-guard';
-import { queryPersonExtras } from '@/lib/queries/person-extras';
 
 export async function POST(request: Request) {
   try {
@@ -198,22 +197,15 @@ export async function GET(request: Request) {
       }));
     }
 
-    const extras = await queryPersonExtras(
-      familyDb,
-      baseItems.map((it) => it.id),
-    );
-
-    const items = baseItems.map((it) => {
-      const ex = extras.get(it.id);
-      return {
-        ...it,
-        sourcesCount: ex?.sourcesCount ?? 0,
-        completeness: ex?.completeness ?? 0,
-        validation: ex?.validation ?? 'confirmed',
-        birthPlace: ex?.birthPlace ?? null,
-        updatedAt: ex?.updatedAt ?? '',
-      };
-    });
+    // TODO B.2-6: replace with queryPersonsList; extras fields temporarily zeroed
+    const items = baseItems.map((it) => ({
+      ...it,
+      sourcesCount: 0,
+      completeness: 0,
+      validation: 'confirmed' as const,
+      birthPlace: null,
+      updatedAt: '',
+    }));
 
     return NextResponse.json({ items, total, page, pageSize });
   } catch (error) {

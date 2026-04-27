@@ -3,7 +3,7 @@ import type { SearchParams } from 'nuqs/server';
 import { Button } from '@/components/ui/button';
 import { getAuthContext } from '@/lib/auth/context';
 import { PagePadding } from '@/components/page-padding';
-import { getCachedPersonsList } from '@/lib/cache/person';
+import { getCachedPersonsList, getCachedTreeYearBounds } from '@/lib/cache/person';
 import { PersonsClient } from '@/components/persons/persons-client';
 import { personsCache } from '@/lib/persons/search-params';
 
@@ -17,12 +17,10 @@ export default async function PersonsPage({
 
   const filters = await personsCache.parse(searchParams);
 
-  const data = await getCachedPersonsList(
-    authContext.dbFilename,
-    filters.page,
-    filters.size,
-    filters.q || undefined,
-  );
+  const [data, yearBounds] = await Promise.all([
+    getCachedPersonsList(authContext.dbFilename, filters),
+    getCachedTreeYearBounds(authContext.dbFilename),
+  ]);
 
   return (
     <PagePadding>
@@ -33,12 +31,10 @@ export default async function PersonsPage({
             <Link href="/persons/new">Add New Person</Link>
           </Button>
         </div>
-
         <PersonsClient
           initialPersons={data.items}
           initialTotal={data.total}
-          initialQuery={filters.q}
-          pageSize={filters.size}
+          yearBounds={yearBounds}
         />
       </div>
     </PagePadding>
