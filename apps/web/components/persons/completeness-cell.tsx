@@ -15,28 +15,34 @@ interface CompletenessCellProps {
 }
 
 export function CompletenessCell({ person }: CompletenessCellProps) {
-  const value = person.completeness ?? 0;
-  const { items } = getCompletenessBreakdown(person);
+  const { items, total } = getCompletenessBreakdown(person);
 
   return (
     <Tooltip>
       <TooltipTrigger asChild>
         <span
           tabIndex={0}
-          role="img"
-          aria-label={`Completeness ${value}%`}
-          className="inline-flex items-center gap-2 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          role="group"
+          aria-label={`Completeness ${total}%`}
+          className="inline-flex items-center gap-2 rounded-sm focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
         >
-          <Progress value={value} className="h-2 w-20" />
-          <span className="text-xs text-muted-foreground tabular-nums">
-            {value}%
+          <Progress
+            value={total}
+            aria-label={`Completeness ${total}%`}
+            className="h-2 w-20"
+          />
+          <span
+            aria-hidden="true"
+            className="text-xs text-muted-foreground tabular-nums"
+          >
+            {total}%
           </span>
         </span>
       </TooltipTrigger>
       <TooltipContent side="top" sideOffset={4}>
         <div className="flex min-w-[180px] flex-col gap-1.5">
-          <div className="font-medium">Completeness {value}%</div>
-          <div className="border-t border-background/20" />
+          <div className="font-medium">Completeness {total}%</div>
+          <div className="border-t border-current/20" />
           <ul className="flex flex-col gap-0.5">
             {items.map((it) => (
               <li
