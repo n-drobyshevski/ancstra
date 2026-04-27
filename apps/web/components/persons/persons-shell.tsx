@@ -4,6 +4,7 @@ import { PersonsSidebar } from './persons-sidebar';
 import { PersonsToolbar } from './persons-toolbar';
 import { ActiveFilters } from './active-filters';
 import { PersonsDataTable } from './persons-data-table';
+import { usePersonsFilters } from './use-persons-filters';
 import type { PersonListItem } from '@ancstra/shared';
 import type { TreeYearBounds } from '@/lib/persons/year-bounds';
 
@@ -14,6 +15,8 @@ interface PersonsShellProps {
 }
 
 export function PersonsShell({ initialPersons, initialTotal, yearBounds }: PersonsShellProps) {
+  const { isPending } = usePersonsFilters();
+
   return (
     <div className="grid gap-6 md:grid-cols-[16rem_1fr]">
       <a
@@ -23,11 +26,14 @@ export function PersonsShell({ initialPersons, initialTotal, yearBounds }: Perso
         Skip to results
       </a>
       <div className="hidden md:block">
-        <div className="rounded-md border bg-card sticky top-4">
+        <div className="rounded-md border bg-card sticky top-4 max-h-[calc(100vh-5rem)] overflow-hidden flex flex-col">
           <PersonsSidebar yearBounds={yearBounds} />
         </div>
       </div>
-      <main className="space-y-3 min-w-0">
+      <main
+        className={`space-y-3 min-w-0 ${isPending ? 'motion-safe:opacity-50 motion-safe:transition-opacity' : ''}`}
+        aria-busy={isPending}
+      >
         <PersonsToolbar yearBounds={yearBounds} />
         <ActiveFilters />
         <div id="persons-results" tabIndex={-1}>

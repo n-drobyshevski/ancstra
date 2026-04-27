@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button';
 import { personsParsers, type HidableColumn, type PersonsFilters } from '@/lib/persons/search-params';
 import {
   personsColumns,
+  getAriaSort,
   COLUMN_ID_TO_SORT_KEY,
   SORT_KEY_TO_COLUMN_ID,
   HIDE_KEY_TO_COLUMN_ID,
@@ -112,7 +113,11 @@ export function PersonsDataTable({ data, total }: PersonsDataTableProps) {
             {table.getHeaderGroups().map((group) => (
               <TableRow key={group.id}>
                 {group.headers.map((header) => (
-                  <TableHead key={header.id} style={{ width: header.getSize() }}>
+                  <TableHead
+                    key={header.id}
+                    style={{ width: header.getSize() }}
+                    aria-sort={getAriaSort(header.column.getIsSorted())}
+                  >
                     {header.isPlaceholder
                       ? null
                       : flexRender(header.column.columnDef.header, header.getContext())}

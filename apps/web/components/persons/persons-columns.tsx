@@ -34,8 +34,6 @@ interface SortableHeaderProps {
 }
 
 function SortableHeader({ label, isSorted, onClick }: SortableHeaderProps) {
-  const ariaSort: 'ascending' | 'descending' | 'none' =
-    isSorted === 'asc' ? 'ascending' : isSorted === 'desc' ? 'descending' : 'none';
   return (
     <Button
       variant="ghost"
@@ -43,12 +41,17 @@ function SortableHeader({ label, isSorted, onClick }: SortableHeaderProps) {
       onClick={onClick}
       className="-ml-3 h-8 data-[state=sorted]:font-medium"
       data-state={isSorted ? 'sorted' : undefined}
-      aria-sort={ariaSort}
     >
       {label}
       <SortIndicator direction={isSorted} />
     </Button>
   );
+}
+
+export function getAriaSort(direction: false | SortDirection): 'ascending' | 'descending' | 'none' {
+  if (direction === 'asc') return 'ascending';
+  if (direction === 'desc') return 'descending';
+  return 'none';
 }
 
 export const personsColumns: ColumnDef<PersonListItem>[] = [
