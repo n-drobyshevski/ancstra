@@ -9,6 +9,18 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import type { PersonListItem } from '@ancstra/shared';
 import type { HidableColumn } from '@/lib/persons/search-params';
+import { Checkbox } from '@/components/ui/checkbox';
+import type { SelectionState } from './use-selection';
+
+declare module '@tanstack/react-table' {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  interface TableMeta<TData extends unknown> {
+    selection?: SelectionState;
+    pageIds?: readonly string[];
+    onToggleRow?: (id: string) => void;
+    onTogglePage?: (pageIds: readonly string[], allChecked: boolean) => void;
+  }
+}
 
 const sexLabel = { M: 'Male', F: 'Female', U: 'Unknown' } as const;
 
@@ -55,6 +67,60 @@ export function getAriaSort(direction: false | SortDirection): 'ascending' | 'de
 }
 
 export const personsColumns: ColumnDef<PersonListItem>[] = [
+  {
+    id: 'select',
+    enableSorting: false,
+    enableHiding: false,
+    size: 32,
+    header: ({ table }) => {
+      const meta = table.options.meta;
+      const selection = meta?.selection;
+      const pageIds = meta?.pageIds ?? [];
+      if (!selection || !meta?.onTogglePage) return null;
+
+      let checked: boolean | 'indeterminate' = false;
+      if (selection.kind === 'matching') {
+        const someExcluded = pageIds.some((id) => selection.exclude.has(id));
+        const allExcluded = pageIds.length > 0 && pageIds.every((id) => selection.exclude.has(id));
+        checked = allExcluded ? false : someExcluded ? 'indeterminate' : true;
+      } else if (selection.kind === 'ids') {
+        const checkedCount = pageIds.filter((id) => selection.rowIds.has(id)).length;
+        checked = checkedCount === 0 ? false : checkedCount === pageIds.length ? true : 'indeterminate';
+      }
+
+      return (
+        <Checkbox
+          checked={checked}
+          onCheckedChange={() => {
+            const allChecked = checked === true;
+            meta.onTogglePage!(pageIds, allChecked);
+          }}
+          aria-label={checked === true ? 'Deselect all on page' : 'Select all on page'}
+        />
+      );
+    },
+    cell: ({ row, table }) => {
+      const meta = table.options.meta;
+      const selection = meta?.selection;
+      if (!selection || !meta?.onToggleRow) return null;
+
+      const id = row.original.id;
+      const isChecked =
+        selection.kind === 'matching'
+          ? !selection.exclude.has(id)
+          : selection.kind === 'ids'
+            ? selection.rowIds.has(id)
+            : false;
+
+      return (
+        <Checkbox
+          checked={isChecked}
+          onCheckedChange={() => meta.onToggleRow!(id)}
+          aria-label={isChecked ? `Deselect ${row.original.givenName} ${row.original.surname}` : `Select ${row.original.givenName} ${row.original.surname}`}
+        />
+      );
+    },
+  },
   {
     id: 'name',
     accessorFn: (row) => `${row.surname} ${row.givenName}`,
