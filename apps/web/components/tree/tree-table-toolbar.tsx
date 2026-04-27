@@ -5,6 +5,7 @@ import { Separator } from '@/components/ui/separator';
 import { BarChart3 } from 'lucide-react';
 import { TreeViewToggle } from './tree-view-toggle';
 import type { FilterState } from './tree-utils';
+import { TopologyToggle, type TopologyMode } from './topology-toggle';
 
 interface TreeTableToolbarProps {
   view: 'canvas' | 'table';
@@ -13,6 +14,9 @@ interface TreeTableToolbarProps {
   onToggleFilter: (category: 'sex' | 'living', key: string) => void;
   showGaps: boolean;
   onToggleGaps: () => void;
+  topologyMode: TopologyMode;
+  onTopologyModeChange: (mode: TopologyMode) => void;
+  topologyReferenceName: string | null;
 }
 
 export function TreeTableToolbar({
@@ -22,6 +26,9 @@ export function TreeTableToolbar({
   onToggleFilter,
   showGaps,
   onToggleGaps,
+  topologyMode,
+  onTopologyModeChange,
+  topologyReferenceName,
 }: TreeTableToolbarProps) {
   return (
     <div className="flex items-center justify-between border-b border-border bg-background px-4 py-2">
@@ -72,6 +79,14 @@ export function TreeTableToolbar({
         >
           Deceased
         </Button>
+
+        <Separator orientation="vertical" className="h-5 mx-0.5" />
+
+        <TopologyToggle
+          mode={topologyMode}
+          onModeChange={onTopologyModeChange}
+          referenceName={topologyReferenceName}
+        />
 
         <Separator orientation="vertical" className="h-5 mx-0.5" />
 
