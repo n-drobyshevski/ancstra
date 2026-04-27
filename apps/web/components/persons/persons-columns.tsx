@@ -6,7 +6,7 @@ import { formatDistanceToNow, parseISO } from 'date-fns';
 import type { ColumnDef, SortDirection } from '@tanstack/react-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
+import { CompletenessCell } from './completeness-cell';
 import type { PersonListItem } from '@ancstra/shared';
 import type { HidableColumn } from '@/lib/persons/search-params';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -201,15 +201,7 @@ export const personsColumns: ColumnDef<PersonListItem>[] = [
         onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
       />
     ),
-    cell: ({ row }) => {
-      const value = row.original.completeness ?? 0;
-      return (
-        <div className="flex items-center gap-2">
-          <Progress value={value} className="h-2 w-20" aria-label={`${value}% complete`} />
-          <span className="text-xs text-muted-foreground tabular-nums">{value}%</span>
-        </div>
-      );
-    },
+    cell: ({ row }) => <CompletenessCell person={row.original} />,
     enableSorting: true,
     size: 128,
   },
