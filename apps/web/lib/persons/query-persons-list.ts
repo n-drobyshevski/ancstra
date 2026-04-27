@@ -57,7 +57,7 @@ export async function queryPersonsList(
     WITH person_flags AS (
       SELECT
         p.id,
-        CASE WHEN pn.given_name <> '' AND pn.surname <> '' THEN 1 ELSE 0 END AS has_name,
+        CASE WHEN pn.given_name IS NOT NULL AND pn.given_name <> '' AND pn.surname IS NOT NULL AND pn.surname <> '' THEN 1 ELSE 0 END AS has_name,
         CASE WHEN EXISTS (SELECT 1 FROM events e WHERE e.person_id = p.id AND e.event_type = 'birth') THEN 1 ELSE 0 END AS has_birth_event,
         CASE WHEN EXISTS (SELECT 1 FROM events e WHERE e.person_id = p.id AND e.event_type = 'birth' AND e.place_text IS NOT NULL AND e.place_text <> '') THEN 1 ELSE 0 END AS has_birth_place,
         CASE WHEN EXISTS (SELECT 1 FROM events e WHERE e.person_id = p.id AND e.event_type = 'death') THEN 1 ELSE 0 END AS has_death_event,
