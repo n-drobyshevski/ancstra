@@ -217,13 +217,13 @@ describe('quality-queries', () => {
     it('returns persons sorted by lowest score first', async () => {
       const result = await getPriorities(db as any, 1, 20);
       expect(result.persons).toHaveLength(3);
-      // person-minimal: name only = 20
-      // person-partial: name(20) + birth(25) = 45
-      // person-complete: name(20) + birth(25) + birthPlace(20) + death(15) + source(20) = 100
+      // person-minimal: living, name only → round(20*100/85) = 24
+      // person-partial: living, name+birth → round(45*100/85) = 53
+      // person-complete: deceased, all five → 100
       expect(result.persons[0]!.id).toBe('person-minimal');
-      expect(result.persons[0]!.score).toBe(20);
+      expect(result.persons[0]!.score).toBe(24);
       expect(result.persons[1]!.id).toBe('person-partial');
-      expect(result.persons[1]!.score).toBe(45);
+      expect(result.persons[1]!.score).toBe(53);
       expect(result.persons[2]!.id).toBe('person-complete');
       expect(result.persons[2]!.score).toBe(100);
     });

@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import type { FamilyDatabase } from './index';
+import { completenessScoreExpr } from './completeness-sql';
 
 export interface QualityMetric {
   label: string;
@@ -124,7 +125,7 @@ export async function getQualitySummary(db: FamilyDatabase): Promise<QualitySumm
 
 /**
  * Get persons sorted by lowest completeness score first (research priorities).
- * Score = (hasName * 20) + (hasBirth * 25) + (hasBirthPlace * 20) + (hasDeath * 15) + (hasSource * 20)
+ * Score uses the shared completenessScoreExpr fragment (living-aware renormalization).
  */
 export async function getPriorities(
   db: FamilyDatabase,
@@ -154,51 +155,31 @@ export async function getPriorities(
     missing_death: number;
     missing_source: number;
   }>(sql`
+    WITH person_flags AS (
+      SELECT
+        p.id,
+        CASE WHEN pn.given_name IS NOT NULL AND pn.given_name <> '' AND pn.surname IS NOT NULL AND pn.surname <> '' THEN 1 ELSE 0 END AS has_name,
+        CASE WHEN EXISTS (SELECT 1 FROM events e WHERE e.person_id = p.id AND e.event_type = 'birth') THEN 1 ELSE 0 END AS has_birth_event,
+        CASE WHEN EXISTS (SELECT 1 FROM events e WHERE e.person_id = p.id AND e.event_type = 'birth' AND e.place_text IS NOT NULL AND e.place_text <> '') THEN 1 ELSE 0 END AS has_birth_place,
+        CASE WHEN EXISTS (SELECT 1 FROM events e WHERE e.person_id = p.id AND e.event_type = 'death') THEN 1 ELSE 0 END AS has_death_event,
+        CASE WHEN EXISTS (SELECT 1 FROM source_citations sc WHERE sc.person_id = p.id) THEN 1 ELSE 0 END AS has_source
+      FROM persons p
+      LEFT JOIN person_names pn ON pn.person_id = p.id AND pn.is_primary = 1
+      WHERE p.deleted_at IS NULL
+    )
     SELECT
       p.id,
       COALESCE(pn.given_name, '') AS given_name,
       COALESCE(pn.surname, '') AS surname,
-      (
-        CASE WHEN pn.given_name IS NOT NULL AND pn.given_name != ''
-              AND pn.surname IS NOT NULL AND pn.surname != ''
-        THEN 20 ELSE 0 END
-      ) + (
-        CASE WHEN EXISTS (
-          SELECT 1 FROM events e WHERE e.person_id = p.id AND e.event_type = 'birth'
-        ) THEN 25 ELSE 0 END
-      ) + (
-        CASE WHEN EXISTS (
-          SELECT 1 FROM events e WHERE e.person_id = p.id AND e.event_type = 'birth'
-            AND e.place_text IS NOT NULL AND e.place_text != ''
-        ) THEN 20 ELSE 0 END
-      ) + (
-        CASE WHEN EXISTS (
-          SELECT 1 FROM events e WHERE e.person_id = p.id AND e.event_type = 'death'
-        ) THEN 15 ELSE 0 END
-      ) + (
-        CASE WHEN EXISTS (
-          SELECT 1 FROM source_citations sc WHERE sc.person_id = p.id
-        ) THEN 20 ELSE 0 END
-      ) AS score,
-      CASE WHEN pn.given_name IS NULL OR pn.given_name = ''
-                OR pn.surname IS NULL OR pn.surname = ''
-      THEN 1 ELSE 0 END AS missing_name,
-      CASE WHEN NOT EXISTS (
-        SELECT 1 FROM events e WHERE e.person_id = p.id AND e.event_type = 'birth'
-      ) THEN 1 ELSE 0 END AS missing_birth,
-      CASE WHEN NOT EXISTS (
-        SELECT 1 FROM events e WHERE e.person_id = p.id AND e.event_type = 'birth'
-          AND e.place_text IS NOT NULL AND e.place_text != ''
-      ) THEN 1 ELSE 0 END AS missing_birth_place,
-      CASE WHEN NOT EXISTS (
-        SELECT 1 FROM events e WHERE e.person_id = p.id AND e.event_type = 'death'
-      ) THEN 1 ELSE 0 END AS missing_death,
-      CASE WHEN NOT EXISTS (
-        SELECT 1 FROM source_citations sc WHERE sc.person_id = p.id
-      ) THEN 1 ELSE 0 END AS missing_source
+      ${completenessScoreExpr('p', 'pf')} AS score,
+      CASE WHEN pf.has_name = 0 THEN 1 ELSE 0 END AS missing_name,
+      CASE WHEN pf.has_birth_event = 0 THEN 1 ELSE 0 END AS missing_birth,
+      CASE WHEN pf.has_birth_place = 0 THEN 1 ELSE 0 END AS missing_birth_place,
+      CASE WHEN pf.has_death_event = 0 THEN 1 ELSE 0 END AS missing_death,
+      CASE WHEN pf.has_source = 0 THEN 1 ELSE 0 END AS missing_source
     FROM persons p
-    LEFT JOIN person_names pn
-      ON pn.person_id = p.id AND pn.is_primary = 1
+    LEFT JOIN person_names pn ON pn.person_id = p.id AND pn.is_primary = 1
+    INNER JOIN person_flags pf ON pf.id = p.id
     WHERE p.deleted_at IS NULL
     ORDER BY score ASC, p.id ASC
     LIMIT ${pageSize} OFFSET ${offset}
