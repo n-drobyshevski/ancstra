@@ -28,7 +28,10 @@ export function ExportOptions() {
   const [stats, setStats] = useState<ExportStats | null>(null);
 
   useEffect(() => {
-    fetch('/api/persons?pageSize=9999')
+    // FIXME(PR #3): /api/persons enforces a max size of 100 via parseAsNumberLiteral.
+    // Replace with the streaming /api/persons/export endpoint once it lands. For now
+    // the export will silently include only the first 20 results (default fallback).
+    fetch('/api/persons?size=9999')
       .then((r) => r.json())
       .then((d) => {
         const living = d.items.filter(

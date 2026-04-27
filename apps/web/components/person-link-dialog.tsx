@@ -127,7 +127,7 @@ export function PersonLinkDialog({
       try {
         const params = new URLSearchParams({
           q: query,
-          pageSize: '20',
+          size: '20',
         });
         const res = await fetch(`/api/persons?${params}`);
         if (res.ok) {

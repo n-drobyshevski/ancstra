@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
 import { persons, personNames, events, refreshSummary } from '@ancstra/db';
-import { and, isNull, sql } from 'drizzle-orm';
 import { createPersonSchema } from '@/lib/validation';
 import { parseDateToSort } from '@ancstra/shared';
-import { searchPersonsFts } from '@/lib/queries';
 import { withAuth, handleAuthError, logAndInvalidate } from '@/lib/auth/api-guard';
+import { personsCache } from '@/lib/persons/search-params';
+import { queryPersonsList } from '@/lib/persons/query-persons-list';
 
 export async function POST(request: Request) {
   try {
@@ -112,102 +112,28 @@ export async function POST(request: Request) {
 export async function GET(request: Request) {
   try {
     const { familyDb } = await withAuth('tree:view');
-
     const { searchParams } = new URL(request.url);
-    const page = Math.max(1, parseInt(searchParams.get('page') ?? '1'));
-    const pageSize = Math.min(100, Math.max(1, parseInt(searchParams.get('pageSize') ?? '20')));
-    const offset = (page - 1) * pageSize;
-    const q = searchParams.get('q');
-
-    let baseItems: Array<{
-      id: string;
-      sex: 'M' | 'F' | 'U';
-      isLiving: boolean;
-      givenName: string;
-      surname: string;
-      birthDate?: string | null;
-      deathDate?: string | null;
-    }>;
-    let total: number;
-
-    if (q) {
-      const allResults = await searchPersonsFts(familyDb, q, 1000);
-      total = allResults.length;
-      baseItems = allResults.slice(offset, offset + pageSize);
-    } else {
-      const whereClause = isNull(persons.deletedAt);
-
-      const rows = await familyDb
-        .select({
-          id: persons.id,
-          sex: persons.sex,
-          isLiving: persons.isLiving,
-          givenName: personNames.givenName,
-          surname: personNames.surname,
-        })
-        .from(persons)
-        .innerJoin(
-          personNames,
-          sql`${personNames.personId} = ${persons.id} AND ${personNames.isPrimary} = 1`,
-        )
-        .where(whereClause)
-        .limit(pageSize)
-        .offset(offset)
-        .all();
-
-      const [{ count }] = await familyDb
-        .select({ count: sql<number>`count(*)` })
-        .from(persons)
-        .where(whereClause)
-        .all();
-      total = count;
-
-      const personIds = rows.map((r) => r.id);
-      const birthDeathEvents =
-        personIds.length > 0
-          ? await familyDb
-              .select({
-                personId: events.personId,
-                eventType: events.eventType,
-                dateOriginal: events.dateOriginal,
-              })
-              .from(events)
-              .where(
-                sql`${events.personId} IN (${sql.join(
-                  personIds.map((id) => sql`${id}`),
-                  sql`, `,
-                )}) AND ${events.eventType} IN ('birth', 'death')`,
-              )
-              .all()
-          : [];
-
-      const eventsByPerson = new Map<string, { birthDate?: string | null; deathDate?: string | null }>();
-      for (const ev of birthDeathEvents) {
-        if (!ev.personId) continue;
-        const entry = eventsByPerson.get(ev.personId) ?? {};
-        if (ev.eventType === 'birth') entry.birthDate = ev.dateOriginal;
-        if (ev.eventType === 'death') entry.deathDate = ev.dateOriginal;
-        eventsByPerson.set(ev.personId, entry);
+    const rawParams: Record<string, string | string[]> = {};
+    searchParams.forEach((value, key) => {
+      const existing = rawParams[key];
+      if (existing === undefined) {
+        rawParams[key] = value;
+      } else if (Array.isArray(existing)) {
+        existing.push(value);
+      } else {
+        rawParams[key] = [existing, value];
       }
+    });
+    const filters = await personsCache.parse(rawParams);
 
-      baseItems = rows.map((r) => ({
-        ...r,
-        birthDate: eventsByPerson.get(r.id)?.birthDate ?? null,
-        deathDate: eventsByPerson.get(r.id)?.deathDate ?? null,
-      }));
-    }
+    const result = await queryPersonsList(familyDb, filters);
 
-    // TODO B.2-6: replace with queryPersonsList; extras fields temporarily zeroed
-    const items = baseItems.map((it) => ({
-      ...it,
-      sourcesCount: 0,
-      completeness: 0,
-      validation: 'confirmed' as const,
-      birthPlace: null,
-      updatedAt: '',
-    }));
-
-    return NextResponse.json({ items, total, page, pageSize });
+    return NextResponse.json({
+      items: result.items,
+      total: result.total,
+      page: filters.page,
+      size: filters.size,
+    });
   } catch (error) {
     return handleAuthError(error);
   }

@@ -55,7 +55,7 @@ export function PersonLinkPopover({
       setSearching(true);
       try {
         const res = await fetch(
-          `/api/persons?q=${encodeURIComponent(query)}&pageSize=5`,
+          `/api/persons?q=${encodeURIComponent(query)}&size=5`,
         );
         if (res.ok) {
           const data = await res.json();
