@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Users, Heart, BarChart3, TrendingUp } from 'lucide-react';
+import { cacheLife, cacheTag } from 'next/cache';
 import {
   Card,
   CardAction,
@@ -15,6 +16,11 @@ interface StatCardsProps {
 }
 
 export async function StatCards({ dbFilename }: StatCardsProps) {
+  'use cache';
+  cacheLife('dashboard');
+  // Tags mirror inner data fns so any revalidateTag() invalidates this too.
+  cacheTag('dashboard-stats', 'persons', 'quality');
+
   const [
     { totalPersons, totalFamilies, recentAdditionsCount },
     overallQualityScore,

@@ -10,9 +10,10 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ['better-sqlite3'],
   experimental: {
     viewTransition: true,
-    optimizePackageImports: ['lucide-react', 'recharts', '@xyflow/react', 'date-fns'],
+    optimizePackageImports: ['lucide-react', 'recharts', '@xyflow/react', 'date-fns', 'radix-ui'],
   },
   cacheComponents: true,
+  reactCompiler: true,
   cacheLife: {
     // Genealogy data changes infrequently — invalidated on mutation
     genealogy: {

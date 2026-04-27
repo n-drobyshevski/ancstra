@@ -145,6 +145,12 @@ export async function ensureFamilySchema(db: FamilyDatabase, dbKey?: string): Pr
     )
   `);
 
+  // Dashboard performance indexes (added 2026-04). Existing DBs predate these
+  // — created here idempotently so cold-cache loads don't full-scan persons/families/events.
+  await db.run(sql`CREATE INDEX IF NOT EXISTS idx_persons_deleted_created ON persons(deleted_at, created_at)`);
+  await db.run(sql`CREATE INDEX IF NOT EXISTS idx_families_deleted ON families(deleted_at)`);
+  await db.run(sql`CREATE INDEX IF NOT EXISTS idx_events_person_type ON events(person_id, event_type)`);
+
   // FTS5 full-text search on person_names — works on all backends (local + Turso)
   await db.run(sql`
     CREATE VIRTUAL TABLE IF NOT EXISTS persons_fts USING fts5(

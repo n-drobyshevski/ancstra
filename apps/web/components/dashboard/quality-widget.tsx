@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { cacheLife, cacheTag } from 'next/cache';
 import { Card, CardContent, CardHeader, CardTitle, CardAction } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { scoreColor } from '@/lib/quality-utils';
@@ -9,6 +10,10 @@ interface QualityWidgetProps {
 }
 
 export async function QualityWidget({ dbFilename }: QualityWidgetProps) {
+  'use cache';
+  cacheLife('genealogy');
+  cacheTag('quality');
+
   const score = await getCachedQualityScore(dbFilename);
 
   return (

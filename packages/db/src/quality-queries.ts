@@ -24,7 +24,10 @@ export interface PriorityPerson {
 
 /**
  * Get a summary of data quality metrics across all non-deleted persons.
- * Uses raw SQL for complex multi-table aggregations.
+ *
+ * Single-pass aggregation: pre-aggregates per-person flags from person_names,
+ * events, and source_citations in CTEs, then joins persons once. Replaces
+ * the previous N correlated EXISTS subqueries (one scan vs ~5N seeks).
  */
 export async function getQualitySummary(db: FamilyDatabase): Promise<QualitySummary> {
   const [row] = await db.all<{
@@ -36,44 +39,45 @@ export async function getQualitySummary(db: FamilyDatabase): Promise<QualitySumm
     non_living: number;
     with_source: number;
   }>(sql`
+    WITH name_flags AS (
+      SELECT
+        person_id,
+        MAX(CASE WHEN given_name IS NOT NULL AND given_name != ''
+                  AND surname IS NOT NULL AND surname != ''
+                THEN 1 ELSE 0 END) AS has_name
+      FROM person_names
+      GROUP BY person_id
+    ),
+    event_flags AS (
+      SELECT
+        person_id,
+        MAX(CASE WHEN event_type = 'birth' THEN 1 ELSE 0 END) AS has_birth,
+        MAX(CASE WHEN event_type = 'birth'
+                  AND place_text IS NOT NULL AND place_text != ''
+                THEN 1 ELSE 0 END) AS has_birth_place,
+        MAX(CASE WHEN event_type = 'death' THEN 1 ELSE 0 END) AS has_death
+      FROM events
+      GROUP BY person_id
+    ),
+    source_flags AS (
+      SELECT person_id, 1 AS has_source
+      FROM source_citations
+      WHERE person_id IS NOT NULL
+      GROUP BY person_id
+    )
     SELECT
       COUNT(*) AS total_persons,
-      SUM(CASE WHEN has_name = 1 THEN 1 ELSE 0 END) AS with_name,
-      SUM(CASE WHEN has_birth = 1 THEN 1 ELSE 0 END) AS with_birth,
-      SUM(CASE WHEN has_birth_place = 1 THEN 1 ELSE 0 END) AS with_birth_place,
-      SUM(CASE WHEN has_death = 1 THEN 1 ELSE 0 END) AS with_death,
-      SUM(non_living) AS non_living,
-      SUM(CASE WHEN has_source = 1 THEN 1 ELSE 0 END) AS with_source
-    FROM (
-      SELECT
-        p.id,
-        CASE WHEN p.is_living = 0 THEN 1 ELSE 0 END AS non_living,
-        CASE WHEN EXISTS (
-          SELECT 1 FROM person_names pn
-          WHERE pn.person_id = p.id
-            AND pn.given_name IS NOT NULL AND pn.given_name != ''
-            AND pn.surname IS NOT NULL AND pn.surname != ''
-        ) THEN 1 ELSE 0 END AS has_name,
-        CASE WHEN EXISTS (
-          SELECT 1 FROM events e
-          WHERE e.person_id = p.id AND e.event_type = 'birth'
-        ) THEN 1 ELSE 0 END AS has_birth,
-        CASE WHEN EXISTS (
-          SELECT 1 FROM events e
-          WHERE e.person_id = p.id AND e.event_type = 'birth'
-            AND e.place_text IS NOT NULL AND e.place_text != ''
-        ) THEN 1 ELSE 0 END AS has_birth_place,
-        CASE WHEN EXISTS (
-          SELECT 1 FROM events e
-          WHERE e.person_id = p.id AND e.event_type = 'death'
-        ) THEN 1 ELSE 0 END AS has_death,
-        CASE WHEN EXISTS (
-          SELECT 1 FROM source_citations sc
-          WHERE sc.person_id = p.id
-        ) THEN 1 ELSE 0 END AS has_source
-      FROM persons p
-      WHERE p.deleted_at IS NULL
-    ) sub
+      SUM(COALESCE(nf.has_name, 0)) AS with_name,
+      SUM(COALESCE(ef.has_birth, 0)) AS with_birth,
+      SUM(COALESCE(ef.has_birth_place, 0)) AS with_birth_place,
+      SUM(COALESCE(ef.has_death, 0)) AS with_death,
+      SUM(CASE WHEN p.is_living = 0 THEN 1 ELSE 0 END) AS non_living,
+      SUM(COALESCE(sf.has_source, 0)) AS with_source
+    FROM persons p
+    LEFT JOIN name_flags nf ON nf.person_id = p.id
+    LEFT JOIN event_flags ef ON ef.person_id = p.id
+    LEFT JOIN source_flags sf ON sf.person_id = p.id
+    WHERE p.deleted_at IS NULL
   `);
 
   const total = row.total_persons;

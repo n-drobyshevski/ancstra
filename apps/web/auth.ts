@@ -5,7 +5,8 @@ import Apple from 'next-auth/providers/apple';
 import type { Provider } from 'next-auth/providers';
 import { createCentralDb } from '@ancstra/db';
 import { centralSchema } from '@ancstra/db';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
+import type { FamilyMembership } from '@/types/next-auth';
 import bcrypt from 'bcryptjs';
 import { AncstraAdapter } from '@ancstra/auth';
 import { linkOrCreateUser } from '@ancstra/auth';
@@ -73,15 +74,52 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: 'jwt' },
   pages: { signIn: '/login' },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       if (user) {
         token.userId = user.id;
+      }
+      // Populate memberships on initial sign-in or when explicitly refreshed
+      // (e.g. after creating/joining a family). Embedding membership info in
+      // the JWT lets the proxy forward role + dbFilename as headers, so
+      // getAuthContext() in server components is a pure header read.
+      const shouldRefresh =
+        Boolean(user) ||
+        trigger === 'update' ||
+        (token.userId && !token.memberships);
+      if (shouldRefresh && token.userId) {
+        try {
+          const db = getCentralDb();
+          const memberships = await db
+            .select({
+              familyId: centralSchema.familyMembers.familyId,
+              role: centralSchema.familyMembers.role,
+              dbFilename: centralSchema.familyRegistry.dbFilename,
+            })
+            .from(centralSchema.familyMembers)
+            .innerJoin(
+              centralSchema.familyRegistry,
+              eq(centralSchema.familyMembers.familyId, centralSchema.familyRegistry.id),
+            )
+            .where(
+              and(
+                eq(centralSchema.familyMembers.userId, token.userId as string),
+                eq(centralSchema.familyMembers.isActive, 1),
+              ),
+            )
+            .all();
+          token.memberships = memberships as FamilyMembership[];
+        } catch (error) {
+          console.error('[AUTH] Error loading memberships into JWT:', error);
+        }
       }
       return token;
     },
     async session({ session, token }) {
       if (token.userId) {
         session.user.id = token.userId as string;
+      }
+      if (token.memberships) {
+        session.user.memberships = token.memberships;
       }
       return session;
     },

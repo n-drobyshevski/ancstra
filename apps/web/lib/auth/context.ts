@@ -12,25 +12,41 @@ export interface AuthContext {
 }
 
 /**
- * Get the authenticated user's context from proxy headers.
+ * Get the authenticated user's context.
+ *
+ * Hot path: every value is set as a request header by the proxy from the
+ * JWT-embedded memberships map — pure header read, no DB calls.
+ *
+ * Fallback path: if the JWT is stale (e.g. just-joined family not yet in the
+ * token), the proxy passes only `x-family-id` and we look up role + dbFilename
+ * from the central DB. Becomes a no-op once the user signs in again or
+ * triggers a session refresh.
+ *
  * Pass `request` from route handlers to avoid async headers() — prevents
  * HANGING_PROMISE_REJECTION warnings during Next.js prerendering.
- * Falls back to next/headers for server components.
  */
 export async function getAuthContext(request?: Request): Promise<AuthContext | null> {
   const headersList = request ? request.headers : await headers();
   const userId = headersList.get('x-user-id');
-  const familyId = headersList.get('x-family-id');
-
   if (!userId) return null;
 
+  const familyId = headersList.get('x-family-id');
+  const role = headersList.get('x-family-role');
+  const dbFilename = headersList.get('x-family-db');
+
+  // Fast path: proxy populated everything from the JWT
+  if (familyId && role && dbFilename) {
+    return { userId, familyId, role: role as Role, dbFilename };
+  }
+
+  // Fallback: stale token or first request post-membership-change.
+  // Resolve from the central DB using only the columns we need.
   const centralDb = createCentralDb();
 
-  // If no family specified, find the user's first family
   let resolvedFamilyId = familyId;
   if (!resolvedFamilyId) {
     const firstMembership = await centralDb
-      .select()
+      .select({ familyId: centralSchema.familyMembers.familyId })
       .from(centralSchema.familyMembers)
       .where(
         and(
@@ -40,14 +56,12 @@ export async function getAuthContext(request?: Request): Promise<AuthContext | n
       )
       .limit(1)
       .get();
-
     if (!firstMembership) return null;
     resolvedFamilyId = firstMembership.familyId;
   }
 
-  // Get membership to determine role
   const membership = await centralDb
-    .select()
+    .select({ role: centralSchema.familyMembers.role })
     .from(centralSchema.familyMembers)
     .where(
       and(
@@ -57,16 +71,13 @@ export async function getAuthContext(request?: Request): Promise<AuthContext | n
       )
     )
     .get();
-
   if (!membership) return null;
 
-  // Get family registry for db filename
   const family = await centralDb
-    .select()
+    .select({ dbFilename: centralSchema.familyRegistry.dbFilename })
     .from(centralSchema.familyRegistry)
     .where(eq(centralSchema.familyRegistry.id, resolvedFamilyId))
     .get();
-
   if (!family) return null;
 
   return {

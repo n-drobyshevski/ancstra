@@ -17,7 +17,6 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { signOut } from 'next-auth/react';
-import { useFactsheetCount } from '@/lib/research/factsheet-client';
 import {
   Sidebar,
   SidebarContent,
@@ -109,10 +108,13 @@ function NavGroup({
   );
 }
 
-export function AppSidebar() {
+interface AppSidebarProps {
+  factsheetCount?: number;
+}
+
+export function AppSidebar({ factsheetCount = 0 }: AppSidebarProps) {
   const pathname = usePathname();
   const { setOpenMobile } = useSidebar();
-  const { count: factsheetCount } = useFactsheetCount();
 
   // Inject live badge counts into nav items
   const researchWithBadges = researchItems.map((item) => {

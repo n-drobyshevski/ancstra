@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { cacheLife, cacheTag } from 'next/cache';
 import { Card, CardContent, CardHeader, CardTitle, CardAction } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { formatRelativeTime } from '@/lib/format';
@@ -10,6 +11,10 @@ interface RecentActivityProps {
 }
 
 export async function RecentActivity({ familyId }: RecentActivityProps) {
+  'use cache: private';
+  cacheLife('activity');
+  cacheTag('activity', `activity-${familyId}`);
+
   const feed = await getCachedActivityFeed(familyId, 5);
   const items = feed.items;
 

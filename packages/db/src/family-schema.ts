@@ -15,6 +15,9 @@ export const persons = sqliteTable('persons', {
 }, (table) => [
   index('idx_persons_sex').on(table.sex),
   index('idx_persons_updated_at').on(table.updatedAt),
+  // Dashboard count + recent-persons sort: filters deletedAt IS NULL and
+  // orders/filters by createdAt. Composite covers both single-column lookups.
+  index('idx_persons_deleted_created').on(table.deletedAt, table.createdAt),
 ]);
 
 // ==================== PERSON NAMES ====================
@@ -54,6 +57,7 @@ export const families = sqliteTable('families', {
 }, (table) => [
   index('idx_families_partner1').on(table.partner1Id),
   index('idx_families_partner2').on(table.partner2Id),
+  index('idx_families_deleted').on(table.deletedAt),
 ]);
 
 // ==================== CHILDREN ====================
@@ -100,6 +104,8 @@ export const events = sqliteTable('events', {
   index('idx_events_person').on(table.personId, table.dateSort),
   index('idx_events_family').on(table.familyId),
   index('idx_events_type').on(table.eventType),
+  // Birth-event lookup in getCachedRecentPersons filters by person + event_type
+  index('idx_events_person_type').on(table.personId, table.eventType),
 ]);
 
 // ==================== SOURCES ====================

@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
 import { auth } from './auth';
 
 export const proxy = auth((request) => {
@@ -17,13 +16,41 @@ export const proxy = auth((request) => {
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set('x-user-id', session.user.id);
 
-  // Read active family from cookie or URL param
+  // Resolve active family from cookie / URL param against memberships
+  // baked into the JWT. This lets getAuthContext() in server components
+  // read everything from headers without hitting the central DB.
+  const memberships = session.user.memberships;
   const familyParam = request.nextUrl.searchParams.get('family');
   const familyCookie = request.cookies.get('active-family')?.value;
-  const activeFamilyId = familyParam || familyCookie || '';
+  const requestedFamilyId = familyParam || familyCookie || '';
 
-  if (activeFamilyId) {
-    requestHeaders.set('x-family-id', activeFamilyId);
+  // Authenticated user with no family yet → redirect to /create-family.
+  // `memberships === undefined` means the JWT predates this code (existing
+  // session) — let getAuthContext fall back to DB rather than wrongly
+  // redirecting. Only redirect when the JWT explicitly has zero memberships.
+  if (Array.isArray(memberships) && memberships.length === 0) {
+    if (request.nextUrl.pathname.startsWith('/api/')) {
+      return NextResponse.json({ error: 'No family membership' }, { status: 403 });
+    }
+    return NextResponse.redirect(new URL('/create-family', request.url));
+  }
+
+  const list = memberships ?? [];
+  let selected = requestedFamilyId
+    ? list.find((m) => m.familyId === requestedFamilyId)
+    : undefined;
+  if (!selected && list.length > 0) {
+    selected = list[0];
+  }
+
+  if (selected) {
+    requestHeaders.set('x-family-id', selected.familyId);
+    requestHeaders.set('x-family-role', selected.role);
+    requestHeaders.set('x-family-db', selected.dbFilename);
+  } else if (requestedFamilyId) {
+    // Stale token / brand-new membership not yet in JWT — pass id only,
+    // getAuthContext will fall back to a DB lookup.
+    requestHeaders.set('x-family-id', requestedFamilyId);
   }
 
   const response = NextResponse.next({

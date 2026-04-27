@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { cacheLife, cacheTag } from 'next/cache';
 import { Card, CardContent, CardHeader, CardTitle, CardAction } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +18,10 @@ const SEX_LABELS: Record<'M' | 'F' | 'U', string> = {
 };
 
 export async function RecentPersons({ dbFilename }: RecentPersonsProps) {
+  'use cache';
+  cacheLife('dashboard');
+  cacheTag('dashboard-recent', 'dashboard-stats', 'persons');
+
   const [recentPersons, { totalPersons }] = await Promise.all([
     getCachedRecentPersons(dbFilename),
     getCachedStatCards(dbFilename),

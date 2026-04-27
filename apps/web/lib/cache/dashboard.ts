@@ -1,7 +1,7 @@
 import { cacheLife, cacheTag } from 'next/cache';
 import { getFamilyDb } from '../db';
 import { persons, personNames, events, families, getQualitySummary } from '@ancstra/db';
-import { eq, and, isNull, sql, gte } from 'drizzle-orm';
+import { eq, and, isNull, sql } from 'drizzle-orm';
 import type { PersonListItem } from '@ancstra/shared';
 
 // ---------------------------------------------------------------------------
@@ -14,27 +14,29 @@ export async function getCachedStatCards(dbFilename: string) {
 
   const db = await getFamilyDb(dbFilename);
 
-  const countRows = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(persons)
-    .where(isNull(persons.deletedAt))
-    .all();
-  const totalPersons = countRows[0]?.count ?? 0;
-
-  const familyCountRows = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(families)
-    .where(isNull(families.deletedAt))
-    .all();
-  const totalFamilies = familyCountRows[0]?.count ?? 0;
-
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-  const recentAdditionsRows = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(persons)
-    .where(and(isNull(persons.deletedAt), gte(persons.createdAt, thirtyDaysAgo)))
-    .all();
-  const recentAdditionsCount = recentAdditionsRows[0]?.count ?? 0;
+
+  // Two parallel queries: one merged persons aggregation (total + 30d recent),
+  // and one families count. Replaces three sequential round-trips.
+  const [personsRows, familiesRows] = await Promise.all([
+    db
+      .select({
+        total: sql<number>`count(*)`,
+        recent: sql<number>`sum(case when ${persons.createdAt} >= ${thirtyDaysAgo} then 1 else 0 end)`,
+      })
+      .from(persons)
+      .where(isNull(persons.deletedAt))
+      .all(),
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(families)
+      .where(isNull(families.deletedAt))
+      .all(),
+  ]);
+
+  const totalPersons = personsRows[0]?.total ?? 0;
+  const recentAdditionsCount = personsRows[0]?.recent ?? 0;
+  const totalFamilies = familiesRows[0]?.count ?? 0;
 
   return { totalPersons, totalFamilies, recentAdditionsCount };
 }
@@ -49,6 +51,9 @@ export async function getCachedRecentPersons(dbFilename: string) {
 
   const db = await getFamilyDb(dbFilename);
 
+  // Single query: persons + primary name + first birth event (via correlated
+  // subquery). Replaces the previous two-round-trip pattern (persons query +
+  // follow-up events IN-list).
   const recentRows = await db
     .select({
       id: persons.id,
@@ -57,6 +62,14 @@ export async function getCachedRecentPersons(dbFilename: string) {
       givenName: personNames.givenName,
       surname: personNames.surname,
       createdAt: persons.createdAt,
+      birthDate: sql<string | null>`(
+        SELECT ${events.dateOriginal}
+        FROM ${events}
+        WHERE ${events.personId} = ${persons.id}
+          AND ${events.eventType} = 'birth'
+        ORDER BY ${events.dateSort}
+        LIMIT 1
+      )`,
     })
     .from(persons)
     .innerJoin(personNames, eq(personNames.personId, persons.id))
@@ -65,35 +78,13 @@ export async function getCachedRecentPersons(dbFilename: string) {
     .limit(5)
     .all();
 
-  const recentIds = recentRows.map((r) => r.id);
-  const birthEvents =
-    recentIds.length > 0
-      ? await db
-          .select({
-            personId: events.personId,
-            dateOriginal: events.dateOriginal,
-          })
-          .from(events)
-          .where(
-            sql`${events.personId} IN (${sql.join(
-              recentIds.map((id) => sql`${id}`),
-              sql`, `
-            )}) AND ${events.eventType} = 'birth'`
-          )
-          .all()
-      : [];
-
-  const birthByPerson = new Map(
-    birthEvents.map((e) => [e.personId, e.dateOriginal])
-  );
-
   const recentPersons: (PersonListItem & { createdAt: string })[] = recentRows.map((r) => ({
     id: r.id,
     givenName: r.givenName ?? '',
     surname: r.surname ?? '',
     sex: r.sex as 'M' | 'F' | 'U',
     isLiving: r.isLiving,
-    birthDate: birthByPerson.get(r.id) ?? null,
+    birthDate: r.birthDate ?? null,
     deathDate: null,
     createdAt: r.createdAt,
   }));
