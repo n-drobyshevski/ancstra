@@ -4,6 +4,8 @@ import type { PersonsFilters } from './search-params';
 import { buildPersonsWhere } from './filters-to-where';
 import { searchPersonsFts } from '../queries';
 import type { CsvExportRow } from './export-csv';
+import type { PersonListItem, FamilyRecord, ChildLink } from '@ancstra/shared';
+import type { GedcomExportEvent } from '@/lib/gedcom/serialize';
 
 const HARD_CAP = 50_000;
 
@@ -105,3 +107,145 @@ export async function queryPersonsForCsvExport(
 }
 
 export const EXPORT_HARD_CAP = HARD_CAP;
+
+export interface GedcomExportData {
+  persons: PersonListItem[];
+  families: FamilyRecord[];
+  childLinks: ChildLink[];
+  events: GedcomExportEvent[];
+}
+
+/**
+ * Resolve the export set for GEDCOM:
+ * 1. Find all persons matching the filter (or in explicitIds)
+ * 2. Expand one hop: include parents (via children → families), spouses, children
+ * 3. Load all families touching the expanded set
+ * 4. Load all events for the expanded persons + families
+ */
+export async function queryPersonsForGedcomExport(
+  db: Database,
+  filters: PersonsFilters,
+  excludeIds: readonly string[] = [],
+  explicitIds?: readonly string[],
+): Promise<GedcomExportData> {
+  const csvShape = await queryPersonsForCsvExport(db, filters, excludeIds, explicitIds);
+  const matchedIds = csvShape.map((r) => r.id);
+
+  if (matchedIds.length === 0) {
+    return { persons: [], families: [], childLinks: [], events: [] };
+  }
+
+  const matchedSet = new Set(matchedIds);
+  const matchedList = sql.join(matchedIds.map((id) => sql`${id}`), sql`, `);
+
+  const partnerFamilies = await db.all<{
+    id: string; partner1_id: string | null; partner2_id: string | null;
+    relationship_type: string; validation_status: string;
+  }>(sql`
+    SELECT id, partner1_id, partner2_id, relationship_type, validation_status
+    FROM families
+    WHERE deleted_at IS NULL
+      AND (partner1_id IN (${matchedList}) OR partner2_id IN (${matchedList}))
+  `);
+
+  const childFamilies = await db.all<{
+    id: string; partner1_id: string | null; partner2_id: string | null;
+    relationship_type: string; validation_status: string;
+  }>(sql`
+    SELECT f.id, f.partner1_id, f.partner2_id, f.relationship_type, f.validation_status
+    FROM families f
+    INNER JOIN children c ON c.family_id = f.id
+    WHERE f.deleted_at IS NULL
+      AND c.person_id IN (${matchedList})
+  `);
+
+  const familyMap = new Map<string, FamilyRecord>();
+  for (const f of [...partnerFamilies, ...childFamilies]) {
+    familyMap.set(f.id, {
+      id: f.id,
+      partner1Id: f.partner1_id,
+      partner2Id: f.partner2_id,
+      relationshipType: f.relationship_type as FamilyRecord['relationshipType'],
+      validationStatus: f.validation_status as FamilyRecord['validationStatus'],
+    });
+  }
+
+  const familyIds = Array.from(familyMap.keys());
+  const familyIdsList = familyIds.length > 0
+    ? sql.join(familyIds.map((id) => sql`${id}`), sql`, `)
+    : sql`''`;
+
+  const childRows = familyIds.length > 0
+    ? await db.all<{ family_id: string; person_id: string; validation_status: string }>(sql`
+        SELECT family_id, person_id, validation_status
+        FROM children
+        WHERE family_id IN (${familyIdsList})
+      `)
+    : [];
+
+  const expandedSet = new Set(matchedSet);
+  for (const f of familyMap.values()) {
+    if (f.partner1Id) expandedSet.add(f.partner1Id);
+    if (f.partner2Id) expandedSet.add(f.partner2Id);
+  }
+  for (const c of childRows) {
+    expandedSet.add(c.person_id);
+  }
+
+  const expandedList = sql.join(Array.from(expandedSet).map((id) => sql`${id}`), sql`, `);
+  const allPersons = await db.all<{
+    id: string; sex: string; is_living: number;
+    given_name: string; surname: string;
+    birth_date: string | null; death_date: string | null;
+  }>(sql`
+    SELECT
+      p.id, p.sex, p.is_living,
+      COALESCE(pn.given_name, '') AS given_name,
+      COALESCE(pn.surname, '')   AS surname,
+      (SELECT date_original FROM events e WHERE e.person_id = p.id AND e.event_type = 'birth' ORDER BY e.date_sort NULLS LAST LIMIT 1) AS birth_date,
+      (SELECT date_original FROM events e WHERE e.person_id = p.id AND e.event_type = 'death' ORDER BY e.date_sort NULLS LAST LIMIT 1) AS death_date
+    FROM persons p
+    INNER JOIN person_names pn ON pn.person_id = p.id AND pn.is_primary = 1
+    WHERE p.deleted_at IS NULL AND p.id IN (${expandedList})
+  `);
+
+  const persons: PersonListItem[] = allPersons.map((r) => ({
+    id: r.id,
+    sex: r.sex as 'M' | 'F' | 'U',
+    isLiving: Boolean(r.is_living),
+    givenName: r.given_name,
+    surname: r.surname,
+    birthDate: r.birth_date,
+    deathDate: r.death_date,
+  }));
+
+  const events = await db.all<{
+    id: string; event_type: string; date_original: string | null;
+    place_text: string | null; person_id: string | null; family_id: string | null;
+  }>(sql`
+    SELECT id, event_type, date_original, place_text, person_id, family_id
+    FROM events
+    WHERE person_id IN (${expandedList})
+       ${familyIds.length > 0 ? sql`OR family_id IN (${familyIdsList})` : sql``}
+  `);
+
+  const childLinks: ChildLink[] = childRows.map((c) => ({
+    familyId: c.family_id,
+    personId: c.person_id,
+    validationStatus: c.validation_status as ChildLink['validationStatus'],
+  }));
+
+  return {
+    persons,
+    families: Array.from(familyMap.values()),
+    childLinks,
+    events: events.map((e) => ({
+      id: e.id,
+      eventType: e.event_type,
+      dateOriginal: e.date_original,
+      placeText: e.place_text,
+      personId: e.person_id,
+      familyId: e.family_id,
+    })),
+  };
+}
