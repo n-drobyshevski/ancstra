@@ -144,6 +144,19 @@ describe('getCompletenessBreakdown', () => {
     expect(sourceItem?.hit).toBe(false);
   });
 
+  it('explicit true flag overrides a raw-field miss', () => {
+    // Raw fields say "no source" (sourcesCount: 0) but explicit hasSource=true wins
+    const r = getCompletenessBreakdown(
+      person({
+        sourcesCount: 0,
+        hasSource: true,
+      }),
+    );
+    const sourceItem = r.items.find((i) => i.key === 'source');
+    expect(sourceItem?.hit).toBe(true);
+    expect(r.total).toBe(20);
+  });
+
   it('item labels are human-readable', () => {
     const r = getCompletenessBreakdown(person());
     expect(r.items.map((i) => i.label)).toEqual([

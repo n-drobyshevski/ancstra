@@ -37,6 +37,8 @@ function nonEmpty(v: string | null | undefined): boolean {
 
 function deriveFlags(person: PersonListItem): Record<CompletenessKey, boolean> {
   return {
+    // Both parts required to match the SQL formula:
+    // CASE WHEN given_name <> '' AND surname <> '' THEN 1 ELSE 0 END
     name: nonEmpty(person.givenName) && nonEmpty(person.surname),
     birth: nonEmpty(person.birthDate),
     birthPlace: nonEmpty(person.birthPlace),
