@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { LayoutGrid, Download } from 'lucide-react';
 import { DEFAULT_FILTERS, type FilterState } from './tree-utils';
+import { computeAncestors, computeDescendants } from '@/lib/tree/topology';
 
 const TreeCanvas = dynamic(
   () => import('./tree-canvas').then((m) => ({ default: m.TreeCanvas })),
@@ -77,6 +78,26 @@ export function TreeLayout({ treeData, focusPersonId }: TreeLayoutProps) {
   // Shared filter state — lifted from TreeCanvas so both views can use it
   const [filterState, setFilterState] = useState<FilterState>(DEFAULT_FILTERS);
   const [showGaps, setShowGaps] = useState(false);
+
+  const [topologyMode, setTopologyMode] = useState<'all' | 'ancestors' | 'descendants'>('all');
+
+  const topologyReferenceId = selectedPerson?.id ?? null;
+
+  const topologyVisibleIds = useMemo<Set<string> | null>(() => {
+    if (topologyMode === 'all' || !topologyReferenceId) return null;
+    const result =
+      topologyMode === 'ancestors'
+        ? computeAncestors(topologyReferenceId, treeData)
+        : computeDescendants(topologyReferenceId, treeData);
+    result.add(topologyReferenceId);
+    return result;
+  }, [topologyMode, topologyReferenceId, treeData]);
+
+  const topologyReferenceName = useMemo(() => {
+    if (!topologyReferenceId) return null;
+    const person = treeData.persons.find((p) => p.id === topologyReferenceId);
+    return person ? `${person.givenName} ${person.surname}` : null;
+  }, [topologyReferenceId, treeData]);
 
   const setView = useCallback(
     (v: 'canvas' | 'table') => {
@@ -166,6 +187,9 @@ export function TreeLayout({ treeData, focusPersonId }: TreeLayoutProps) {
               onToggleFilter={handleToggleFilter}
               showGaps={showGaps}
               onToggleGaps={handleToggleGaps}
+              topologyMode={topologyMode}
+              onTopologyModeChange={setTopologyMode}
+              topologyReferenceName={topologyReferenceName}
             />
             <div className="flex-1 overflow-hidden">
               <TreeTableWrapper
@@ -173,6 +197,7 @@ export function TreeLayout({ treeData, focusPersonId }: TreeLayoutProps) {
                 relationships={relationships}
                 onSelectPerson={handleSelectPerson}
                 filterState={filterState}
+                topologyVisibleIds={topologyVisibleIds}
               />
             </div>
           </div>
@@ -215,6 +240,9 @@ export function TreeLayout({ treeData, focusPersonId }: TreeLayoutProps) {
                   onToggleFilter={handleToggleFilter}
                   showGaps={showGaps}
                   onToggleGaps={handleToggleGaps}
+                  topologyMode={topologyMode}
+                  onTopologyModeChange={setTopologyMode}
+                  topologyReferenceName={topologyReferenceName}
                   extraMenuItems={
                     <>
                       <DropdownMenuSeparator />
@@ -250,6 +278,9 @@ export function TreeLayout({ treeData, focusPersonId }: TreeLayoutProps) {
               onToggleFilter={handleToggleFilter}
               showGaps={showGaps}
               onToggleGaps={handleToggleGaps}
+              topologyMode={topologyMode}
+              onTopologyModeChange={setTopologyMode}
+              topologyReferenceName={topologyReferenceName}
             />
             <div className="flex-1 overflow-hidden">
               <TreeTableWrapper
@@ -257,6 +288,7 @@ export function TreeLayout({ treeData, focusPersonId }: TreeLayoutProps) {
                 relationships={relationships}
                 onSelectPerson={handleSelectPerson}
                 filterState={filterState}
+                topologyVisibleIds={topologyVisibleIds}
               />
             </div>
           </div>
