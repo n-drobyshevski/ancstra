@@ -460,20 +460,38 @@ export async function getTreeData(db: Database): Promise<TreeData> {
     sex: string;
     is_living: number;
     birth_date: string | null;
+    birth_place: string | null;
     death_date: string | null;
     completeness: number | null;
+    has_name: number | null;
+    has_birth_event: number | null;
+    has_birth_place: number | null;
+    has_death_event: number | null;
+    has_source: number | null;
     validation: 'confirmed' | 'proposed' | null;
     sources_count: number | null;
   }>(sql`
-    WITH person_facets AS (
+    WITH person_flags AS (
       SELECT
         p.id,
+        CASE WHEN pn.given_name IS NOT NULL AND pn.given_name <> '' AND pn.surname IS NOT NULL AND pn.surname <> '' THEN 1 ELSE 0 END AS has_name,
+        CASE WHEN EXISTS (SELECT 1 FROM events e WHERE e.person_id = p.id AND e.event_type = 'birth') THEN 1 ELSE 0 END AS has_birth_event,
+        CASE WHEN EXISTS (SELECT 1 FROM events e WHERE e.person_id = p.id AND e.event_type = 'birth' AND e.place_text IS NOT NULL AND e.place_text <> '') THEN 1 ELSE 0 END AS has_birth_place,
+        CASE WHEN EXISTS (SELECT 1 FROM events e WHERE e.person_id = p.id AND e.event_type = 'death') THEN 1 ELSE 0 END AS has_death_event,
+        CASE WHEN EXISTS (SELECT 1 FROM source_citations sc WHERE sc.person_id = p.id) THEN 1 ELSE 0 END AS has_source
+      FROM persons p
+      LEFT JOIN person_names pn ON pn.person_id = p.id AND pn.is_primary = 1
+      WHERE p.deleted_at IS NULL
+    ),
+    person_facets AS (
+      SELECT
+        p.id,
+        pf.has_name, pf.has_birth_event, pf.has_birth_place,
+        pf.has_death_event, pf.has_source,
         (
-          CASE WHEN COALESCE(pn.given_name, '') <> '' AND COALESCE(pn.surname, '') <> '' THEN 20 ELSE 0 END
-          + CASE WHEN EXISTS (SELECT 1 FROM events e WHERE e.person_id = p.id AND e.event_type = 'birth') THEN 25 ELSE 0 END
-          + CASE WHEN EXISTS (SELECT 1 FROM events e WHERE e.person_id = p.id AND e.event_type = 'birth' AND e.place_text IS NOT NULL AND e.place_text <> '') THEN 20 ELSE 0 END
-          + CASE WHEN EXISTS (SELECT 1 FROM events e WHERE e.person_id = p.id AND e.event_type = 'death') THEN 15 ELSE 0 END
-          + CASE WHEN EXISTS (SELECT 1 FROM source_citations sc WHERE sc.person_id = p.id) THEN 20 ELSE 0 END
+          pf.has_name * 20 + pf.has_birth_event * 25
+          + pf.has_birth_place * 20 + pf.has_death_event * 15
+          + pf.has_source * 20
         ) AS completeness,
         CASE WHEN EXISTS (
           SELECT 1 FROM families f
@@ -485,15 +503,19 @@ export async function getTreeData(db: Database): Promise<TreeData> {
           WHERE c.person_id = p.id
             AND c.validation_status IN ('proposed', 'disputed')
         ) THEN 'proposed' ELSE 'confirmed' END AS validation,
-        (SELECT COUNT(*) FROM source_citations sc WHERE sc.person_id = p.id) AS sources_count
+        (SELECT COUNT(*) FROM source_citations sc WHERE sc.person_id = p.id) AS sources_count,
+        (SELECT place_text FROM events e WHERE e.person_id = p.id AND e.event_type = 'birth' ORDER BY e.date_sort NULLS LAST LIMIT 1) AS birth_place
       FROM persons p
-      LEFT JOIN person_names pn ON pn.person_id = p.id AND pn.is_primary = 1
+      INNER JOIN person_flags pf ON pf.id = p.id
       WHERE p.deleted_at IS NULL
     )
     SELECT
       ps.person_id, ps.given_name, ps.surname, ps.sex, ps.is_living,
       ps.birth_date, ps.death_date,
-      pf.completeness, pf.validation, pf.sources_count
+      pf.birth_place,
+      pf.completeness, pf.validation, pf.sources_count,
+      pf.has_name, pf.has_birth_event, pf.has_birth_place,
+      pf.has_death_event, pf.has_source
     FROM person_summary ps
     LEFT JOIN person_facets pf ON pf.id = ps.person_id
     WHERE ps.person_id NOT IN (SELECT id FROM persons WHERE deleted_at IS NOT NULL)
@@ -506,10 +528,16 @@ export async function getTreeData(db: Database): Promise<TreeData> {
     sex: r.sex as 'M' | 'F' | 'U',
     isLiving: Boolean(r.is_living),
     birthDate: r.birth_date,
+    birthPlace: r.birth_place,
     deathDate: r.death_date,
     completeness: r.completeness ?? 0,
     validation: r.validation ?? 'confirmed',
     sourcesCount: r.sources_count ?? 0,
+    hasName: Boolean(r.has_name),
+    hasBirthEvent: Boolean(r.has_birth_event),
+    hasBirthPlace: Boolean(r.has_birth_place),
+    hasDeathEvent: Boolean(r.has_death_event),
+    hasSource: Boolean(r.has_source),
   }));
 
   const familyRows: FamilyRecord[] = await db
