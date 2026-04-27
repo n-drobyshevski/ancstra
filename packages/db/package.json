@@ -10,7 +10,8 @@
     "./turso": "./src/turso.ts",
     "./central-schema": "./src/central-schema.ts",
     "./family-schema": "./src/family-schema.ts",
-    "./schema": "./src/schema.ts"
+    "./schema": "./src/schema.ts",
+    "./completeness-sql": "./src/completeness-sql.ts"
   },
   "scripts": {
     "db:generate": "drizzle-kit generate",
