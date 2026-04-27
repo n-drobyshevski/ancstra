@@ -90,6 +90,33 @@
   --z-panel: 40;
   --z-modal: 50;
   --z-toast: 60;
+  /* Tree-table density */
+  --tt-row-h-compact: 2rem;
+  --tt-cell-py-compact: 0.25rem;
+  --tt-text-compact: 0.75rem;
+  --tt-row-h-comfortable: 2.75rem;
+  --tt-cell-py-comfortable: 0.5rem;
+  --tt-text-comfortable: 0.8125rem;
+  --tt-row-h-spacious: 3.5rem;
+  --tt-cell-py-spacious: 0.75rem;
+  --tt-text-spacious: 0.875rem;
+}
+
+/* Tree-table density — driven by data-density attribute on the scroll container */
+[data-density="compact"] [data-slot="table-row"] { height: var(--tt-row-h-compact); }
+[data-density="compact"] [data-slot="table-cell"] {
+  padding-block: var(--tt-cell-py-compact);
+  font-size: var(--tt-text-compact);
+}
+[data-density="comfortable"] [data-slot="table-row"] { height: var(--tt-row-h-comfortable); }
+[data-density="comfortable"] [data-slot="table-cell"] {
+  padding-block: var(--tt-cell-py-comfortable);
+  font-size: var(--tt-text-comfortable);
+}
+[data-density="spacious"] [data-slot="table-row"] { height: var(--tt-row-h-spacious); }
+[data-density="spacious"] [data-slot="table-cell"] {
+  padding-block: var(--tt-cell-py-spacious);
+  font-size: var(--tt-text-spacious);
 }
 
 @theme {

@@ -1,22 +1,60 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useTransition } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
+import { useQueryStates } from 'nuqs';
 import type { PersonListItem, TreeData } from '@ancstra/shared';
 import { PersonPalette } from './person-palette';
 import { TreeDetailPanel } from './tree-detail-panel';
 import { MobileDetailSheet } from './mobile-detail-sheet';
 import { MobileViewBar } from './mobile-view-bar';
 import { TreeTableToolbar } from './tree-table-toolbar';
+import { TreeActiveFilters } from './tree-active-filters';
 import { useSidebar } from '@/components/ui/sidebar';
 import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { LayoutGrid, Download } from 'lucide-react';
-import { DEFAULT_FILTERS, type FilterState } from './tree-utils';
+import { type FilterState } from './tree-utils';
 import { computeAncestors, computeDescendants } from '@/lib/tree/topology';
+import {
+  treeTableParsers,
+  type TreeDensity,
+  type TreeSexValue,
+  type TreeLivingValue,
+  type TreeSortKey,
+  type TreeSortDir,
+  type TreeHidableColumn,
+} from '@/lib/tree/search-params';
+
+const DENSITY_STORAGE_KEY = 'tree-table-density';
+
+function deriveFilterState(
+  sex: readonly TreeSexValue[],
+  living: readonly TreeLivingValue[],
+): FilterState {
+  const sexAll = sex.length === 0;
+  const livingAll = living.length === 0;
+  return {
+    sex: {
+      M: sexAll || sex.includes('M'),
+      F: sexAll || sex.includes('F'),
+      U: sexAll || sex.includes('U'),
+    },
+    living: {
+      living: livingAll || living.includes('living'),
+      deceased: livingAll || living.includes('deceased'),
+    },
+  };
+}
+
+function readStoredDensity(): TreeDensity | null {
+  if (typeof window === 'undefined') return null;
+  const v = window.localStorage.getItem(DENSITY_STORAGE_KEY);
+  return v === 'compact' || v === 'comfortable' || v === 'spacious' ? v : null;
+}
 
 const TreeCanvas = dynamic(
   () => import('./tree-canvas').then((m) => ({ default: m.TreeCanvas })),
@@ -75,10 +113,39 @@ export function TreeLayout({ treeData, focusPersonId }: TreeLayoutProps) {
   const [focusKey, setFocusKey] = useState(0);
   const [runtimeFocusId, setRuntimeFocusId] = useState<string | undefined>(undefined);
 
-  // Shared filter state — lifted from TreeCanvas so both views can use it
-  const [filterState, setFilterState] = useState<FilterState>(DEFAULT_FILTERS);
-  const [showGaps, setShowGaps] = useState(false);
+  // URL-driven shared filter state (sex, living, search, sort, dir, hide).
+  const [isFilterPending, startFiltersTransition] = useTransition();
+  const [filters, setFilters] = useQueryStates(treeTableParsers, {
+    shallow: true,
+    history: 'replace',
+    startTransition: startFiltersTransition,
+  });
 
+  // FilterState shape (used by canvas + table) derived from URL.
+  const filterState = useMemo(
+    () => deriveFilterState(filters.sex, filters.living),
+    [filters.sex, filters.living],
+  );
+
+  // Density (localStorage; mobile defaults to compact post-mount).
+  const [density, setDensity] = useState<TreeDensity>('comfortable');
+  useEffect(() => {
+    const stored = readStoredDensity();
+    if (stored) {
+      setDensity(stored);
+    } else if (typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches) {
+      setDensity('compact');
+    }
+  }, []);
+
+  const handleDensityChange = useCallback((next: TreeDensity) => {
+    setDensity(next);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(DENSITY_STORAGE_KEY, next);
+    }
+  }, []);
+
+  const [showGaps, setShowGaps] = useState(false);
   const [topologyMode, setTopologyMode] = useState<'all' | 'ancestors' | 'descendants'>('all');
 
   const topologyReferenceId = selectedPerson?.id ?? null;
@@ -108,14 +175,63 @@ export function TreeLayout({ treeData, focusPersonId }: TreeLayoutProps) {
     [searchParams, router, pathname],
   );
 
-  const handleToggleFilter = useCallback((category: 'sex' | 'living', key: string) => {
-    setFilterState((prev) => ({
-      ...prev,
-      [category]: {
-        ...prev[category],
-        [key]: !prev[category][key as keyof typeof prev[typeof category]],
-      },
-    }));
+  const handleToggleFilter = useCallback(
+    (category: 'sex' | 'living', key: string) => {
+      if (category === 'sex') {
+        const all: TreeSexValue[] = ['M', 'F', 'U'];
+        const k = key as TreeSexValue;
+        const baseVisible = filters.sex.length === 0 ? all : filters.sex;
+        const isVisible = baseVisible.includes(k);
+        const nextVisible = isVisible
+          ? baseVisible.filter((v) => v !== k)
+          : [...baseVisible, k];
+        void setFilters({ sex: nextVisible.length === all.length ? [] : nextVisible });
+      } else {
+        const all: TreeLivingValue[] = ['living', 'deceased'];
+        const k = key as TreeLivingValue;
+        const baseVisible = filters.living.length === 0 ? all : filters.living;
+        const isVisible = baseVisible.includes(k);
+        const nextVisible = isVisible
+          ? baseVisible.filter((v) => v !== k)
+          : [...baseVisible, k];
+        void setFilters({ living: nextVisible.length === all.length ? [] : nextVisible });
+      }
+    },
+    [filters.sex, filters.living, setFilters],
+  );
+
+  const handleSearchChange = useCallback(
+    (next: string) => {
+      void setFilters({ q: next });
+    },
+    [setFilters],
+  );
+
+  const handleSortChange = useCallback(
+    (sort: TreeSortKey, dir: TreeSortDir) => {
+      void setFilters({ sort, dir });
+    },
+    [setFilters],
+  );
+
+  const handleHiddenColumnsChange = useCallback(
+    (hide: TreeHidableColumn[]) => {
+      void setFilters({ hide });
+    },
+    [setFilters],
+  );
+
+  const handleClearFilters = useCallback(() => {
+    void setFilters({ q: '', sex: [], living: [] });
+    setTopologyMode('all');
+  }, [setFilters]);
+
+  const handleClearSearch = useCallback(() => {
+    void setFilters({ q: '' });
+  }, [setFilters]);
+
+  const handleClearTopology = useCallback(() => {
+    setTopologyMode('all');
   }, []);
 
   const handleToggleGaps = useCallback(() => {
@@ -129,6 +245,28 @@ export function TreeLayout({ treeData, focusPersonId }: TreeLayoutProps) {
   const handleSelectPerson = useCallback((person: PersonListItem | null) => {
     setSelectedPerson(person);
   }, []);
+
+  const handleSetTopologyAnchor = useCallback((person: PersonListItem) => {
+    setSelectedPerson(person);
+    setTopologyMode('ancestors');
+  }, []);
+
+  const handleFilterStateChange = useCallback(
+    (next: FilterState) => {
+      const sex: TreeSexValue[] = [];
+      if (next.sex.M) sex.push('M');
+      if (next.sex.F) sex.push('F');
+      if (next.sex.U) sex.push('U');
+      const living: TreeLivingValue[] = [];
+      if (next.living.living) living.push('living');
+      if (next.living.deceased) living.push('deceased');
+      void setFilters({
+        sex: sex.length === 3 ? [] : sex,
+        living: living.length === 2 ? [] : living,
+      });
+    },
+    [setFilters],
+  );
 
   const handleFocusNode = useCallback(
     (personId: string) => {
@@ -174,7 +312,7 @@ export function TreeLayout({ treeData, focusPersonId }: TreeLayoutProps) {
             onSetView={setView}
             isMobile={false}
             filterState={filterState}
-            onFilterStateChange={setFilterState}
+            onFilterStateChange={handleFilterStateChange}
             showGaps={showGaps}
             onShowGapsChange={setShowGaps}
           />
@@ -190,15 +328,47 @@ export function TreeLayout({ treeData, focusPersonId }: TreeLayoutProps) {
               topologyMode={topologyMode}
               onTopologyModeChange={setTopologyMode}
               topologyReferenceName={topologyReferenceName}
+              search={filters.q}
+              onSearchChange={handleSearchChange}
+              density={density}
+              onDensityChange={handleDensityChange}
+              hiddenColumns={filters.hide}
+              onHiddenColumnsChange={handleHiddenColumnsChange}
             />
-            <div className="flex-1 overflow-hidden">
-              <TreeTableWrapper
-                treeData={treeData}
-                relationships={relationships}
-                onSelectPerson={handleSelectPerson}
+            <div
+              className={`flex-1 flex flex-col min-h-0 p-4 gap-3 ${
+                isFilterPending ? 'motion-safe:opacity-50 motion-safe:transition-opacity' : ''
+              }`}
+              aria-busy={isFilterPending}
+            >
+              <TreeActiveFilters
                 filterState={filterState}
-                topologyVisibleIds={topologyVisibleIds}
+                search={filters.q}
+                topologyMode={topologyMode}
+                topologyReferenceName={topologyReferenceName}
+                onClearSearch={handleClearSearch}
+                onToggleFilter={handleToggleFilter}
+                onClearTopology={handleClearTopology}
               />
+              <div className="flex-1 min-h-0">
+                <TreeTableWrapper
+                  treeData={treeData}
+                  relationships={relationships}
+                  onSelectPerson={handleSelectPerson}
+                  onSetTopologyAnchor={handleSetTopologyAnchor}
+                  filterState={filterState}
+                  topologyVisibleIds={topologyVisibleIds}
+                  search={filters.q}
+                  sort={filters.sort}
+                  dir={filters.dir}
+                  onSortChange={handleSortChange}
+                  density={density}
+                  hiddenColumns={filters.hide}
+                  onClearFilters={handleClearFilters}
+                  topologyMode={topologyMode}
+                  selectedPersonId={selectedPerson?.id ?? null}
+                />
+              </div>
             </div>
           </div>
         )}
@@ -229,7 +399,7 @@ export function TreeLayout({ treeData, focusPersonId }: TreeLayoutProps) {
               isMobile
               isDetailOpen={!!selectedPerson}
               filterState={filterState}
-              onFilterStateChange={setFilterState}
+              onFilterStateChange={handleFilterStateChange}
               showGaps={showGaps}
               onShowGapsChange={setShowGaps}
               mobileToolbarSlot={(canvasActions) => (
@@ -243,6 +413,8 @@ export function TreeLayout({ treeData, focusPersonId }: TreeLayoutProps) {
                   topologyMode={topologyMode}
                   onTopologyModeChange={setTopologyMode}
                   topologyReferenceName={topologyReferenceName}
+                  density={density}
+                  onDensityChange={handleDensityChange}
                   extraMenuItems={
                     <>
                       <DropdownMenuSeparator />
@@ -281,15 +453,43 @@ export function TreeLayout({ treeData, focusPersonId }: TreeLayoutProps) {
               topologyMode={topologyMode}
               onTopologyModeChange={setTopologyMode}
               topologyReferenceName={topologyReferenceName}
+              density={density}
+              onDensityChange={handleDensityChange}
             />
-            <div className="flex-1 overflow-hidden">
-              <TreeTableWrapper
-                treeData={treeData}
-                relationships={relationships}
-                onSelectPerson={handleSelectPerson}
+            <div
+              className={`flex-1 flex flex-col min-h-0 p-3 gap-2 ${
+                isFilterPending ? 'motion-safe:opacity-50 motion-safe:transition-opacity' : ''
+              }`}
+              aria-busy={isFilterPending}
+            >
+              <TreeActiveFilters
                 filterState={filterState}
-                topologyVisibleIds={topologyVisibleIds}
+                search={filters.q}
+                topologyMode={topologyMode}
+                topologyReferenceName={topologyReferenceName}
+                onClearSearch={handleClearSearch}
+                onToggleFilter={handleToggleFilter}
+                onClearTopology={handleClearTopology}
               />
+              <div className="flex-1 min-h-0">
+                <TreeTableWrapper
+                  treeData={treeData}
+                  relationships={relationships}
+                  onSelectPerson={handleSelectPerson}
+                  onSetTopologyAnchor={handleSetTopologyAnchor}
+                  filterState={filterState}
+                  topologyVisibleIds={topologyVisibleIds}
+                  search={filters.q}
+                  sort={filters.sort}
+                  dir={filters.dir}
+                  onSortChange={handleSortChange}
+                  density={density}
+                  hiddenColumns={filters.hide}
+                  onClearFilters={handleClearFilters}
+                  topologyMode={topologyMode}
+                  selectedPersonId={selectedPerson?.id ?? null}
+                />
+              </div>
             </div>
           </div>
         )}

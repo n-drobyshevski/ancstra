@@ -16,6 +16,7 @@ import type { TopologyMode } from './topology-toggle';
 import { EllipsisVertical, BarChart3 } from 'lucide-react';
 import { TreeViewToggle } from './tree-view-toggle';
 import type { FilterState } from './tree-utils';
+import type { TreeDensity } from '@/lib/tree/search-params';
 
 interface MobileViewBarProps {
   view: 'canvas' | 'table';
@@ -27,6 +28,9 @@ interface MobileViewBarProps {
   topologyMode: TopologyMode;
   onTopologyModeChange: (mode: TopologyMode) => void;
   topologyReferenceName: string | null;
+  /** Density (table view only). */
+  density?: TreeDensity;
+  onDensityChange?: (next: TreeDensity) => void;
   /** Render prop for view-specific overflow items (auto layout, export, etc.) */
   extraMenuItems?: ReactNode;
 }
@@ -41,6 +45,8 @@ export function MobileViewBar({
   topologyMode,
   onTopologyModeChange,
   topologyReferenceName,
+  density,
+  onDensityChange,
   extraMenuItems,
 }: MobileViewBarProps) {
   const hasActiveFilter =
@@ -135,6 +141,24 @@ export function MobileViewBar({
             <BarChart3 className="mr-2 size-4" />
             Data Quality
           </DropdownMenuCheckboxItem>
+
+          {/* Density (table view only) */}
+          {view === 'table' && onDensityChange && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-xs text-muted-foreground">
+                Row density
+              </DropdownMenuLabel>
+              <DropdownMenuRadioGroup
+                value={density ?? 'compact'}
+                onValueChange={(v) => onDensityChange(v as TreeDensity)}
+              >
+                <DropdownMenuRadioItem value="compact">Compact</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="comfortable">Comfortable</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="spacious">Spacious</DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
+            </>
+          )}
 
           {/* View-specific extras (auto layout, export, etc.) */}
           {extraMenuItems}

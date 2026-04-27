@@ -451,7 +451,8 @@ export async function assemblePersonDetail(
 // Exported: fetch all tree data (persons + families + child links)
 // ---------------------------------------------------------------------------
 export async function getTreeData(db: Database): Promise<TreeData> {
-  // Read directly from denormalized person_summary table
+  // Read from denormalized person_summary table joined with on-the-fly
+  // completeness/validation/sources facets (mirrors query-persons-list.ts).
   const personRows = await db.all<{
     person_id: string;
     given_name: string;
@@ -460,13 +461,45 @@ export async function getTreeData(db: Database): Promise<TreeData> {
     is_living: number;
     birth_date: string | null;
     death_date: string | null;
+    completeness: number | null;
+    validation: 'confirmed' | 'proposed' | null;
+    sources_count: number | null;
   }>(sql`
-    SELECT person_id, given_name, surname, sex, is_living, birth_date, death_date
-    FROM person_summary
-    WHERE person_id NOT IN (SELECT id FROM persons WHERE deleted_at IS NOT NULL)
+    WITH person_facets AS (
+      SELECT
+        p.id,
+        (
+          CASE WHEN COALESCE(pn.given_name, '') <> '' AND COALESCE(pn.surname, '') <> '' THEN 20 ELSE 0 END
+          + CASE WHEN EXISTS (SELECT 1 FROM events e WHERE e.person_id = p.id AND e.event_type = 'birth') THEN 25 ELSE 0 END
+          + CASE WHEN EXISTS (SELECT 1 FROM events e WHERE e.person_id = p.id AND e.event_type = 'birth' AND e.place_text IS NOT NULL AND e.place_text <> '') THEN 20 ELSE 0 END
+          + CASE WHEN EXISTS (SELECT 1 FROM events e WHERE e.person_id = p.id AND e.event_type = 'death') THEN 15 ELSE 0 END
+          + CASE WHEN EXISTS (SELECT 1 FROM source_citations sc WHERE sc.person_id = p.id) THEN 20 ELSE 0 END
+        ) AS completeness,
+        CASE WHEN EXISTS (
+          SELECT 1 FROM families f
+          WHERE f.deleted_at IS NULL
+            AND (f.partner1_id = p.id OR f.partner2_id = p.id)
+            AND f.validation_status IN ('proposed', 'disputed')
+        ) OR EXISTS (
+          SELECT 1 FROM children c
+          WHERE c.person_id = p.id
+            AND c.validation_status IN ('proposed', 'disputed')
+        ) THEN 'proposed' ELSE 'confirmed' END AS validation,
+        (SELECT COUNT(*) FROM source_citations sc WHERE sc.person_id = p.id) AS sources_count
+      FROM persons p
+      LEFT JOIN person_names pn ON pn.person_id = p.id AND pn.is_primary = 1
+      WHERE p.deleted_at IS NULL
+    )
+    SELECT
+      ps.person_id, ps.given_name, ps.surname, ps.sex, ps.is_living,
+      ps.birth_date, ps.death_date,
+      pf.completeness, pf.validation, pf.sources_count
+    FROM person_summary ps
+    LEFT JOIN person_facets pf ON pf.id = ps.person_id
+    WHERE ps.person_id NOT IN (SELECT id FROM persons WHERE deleted_at IS NOT NULL)
   `);
 
-  const personsWithDates = personRows.map((r) => ({
+  const personsWithDates: PersonListItem[] = personRows.map((r) => ({
     id: r.person_id,
     givenName: r.given_name,
     surname: r.surname,
@@ -474,6 +507,9 @@ export async function getTreeData(db: Database): Promise<TreeData> {
     isLiving: Boolean(r.is_living),
     birthDate: r.birth_date,
     deathDate: r.death_date,
+    completeness: r.completeness ?? 0,
+    validation: r.validation ?? 'confirmed',
+    sourcesCount: r.sources_count ?? 0,
   }));
 
   const familyRows: FamilyRecord[] = await db

@@ -114,6 +114,9 @@ importers:
       '@tanstack/react-table':
         specifier: ^8.21.3
         version: 8.21.3(react-dom@19.2.4)(react@19.2.4)
+      '@tanstack/react-virtual':
+        specifier: ^3
+        version: 3.13.23(react-dom@19.2.4)(react@19.2.4)
       '@xyflow/react':
         specifier: ^12.10.1
         version: 12.10.1(@types/react@19.2.14)(react-dom@19.2.4)(react@19.2.4)
