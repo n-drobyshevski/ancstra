@@ -15,11 +15,19 @@ export interface CompletenessBreakdownItem {
   label: string;
   weight: number;
   hit: boolean;
+  /** False for the `death` item when the person is effective-living. */
+  applicable: boolean;
 }
 
 export interface CompletenessBreakdown {
   items: CompletenessBreakdownItem[];
+  /** Sum of weights for hit items (raw 0..100). */
+  score: number;
+  /** Sum of weights for applicable items (85 for effective-living, 100 otherwise). */
+  maxScore: number;
+  /** Displayed integer percentage 0..100, equal to round(score * 100 / maxScore). */
   total: number;
+  /** Passthrough of person.isLiving — does NOT account for death-event override. */
   isLiving: boolean;
 }
 
@@ -30,6 +38,14 @@ const LABELS: Record<CompletenessKey, string> = {
   death: 'Death date',
   source: 'Source',
 };
+
+const ORDER: readonly CompletenessKey[] = [
+  'name',
+  'birth',
+  'birthPlace',
+  'death',
+  'source',
+];
 
 function nonEmpty(v: string | null | undefined): boolean {
   return typeof v === 'string' && v.length > 0;
@@ -59,14 +75,27 @@ export function getCompletenessBreakdown(
     source: person.hasSource ?? fallback.source,
   };
 
-  const order: CompletenessKey[] = ['name', 'birth', 'birthPlace', 'death', 'source'];
-  const items: CompletenessBreakdownItem[] = order.map((key) => ({
+  // Effective-living: living-flagged AND no death event (matches SQL logic and
+  // the privacy-filter rule in docs/architecture/patterns/filter-for-privacy.ts).
+  const effectiveLiving = person.isLiving && !flags.death;
+
+  const items: CompletenessBreakdownItem[] = ORDER.map((key) => ({
     key,
     label: LABELS[key],
     weight: COMPLETENESS_WEIGHTS[key],
     hit: flags[key],
+    applicable: key === 'death' ? !effectiveLiving : true,
   }));
 
-  const total = items.reduce((sum, it) => sum + (it.hit ? it.weight : 0), 0);
-  return { items, total, isLiving: person.isLiving };
+  const score = items.reduce(
+    (sum, it) => sum + (it.hit ? it.weight : 0),
+    0,
+  );
+  const maxScore = items.reduce(
+    (sum, it) => sum + (it.applicable ? it.weight : 0),
+    0,
+  );
+  const total = maxScore === 0 ? 0 : Math.round((score * 100) / maxScore);
+
+  return { items, score, maxScore, total, isLiving: person.isLiving };
 }
