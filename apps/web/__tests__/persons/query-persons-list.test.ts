@@ -224,4 +224,23 @@ describe('queryPersonsList', () => {
     expect(r.items).toEqual([]);
     expect(r.total).toBe(0);
   });
+
+  it('exposes flag fields used by the completeness breakdown', async () => {
+    // Person with name + birth event (no place) + source citation, no death.
+    p('p-flags', { isLiving: 1 });
+    n('p-flags', 'Ada', 'Lovelace');
+    ev('e-bf', 'p-flags', 'birth', { dateOriginal: '1815-12-10', dateSort: 18151210 });
+    srcCit('c-flags', 'p-flags');
+
+    const result = await queryPersonsList(db, baseFilters);
+    const row = result.items.find((i) => i.id === 'p-flags');
+    expect(row).toBeDefined();
+    expect(row!.hasName).toBe(true);
+    expect(row!.hasBirthEvent).toBe(true);
+    expect(row!.hasBirthPlace).toBe(false);
+    expect(row!.hasDeathEvent).toBe(false);
+    expect(row!.hasSource).toBe(true);
+    // 20 + 25 + 0 + 0 + 20 = 65
+    expect(row!.completeness).toBe(65);
+  });
 });

@@ -49,10 +49,24 @@ export async function queryPersonsList(
     given_name: string; surname: string;
     birth_date: string | null; death_date: string | null; birth_place: string | null;
     completeness: number; sources_count: number;
+    has_name: number; has_birth_event: number; has_birth_place: number;
+    has_death_event: number; has_source: number;
     validation: 'confirmed' | 'proposed'; updated_at: string;
     total: number;
   }>(sql`
-    WITH person_facets AS (
+    WITH person_flags AS (
+      SELECT
+        p.id,
+        CASE WHEN pn.given_name <> '' AND pn.surname <> '' THEN 1 ELSE 0 END AS has_name,
+        CASE WHEN EXISTS (SELECT 1 FROM events e WHERE e.person_id = p.id AND e.event_type = 'birth') THEN 1 ELSE 0 END AS has_birth_event,
+        CASE WHEN EXISTS (SELECT 1 FROM events e WHERE e.person_id = p.id AND e.event_type = 'birth' AND e.place_text IS NOT NULL AND e.place_text <> '') THEN 1 ELSE 0 END AS has_birth_place,
+        CASE WHEN EXISTS (SELECT 1 FROM events e WHERE e.person_id = p.id AND e.event_type = 'death') THEN 1 ELSE 0 END AS has_death_event,
+        CASE WHEN EXISTS (SELECT 1 FROM source_citations sc WHERE sc.person_id = p.id) THEN 1 ELSE 0 END AS has_source
+      FROM persons p
+      INNER JOIN person_names pn ON pn.person_id = p.id AND pn.is_primary = 1
+      WHERE p.deleted_at IS NULL
+    ),
+    person_facets AS (
       SELECT
         p.id, p.sex, p.is_living, p.updated_at,
         COALESCE(pn.given_name, '') AS given_name,
@@ -68,12 +82,12 @@ export async function queryPersonsList(
           WHERE c.person_id = p.id
             AND c.validation_status IN ('proposed', 'disputed')
         ) THEN 'proposed' ELSE 'confirmed' END AS validation,
+        pflag.has_name, pflag.has_birth_event, pflag.has_birth_place,
+        pflag.has_death_event, pflag.has_source,
         (
-          CASE WHEN pn.given_name <> '' AND pn.surname <> '' THEN 20 ELSE 0 END
-          + CASE WHEN EXISTS (SELECT 1 FROM events e WHERE e.person_id = p.id AND e.event_type = 'birth') THEN 25 ELSE 0 END
-          + CASE WHEN EXISTS (SELECT 1 FROM events e WHERE e.person_id = p.id AND e.event_type = 'birth' AND e.place_text IS NOT NULL AND e.place_text <> '') THEN 20 ELSE 0 END
-          + CASE WHEN EXISTS (SELECT 1 FROM events e WHERE e.person_id = p.id AND e.event_type = 'death') THEN 15 ELSE 0 END
-          + CASE WHEN EXISTS (SELECT 1 FROM source_citations sc WHERE sc.person_id = p.id) THEN 20 ELSE 0 END
+          pflag.has_name * 20 + pflag.has_birth_event * 25
+          + pflag.has_birth_place * 20 + pflag.has_death_event * 15
+          + pflag.has_source * 20
         ) AS completeness,
         (SELECT date_sort     FROM events e WHERE e.person_id = p.id AND e.event_type = 'birth' ORDER BY e.date_sort NULLS LAST LIMIT 1) AS born_sort,
         (SELECT date_original FROM events e WHERE e.person_id = p.id AND e.event_type = 'birth' ORDER BY e.date_sort NULLS LAST LIMIT 1) AS birth_date,
@@ -83,6 +97,7 @@ export async function queryPersonsList(
         (SELECT COUNT(*)      FROM source_citations sc WHERE sc.person_id = p.id) AS sources_count
       FROM persons p
       INNER JOIN person_names pn ON pn.person_id = p.id AND pn.is_primary = 1
+      INNER JOIN person_flags pflag ON pflag.id = p.id
       WHERE p.deleted_at IS NULL
     )
     SELECT
@@ -90,6 +105,8 @@ export async function queryPersonsList(
       pf.given_name, pf.surname,
       pf.birth_date, pf.death_date, pf.birth_place,
       pf.completeness, pf.sources_count,
+      pf.has_name, pf.has_birth_event, pf.has_birth_place,
+      pf.has_death_event, pf.has_source,
       pf.validation, pf.updated_at,
       count(*) OVER () AS total
     FROM person_facets pf
@@ -103,6 +120,11 @@ export async function queryPersonsList(
     givenName: r.given_name, surname: r.surname,
     birthDate: r.birth_date, deathDate: r.death_date, birthPlace: r.birth_place,
     completeness: r.completeness, sourcesCount: r.sources_count,
+    hasName: Boolean(r.has_name),
+    hasBirthEvent: Boolean(r.has_birth_event),
+    hasBirthPlace: Boolean(r.has_birth_place),
+    hasDeathEvent: Boolean(r.has_death_event),
+    hasSource: Boolean(r.has_source),
     validation: r.validation, updatedAt: r.updated_at,
   }));
 
