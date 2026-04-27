@@ -46,6 +46,14 @@ export interface PersonListItem {
   validation?: 'confirmed' | 'proposed';
   birthPlace?: string | null;
   updatedAt?: string;
+  // Flags backing the per-row completeness score (each contributes a fixed
+  // weight that sums to 100). Optional so existing fixtures stay valid; the
+  // breakdown helper falls back to deriving from raw fields when absent.
+  hasName?: boolean;
+  hasBirthEvent?: boolean;
+  hasBirthPlace?: boolean;
+  hasDeathEvent?: boolean;
+  hasSource?: boolean;
 }
 
 // Paginated response
