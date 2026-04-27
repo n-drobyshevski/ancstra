@@ -16,7 +16,7 @@ export type Permission =
   | 'activity:view';
 
 export type ActivityAction =
-  | 'person_added' | 'person_edited' | 'person_deleted'
+  | 'person_added' | 'person_edited' | 'person_deleted' | 'persons_bulk_deleted'
   | 'relationship_added'
   | 'media_uploaded'
   | 'gedcom_imported'
