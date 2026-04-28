@@ -1,5 +1,9 @@
 import { sql } from 'drizzle-orm';
 import type { Database } from '@ancstra/db';
+import {
+  completenessFlagsCteBody,
+  completenessScoreExpr,
+} from '@ancstra/db/completeness-sql';
 import type { PersonsFilters } from './search-params';
 import { buildPersonsWhere } from './filters-to-where';
 import { searchPersonsFts } from '../queries';
@@ -39,7 +43,8 @@ export async function queryPersonsForCsvExport(
     completeness: number; sources_count: number;
     validation: 'confirmed' | 'proposed'; updated_at: string;
   }>(sql`
-    WITH person_facets AS (
+    WITH person_flags AS (${completenessFlagsCteBody('p')}),
+    person_facets AS (
       SELECT
         p.id, p.sex, p.is_living, p.updated_at,
         COALESCE(pn.given_name, '') AS given_name,
@@ -55,13 +60,7 @@ export async function queryPersonsForCsvExport(
           WHERE c.person_id = p.id
             AND c.validation_status IN ('proposed', 'disputed')
         ) THEN 'proposed' ELSE 'confirmed' END AS validation,
-        (
-          CASE WHEN pn.given_name <> '' AND pn.surname <> '' THEN 20 ELSE 0 END
-          + CASE WHEN EXISTS (SELECT 1 FROM events e WHERE e.person_id = p.id AND e.event_type = 'birth') THEN 25 ELSE 0 END
-          + CASE WHEN EXISTS (SELECT 1 FROM events e WHERE e.person_id = p.id AND e.event_type = 'birth' AND e.place_text IS NOT NULL AND e.place_text <> '') THEN 20 ELSE 0 END
-          + CASE WHEN EXISTS (SELECT 1 FROM events e WHERE e.person_id = p.id AND e.event_type = 'death') THEN 15 ELSE 0 END
-          + CASE WHEN EXISTS (SELECT 1 FROM source_citations sc WHERE sc.person_id = p.id) THEN 20 ELSE 0 END
-        ) AS completeness,
+        ${completenessScoreExpr('p', 'pflag')} AS completeness,
         (SELECT date_sort     FROM events e WHERE e.person_id = p.id AND e.event_type = 'birth' ORDER BY e.date_sort NULLS LAST LIMIT 1) AS born_sort,
         (SELECT date_original FROM events e WHERE e.person_id = p.id AND e.event_type = 'birth' ORDER BY e.date_sort NULLS LAST LIMIT 1) AS birth_date,
         (SELECT place_text    FROM events e WHERE e.person_id = p.id AND e.event_type = 'birth' ORDER BY e.date_sort NULLS LAST LIMIT 1) AS birth_place,
@@ -71,6 +70,7 @@ export async function queryPersonsForCsvExport(
         (SELECT COUNT(*)      FROM source_citations sc WHERE sc.person_id = p.id) AS sources_count
       FROM persons p
       INNER JOIN person_names pn ON pn.person_id = p.id AND pn.is_primary = 1
+      INNER JOIN person_flags pflag ON pflag.id = p.id
       WHERE p.deleted_at IS NULL
     )
     SELECT
