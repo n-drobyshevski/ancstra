@@ -1,14 +1,8 @@
 import type { PersonListItem } from '@ancstra/shared';
+import { COMPLETENESS_WEIGHTS, type CompletenessKey } from '@ancstra/shared';
 
-export const COMPLETENESS_WEIGHTS = {
-  name: 20,
-  birth: 25,
-  birthPlace: 20,
-  death: 15,
-  source: 20,
-} as const;
-
-export type CompletenessKey = keyof typeof COMPLETENESS_WEIGHTS;
+// Re-export so existing imports from this module continue to work.
+export { COMPLETENESS_WEIGHTS, type CompletenessKey };
 
 export interface CompletenessBreakdownItem {
   key: CompletenessKey;
