@@ -194,6 +194,9 @@ export function DetailFamily({
             </span>
             <MiniAvatar person={p} />
             <button
+              onPointerEnter={() => { void personDetailCache.prefetch(p.id); }}
+              onPointerDown={() => { void personDetailCache.prefetch(p.id); }}
+              onFocus={() => { void personDetailCache.prefetch(p.id); }}
               onClick={() => onFocusNode(p.id)}
               className="text-sm text-left text-primary underline-offset-4 hover:underline truncate"
             >
