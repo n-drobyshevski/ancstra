@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
 import { getFactsheet, updateFactsheet, deleteFactsheet } from '@ancstra/research';
 
@@ -42,6 +43,10 @@ export async function PUT(
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
+    revalidateTag('factsheets-list', 'max');
+    revalidateTag(`factsheet-${id}`, 'max');
+    revalidateTag('factsheet-count', 'max');
+
     return NextResponse.json(result);
   } catch (err) {
     try { return handleAuthError(err); } catch { /* not auth */ }
@@ -59,6 +64,12 @@ export async function DELETE(
     const { id } = await params;
 
     await deleteFactsheet(familyDb, id);
+
+    revalidateTag('factsheets-list', 'max');
+    revalidateTag(`factsheet-${id}`, 'max');
+    revalidateTag('factsheet-count', 'max');
+    revalidateTag('factsheet-links', 'max');
+
     return NextResponse.json({ success: true });
   } catch (err) {
     try { return handleAuthError(err); } catch { /* not auth */ }

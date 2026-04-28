@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
 import {
   getFactsheetLinks,
@@ -56,6 +57,11 @@ export async function POST(
       targetHandle: typeof body.targetHandle === 'string' ? body.targetHandle : null,
     });
 
+    revalidateTag('factsheet-links', 'max');
+    revalidateTag(`factsheet-${fromFactsheetId}`, 'max');
+    revalidateTag(`factsheet-${body.toFactsheetId}`, 'max');
+    revalidateTag('factsheets-list', 'max');
+
     return NextResponse.json(result, { status: 201 });
   } catch (err) {
     try { return handleAuthError(err); } catch { /* not auth */ }
@@ -77,6 +83,11 @@ export async function DELETE(
     }
 
     await deleteFactsheetLink(familyDb, body.linkId);
+
+    revalidateTag('factsheet-links', 'max');
+    revalidateTag('factsheets-list', 'max');
+    revalidateTag('factsheets', 'max');
+
     return NextResponse.json({ success: true });
   } catch (err) {
     try { return handleAuthError(err); } catch { /* not auth */ }

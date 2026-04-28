@@ -1,14 +1,22 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 // ---------------------------------------------------------------------------
-// Generic fetch hook helper
+// Generic fetch hook helper.
+//
+// `initialData` lets the caller seed first-render state from a server-rendered
+// payload so the hook skips its initial fetch (no waterfall). The hook still
+// supports refetch on demand after mutations.
 // ---------------------------------------------------------------------------
-function useFetchData<T>(url: string | null) {
-  const [data, setData] = useState<T | null>(null);
+function useFetchData<T>(url: string | null, initialData?: T | null) {
+  const [data, setData] = useState<T | null>(initialData ?? null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  // Track whether the seed has already satisfied the initial render so we
+  // don't refetch on first mount when seeded.
+  const hasSeed = initialData != null;
+  const initialFetchSkipped = useRef(hasSeed);
 
   const refetch = useCallback(async () => {
     if (!url) return;
@@ -27,6 +35,11 @@ function useFetchData<T>(url: string | null) {
   }, [url]);
 
   useEffect(() => {
+    if (initialFetchSkipped.current) {
+      // One-time skip: subsequent url changes (e.g. detail switch) still fetch.
+      initialFetchSkipped.current = false;
+      return;
+    }
     refetch();
   }, [refetch]);
 
@@ -51,7 +64,7 @@ export interface Factsheet {
 
 export interface FactsheetFact {
   id: string;
-  personId: string;
+  personId: string | null;
   factType: string;
   factValue: string;
   factDateSort: number | null;
@@ -125,9 +138,16 @@ export function useFactsheets(personId: string) {
 // ---------------------------------------------------------------------------
 // useFactsheetDetail — fetch /api/research/factsheets/:id
 // ---------------------------------------------------------------------------
-export function useFactsheetDetail(factsheetId: string | null) {
+export function useFactsheetDetail(
+  factsheetId: string | null,
+  initialDetail?: FactsheetDetail | null,
+) {
+  // Only honour the seed when its id matches the currently-selected factsheet.
+  const seed =
+    initialDetail && initialDetail.id === factsheetId ? initialDetail : null;
   const { data, isLoading, error, refetch } = useFetchData<FactsheetDetail>(
-    factsheetId ? `/api/research/factsheets/${factsheetId}` : null
+    factsheetId ? `/api/research/factsheets/${factsheetId}` : null,
+    seed,
   );
 
   return { detail: data, isLoading, error, refetch };
@@ -170,10 +190,11 @@ export interface FactsheetWithCounts extends Factsheet {
   isUnanchored: boolean;
 }
 
-export function useAllFactsheets() {
+export function useAllFactsheets(initialFactsheets?: FactsheetWithCounts[] | null) {
+  const seed = initialFactsheets ? { factsheets: initialFactsheets } : null;
   const { data, isLoading, error, refetch } = useFetchData<{
     factsheets: FactsheetWithCounts[];
-  }>('/api/research/factsheets?include=counts');
+  }>('/api/research/factsheets?include=counts', seed);
   return { factsheets: data?.factsheets ?? [], isLoading, error, refetch };
 }
 
@@ -188,10 +209,11 @@ export function useFactsheetCount() {
 // ---------------------------------------------------------------------------
 // useAllFactsheetLinks — fetch all links for graph view
 // ---------------------------------------------------------------------------
-export function useAllFactsheetLinks() {
+export function useAllFactsheetLinks(initialLinks?: FactsheetLink[] | null) {
+  const seed = initialLinks ? { links: initialLinks } : null;
   const { data, isLoading, error, refetch } = useFetchData<{
     links: FactsheetLink[];
-  }>('/api/research/factsheets/links');
+  }>('/api/research/factsheets/links', seed);
 
   return { links: data?.links ?? [], isLoading, error, refetch };
 }

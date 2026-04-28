@@ -18,6 +18,9 @@ export async function POST(
       revalidateTag('persons', 'max');
       revalidateTag('tree-data', 'max');
       revalidateTag('dashboard-stats', 'max');
+      revalidateTag('factsheets-list', 'max');
+      revalidateTag('factsheet-count', 'max');
+      revalidateTag('factsheets', 'max');
       return NextResponse.json(result);
     }
 
@@ -41,6 +44,9 @@ export async function POST(
     revalidateTag('persons', 'max');
     revalidateTag('tree-data', 'max');
     revalidateTag('dashboard-stats', 'max');
+    revalidateTag('factsheets-list', 'max');
+    revalidateTag(`factsheet-${factsheetId}`, 'max');
+    revalidateTag('factsheet-count', 'max');
     return NextResponse.json(result);
   } catch (err) {
     try { return handleAuthError(err); } catch { /* not auth */ }

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
 import { assignFactToFactsheet, removeFactFromFactsheet } from '@ancstra/research';
 
@@ -16,6 +17,11 @@ export async function POST(
     }
 
     await assignFactToFactsheet(familyDb, body.factId, factsheetId);
+
+    // Detail (facts list) and list (factCount) both change.
+    revalidateTag(`factsheet-${factsheetId}`, 'max');
+    revalidateTag('factsheets-list', 'max');
+
     return NextResponse.json({ success: true });
   } catch (err) {
     try { return handleAuthError(err); } catch { /* not auth */ }
@@ -30,6 +36,7 @@ export async function DELETE(
 ) {
   try {
     const { familyDb } = await withAuth('ai:research');
+    const { id: factsheetId } = await params;
     const body = await request.json();
 
     if (!body.factId) {
@@ -37,6 +44,10 @@ export async function DELETE(
     }
 
     await removeFactFromFactsheet(familyDb, body.factId);
+
+    revalidateTag(`factsheet-${factsheetId}`, 'max');
+    revalidateTag('factsheets-list', 'max');
+
     return NextResponse.json({ success: true });
   } catch (err) {
     try { return handleAuthError(err); } catch { /* not auth */ }

@@ -10,6 +10,8 @@ import {
   useFactsheetDetail,
   useAllFactsheetLinks,
   type Factsheet,
+  type FactsheetDetail as FactsheetDetailType,
+  type FactsheetLink,
 } from '@/lib/research/factsheet-client';
 import type { FactsheetWithCounts } from '@/lib/research/factsheet-client';
 import { FactsheetSidebar } from './factsheet-sidebar';
@@ -22,7 +24,17 @@ const FactsheetGraphView = dynamic(
   { ssr: false, loading: () => <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Loading graph...</div> }
 );
 
-export function FactsheetsLayout() {
+interface FactsheetsLayoutProps {
+  initialFactsheets?: FactsheetWithCounts[];
+  initialLinks?: FactsheetLink[];
+  initialDetail?: FactsheetDetailType | null;
+}
+
+export function FactsheetsLayout({
+  initialFactsheets,
+  initialLinks,
+  initialDetail,
+}: FactsheetsLayoutProps = {}) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -32,9 +44,9 @@ export function FactsheetsLayout() {
 
   const [promoteCluster, setPromoteCluster] = useState<FactsheetWithCounts[] | null>(null);
 
-  const { factsheets, refetch: refetchList } = useAllFactsheets();
-  const { detail, refetch: refetchDetail } = useFactsheetDetail(selectedId);
-  const { links, refetch: refetchLinks } = useAllFactsheetLinks();
+  const { factsheets, refetch: refetchList } = useAllFactsheets(initialFactsheets);
+  const { detail, refetch: refetchDetail } = useFactsheetDetail(selectedId, initialDetail);
+  const { links, refetch: refetchLinks } = useAllFactsheetLinks(initialLinks);
 
   const researchItemTitles = useMemo(() => new Map<string, string>(), []);
 
@@ -83,7 +95,11 @@ export function FactsheetsLayout() {
     refetchList();
     refetchDetail();
     refetchLinks();
-  }, [refetchList, refetchDetail, refetchLinks]);
+    // Server caches were invalidated by mutation routes via revalidateTag().
+    // router.refresh() rerenders server components so the next paint uses
+    // the freshly-revalidated cache entries.
+    router.refresh();
+  }, [refetchList, refetchDetail, refetchLinks, router]);
 
   // Create-mode handlers
   const handleCreate = useCallback(() => {

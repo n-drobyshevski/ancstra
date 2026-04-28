@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
 import { createFactsheet, listFactsheets, listFactsheetsWithCounts } from '@ancstra/research';
 
@@ -41,6 +42,9 @@ export async function POST(request: Request) {
       notes: body.notes,
       createdBy: ctx.userId,
     });
+
+    revalidateTag('factsheets-list', 'max');
+    revalidateTag('factsheet-count', 'max');
 
     return NextResponse.json(result, { status: 201 });
   } catch (err) {
