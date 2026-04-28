@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
-import { events } from '@ancstra/db';
+import { events, refreshSummary } from '@ancstra/db';
 import { eq, sql } from 'drizzle-orm';
 import { createEventSchema } from '@/lib/validation';
 import { parseDateToSort } from '@ancstra/shared';
@@ -59,7 +59,14 @@ export async function POST(request: Request) {
       .where(eq(events.id, eventId))
       .all();
 
+    // Birth/death/etc. events feed person_summary facets — refresh now so the
+    // tree, persons list, and dashboard see fresh data on next read.
+    if (data.personId) {
+      await refreshSummary(familyDb, data.personId);
+    }
     revalidateTag('persons', 'max');
+    revalidateTag('persons-list', 'max');
+    revalidateTag('tree-data', 'max');
     revalidateTag('dashboard-stats', 'max');
     return NextResponse.json(created, { status: 201 });
   } catch (error) {

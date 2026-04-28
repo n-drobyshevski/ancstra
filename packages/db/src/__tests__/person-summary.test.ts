@@ -13,7 +13,43 @@ function createTestDb() {
     CREATE TABLE families (id TEXT PRIMARY KEY, partner1_id TEXT, partner2_id TEXT, relationship_type TEXT NOT NULL DEFAULT 'unknown', validation_status TEXT NOT NULL DEFAULT 'confirmed', created_at TEXT NOT NULL, updated_at TEXT NOT NULL, deleted_at TEXT, version INTEGER NOT NULL DEFAULT 1);
     CREATE TABLE children (id TEXT PRIMARY KEY, family_id TEXT NOT NULL, person_id TEXT NOT NULL, child_order INTEGER, relationship_to_parent1 TEXT NOT NULL DEFAULT 'biological', relationship_to_parent2 TEXT NOT NULL DEFAULT 'biological', validation_status TEXT NOT NULL DEFAULT 'confirmed', created_at TEXT NOT NULL, version INTEGER NOT NULL DEFAULT 1, UNIQUE(family_id, person_id));
     CREATE TABLE events (id TEXT PRIMARY KEY, event_type TEXT NOT NULL, date_original TEXT, date_sort INTEGER, date_modifier TEXT DEFAULT 'exact', date_end_sort INTEGER, place_text TEXT, description TEXT, person_id TEXT, family_id TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, version INTEGER NOT NULL DEFAULT 1);
-    CREATE TABLE person_summary (person_id TEXT PRIMARY KEY, given_name TEXT NOT NULL DEFAULT '', surname TEXT NOT NULL DEFAULT '', sex TEXT NOT NULL, is_living INTEGER NOT NULL, birth_date TEXT, death_date TEXT, birth_date_sort INTEGER, death_date_sort INTEGER, birth_place TEXT, death_place TEXT, spouse_count INTEGER NOT NULL DEFAULT 0, child_count INTEGER NOT NULL DEFAULT 0, parent_count INTEGER NOT NULL DEFAULT 0, updated_at TEXT NOT NULL);
+    CREATE TABLE person_summary (
+      person_id TEXT PRIMARY KEY,
+      given_name TEXT NOT NULL DEFAULT '',
+      surname TEXT NOT NULL DEFAULT '',
+      sex TEXT NOT NULL,
+      is_living INTEGER NOT NULL,
+      birth_date TEXT, death_date TEXT,
+      birth_date_sort INTEGER, death_date_sort INTEGER,
+      birth_place TEXT, death_place TEXT,
+      spouse_count INTEGER NOT NULL DEFAULT 0,
+      child_count INTEGER NOT NULL DEFAULT 0,
+      parent_count INTEGER NOT NULL DEFAULT 0,
+      has_name INTEGER NOT NULL DEFAULT 0,
+      has_birth_event INTEGER NOT NULL DEFAULT 0,
+      has_birth_place INTEGER NOT NULL DEFAULT 0,
+      has_death_event INTEGER NOT NULL DEFAULT 0,
+      has_source INTEGER NOT NULL DEFAULT 0,
+      sources_count INTEGER NOT NULL DEFAULT 0,
+      completeness INTEGER NOT NULL DEFAULT 0,
+      validation TEXT NOT NULL DEFAULT 'confirmed',
+      updated_at_sort TEXT,
+      updated_at TEXT NOT NULL
+    );
+    CREATE TABLE sources (id TEXT PRIMARY KEY, title TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
+    CREATE TABLE source_citations (
+      id TEXT PRIMARY KEY,
+      source_id TEXT NOT NULL,
+      citation_detail TEXT,
+      citation_text TEXT,
+      confidence TEXT NOT NULL DEFAULT 'medium',
+      person_id TEXT,
+      event_id TEXT,
+      family_id TEXT,
+      person_name_id TEXT,
+      created_at TEXT NOT NULL,
+      version INTEGER NOT NULL DEFAULT 1
+    );
   `);
   return drizzle(sqlite, { schema }) as any;
 }
@@ -41,6 +77,22 @@ function insertChild(db: any, id: string, familyId: string, personId: string) {
 
 function insertEvent(db: any, id: string, personId: string, eventType: string, opts: { dateOriginal?: string; dateSort?: number; placeText?: string } = {}) {
   db.run(sql`INSERT INTO events (id, event_type, date_original, date_sort, place_text, person_id, created_at, updated_at) VALUES (${id}, ${eventType}, ${opts.dateOriginal ?? null}, ${opts.dateSort ?? null}, ${opts.placeText ?? null}, ${personId}, ${NOW}, ${NOW})`);
+}
+
+function insertSource(db: any, id: string) {
+  db.run(sql`INSERT INTO sources (id, title, created_at, updated_at) VALUES (${id}, 'Test source', ${NOW}, ${NOW})`);
+}
+
+function insertCitation(db: any, id: string, sourceId: string, personId: string) {
+  db.run(sql`INSERT INTO source_citations (id, source_id, person_id, confidence, created_at) VALUES (${id}, ${sourceId}, ${personId}, 'medium', ${NOW})`);
+}
+
+function setFamilyValidation(db: any, familyId: string, status: 'proposed' | 'disputed' | 'confirmed') {
+  db.run(sql`UPDATE families SET validation_status = ${status} WHERE id = ${familyId}`);
+}
+
+function setChildValidation(db: any, childRowId: string, status: 'proposed' | 'disputed' | 'confirmed') {
+  db.run(sql`UPDATE children SET validation_status = ${status} WHERE id = ${childRowId}`);
 }
 
 function getSummary(db: any, personId: string) {
@@ -180,6 +232,158 @@ describe('refreshSummary', () => {
     expect(s.birth_place).toBe('Paris');
     expect(s.given_name).toBe('Alice');
     expect(s.surname).toBe('Wonder');
+  });
+});
+
+describe('facet columns', () => {
+  let db: any;
+
+  beforeEach(() => {
+    db = createTestDb();
+  });
+
+  it('computes has_name / has_birth_event / has_birth_place / has_death_event flags', async () => {
+    insertPerson(db, 'p1', { sex: 'M', isLiving: 0 });
+    insertName(db, 'n1', 'p1', 'John', 'Doe');
+    insertEvent(db, 'e1', 'p1', 'birth', { dateOriginal: '1 Jan 1900', placeText: 'Paris' });
+    insertEvent(db, 'e2', 'p1', 'death', { dateOriginal: '1 Jan 1980' });
+
+    // p2 has no name, no events
+    insertPerson(db, 'p2', { sex: 'F' });
+
+    // p3 has empty given_name -> has_name should be 0
+    insertPerson(db, 'p3');
+    insertName(db, 'n3', 'p3', '', 'Surname');
+
+    // p4 has birth event without place -> has_birth_event=1, has_birth_place=0
+    insertPerson(db, 'p4', { sex: 'M' });
+    insertName(db, 'n4', 'p4', 'NoPlace', 'Doe');
+    insertEvent(db, 'e4', 'p4', 'birth', { dateOriginal: '1900' });
+
+    await rebuildAllSummaries(db);
+
+    const p1 = getSummary(db, 'p1');
+    expect(p1.has_name).toBe(1);
+    expect(p1.has_birth_event).toBe(1);
+    expect(p1.has_birth_place).toBe(1);
+    expect(p1.has_death_event).toBe(1);
+
+    const p2 = getSummary(db, 'p2');
+    expect(p2.has_name).toBe(0);
+    expect(p2.has_birth_event).toBe(0);
+    expect(p2.has_birth_place).toBe(0);
+    expect(p2.has_death_event).toBe(0);
+
+    const p3 = getSummary(db, 'p3');
+    expect(p3.has_name).toBe(0);
+
+    const p4 = getSummary(db, 'p4');
+    expect(p4.has_birth_event).toBe(1);
+    expect(p4.has_birth_place).toBe(0);
+  });
+
+  it('computes has_source and sources_count from source_citations', async () => {
+    insertPerson(db, 'p1', { sex: 'M' });
+    insertName(db, 'n1', 'p1', 'Cited', 'Person');
+    insertSource(db, 's1');
+    insertCitation(db, 'cit1', 's1', 'p1');
+    insertCitation(db, 'cit2', 's1', 'p1');
+
+    insertPerson(db, 'p2', { sex: 'F' });
+    insertName(db, 'n2', 'p2', 'Uncited', 'Person');
+
+    await rebuildAllSummaries(db);
+
+    const p1 = getSummary(db, 'p1');
+    expect(p1.has_source).toBe(1);
+    expect(p1.sources_count).toBe(2);
+
+    const p2 = getSummary(db, 'p2');
+    expect(p2.has_source).toBe(0);
+    expect(p2.sources_count).toBe(0);
+  });
+
+  it('computes completeness 0..100 — fully populated dead person hits 100', async () => {
+    insertPerson(db, 'p1', { sex: 'M', isLiving: 0 });
+    insertName(db, 'n1', 'p1', 'Full', 'Record');
+    insertEvent(db, 'e1', 'p1', 'birth', { dateOriginal: '1 Jan 1900', placeText: 'Paris' });
+    insertEvent(db, 'e2', 'p1', 'death', { dateOriginal: '1 Jan 1980' });
+    insertSource(db, 's1');
+    insertCitation(db, 'cit1', 's1', 'p1');
+
+    await rebuildAllSummaries(db);
+
+    const p1 = getSummary(db, 'p1');
+    // Weights: name 20 + birth 25 + birthPlace 20 + death 15 + source 20 = 100
+    expect(p1.completeness).toBe(100);
+  });
+
+  it('renormalizes completeness for effective-living persons (no death event, is_living=1)', async () => {
+    insertPerson(db, 'p1', { sex: 'F', isLiving: 1 });
+    insertName(db, 'n1', 'p1', 'Living', 'Person');
+    insertEvent(db, 'e1', 'p1', 'birth', { dateOriginal: '1 Jan 2000', placeText: 'NYC' });
+    insertSource(db, 's1');
+    insertCitation(db, 'cit1', 's1', 'p1');
+
+    await rebuildAllSummaries(db);
+
+    const p1 = getSummary(db, 'p1');
+    // Living renorm: (20 + 25 + 20 + 20) * 100 / 85 = 100 (rounded)
+    expect(p1.completeness).toBe(100);
+  });
+
+  it('computes validation = "proposed" when person has a proposed family edge', async () => {
+    insertPerson(db, 'p1', { sex: 'M' });
+    insertPerson(db, 'p2', { sex: 'F' });
+    insertName(db, 'n1', 'p1', 'P1', 'Last');
+    insertName(db, 'n2', 'p2', 'P2', 'Last');
+    insertFamily(db, 'f1', 'p1', 'p2');
+    setFamilyValidation(db, 'f1', 'proposed');
+
+    await rebuildAllSummaries(db);
+
+    expect(getSummary(db, 'p1').validation).toBe('proposed');
+    expect(getSummary(db, 'p2').validation).toBe('proposed');
+  });
+
+  it('computes validation = "proposed" when person has a proposed child link', async () => {
+    insertPerson(db, 'p1', { sex: 'M' });
+    insertPerson(db, 'kid', { sex: 'F' });
+    insertName(db, 'n1', 'p1', 'Parent', 'Smith');
+    insertName(db, 'n2', 'kid', 'Kid', 'Smith');
+    insertFamily(db, 'f1', 'p1', null);
+    insertChild(db, 'c1', 'f1', 'kid');
+    setChildValidation(db, 'c1', 'proposed');
+
+    await rebuildAllSummaries(db);
+
+    expect(getSummary(db, 'kid').validation).toBe('proposed');
+  });
+
+  it('mirrors persons.updated_at into updated_at_sort', async () => {
+    insertPerson(db, 'p1', { sex: 'U' });
+    insertName(db, 'n1', 'p1', 'Sortable', 'Edited');
+
+    await rebuildAllSummaries(db);
+
+    const p1 = getSummary(db, 'p1');
+    expect(p1.updated_at_sort).toBe(NOW);
+  });
+
+  it('refreshSummary recomputes facets after adding a citation', async () => {
+    insertPerson(db, 'p1', { sex: 'M' });
+    insertName(db, 'n1', 'p1', 'Late', 'Cite');
+    await rebuildAllSummaries(db);
+
+    expect(getSummary(db, 'p1').has_source).toBe(0);
+    expect(getSummary(db, 'p1').sources_count).toBe(0);
+
+    insertSource(db, 's1');
+    insertCitation(db, 'cit1', 's1', 'p1');
+    await refreshSummary(db, 'p1');
+
+    expect(getSummary(db, 'p1').has_source).toBe(1);
+    expect(getSummary(db, 'p1').sources_count).toBe(1);
   });
 });
 

@@ -229,6 +229,13 @@ export const ancestorPaths = sqliteTable('ancestor_paths', {
 ]);
 
 // ==================== PERSON SUMMARY (denormalized display) ====================
+//
+// Denormalized facet columns (has_*, completeness, validation, sources_count)
+// were added 2026-04 to let /tree and /persons read all display data from a
+// single indexed scan instead of re-deriving via per-row correlated subqueries.
+// All maintenance flows through person-summary.ts; mutation paths in
+// apps/web/app/api/{persons,events,source-citations,...} call refreshSummary
+// or refreshRelatedSummaries to keep these columns current.
 export const personSummary = sqliteTable('person_summary', {
   personId: text('person_id').primaryKey().references(() => persons.id, { onDelete: 'cascade' }),
   givenName: text('given_name').notNull().default(''),
@@ -244,8 +251,26 @@ export const personSummary = sqliteTable('person_summary', {
   spouseCount: integer('spouse_count').notNull().default(0),
   childCount: integer('child_count').notNull().default(0),
   parentCount: integer('parent_count').notNull().default(0),
+  // Facet columns — computed on every refreshSummary() call.
+  hasName: integer('has_name', { mode: 'boolean' }).notNull().default(false),
+  hasBirthEvent: integer('has_birth_event', { mode: 'boolean' }).notNull().default(false),
+  hasBirthPlace: integer('has_birth_place', { mode: 'boolean' }).notNull().default(false),
+  hasDeathEvent: integer('has_death_event', { mode: 'boolean' }).notNull().default(false),
+  hasSource: integer('has_source', { mode: 'boolean' }).notNull().default(false),
+  sourcesCount: integer('sources_count').notNull().default(0),
+  completeness: integer('completeness').notNull().default(0),
+  validation: text('validation', { enum: ['confirmed', 'proposed'] }).notNull().default('confirmed'),
+  // Mirrors persons.updated_at so the persons-list `edited` sort is a single index seek.
+  updatedAtSort: text('updated_at_sort'),
   updatedAt: text('updated_at').notNull(),
-});
+}, (table) => [
+  index('idx_person_summary_validation').on(table.validation),
+  index('idx_person_summary_completeness').on(table.completeness),
+  index('idx_person_summary_birth_sort').on(table.birthDateSort),
+  index('idx_person_summary_death_sort').on(table.deathDateSort),
+  index('idx_person_summary_sources_count').on(table.sourcesCount),
+  index('idx_person_summary_updated_sort').on(table.updatedAtSort),
+]);
 
 export * from './research-schema';
 export * from './ai-schema';

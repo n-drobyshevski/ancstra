@@ -3,6 +3,7 @@ import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { sql } from 'drizzle-orm';
 import * as schema from '@ancstra/db/schema';
+import { rebuildAllSummaries } from '@ancstra/db';
 import { queryPersonsList } from '../../lib/persons/query-persons-list';
 import type { PersonsFilters } from '../../lib/persons/search-params';
 
@@ -19,7 +20,29 @@ function createTestDb(): any {
     CREATE TABLE sources (id TEXT PRIMARY KEY, title TEXT NOT NULL, author TEXT, publisher TEXT, publication_date TEXT, repository_name TEXT, repository_url TEXT, source_type TEXT, notes TEXT, created_by TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, version INTEGER NOT NULL DEFAULT 1);
     CREATE TABLE source_citations (id TEXT PRIMARY KEY, source_id TEXT NOT NULL, citation_detail TEXT, citation_text TEXT, confidence TEXT NOT NULL DEFAULT 'medium', person_id TEXT, event_id TEXT, family_id TEXT, person_name_id TEXT, created_at TEXT NOT NULL, version INTEGER NOT NULL DEFAULT 1);
     CREATE TABLE proposed_relationships (id TEXT PRIMARY KEY, relationship_type TEXT NOT NULL, person1_id TEXT NOT NULL, person2_id TEXT NOT NULL, source_type TEXT NOT NULL, source_detail TEXT, confidence REAL, status TEXT NOT NULL DEFAULT 'pending', validated_by TEXT, validated_at TEXT, rejection_reason TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, version INTEGER NOT NULL DEFAULT 1);
-    CREATE TABLE person_summary (person_id TEXT PRIMARY KEY, given_name TEXT, surname TEXT, sex TEXT, is_living INTEGER, birth_date TEXT, death_date TEXT);
+    CREATE TABLE person_summary (
+      person_id TEXT PRIMARY KEY,
+      given_name TEXT NOT NULL DEFAULT '',
+      surname TEXT NOT NULL DEFAULT '',
+      sex TEXT NOT NULL,
+      is_living INTEGER NOT NULL,
+      birth_date TEXT, death_date TEXT,
+      birth_date_sort INTEGER, death_date_sort INTEGER,
+      birth_place TEXT, death_place TEXT,
+      spouse_count INTEGER NOT NULL DEFAULT 0,
+      child_count INTEGER NOT NULL DEFAULT 0,
+      parent_count INTEGER NOT NULL DEFAULT 0,
+      has_name INTEGER NOT NULL DEFAULT 0,
+      has_birth_event INTEGER NOT NULL DEFAULT 0,
+      has_birth_place INTEGER NOT NULL DEFAULT 0,
+      has_death_event INTEGER NOT NULL DEFAULT 0,
+      has_source INTEGER NOT NULL DEFAULT 0,
+      sources_count INTEGER NOT NULL DEFAULT 0,
+      completeness INTEGER NOT NULL DEFAULT 0,
+      validation TEXT NOT NULL DEFAULT 'confirmed',
+      updated_at_sort TEXT,
+      updated_at TEXT NOT NULL
+    );
   `);
   return drizzle(sqlite, { schema }) as any;
 }
@@ -55,11 +78,19 @@ function pr(id: string, p1: string, p2: string, status: string = 'pending') {
   db.run(sql`INSERT INTO proposed_relationships (id, relationship_type, person1_id, person2_id, source_type, status, created_at, updated_at) VALUES (${id}, 'parent_child', ${p1}, ${p2}, 'ai_suggestion', ${status}, ${NOW}, ${NOW})`);
 }
 
+// queryPersonsList now reads from the materialized person_summary table.
+// Run rebuildAllSummaries before each query call so the test fixtures populate
+// facet columns from the underlying tables they just inserted into.
+async function list(filters: PersonsFilters) {
+  await rebuildAllSummaries(db);
+  return queryPersonsList(db, filters);
+}
+
 beforeEach(() => { db = createTestDb(); });
 
 describe('queryPersonsList', () => {
   it('returns empty when no persons', async () => {
-    const r = await queryPersonsList(db, baseFilters);
+    const r = await list(baseFilters);
     expect(r.items).toEqual([]);
     expect(r.total).toBe(0);
   });
@@ -68,7 +99,7 @@ describe('queryPersonsList', () => {
     p('p1', { updatedAt: '2026-01-01T00:00:00.000Z' }); n('p1', 'Alice', 'Aaron');
     p('p2', { updatedAt: '2026-04-01T00:00:00.000Z' }); n('p2', 'Bob', 'Brown');
     p('p3', { updatedAt: '2026-02-01T00:00:00.000Z' }); n('p3', 'Carol', 'Carter');
-    const r = await queryPersonsList(db, baseFilters);
+    const r = await list(baseFilters);
     expect(r.total).toBe(3);
     expect(r.items.map(it => it.id)).toEqual(['p2', 'p3', 'p1']);
   });
@@ -76,7 +107,7 @@ describe('queryPersonsList', () => {
   it('filters by sex', async () => {
     p('p1', { sex: 'F' }); n('p1', 'A', 'A');
     p('p2', { sex: 'M' }); n('p2', 'B', 'B');
-    const r = await queryPersonsList(db, { ...baseFilters, sex: ['F'] });
+    const r = await list({ ...baseFilters, sex: ['F'] });
     expect(r.total).toBe(1);
     expect(r.items[0].id).toBe('p1');
   });
@@ -84,7 +115,7 @@ describe('queryPersonsList', () => {
   it('filters by living=alive', async () => {
     p('p1', { isLiving: 1 }); n('p1', 'A', 'A');
     p('p2', { isLiving: 0 }); n('p2', 'B', 'B');
-    const r = await queryPersonsList(db, { ...baseFilters, living: ['alive'] });
+    const r = await list({ ...baseFilters, living: ['alive'] });
     expect(r.total).toBe(1);
     expect(r.items[0].id).toBe('p1');
   });
@@ -93,7 +124,7 @@ describe('queryPersonsList', () => {
     p('p1'); n('p1', 'A', 'A'); ev('e1', 'p1', 'birth', { dateSort: 18900101 });
     p('p2'); n('p2', 'B', 'B'); ev('e2', 'p2', 'birth', { dateSort: 19200101 });
     p('p3'); n('p3', 'C', 'C'); ev('e3', 'p3', 'birth', { dateSort: 19500101 });
-    const r = await queryPersonsList(db, { ...baseFilters, bornFrom: 1900, bornTo: 1949 });
+    const r = await list({ ...baseFilters, bornFrom: 1900, bornTo: 1949 });
     expect(r.total).toBe(1);
     expect(r.items[0].id).toBe('p2');
   });
@@ -101,7 +132,7 @@ describe('queryPersonsList', () => {
   it('filters by place birth-only scope', async () => {
     p('p1'); n('p1', 'A', 'A'); ev('e1', 'p1', 'birth', { placeText: 'Chicago', dateSort: 19000101 });
     p('p2'); n('p2', 'B', 'B'); ev('e2', 'p2', 'death', { placeText: 'Chicago', dateSort: 19500101 });
-    const r = await queryPersonsList(db, { ...baseFilters, place: 'Chicago', placeScope: 'birth' });
+    const r = await list({ ...baseFilters, place: 'Chicago', placeScope: 'birth' });
     expect(r.total).toBe(1);
     expect(r.items[0].id).toBe('p1');
   });
@@ -109,14 +140,14 @@ describe('queryPersonsList', () => {
   it('filters by place any-event scope', async () => {
     p('p1'); n('p1', 'A', 'A'); ev('e1', 'p1', 'birth', { placeText: 'Chicago', dateSort: 19000101 });
     p('p2'); n('p2', 'B', 'B'); ev('e2', 'p2', 'death', { placeText: 'Chicago', dateSort: 19500101 });
-    const r = await queryPersonsList(db, { ...baseFilters, place: 'Chicago', placeScope: 'any' });
+    const r = await list({ ...baseFilters, place: 'Chicago', placeScope: 'any' });
     expect(r.total).toBe(2);
   });
 
   it('filters by citations gte1', async () => {
     p('p1'); n('p1', 'A', 'A'); srcCit('c1', 'p1');
     p('p2'); n('p2', 'B', 'B');
-    const r = await queryPersonsList(db, { ...baseFilters, citations: 'gte1' });
+    const r = await list({ ...baseFilters, citations: 'gte1' });
     expect(r.total).toBe(1);
     expect(r.items[0].id).toBe('p1');
   });
@@ -126,7 +157,7 @@ describe('queryPersonsList', () => {
     p('p2'); n('p2', 'B', 'B');
     pr('pr1', 'p1', 'p2', 'pending');
     p('p3'); n('p3', 'C', 'C');
-    const r = await queryPersonsList(db, { ...baseFilters, hasProposals: true });
+    const r = await list({ ...baseFilters, hasProposals: true });
     expect(r.total).toBe(2);
     expect(new Set(r.items.map(it => it.id))).toEqual(new Set(['p1', 'p2']));
   });
@@ -134,7 +165,7 @@ describe('queryPersonsList', () => {
   it('filters by validation=proposed', async () => {
     p('p1'); n('p1', 'A', 'A'); fam('f1', 'p1', null, 'proposed');
     p('p2'); n('p2', 'B', 'B');
-    const r = await queryPersonsList(db, { ...baseFilters, validation: ['proposed'] });
+    const r = await list({ ...baseFilters, validation: ['proposed'] });
     expect(r.total).toBe(1);
     expect(r.items[0].id).toBe('p1');
   });
@@ -145,8 +176,8 @@ describe('queryPersonsList', () => {
       p(id, { updatedAt: `2026-01-${String(i + 1).padStart(2, '0')}T00:00:00.000Z` });
       n(id, 'X', 'Y');
     }
-    const page1 = await queryPersonsList(db, { ...baseFilters, page: 1, size: 20 });
-    const page2 = await queryPersonsList(db, { ...baseFilters, page: 2, size: 20 });
+    const page1 = await list({ ...baseFilters, page: 1, size: 20 });
+    const page2 = await list({ ...baseFilters, page: 2, size: 20 });
     expect(page1.total).toBe(25);
     expect(page1.items).toHaveLength(20);
     expect(page2.items).toHaveLength(5);
@@ -156,7 +187,7 @@ describe('queryPersonsList', () => {
     p('p1'); n('p1', 'Alice', 'Zulu');
     p('p2'); n('p2', 'Bob', 'Aaron');
     p('p3'); n('p3', 'Carol', 'Mason');
-    const r = await queryPersonsList(db, { ...baseFilters, sort: 'name', dir: 'asc' });
+    const r = await list({ ...baseFilters, sort: 'name', dir: 'asc' });
     expect(r.items.map(it => it.id)).toEqual(['p2', 'p3', 'p1']);
   });
 
@@ -167,7 +198,7 @@ describe('queryPersonsList', () => {
     ev('e3', 'p3', 'birth', { dateSort: 19000101, placeText: 'Paris' });
     ev('e4', 'p3', 'death', { dateSort: 19500101 });
     srcCit('c3', 'p3');
-    const r = await queryPersonsList(db, { ...baseFilters, sort: 'compl', dir: 'desc' });
+    const r = await list({ ...baseFilters, sort: 'compl', dir: 'desc' });
     expect(r.items.map(it => it.id)).toEqual(['p3', 'p2', 'p1']);
   });
 
@@ -175,7 +206,7 @@ describe('queryPersonsList', () => {
     p('p1'); n('p1', 'A', 'A'); // no birth event → born_sort = NULL
     p('p2'); n('p2', 'B', 'B'); ev('e2', 'p2', 'birth', { dateSort: 19000101 });
     p('p3'); n('p3', 'C', 'C'); ev('e3', 'p3', 'birth', { dateSort: 18500101 });
-    const r = await queryPersonsList(db, { ...baseFilters, sort: 'born', dir: 'asc' });
+    const r = await list({ ...baseFilters, sort: 'born', dir: 'asc' });
     expect(r.items.map(it => it.id)).toEqual(['p3', 'p2', 'p1']);
   });
 
@@ -183,7 +214,7 @@ describe('queryPersonsList', () => {
     p('p1'); n('p1', 'Alice', 'Smith');
     ev('e1', 'p1', 'birth', { dateSort: 19030101, placeText: 'Chicago, IL', dateOriginal: '3 Jan 1903' });
     srcCit('c1', 'p1');
-    const r = await queryPersonsList(db, baseFilters);
+    const r = await list(baseFilters);
     expect(r.items).toHaveLength(1);
     const item = r.items[0];
     expect(item.id).toBe('p1');
@@ -200,27 +231,27 @@ describe('queryPersonsList', () => {
     ev('e1', 'p1', 'birth', { placeText: 'X', dateSort: 19000101 });
     ev('e2', 'p1', 'death', { dateSort: 19500101 });
     srcCit('c1', 'p1');
-    const r = await queryPersonsList(db, baseFilters);
+    const r = await list(baseFilters);
     expect(r.items[0].completeness).toBe(100);
   });
 
   it('rolls validation up to proposed when any incoming family is proposed', async () => {
     p('p1'); n('p1', 'A', 'A'); fam('f1', 'p1', null, 'proposed');
-    const r = await queryPersonsList(db, baseFilters);
+    const r = await list(baseFilters);
     expect(r.items[0].validation).toBe('proposed');
   });
 
   it('intersects with FTS when q is non-empty', async () => {
     p('p1'); n('p1', 'Alice', 'Smith');
     p('p2'); n('p2', 'Bob', 'Brown');
-    const r = await queryPersonsList(db, { ...baseFilters, q: 'Alice' });
+    const r = await list({ ...baseFilters, q: 'Alice' });
     expect(r.total).toBe(1);
     expect(r.items[0].id).toBe('p1');
   });
 
   it('returns empty when FTS finds no match', async () => {
     p('p1'); n('p1', 'Alice', 'Smith');
-    const r = await queryPersonsList(db, { ...baseFilters, q: 'Zxqvnm' });
+    const r = await list({ ...baseFilters, q: 'Zxqvnm' });
     expect(r.items).toEqual([]);
     expect(r.total).toBe(0);
   });
@@ -232,7 +263,7 @@ describe('queryPersonsList', () => {
     ev('e-bf', 'p-flags', 'birth', { dateOriginal: '1815-12-10', dateSort: 18151210 });
     srcCit('c-flags', 'p-flags');
 
-    const result = await queryPersonsList(db, baseFilters);
+    const result = await list(baseFilters);
     const row = result.items.find((i) => i.id === 'p-flags');
     expect(row).toBeDefined();
     expect(row!.hasName).toBe(true);
@@ -258,7 +289,7 @@ describe('queryPersonsList', () => {
     ev('e-edd', 'p-deceased-with-death', 'death', { dateSort: 18800101 });
     srcCit('c-ed', 'p-deceased-with-death');
 
-    const result = await queryPersonsList(db, baseFilters);
+    const result = await list(baseFilters);
     const living = result.items.find((i) => i.id === 'p-living-full')!;
     const deceased = result.items.find((i) => i.id === 'p-deceased-with-death')!;
     expect(living.completeness).toBe(100); // 85 raw / 85 max

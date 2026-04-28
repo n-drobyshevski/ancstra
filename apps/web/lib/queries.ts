@@ -7,10 +7,6 @@ import {
   families,
   children,
 } from '@ancstra/db';
-import {
-  completenessFlagsCteBody,
-  completenessScoreExpr,
-} from '@ancstra/db/completeness-sql';
 import type {
   PersonDetail,
   PersonListItem,
@@ -453,62 +449,63 @@ export async function assemblePersonDetail(
 
 // ---------------------------------------------------------------------------
 // Exported: fetch all tree data (persons + families + child links)
+//
+// Reads denormalized facets from person_summary in a single scan (vs the prior
+// CTE+facets pattern that re-derived completeness/validation per row). All
+// three sub-queries fire in parallel — wall time = max(slowest), not sum.
 // ---------------------------------------------------------------------------
 export async function getTreeData(db: Database): Promise<TreeData> {
-  // Read from denormalized person_summary table joined with on-the-fly
-  // completeness/validation/sources facets (mirrors query-persons-list.ts).
-  const personRows = await db.all<{
-    person_id: string;
-    given_name: string;
-    surname: string;
-    sex: string;
-    is_living: number;
-    birth_date: string | null;
-    birth_place: string | null;
-    death_date: string | null;
-    completeness: number | null;
-    has_name: number | null;
-    has_birth_event: number | null;
-    has_birth_place: number | null;
-    has_death_event: number | null;
-    has_source: number | null;
-    validation: 'confirmed' | 'proposed' | null;
-    sources_count: number | null;
-  }>(sql`
-    WITH person_flags AS (${completenessFlagsCteBody('p')}),
-    person_facets AS (
+  const [personRows, familyRows, childRows] = await Promise.all([
+    db.all<{
+      person_id: string;
+      given_name: string;
+      surname: string;
+      sex: string;
+      is_living: number;
+      birth_date: string | null;
+      birth_place: string | null;
+      death_date: string | null;
+      completeness: number;
+      has_name: number;
+      has_birth_event: number;
+      has_birth_place: number;
+      has_death_event: number;
+      has_source: number;
+      validation: 'confirmed' | 'proposed';
+      sources_count: number;
+    }>(sql`
       SELECT
-        p.id,
-        pf.has_name, pf.has_birth_event, pf.has_birth_place,
-        pf.has_death_event, pf.has_source,
-        ${completenessScoreExpr('p', 'pf')} AS completeness,
-        CASE WHEN EXISTS (
-          SELECT 1 FROM families f
-          WHERE f.deleted_at IS NULL
-            AND (f.partner1_id = p.id OR f.partner2_id = p.id)
-            AND f.validation_status IN ('proposed', 'disputed')
-        ) OR EXISTS (
-          SELECT 1 FROM children c
-          WHERE c.person_id = p.id
-            AND c.validation_status IN ('proposed', 'disputed')
-        ) THEN 'proposed' ELSE 'confirmed' END AS validation,
-        (SELECT COUNT(*) FROM source_citations sc WHERE sc.person_id = p.id) AS sources_count,
-        (SELECT place_text FROM events e WHERE e.person_id = p.id AND e.event_type = 'birth' ORDER BY e.date_sort NULLS LAST LIMIT 1) AS birth_place
-      FROM persons p
-      INNER JOIN person_flags pf ON pf.id = p.id
-      WHERE p.deleted_at IS NULL
-    )
-    SELECT
-      ps.person_id, ps.given_name, ps.surname, ps.sex, ps.is_living,
-      ps.birth_date, ps.death_date,
-      pf.birth_place,
-      pf.completeness, pf.validation, pf.sources_count,
-      pf.has_name, pf.has_birth_event, pf.has_birth_place,
-      pf.has_death_event, pf.has_source
-    FROM person_summary ps
-    LEFT JOIN person_facets pf ON pf.id = ps.person_id
-    WHERE ps.person_id NOT IN (SELECT id FROM persons WHERE deleted_at IS NOT NULL)
-  `);
+        ps.person_id, ps.given_name, ps.surname, ps.sex, ps.is_living,
+        ps.birth_date, ps.death_date, ps.birth_place,
+        ps.completeness, ps.validation, ps.sources_count,
+        ps.has_name, ps.has_birth_event, ps.has_birth_place,
+        ps.has_death_event, ps.has_source
+      FROM person_summary ps
+      WHERE NOT EXISTS (
+        SELECT 1 FROM persons p
+        WHERE p.id = ps.person_id AND p.deleted_at IS NOT NULL
+      )
+    `),
+    db
+      .select({
+        id: families.id,
+        partner1Id: families.partner1Id,
+        partner2Id: families.partner2Id,
+        relationshipType: families.relationshipType,
+        validationStatus: families.validationStatus,
+      })
+      .from(families)
+      .where(isNull(families.deletedAt))
+      .all(),
+    db
+      .select({
+        familyId: children.familyId,
+        personId: children.personId,
+        validationStatus: children.validationStatus,
+      })
+      .from(children)
+      .all(),
+  ]);
 
   const personsWithDates: PersonListItem[] = personRows.map((r) => ({
     id: r.person_id,
@@ -529,26 +526,9 @@ export async function getTreeData(db: Database): Promise<TreeData> {
     hasSource: Boolean(r.has_source),
   }));
 
-  const familyRows: FamilyRecord[] = await db
-    .select({
-      id: families.id,
-      partner1Id: families.partner1Id,
-      partner2Id: families.partner2Id,
-      relationshipType: families.relationshipType,
-      validationStatus: families.validationStatus,
-    })
-    .from(families)
-    .where(isNull(families.deletedAt))
-    .all();
-
-  const childRows: ChildLink[] = await db
-    .select({
-      familyId: children.familyId,
-      personId: children.personId,
-      validationStatus: children.validationStatus,
-    })
-    .from(children)
-    .all();
-
-  return { persons: personsWithDates, families: familyRows, childLinks: childRows };
+  return {
+    persons: personsWithDates,
+    families: familyRows as FamilyRecord[],
+    childLinks: childRows as ChildLink[],
+  };
 }

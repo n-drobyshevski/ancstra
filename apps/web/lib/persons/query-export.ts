@@ -1,9 +1,5 @@
 import { sql } from 'drizzle-orm';
 import type { Database } from '@ancstra/db';
-import {
-  completenessFlagsCteBody,
-  completenessScoreExpr,
-} from '@ancstra/db/completeness-sql';
 import type { PersonsFilters } from './search-params';
 import { buildPersonsWhere } from './filters-to-where';
 import { searchPersonsFts } from '../queries';
@@ -14,8 +10,8 @@ import type { GedcomExportEvent } from '@/lib/gedcom/serialize';
 const HARD_CAP = 50_000;
 
 /**
- * Query the export rows for CSV. Mirrors queryPersonsList's CTE but adds
- * deathPlace (which list views don't need) and ignores pagination — caps at HARD_CAP.
+ * Query the export rows for CSV. Reads from the denormalized person_summary
+ * table (single indexed scan; facets are populated at write time).
  */
 export async function queryPersonsForCsvExport(
   db: Database,
@@ -43,46 +39,17 @@ export async function queryPersonsForCsvExport(
     completeness: number; sources_count: number;
     validation: 'confirmed' | 'proposed'; updated_at: string;
   }>(sql`
-    WITH person_flags AS (${completenessFlagsCteBody('p')}),
-    person_facets AS (
-      SELECT
-        p.id, p.sex, p.is_living, p.updated_at,
-        COALESCE(pn.given_name, '') AS given_name,
-        COALESCE(pn.surname, '')   AS surname,
-        CASE WHEN EXISTS (
-          SELECT 1 FROM families f
-          WHERE f.deleted_at IS NULL
-            AND (f.partner1_id = p.id OR f.partner2_id = p.id)
-            AND f.validation_status IN ('proposed', 'disputed')
-        )
-        OR EXISTS (
-          SELECT 1 FROM children c
-          WHERE c.person_id = p.id
-            AND c.validation_status IN ('proposed', 'disputed')
-        ) THEN 'proposed' ELSE 'confirmed' END AS validation,
-        ${completenessScoreExpr('p', 'pflag')} AS completeness,
-        (SELECT date_sort     FROM events e WHERE e.person_id = p.id AND e.event_type = 'birth' ORDER BY e.date_sort NULLS LAST LIMIT 1) AS born_sort,
-        (SELECT date_original FROM events e WHERE e.person_id = p.id AND e.event_type = 'birth' ORDER BY e.date_sort NULLS LAST LIMIT 1) AS birth_date,
-        (SELECT place_text    FROM events e WHERE e.person_id = p.id AND e.event_type = 'birth' ORDER BY e.date_sort NULLS LAST LIMIT 1) AS birth_place,
-        (SELECT date_sort     FROM events e WHERE e.person_id = p.id AND e.event_type = 'death' ORDER BY e.date_sort NULLS LAST LIMIT 1) AS died_sort,
-        (SELECT date_original FROM events e WHERE e.person_id = p.id AND e.event_type = 'death' ORDER BY e.date_sort NULLS LAST LIMIT 1) AS death_date,
-        (SELECT place_text    FROM events e WHERE e.person_id = p.id AND e.event_type = 'death' ORDER BY e.date_sort NULLS LAST LIMIT 1) AS death_place,
-        (SELECT COUNT(*)      FROM source_citations sc WHERE sc.person_id = p.id) AS sources_count
-      FROM persons p
-      INNER JOIN person_names pn ON pn.person_id = p.id AND pn.is_primary = 1
-      INNER JOIN person_flags pflag ON pflag.id = p.id
-      WHERE p.deleted_at IS NULL
-    )
     SELECT
-      pf.id, pf.sex, pf.is_living,
-      pf.given_name, pf.surname,
-      pf.birth_date, pf.birth_place,
-      pf.death_date, pf.death_place,
-      pf.completeness, pf.sources_count,
-      pf.validation, pf.updated_at
-    FROM person_facets pf
+      ps.person_id AS id, ps.sex, ps.is_living,
+      ps.given_name, ps.surname,
+      ps.birth_date, ps.birth_place,
+      ps.death_date, ps.death_place,
+      ps.completeness, ps.sources_count,
+      ps.validation,
+      ps.updated_at_sort AS updated_at
+    FROM person_summary ps
     ${whereSql}
-    ORDER BY pf.surname, pf.given_name, pf.id
+    ORDER BY ps.surname, ps.given_name, ps.person_id
     LIMIT ${HARD_CAP + 1}
   `);
 

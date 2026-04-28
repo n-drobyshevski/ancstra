@@ -84,6 +84,15 @@ beforeEach(() => {
       spouse_count INTEGER NOT NULL DEFAULT 0,
       child_count INTEGER NOT NULL DEFAULT 0,
       parent_count INTEGER NOT NULL DEFAULT 0,
+      has_name INTEGER NOT NULL DEFAULT 0,
+      has_birth_event INTEGER NOT NULL DEFAULT 0,
+      has_birth_place INTEGER NOT NULL DEFAULT 0,
+      has_death_event INTEGER NOT NULL DEFAULT 0,
+      has_source INTEGER NOT NULL DEFAULT 0,
+      sources_count INTEGER NOT NULL DEFAULT 0,
+      completeness INTEGER NOT NULL DEFAULT 0,
+      validation TEXT NOT NULL DEFAULT 'confirmed',
+      updated_at_sort TEXT,
       updated_at TEXT NOT NULL
     );
 

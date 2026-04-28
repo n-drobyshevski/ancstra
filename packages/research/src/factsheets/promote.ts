@@ -11,6 +11,7 @@ import {
   children,
   sources,
   sourceCitations,
+  refreshSummary,
 } from '@ancstra/db';
 import type { Database } from '@ancstra/db';
 import { isFactsheetPromotable } from './validation';
@@ -224,6 +225,11 @@ export async function promoteSingleFactsheet(
       .where(eq(factsheets.id, input.factsheetId))
       .run();
   });
+
+  // Promotion creates/updates events + source_citations for this person, so
+  // person_summary needs a refresh to reflect the new facets (has_source,
+  // sources_count, completeness, dates/places).
+  await refreshSummary(db, personId!);
 
   return {
     personId: personId!,

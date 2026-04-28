@@ -1,10 +1,6 @@
 import { sql } from 'drizzle-orm';
 import type { Database } from '@ancstra/db';
 import type { PersonListItem } from '@ancstra/shared';
-import {
-  completenessFlagsCteBody,
-  completenessScoreExpr,
-} from '@ancstra/db/completeness-sql';
 import type { PersonsFilters } from './search-params';
 import { buildPersonsWhere } from './filters-to-where';
 import { searchPersonsFts } from '../queries';
@@ -15,14 +11,17 @@ export interface PersonsListResult {
 }
 
 const SORT_COLUMN: Record<PersonsFilters['sort'], string> = {
-  name: 'pf.surname',
-  born: 'pf.born_sort',
-  died: 'pf.died_sort',
-  compl: 'pf.completeness',
-  edited: 'pf.updated_at',
-  sources: 'pf.sources_count',
+  name: 'ps.surname',
+  born: 'ps.birth_date_sort',
+  died: 'ps.death_date_sort',
+  compl: 'ps.completeness',
+  edited: 'ps.updated_at_sort',
+  sources: 'ps.sources_count',
 };
 
+// Reads directly from the denormalized person_summary table — facets are
+// populated at write time by refreshSummary/rebuildAllSummaries, so this is
+// a single indexed scan instead of the prior multi-CTE per-row recomputation.
 export async function queryPersonsList(
   db: Database,
   filters: PersonsFilters,
@@ -43,8 +42,8 @@ export async function queryPersonsList(
   const dir = filters.dir === 'desc' ? sql.raw('DESC') : sql.raw('ASC');
   const sortClause =
     filters.sort === 'born' || filters.sort === 'died'
-      ? sql`ORDER BY ${sql.raw(sortCol)} ${dir} NULLS LAST, pf.id ASC`
-      : sql`ORDER BY ${sql.raw(sortCol)} ${dir}, pf.id ASC`;
+      ? sql`ORDER BY ${sql.raw(sortCol)} ${dir} NULLS LAST, ps.person_id ASC`
+      : sql`ORDER BY ${sql.raw(sortCol)} ${dir}, ps.person_id ASC`;
 
   const offset = (filters.page - 1) * filters.size;
 
@@ -58,47 +57,17 @@ export async function queryPersonsList(
     validation: 'confirmed' | 'proposed'; updated_at: string;
     total: number;
   }>(sql`
-    WITH person_flags AS (${completenessFlagsCteBody('p')}),
-    person_facets AS (
-      SELECT
-        p.id, p.sex, p.is_living, p.updated_at,
-        COALESCE(pn.given_name, '') AS given_name,
-        COALESCE(pn.surname, '')   AS surname,
-        CASE WHEN EXISTS (
-          SELECT 1 FROM families f
-          WHERE f.deleted_at IS NULL
-            AND (f.partner1_id = p.id OR f.partner2_id = p.id)
-            AND f.validation_status IN ('proposed', 'disputed')
-        )
-        OR EXISTS (
-          SELECT 1 FROM children c
-          WHERE c.person_id = p.id
-            AND c.validation_status IN ('proposed', 'disputed')
-        ) THEN 'proposed' ELSE 'confirmed' END AS validation,
-        pflag.has_name, pflag.has_birth_event, pflag.has_birth_place,
-        pflag.has_death_event, pflag.has_source,
-        ${completenessScoreExpr('p', 'pflag')} AS completeness,
-        (SELECT date_sort     FROM events e WHERE e.person_id = p.id AND e.event_type = 'birth' ORDER BY e.date_sort NULLS LAST LIMIT 1) AS born_sort,
-        (SELECT date_original FROM events e WHERE e.person_id = p.id AND e.event_type = 'birth' ORDER BY e.date_sort NULLS LAST LIMIT 1) AS birth_date,
-        (SELECT place_text    FROM events e WHERE e.person_id = p.id AND e.event_type = 'birth' ORDER BY e.date_sort NULLS LAST LIMIT 1) AS birth_place,
-        (SELECT date_sort     FROM events e WHERE e.person_id = p.id AND e.event_type = 'death' ORDER BY e.date_sort NULLS LAST LIMIT 1) AS died_sort,
-        (SELECT date_original FROM events e WHERE e.person_id = p.id AND e.event_type = 'death' ORDER BY e.date_sort NULLS LAST LIMIT 1) AS death_date,
-        (SELECT COUNT(*)      FROM source_citations sc WHERE sc.person_id = p.id) AS sources_count
-      FROM persons p
-      INNER JOIN person_names pn ON pn.person_id = p.id AND pn.is_primary = 1
-      INNER JOIN person_flags pflag ON pflag.id = p.id
-      WHERE p.deleted_at IS NULL
-    )
     SELECT
-      pf.id, pf.sex, pf.is_living,
-      pf.given_name, pf.surname,
-      pf.birth_date, pf.death_date, pf.birth_place,
-      pf.completeness, pf.sources_count,
-      pf.has_name, pf.has_birth_event, pf.has_birth_place,
-      pf.has_death_event, pf.has_source,
-      pf.validation, pf.updated_at,
+      ps.person_id AS id, ps.sex, ps.is_living,
+      ps.given_name, ps.surname,
+      ps.birth_date, ps.death_date, ps.birth_place,
+      ps.completeness, ps.sources_count,
+      ps.has_name, ps.has_birth_event, ps.has_birth_place,
+      ps.has_death_event, ps.has_source,
+      ps.validation,
+      ps.updated_at_sort AS updated_at,
       count(*) OVER () AS total
-    FROM person_facets pf
+    FROM person_summary ps
     ${whereSql}
     ${sortClause}
     LIMIT ${filters.size} OFFSET ${offset}
@@ -114,7 +83,7 @@ export async function queryPersonsList(
     hasBirthPlace: Boolean(r.has_birth_place),
     hasDeathEvent: Boolean(r.has_death_event),
     hasSource: Boolean(r.has_source),
-    validation: r.validation, updatedAt: r.updated_at,
+    validation: r.validation, updatedAt: r.updated_at ?? '',
   }));
 
   const total = rows.length > 0 ? rows[0].total : 0;

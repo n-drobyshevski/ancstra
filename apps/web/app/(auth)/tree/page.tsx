@@ -3,26 +3,23 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { getCachedTreeData } from '@/lib/cache/tree';
 import { getAuthContext } from '@/lib/auth/context';
-import { Skeleton } from '@/components/ui/skeleton';
+import { TreeCanvasSkeleton } from '@/components/skeletons/tree-canvas-skeleton';
 
 const TreePageClient = dynamic(
   () => import('@/components/tree/tree-page-client').then(m => m.TreePageClient),
   { loading: () => null }
 );
 
+// Static shell — no top-level awaits. Auth + tree data resolve inside the
+// Suspense boundary so the page HTML can be prerendered and shipped from
+// the edge while the canvas streams in.
 export default function TreePage({
   searchParams,
 }: {
   searchParams: Promise<{ focus?: string }>;
 }) {
   return (
-    <Suspense
-      fallback={
-        <div className="flex h-full items-center justify-center">
-          <Skeleton className="h-[60vh] w-full rounded-lg" />
-        </div>
-      }
-    >
+    <Suspense fallback={<TreeCanvasSkeleton />}>
       <TreePageContent searchParams={searchParams} />
     </Suspense>
   );

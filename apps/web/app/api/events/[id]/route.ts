@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
-import { events } from '@ancstra/db';
+import { events, refreshSummary } from '@ancstra/db';
 import { eq } from 'drizzle-orm';
 import { updateEventSchema } from '@/lib/validation';
 import { parseDateToSort } from '@ancstra/shared';
@@ -64,7 +64,12 @@ export async function PUT(
       .where(eq(events.id, id))
       .all();
 
+    if (existing.personId) {
+      await refreshSummary(familyDb, existing.personId);
+    }
     revalidateTag('persons', 'max');
+    revalidateTag('persons-list', 'max');
+    revalidateTag('tree-data', 'max');
     return NextResponse.json(updated);
   } catch (error) {
     return handleAuthError(error);
@@ -92,7 +97,12 @@ export async function DELETE(
 
     await familyDb.delete(events).where(eq(events.id, id)).run();
 
+    if (existing.personId) {
+      await refreshSummary(familyDb, existing.personId);
+    }
     revalidateTag('persons', 'max');
+    revalidateTag('persons-list', 'max');
+    revalidateTag('tree-data', 'max');
     return NextResponse.json({ success: true });
   } catch (error) {
     return handleAuthError(error);

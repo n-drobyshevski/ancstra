@@ -141,9 +141,64 @@ export async function ensureFamilySchema(db: FamilyDatabase, dbKey?: string): Pr
       spouse_count INTEGER NOT NULL DEFAULT 0,
       child_count INTEGER NOT NULL DEFAULT 0,
       parent_count INTEGER NOT NULL DEFAULT 0,
+      has_name INTEGER NOT NULL DEFAULT 0,
+      has_birth_event INTEGER NOT NULL DEFAULT 0,
+      has_birth_place INTEGER NOT NULL DEFAULT 0,
+      has_death_event INTEGER NOT NULL DEFAULT 0,
+      has_source INTEGER NOT NULL DEFAULT 0,
+      sources_count INTEGER NOT NULL DEFAULT 0,
+      completeness INTEGER NOT NULL DEFAULT 0,
+      validation TEXT NOT NULL DEFAULT 'confirmed',
+      updated_at_sort TEXT,
       updated_at TEXT NOT NULL
     )
   `);
+
+  // Facet columns added 2026-04 — older DBs predate them, so ALTER idempotently.
+  // SQLite throws when a column already exists; the try/catch swallows that.
+  for (const col of [
+    'has_name INTEGER NOT NULL DEFAULT 0',
+    'has_birth_event INTEGER NOT NULL DEFAULT 0',
+    'has_birth_place INTEGER NOT NULL DEFAULT 0',
+    'has_death_event INTEGER NOT NULL DEFAULT 0',
+    'has_source INTEGER NOT NULL DEFAULT 0',
+    'sources_count INTEGER NOT NULL DEFAULT 0',
+    'completeness INTEGER NOT NULL DEFAULT 0',
+    "validation TEXT NOT NULL DEFAULT 'confirmed'",
+    'updated_at_sort TEXT',
+  ]) {
+    try {
+      await db.run(sql.raw(`ALTER TABLE person_summary ADD COLUMN ${col}`));
+    } catch { /* column already exists */ }
+  }
+  await db.run(sql`CREATE INDEX IF NOT EXISTS idx_person_summary_validation ON person_summary(validation)`);
+  await db.run(sql`CREATE INDEX IF NOT EXISTS idx_person_summary_completeness ON person_summary(completeness)`);
+  await db.run(sql`CREATE INDEX IF NOT EXISTS idx_person_summary_birth_sort ON person_summary(birth_date_sort)`);
+  await db.run(sql`CREATE INDEX IF NOT EXISTS idx_person_summary_death_sort ON person_summary(death_date_sort)`);
+  await db.run(sql`CREATE INDEX IF NOT EXISTS idx_person_summary_sources_count ON person_summary(sources_count)`);
+  await db.run(sql`CREATE INDEX IF NOT EXISTS idx_person_summary_updated_sort ON person_summary(updated_at_sort)`);
+
+  // One-time facet backfill after schema upgrade. Tracked via _ancstra_meta so
+  // we don't rebuild on every cold start.
+  await db.run(sql`
+    CREATE TABLE IF NOT EXISTS _ancstra_meta (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    )
+  `);
+  const [versionRow] = await db.all<{ value: string }>(
+    sql`SELECT value FROM _ancstra_meta WHERE key = 'person_summary_facets_version'`,
+  );
+  const currentVersion = versionRow?.value ?? '0';
+  if (currentVersion < '1') {
+    log.info('person_summary facets out of date — running rebuildAllSummaries');
+    const { rebuildAllSummaries } = await import('./person-summary');
+    await rebuildAllSummaries(db);
+    await db.run(sql`
+      INSERT OR REPLACE INTO _ancstra_meta(key, value)
+      VALUES ('person_summary_facets_version', '1')
+    `);
+  }
 
   // Dashboard performance indexes (added 2026-04). Existing DBs predate these
   // — created here idempotently so cold-cache loads don't full-scan persons/families/events.

@@ -3,6 +3,7 @@ import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { sql } from 'drizzle-orm';
 import * as schema from '@ancstra/db/schema';
+import { rebuildAllSummaries } from '@ancstra/db';
 import { queryPersonsForCsvExport } from '../../lib/persons/query-export';
 import type { PersonsFilters } from '../../lib/persons/search-params';
 
@@ -19,7 +20,27 @@ function createTestDb(): any {
     CREATE TABLE sources (id TEXT PRIMARY KEY, title TEXT NOT NULL, author TEXT, publisher TEXT, publication_date TEXT, repository_name TEXT, repository_url TEXT, source_type TEXT, notes TEXT, created_by TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, version INTEGER NOT NULL DEFAULT 1);
     CREATE TABLE source_citations (id TEXT PRIMARY KEY, source_id TEXT NOT NULL, citation_detail TEXT, citation_text TEXT, confidence TEXT NOT NULL DEFAULT 'medium', person_id TEXT, event_id TEXT, family_id TEXT, person_name_id TEXT, created_at TEXT NOT NULL, version INTEGER NOT NULL DEFAULT 1);
     CREATE TABLE proposed_relationships (id TEXT PRIMARY KEY, relationship_type TEXT NOT NULL, person1_id TEXT NOT NULL, person2_id TEXT NOT NULL, source_type TEXT NOT NULL, source_detail TEXT, confidence REAL, status TEXT NOT NULL DEFAULT 'pending', validated_by TEXT, validated_at TEXT, rejection_reason TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, version INTEGER NOT NULL DEFAULT 1);
-    CREATE TABLE person_summary (person_id TEXT PRIMARY KEY, given_name TEXT, surname TEXT, sex TEXT, is_living INTEGER, birth_date TEXT, death_date TEXT);
+    CREATE TABLE person_summary (
+      person_id TEXT PRIMARY KEY,
+      given_name TEXT NOT NULL DEFAULT '', surname TEXT NOT NULL DEFAULT '',
+      sex TEXT NOT NULL, is_living INTEGER NOT NULL,
+      birth_date TEXT, death_date TEXT,
+      birth_date_sort INTEGER, death_date_sort INTEGER,
+      birth_place TEXT, death_place TEXT,
+      spouse_count INTEGER NOT NULL DEFAULT 0,
+      child_count INTEGER NOT NULL DEFAULT 0,
+      parent_count INTEGER NOT NULL DEFAULT 0,
+      has_name INTEGER NOT NULL DEFAULT 0,
+      has_birth_event INTEGER NOT NULL DEFAULT 0,
+      has_birth_place INTEGER NOT NULL DEFAULT 0,
+      has_death_event INTEGER NOT NULL DEFAULT 0,
+      has_source INTEGER NOT NULL DEFAULT 0,
+      sources_count INTEGER NOT NULL DEFAULT 0,
+      completeness INTEGER NOT NULL DEFAULT 0,
+      validation TEXT NOT NULL DEFAULT 'confirmed',
+      updated_at_sort TEXT,
+      updated_at TEXT NOT NULL
+    );
   `);
   return drizzle(sqlite, { schema }) as any;
 }
@@ -48,6 +69,11 @@ function srcCit(citId: string, personId: string) {
   db.run(sql`INSERT INTO sources (id, title, created_at, updated_at) VALUES (${sId}, 'src', ${NOW}, ${NOW})`);
   db.run(sql`INSERT INTO source_citations (id, source_id, person_id, confidence, created_at) VALUES (${citId}, ${sId}, ${personId}, 'medium', ${NOW})`);
 }
+// queryPersonsForCsvExport reads from person_summary, so materialize first.
+async function csvExport(filters: PersonsFilters, excludeIds: readonly string[] = [], explicitIds?: readonly string[]) {
+  await rebuildAllSummaries(db);
+  return queryPersonsForCsvExport(db, filters, excludeIds, explicitIds);
+}
 beforeEach(() => { db = createTestDb(); });
 
 describe('queryPersonsForCsvExport', () => {
@@ -57,7 +83,7 @@ describe('queryPersonsForCsvExport', () => {
     ev('e-b', 'p1', 'birth', { dateOriginal: '1990', dateSort: 19900101, placeText: 'Berlin' });
     srcCit('c1', 'p1');
 
-    const rows = await queryPersonsForCsvExport(db, baseFilters);
+    const rows = await csvExport(baseFilters);
     expect(rows).toHaveLength(1);
     expect(rows[0].id).toBe('p1');
     expect(rows[0].completeness).toBe(100); // 85 raw / 85 max
@@ -67,7 +93,7 @@ describe('queryPersonsForCsvExport', () => {
     p('p1', { isLiving: 1 });
     n('p1', 'Lonely', 'Person');
 
-    const rows = await queryPersonsForCsvExport(db, baseFilters);
+    const rows = await csvExport(baseFilters);
     expect(rows[0].completeness).toBe(24); // round(20*100/85)
   });
 
@@ -78,7 +104,7 @@ describe('queryPersonsForCsvExport', () => {
     ev('e-d', 'p1', 'death', { dateSort: 19500101 });
     srcCit('c1', 'p1');
 
-    const rows = await queryPersonsForCsvExport(db, baseFilters);
+    const rows = await csvExport(baseFilters);
     expect(rows[0].completeness).toBe(100);
   });
 
@@ -89,7 +115,7 @@ describe('queryPersonsForCsvExport', () => {
     ev('e-d', 'p1', 'death', { dateSort: 18800101 });
     srcCit('c1', 'p1');
 
-    const rows = await queryPersonsForCsvExport(db, baseFilters);
+    const rows = await csvExport(baseFilters);
     expect(rows[0].completeness).toBe(100);
   });
 
@@ -101,7 +127,7 @@ describe('queryPersonsForCsvExport', () => {
     ev('e-b', 'p-high', 'birth', { dateSort: 19900101, placeText: 'Berlin' });
     srcCit('c-high', 'p-high');
 
-    const rows = await queryPersonsForCsvExport(db, { ...baseFilters, complGte: 50 });
+    const rows = await csvExport({ ...baseFilters, complGte: 50 });
     expect(rows.map((r) => r.id)).toEqual(['p-high']);
   });
 
@@ -110,7 +136,7 @@ describe('queryPersonsForCsvExport', () => {
     p('p2'); n('p2', 'B', 'B');
     p('p3'); n('p3', 'C', 'C');
 
-    const rows = await queryPersonsForCsvExport(db, baseFilters, ['p2']);
+    const rows = await csvExport(baseFilters, ['p2']);
     expect(rows.map((r) => r.id).sort()).toEqual(['p1', 'p3']);
   });
 
@@ -119,7 +145,7 @@ describe('queryPersonsForCsvExport', () => {
     p('p2'); n('p2', 'Alice', 'Brown');
     p('p3'); n('p3', 'Carol', 'Adams');
 
-    const rows = await queryPersonsForCsvExport(db, baseFilters);
+    const rows = await csvExport(baseFilters);
     // Adams < Brown; within Brown, Alice < Bob.
     expect(rows.map((r) => r.id)).toEqual(['p3', 'p2', 'p1']);
   });

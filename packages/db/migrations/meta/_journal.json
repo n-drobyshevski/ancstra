@@ -57,6 +57,13 @@
       "when": 1777236647317,
       "tag": "0007_smooth_sasquatch",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1777368928090,
+      "tag": "0008_cute_surge",
+      "breakpoints": true
     }
   ]
 }
