@@ -230,17 +230,51 @@ describe('quality-queries', () => {
 
     it('includes correct missing fields', async () => {
       const result = await getPriorities(db as any, 1, 20);
-      // person-minimal: missing birthDate, birthPlace, deathDate, source
+      // person-minimal: living, missing birthDate, birthPlace, source.
+      // deathDate is N/A for living persons under the renormalized model.
       const minimal = result.persons.find((p) => p.id === 'person-minimal')!;
       expect(minimal.missingFields).toContain('birthDate');
       expect(minimal.missingFields).toContain('birthPlace');
-      expect(minimal.missingFields).toContain('deathDate');
+      expect(minimal.missingFields).not.toContain('deathDate');
       expect(minimal.missingFields).toContain('source');
       expect(minimal.missingFields).not.toContain('name');
 
-      // person-complete: no missing fields
+      // person-complete: deceased, all 5 dimensions filled — no missing fields
       const complete = result.persons.find((p) => p.id === 'person-complete')!;
       expect(complete.missingFields).toEqual([]);
+    });
+
+    it('flags missing deathDate only for deceased persons without a death event', async () => {
+      // Seed a deceased person with name + birth + place + source but no death event.
+      // The seed runs INSIDE this test so we don't perturb the global seedData fixtures.
+      sqlite.prepare(
+        `INSERT INTO persons (id, sex, is_living, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
+      ).run('person-deceased-no-death', 'M', 0, '2025-01-01T00:00:00Z', '2025-01-01T00:00:00Z');
+      sqlite.prepare(
+        `INSERT INTO person_names (id, person_id, given_name, surname, is_primary) VALUES (?, ?, ?, ?, ?)`,
+      ).run('name-d-nd', 'person-deceased-no-death', 'Henry', 'Doe', 1);
+      sqlite.prepare(
+        `INSERT INTO events (id, event_type, date_original, place_text, person_id) VALUES (?, ?, ?, ?, ?)`,
+      ).run('evt-d-nd-birth', 'birth', '1 Jan 1900', 'Boston', 'person-deceased-no-death');
+      sqlite.prepare(
+        `INSERT INTO sources (id, title) VALUES (?, ?)`,
+      ).run('src-d-nd', 'Census');
+      sqlite.prepare(
+        `INSERT INTO source_citations (id, source_id, person_id) VALUES (?, ?, ?)`,
+      ).run('cite-d-nd', 'src-d-nd', 'person-deceased-no-death');
+
+      const result = await getPriorities(db as any, 1, 20);
+      const dnd = result.persons.find((p) => p.id === 'person-deceased-no-death')!;
+      expect(dnd).toBeDefined();
+      // Deceased + has 4 of 5 dimensions (no death event) → raw 5-term sum, no renormalization → 85.
+      expect(dnd.score).toBe(85);
+      // Death IS missing for this person because they're deceased and lack a death event.
+      expect(dnd.missingFields).toContain('deathDate');
+      // Other applicable dimensions are present.
+      expect(dnd.missingFields).not.toContain('name');
+      expect(dnd.missingFields).not.toContain('birthDate');
+      expect(dnd.missingFields).not.toContain('birthPlace');
+      expect(dnd.missingFields).not.toContain('source');
     });
 
     it('returns correct givenName and surname', async () => {

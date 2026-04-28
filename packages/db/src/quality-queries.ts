@@ -167,7 +167,7 @@ export async function getPriorities(
       CASE WHEN pf.has_name = 0 THEN 1 ELSE 0 END AS missing_name,
       CASE WHEN pf.has_birth_event = 0 THEN 1 ELSE 0 END AS missing_birth,
       CASE WHEN pf.has_birth_place = 0 THEN 1 ELSE 0 END AS missing_birth_place,
-      CASE WHEN pf.has_death_event = 0 THEN 1 ELSE 0 END AS missing_death,
+      CASE WHEN pf.has_death_event = 0 AND p.is_living = 0 THEN 1 ELSE 0 END AS missing_death,
       CASE WHEN pf.has_source = 0 THEN 1 ELSE 0 END AS missing_source
     FROM persons p
     LEFT JOIN person_names pn ON pn.person_id = p.id AND pn.is_primary = 1
