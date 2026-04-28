@@ -193,7 +193,8 @@ function PersonFormInner({ person }: PersonFormProps) {
     relation === 'father' ? 'father' :
     relation === 'mother' ? 'mother' :
     relation === 'spouse' ? 'spouse' :
-    relation === 'child' ? 'child' : relation;
+    relation === 'child' ? 'child' :
+    relation === 'sibling' ? 'sibling' : relation;
 
   return (
     <>

@@ -1,9 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Network } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import { Network, UserPlus } from 'lucide-react';
 import type { PersonListItem, TreeData } from '@ancstra/shared';
 import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+} from '@/components/ui/dropdown-menu';
 import {
   usePersonDetail,
   DetailHeaderCompact,
@@ -14,6 +24,17 @@ import {
   DetailSources,
 } from './detail-sections';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PersonCreateDialog } from '@/components/person-create-dialog';
+import { PersonLinkDialog, type RelationType } from '@/components/person-link-dialog';
+import { personDetailCache } from '@/lib/tree/person-detail-cache';
+
+const ADD_RELATION_GROUPS: Array<{ relation: RelationType; label: string }> = [
+  { relation: 'spouse', label: 'Spouse' },
+  { relation: 'father', label: 'Father' },
+  { relation: 'mother', label: 'Mother' },
+  { relation: 'child', label: 'Child' },
+  { relation: 'sibling', label: 'Sibling' },
+];
 
 /* -------------------------------------------------------------------------- */
 /*  Props                                                                      */
@@ -44,8 +65,22 @@ function SheetContent({
   onFocusNode: (personId: string) => void;
   onSeeOnTree: (personId: string) => void;
 }) {
+  const router = useRouter();
   const { person: fullPerson, events, citationCount, isLoading } = usePersonDetail(person.id);
   const isFullSnap = snap === 0.85;
+  const [dialog, setDialog] = useState<{
+    kind: 'create' | 'link';
+    relation: RelationType;
+  } | null>(null);
+
+  const personSex = (fullPerson?.sex ?? person.sex) as 'M' | 'F' | 'U';
+  const fullName = `${person.givenName} ${person.surname}`;
+
+  const handleAfterMutation = useCallback(() => {
+    personDetailCache.invalidate(person.id);
+    router.refresh();
+    setDialog(null);
+  }, [person.id, router]);
 
   return (
     <>
@@ -68,11 +103,38 @@ function SheetContent({
               {fullPerson.sex === 'M' ? 'Male' : fullPerson.sex === 'F' ? 'Female' : 'Unknown'}
             </span>
           )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                aria-label="Add a relation to this person"
+                className="ml-auto inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium text-foreground hover:bg-muted active:bg-muted"
+              >
+                <UserPlus className="size-3" aria-hidden />
+                Add
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {ADD_RELATION_GROUPS.map(({ relation, label }) => (
+                <DropdownMenuSub key={relation}>
+                  <DropdownMenuSubTrigger>Add {label}</DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                    <DropdownMenuItem onSelect={() => setDialog({ kind: 'link', relation })}>
+                      Link existing
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => setDialog({ kind: 'create', relation })}>
+                      + New
+                    </DropdownMenuItem>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
           <button
             type="button"
             onClick={() => onSeeOnTree(person.id)}
             aria-label={`View ${person.givenName} ${person.surname} on tree`}
-            className="ml-auto inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium text-foreground hover:bg-muted active:bg-muted"
+            className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium text-foreground hover:bg-muted active:bg-muted"
           >
             <Network className="size-3" aria-hidden />
             Tree
@@ -109,6 +171,31 @@ function SheetContent({
           </>
         )}
       </div>
+
+      {dialog?.kind === 'create' && (
+        <PersonCreateDialog
+          open
+          onOpenChange={(open) => { if (!open) setDialog(null); }}
+          personId={person.id}
+          personName={fullName}
+          personSex={personSex}
+          relationType={dialog.relation}
+          onCreated={handleAfterMutation}
+          successAction={{ label: 'Switch to person', onClick: (newId) => onSeeOnTree(newId) }}
+        />
+      )}
+      {dialog?.kind === 'link' && (
+        <PersonLinkDialog
+          open
+          onOpenChange={(open) => { if (!open) setDialog(null); }}
+          personId={person.id}
+          personName={fullName}
+          personSex={personSex}
+          relationType={dialog.relation}
+          onLinked={handleAfterMutation}
+          successAction={{ label: 'Switch to person', onClick: (linkedId) => onSeeOnTree(linkedId) }}
+        />
+      )}
     </>
   );
 }

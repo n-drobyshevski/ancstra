@@ -28,6 +28,9 @@ import { TreeToolbar } from './tree-toolbar';
 import { TreeContextMenu } from './tree-context-menu';
 import { DraftPersonNode } from './draft-person-node';
 import { DraftFactsheetNode } from './draft-factsheet-node';
+import { PersonCreateDialog } from '@/components/person-create-dialog';
+import { PersonLinkDialog, type RelationType } from '@/components/person-link-dialog';
+import { personDetailCache } from '@/lib/tree/person-detail-cache';
 import {
   treeDataToFlow,
   applyDagreLayout,
@@ -82,9 +85,11 @@ interface TreeCanvasProps {
     onExportSvg: () => void;
     onExportPdf: () => void;
   }) => React.ReactNode;
+  /** Imperative focus callback — used by the context menu's "Switch to person" toast action. */
+  onFocusPerson?: (personId: string) => void;
 }
 
-function TreeCanvasInner({ treeData, defaultLayout, focusPersonId, focusKey, paletteOpen, onTogglePalette, onSelectPerson, view, onSetView, isMobile, isDetailOpen, filterState: externalFilterState, onFilterStateChange, showGaps: externalShowGaps, onShowGapsChange, mobileToolbarSlot }: TreeCanvasProps) {
+function TreeCanvasInner({ treeData, defaultLayout, focusPersonId, focusKey, paletteOpen, onTogglePalette, onSelectPerson, view, onSetView, isMobile, isDetailOpen, filterState: externalFilterState, onFilterStateChange, showGaps: externalShowGaps, onShowGapsChange, mobileToolbarSlot, onFocusPerson }: TreeCanvasProps) {
   const { fitView, screenToFlowPosition, getNodes } = useReactFlow();
   const router = useRouter();
   const connectionLock = useConnectionLock<'spouse' | 'parentChild'>({
@@ -139,6 +144,15 @@ function TreeCanvasInner({ treeData, defaultLayout, focusPersonId, focusKey, pal
     edgeType?: string;
     edgeFamilyId?: string;
     edgeChildId?: string;
+  } | null>(null);
+
+  // Add-relation dialog state — hoisted to canvas so it survives the context
+  // menu unmounting. Driven by the menu's onAddRelation callback (or in the
+  // future, by the detail panel / mobile sheet too).
+  const [relationDialog, setRelationDialog] = useState<{
+    kind: 'create' | 'link';
+    relation: RelationType;
+    target: { id: string; name: string; sex: 'M' | 'F' | 'U' };
   } | null>(null);
 
   // Layout management state
@@ -922,6 +936,50 @@ function TreeCanvasInner({ treeData, defaultLayout, focusPersonId, focusKey, pal
               const edge = edges.find(e => e.id === edgeId);
               if (edge) deleteRelationship(edge);
             }}
+            onAddRelation={(kind, relation, target) => {
+              setRelationDialog({ kind, relation, target });
+            }}
+          />
+        )}
+
+        {relationDialog?.kind === 'create' && (
+          <PersonCreateDialog
+            open
+            onOpenChange={(open) => { if (!open) setRelationDialog(null); }}
+            personId={relationDialog.target.id}
+            personName={relationDialog.target.name}
+            personSex={relationDialog.target.sex}
+            relationType={relationDialog.relation}
+            onCreated={() => {
+              personDetailCache.invalidate(relationDialog.target.id);
+              router.refresh();
+              setRelationDialog(null);
+            }}
+            successAction={
+              onFocusPerson
+                ? { label: 'Switch to person', onClick: (newId) => onFocusPerson(newId) }
+                : undefined
+            }
+          />
+        )}
+        {relationDialog?.kind === 'link' && (
+          <PersonLinkDialog
+            open
+            onOpenChange={(open) => { if (!open) setRelationDialog(null); }}
+            personId={relationDialog.target.id}
+            personName={relationDialog.target.name}
+            personSex={relationDialog.target.sex}
+            relationType={relationDialog.relation}
+            onLinked={() => {
+              personDetailCache.invalidate(relationDialog.target.id);
+              router.refresh();
+              setRelationDialog(null);
+            }}
+            successAction={
+              onFocusPerson
+                ? { label: 'Switch to person', onClick: (linkedId) => onFocusPerson(linkedId) }
+                : undefined
+            }
           />
         )}
       </div>

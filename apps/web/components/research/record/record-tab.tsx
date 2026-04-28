@@ -333,6 +333,38 @@ export function RecordTab({ person }: RecordTabProps) {
                 </div>
               }
             />
+
+            <Separator />
+
+            <FamilySection
+              icon={<Users className="size-4 text-muted-foreground" />}
+              label="Siblings"
+              people={person.siblings}
+              emptyText="No siblings recorded"
+              tagFn={(p) => p.sex === 'M' ? 'Brother' : p.sex === 'F' ? 'Sister' : null}
+              onPersonClick={setPreviewPersonId}
+              actions={
+                <div className="flex gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => openLinkDialog('sibling')}
+                  >
+                    <Link2 className="mr-1 size-3" />
+                    Link existing
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => openCreateDialog('sibling')}
+                  >
+                    + New
+                  </Button>
+                </div>
+              }
+            />
           </CardContent>
         </Card>
 

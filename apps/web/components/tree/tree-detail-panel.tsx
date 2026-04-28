@@ -2,22 +2,18 @@
 
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import type { Person, PersonListItem, TreeData } from '@ancstra/shared';
+import type { Event as PersonEvent, Person, PersonListItem, TreeData } from '@ancstra/shared';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
-  X, Pencil, Search, FileText, UserPlus, Network,
+  X, Pencil, Search, FileText, Network,
 } from 'lucide-react';
+import { PersonCreateDialog } from '@/components/person-create-dialog';
+import { PersonLinkDialog, type RelationType } from '@/components/person-link-dialog';
+import { EventCreateDialog } from '@/components/event-create-dialog';
 import {
   usePersonDetail,
   sexLabel,
@@ -166,7 +162,7 @@ function DetailActionStrip({
   const router = useRouter();
 
   return (
-    <div className="flex items-center gap-1 px-4 py-2 bg-muted/30 border-b">
+    <div className="flex flex-wrap items-center gap-1 px-4 py-2 bg-muted/30 border-b">
       <Button
         variant="ghost"
         size="sm"
@@ -203,28 +199,6 @@ function DetailActionStrip({
         <FileText className="size-3.5" />
         Full Page
       </Button>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" className="h-7 text-xs gap-1.5">
-            <UserPlus className="size-3.5" />
-            Add Relation
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem asChild>
-            <Link href={`/persons/new?relation=spouse&of=${personId}`}>Add Spouse</Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link href={`/persons/new?relation=father&of=${personId}`}>Add Father</Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link href={`/persons/new?relation=mother&of=${personId}`}>Add Mother</Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link href={`/persons/new?relation=child&of=${personId}`}>Add Child</Link>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
     </div>
   );
 }
@@ -265,10 +239,12 @@ function EditableField({
   if (isEmpty && editState.isEditMode) {
     return (
       <button
-        className="text-xs text-muted-foreground hover:text-foreground"
+        className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
         onClick={() => editState.startEdit(field, '')}
+        aria-label={`Add ${label ?? field}`}
       >
-        Not recorded +
+        <Pencil className="size-3" />
+        Add {label ? label.toLowerCase() : field}
       </button>
     );
   }
@@ -277,12 +253,23 @@ function EditableField({
 
   if (editState.isEditMode) {
     return (
-      <button
-        className="text-sm text-left hover:ring-1 hover:ring-border rounded px-1 -mx-1"
-        onClick={() => editState.startEdit(field, value)}
-      >
-        {value}
-      </button>
+      <span className="inline-flex items-center gap-1">
+        <button
+          className="text-sm text-left hover:ring-1 hover:ring-border rounded px-1 -mx-1"
+          onClick={() => editState.startEdit(field, value)}
+        >
+          {value}
+        </button>
+        <button
+          type="button"
+          onClick={() => editState.startEdit(field, value)}
+          className="rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+          title={`Edit ${label ?? field}`}
+          aria-label={`Edit ${label ?? field}`}
+        >
+          <Pencil className="size-3" />
+        </button>
+      </span>
     );
   }
 
@@ -442,8 +429,42 @@ interface TreeDetailPanelProps {
 }
 
 export function TreeDetailPanel({ person, treeData, onClose, onFocusNode, onSeeOnTree }: TreeDetailPanelProps) {
+  const router = useRouter();
   const { person: fullPerson, events, citationCount, isLoading, refresh } = usePersonDetail(person.id);
   const editState = useInlineEdit(person.id, refresh);
+  const [dialog, setDialog] = useState<{
+    kind: 'create' | 'link';
+    relation: RelationType;
+  } | null>(null);
+  // null = closed; { event: undefined } = create; { event: <ev> } = edit
+  const [eventDialog, setEventDialog] = useState<{ event?: PersonEvent } | null>(null);
+
+  const handleAddRelation = useCallback((kind: 'create' | 'link', relation: RelationType) => {
+    setDialog({ kind, relation });
+  }, []);
+
+  const fullName = `${person.givenName} ${person.surname}`;
+  const personSex = (fullPerson?.sex ?? person.sex) as 'M' | 'F' | 'U';
+
+  const handleAfterMutation = useCallback(() => {
+    personDetailCache.invalidate(person.id);
+    router.refresh();
+    setDialog(null);
+  }, [person.id, router]);
+
+  // Triggered by inline remove buttons in DetailFamily / DetailTimeline.
+  const handleAfterRemoval = useCallback(() => {
+    personDetailCache.invalidate(person.id);
+    refresh();
+    router.refresh();
+  }, [person.id, refresh, router]);
+
+  const handleAfterEvent = useCallback(() => {
+    personDetailCache.invalidate(person.id);
+    refresh();
+    router.refresh();
+    setEventDialog(null);
+  }, [person.id, refresh, router]);
 
   return (
     <div className="w-[400px] shrink-0 border-l border-border bg-card overflow-y-auto">
@@ -455,10 +476,61 @@ export function TreeDetailPanel({ person, treeData, onClose, onFocusNode, onSeeO
         onSeeOnTree={onSeeOnTree}
       />
       <DetailVitalInfo fullPerson={fullPerson} isLoading={isLoading} editState={editState} />
-      <DetailFamily person={person} treeData={treeData} onFocusNode={onFocusNode} />
-      <DetailTimeline events={events} person={person} isLoading={isLoading} />
+      <DetailFamily
+        person={person}
+        treeData={treeData}
+        onFocusNode={onFocusNode}
+        editMode={editState.isEditMode}
+        onAddRelation={handleAddRelation}
+        onMutated={handleAfterRemoval}
+      />
+      <DetailTimeline
+        events={events}
+        person={person}
+        isLoading={isLoading}
+        editMode={editState.isEditMode}
+        onAddEvent={() => setEventDialog({})}
+        onEditEvent={(ev) => setEventDialog({ event: ev })}
+        onMutated={handleAfterRemoval}
+      />
       <DetailNotes notes={fullPerson?.notes} isLoading={isLoading} editState={editState} />
       <DetailSources personId={person.id} citationCount={citationCount} isLoading={isLoading} />
+
+      {dialog?.kind === 'create' && (
+        <PersonCreateDialog
+          open
+          onOpenChange={(open) => { if (!open) setDialog(null); }}
+          personId={person.id}
+          personName={fullName}
+          personSex={personSex}
+          relationType={dialog.relation}
+          onCreated={handleAfterMutation}
+          successAction={{ label: 'Switch to person', onClick: (newId) => onSeeOnTree(newId) }}
+        />
+      )}
+      {dialog?.kind === 'link' && (
+        <PersonLinkDialog
+          open
+          onOpenChange={(open) => { if (!open) setDialog(null); }}
+          personId={person.id}
+          personName={fullName}
+          personSex={personSex}
+          relationType={dialog.relation}
+          onLinked={handleAfterMutation}
+          successAction={{ label: 'Switch to person', onClick: (linkedId) => onSeeOnTree(linkedId) }}
+        />
+      )}
+
+      {eventDialog && (
+        <EventCreateDialog
+          open
+          onOpenChange={(open) => { if (!open) setEventDialog(null); }}
+          personId={person.id}
+          personName={fullName}
+          event={eventDialog.event}
+          onSaved={handleAfterEvent}
+        />
+      )}
     </div>
   );
 }

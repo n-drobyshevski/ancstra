@@ -37,7 +37,9 @@ interface PersonCreateDialogProps {
   personSex: 'M' | 'F' | 'U';
   /** What relation the new person will be to the current person */
   relationType: RelationType;
-  onCreated?: () => void;
+  onCreated?: (newPersonId: string) => void;
+  /** Optional toast action shown on success — e.g. "Switch to person" on the tree view. */
+  successAction?: { label: string; onClick: (newPersonId: string) => void };
 }
 
 const RELATION_LABELS: Record<RelationType, string> = {
@@ -45,6 +47,7 @@ const RELATION_LABELS: Record<RelationType, string> = {
   father: 'Father',
   mother: 'Mother',
   child: 'Child',
+  sibling: 'Sibling',
 };
 
 function getDefaultSex(relation: RelationType, personSex: 'M' | 'F' | 'U'): 'M' | 'F' | 'U' {
@@ -65,6 +68,7 @@ export function PersonCreateDialog({
   personSex,
   relationType,
   onCreated,
+  successAction,
 }: PersonCreateDialogProps) {
   const isMobile = useIsMobile();
   const givenNameRef = useRef<HTMLInputElement>(null);
@@ -169,18 +173,35 @@ export function PersonCreateDialog({
           toast.error('Person created but failed to link as child');
           return;
         }
+      } else if (relationType === 'sibling') {
+        const res = await fetch(`/api/persons/${personId}/siblings`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ siblingId: created.id }),
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          toast.error(data.error || 'Person created but failed to link as sibling');
+          return;
+        }
       }
 
       personDetailCache.invalidate(personId);
-      toast.success(`Created ${givenName} ${surname} as ${RELATION_LABELS[relationType].toLowerCase()}`);
+      const newId = created.id;
+      toast.success(
+        `Created ${givenName} ${surname} as ${RELATION_LABELS[relationType].toLowerCase()}`,
+        successAction
+          ? { action: { label: successAction.label, onClick: () => successAction.onClick(newId) } }
+          : undefined,
+      );
       onOpenChange(false);
-      onCreated?.();
+      onCreated?.(newId);
     } catch {
       toast.error('Network error');
     } finally {
       setSaving(false);
     }
-  }, [givenName, surname, sex, relationType, personId, personSex, onOpenChange, onCreated]);
+  }, [givenName, surname, sex, relationType, personId, personSex, onOpenChange, onCreated, successAction]);
 
   const label = RELATION_LABELS[relationType];
   const sexLocked = relationType === 'father' || relationType === 'mother';

@@ -22,13 +22,22 @@ function makeDetail(id: string): PersonDetail {
     surname: 'Test',
     sex: 'U',
     isLiving: true,
+    privacyLevel: 'private',
     birthDate: null,
     deathDate: null,
     birthPlace: null,
     deathPlace: null,
+    prefix: null,
+    suffix: null,
     notes: null,
+    createdAt: '2026-04-28T00:00:00Z',
+    updatedAt: '2026-04-28T00:00:00Z',
+    spouses: [],
+    parents: [],
+    children: [],
+    siblings: [],
     events: [],
-  } as PersonDetail;
+  };
 }
 
 beforeEach(() => {

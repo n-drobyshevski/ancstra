@@ -3,7 +3,7 @@
 import { createDb, persons, personNames, events, families, children } from '@ancstra/db';
 import { createPersonSchema } from '@/lib/validation';
 import { parseDateToSort } from '@ancstra/shared';
-import { findOrCreateFamilyForChild, findFamiliesAsPartner } from '@/lib/queries';
+import { findOrCreateFamilyForChild, findFamiliesAsPartner, addSibling } from '@/lib/queries';
 import { redirect } from 'next/navigation';
 import { updateTag } from 'next/cache';
 import { auth } from '@/auth';
@@ -120,6 +120,8 @@ export async function createRelatedPerson(formData: FormData) {
             })
             .run();
         }
+      } else if (relation === 'sibling') {
+        await addSibling(tx as unknown as Parameters<typeof addSibling>[0], ofPersonId, personId);
       }
     }
   });

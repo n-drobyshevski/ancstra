@@ -131,7 +131,7 @@ export interface UpdateEventInput {
 }
 
 export interface RelationContext {
-  relation: 'spouse' | 'father' | 'mother' | 'child';
+  relation: 'spouse' | 'father' | 'mother' | 'child' | 'sibling';
   ofPersonId: string;
 }
 
@@ -139,6 +139,7 @@ export interface PersonDetail extends Person {
   spouses: PersonListItem[];
   parents: PersonListItem[];
   children: PersonListItem[];
+  siblings: PersonListItem[];
   events: Event[];
 }
 

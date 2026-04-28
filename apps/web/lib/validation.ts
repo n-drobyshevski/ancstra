@@ -74,6 +74,10 @@ export const updateEventSchema = z.object({
 export const updateFamilySchema = z.object({
   relationshipType: z.enum(['married', 'civil_union', 'domestic_partner', 'unmarried', 'unknown']).optional(),
   validationStatus: z.enum(['confirmed', 'proposed', 'disputed']).optional(),
+  // Nullable: passing `null` explicitly clears the partner slot (used to remove
+  // a single father/mother from a family without destroying the co-parent).
+  partner1Id: z.string().nullable().optional(),
+  partner2Id: z.string().nullable().optional(),
 }).refine(
   (data) => Object.values(data).some((v) => v !== undefined),
   { message: 'At least one field must be provided' }

@@ -504,6 +504,7 @@ export function TreeLayout({ viewData, focusPersonId }: TreeLayoutProps) {
             onFilterStateChange={handleFilterStateChange}
             showGaps={showGaps}
             onShowGapsChange={setShowGaps}
+            onFocusPerson={handleFocusNode}
           />
         ) : (
           <>

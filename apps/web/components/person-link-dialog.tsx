@@ -43,7 +43,7 @@ import {
   CommandList,
 } from '@/components/ui/command';
 
-export type RelationType = 'spouse' | 'father' | 'mother' | 'child';
+export type RelationType = 'spouse' | 'father' | 'mother' | 'child' | 'sibling';
 
 interface PersonLinkDialogProps {
   open: boolean;
@@ -52,7 +52,9 @@ interface PersonLinkDialogProps {
   personName: string;
   personSex: 'M' | 'F' | 'U';
   relationType: RelationType;
-  onLinked?: () => void;
+  onLinked?: (linkedPersonId: string) => void;
+  /** Optional toast action shown on success — e.g. "Switch to person" on the tree view. */
+  successAction?: { label: string; onClick: (linkedPersonId: string) => void };
 }
 
 const RELATION_CONFIG: Record<
@@ -81,6 +83,11 @@ const RELATION_CONFIG: Record<
     label: 'Child',
     description: 'Link an existing person as child',
   },
+  sibling: {
+    icon: Users,
+    label: 'Sibling',
+    description: 'Link an existing person as sibling',
+  },
 };
 
 function getInitials(givenName: string, surname: string): string {
@@ -97,6 +104,7 @@ export function PersonLinkDialog({
   personSex,
   relationType,
   onLinked,
+  successAction,
 }: PersonLinkDialogProps) {
   const isMobile = useIsMobile();
   const router = useRouter();
@@ -211,25 +219,36 @@ export function PersonLinkDialog({
           toast.error('Failed to link child');
           return;
         }
+      } else if (relationType === 'sibling') {
+        const res = await fetch(`/api/persons/${personId}/siblings`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ siblingId: selected.id }),
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          toast.error(data.error || 'Failed to link sibling');
+          return;
+        }
       }
 
+      const linkedId = selected.id;
       toast.success(
         `Linked ${selected.givenName} ${selected.surname} as ${config.label.toLowerCase()}`,
+        successAction
+          ? { action: { label: successAction.label, onClick: () => successAction.onClick(linkedId) } }
+          : undefined,
       );
       onOpenChange(false);
-      onLinked?.();
+      onLinked?.(linkedId);
     } catch {
       toast.error('Network error');
     } finally {
       setLinking(false);
     }
-  }, [selected, relationType, personId, personSex, config.label, onOpenChange, onLinked]);
+  }, [selected, relationType, personId, personSex, config.label, onOpenChange, onLinked, successAction]);
 
-  const newPersonHref = relationType === 'father' || relationType === 'mother'
-    ? `/persons/new?relation=${relationType}&of=${personId}`
-    : relationType === 'child'
-      ? `/persons/new?relation=child&of=${personId}`
-      : `/persons/new?relation=spouse&of=${personId}`;
+  const newPersonHref = `/persons/new?relation=${relationType}&of=${personId}`;
 
   const content = (
     <div className="flex flex-col">

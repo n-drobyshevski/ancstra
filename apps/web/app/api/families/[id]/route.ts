@@ -123,8 +123,20 @@ export async function PUT(
     const updates: Record<string, unknown> = { updatedAt: now };
     if (data.relationshipType !== undefined) updates.relationshipType = data.relationshipType;
     if (data.validationStatus !== undefined) updates.validationStatus = data.validationStatus;
+    if (data.partner1Id !== undefined) updates.partner1Id = data.partner1Id;
+    if (data.partner2Id !== undefined) updates.partner2Id = data.partner2Id;
 
     await familyDb.update(families).set(updates).where(eq(families.id, id)).run();
+
+    // Refresh summaries for each affected person so denormalized counts catch up.
+    const affectedIds = new Set<string>();
+    if (existing.partner1Id) affectedIds.add(existing.partner1Id);
+    if (existing.partner2Id) affectedIds.add(existing.partner2Id);
+    if (data.partner1Id) affectedIds.add(data.partner1Id);
+    if (data.partner2Id) affectedIds.add(data.partner2Id);
+    for (const pid of affectedIds) {
+      await refreshSummary(familyDb, pid);
+    }
 
     const [updated] = await familyDb.select().from(families).where(eq(families.id, id)).all();
     revalidateTag('tree-data', 'max');

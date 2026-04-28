@@ -298,6 +298,52 @@ export async function findOrCreateFamilyForChild(
 }
 
 // ---------------------------------------------------------------------------
+// Exported: link two persons as siblings via a shared parent family
+//
+// If `personId` already has a parent family, `siblingId` is added as a child
+// to the first such family. Otherwise an "unknown-parents" family (both
+// partners null) is created and both persons are linked as children. Idempotent
+// on the (familyId, siblingId) child link.
+// ---------------------------------------------------------------------------
+export async function addSibling(
+  db: Database,
+  personId: string,
+  siblingId: string,
+): Promise<{ familyId: string; alreadyLinked: boolean }> {
+  const existingFamilyIds = await findFamiliesAsChild(db, personId);
+
+  let familyId: string;
+
+  if (existingFamilyIds.length > 0) {
+    familyId = existingFamilyIds[0];
+  } else {
+    familyId = crypto.randomUUID();
+    await db.insert(families)
+      .values({ id: familyId })
+      .run();
+    await db.insert(children)
+      .values({ familyId, personId })
+      .run();
+  }
+
+  const [existing] = await db
+    .select({ id: children.id })
+    .from(children)
+    .where(and(eq(children.familyId, familyId), eq(children.personId, siblingId)))
+    .all();
+
+  if (existing) {
+    return { familyId, alreadyLinked: true };
+  }
+
+  await db.insert(children)
+    .values({ familyId, personId: siblingId })
+    .run();
+
+  return { familyId, alreadyLinked: false };
+}
+
+// ---------------------------------------------------------------------------
 // Exported: assemble a full PersonDetail — the single source of truth
 // ---------------------------------------------------------------------------
 export async function assemblePersonDetail(
@@ -389,8 +435,24 @@ export async function assemblePersonDetail(
     }
   }
 
+  // 4b. Siblings: other children of any of person's parent families
+  const siblingIds: string[] = [];
+
+  if (childFamilyIds.length > 0) {
+    const siblingChildRows = await db
+      .select({ personId: children.personId })
+      .from(children)
+      .where(inArray(children.familyId, childFamilyIds))
+      .all();
+
+    for (const cr of siblingChildRows) {
+      if (cr.personId === personId) continue;
+      if (!siblingIds.includes(cr.personId)) siblingIds.push(cr.personId);
+    }
+  }
+
   // 5. ONE batch query to person_summary for all related persons
-  const allRelatedIds = [...new Set([...spouseIds, ...parentIds, ...childPersonIds])];
+  const allRelatedIds = [...new Set([...spouseIds, ...parentIds, ...childPersonIds, ...siblingIds])];
   const batchMap = await getPersonListItemsBatch(db, allRelatedIds);
 
   // 6. Distribute batch results into typed maps
@@ -410,6 +472,12 @@ export async function assemblePersonDetail(
   for (const cid of childPersonIds) {
     const item = batchMap.get(cid);
     if (item) childMap.set(cid, item);
+  }
+
+  const siblingMap = new Map<string, PersonListItem>();
+  for (const sid of siblingIds) {
+    const item = batchMap.get(sid);
+    if (item) siblingMap.set(sid, item);
   }
 
   // 7. All events for person, ordered by dateSort ASC NULLS LAST
@@ -443,6 +511,7 @@ export async function assemblePersonDetail(
     spouses: Array.from(spouseMap.values()),
     parents: Array.from(parentMap.values()),
     children: Array.from(childMap.values()),
+    siblings: Array.from(siblingMap.values()),
     events: personEvents,
   };
 }
