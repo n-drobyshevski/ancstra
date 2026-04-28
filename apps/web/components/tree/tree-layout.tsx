@@ -43,6 +43,7 @@ import type { TreePersonRow } from './tree-table-columns';
 import type { TreeTableRelationships } from '@/lib/persons/query-tree-table-rows';
 import type { TreeYearBounds } from '@/lib/persons/year-bounds';
 import type { DefaultTreeLayout } from '@/lib/cache/tree';
+import { personDetailCache } from '@/lib/tree/person-detail-cache';
 
 const DENSITY_STORAGE_KEY = 'tree-table-density';
 
@@ -115,6 +116,18 @@ export function TreeLayout({ viewData, focusPersonId }: TreeLayoutProps) {
   const [selectedPerson, setSelectedPerson] = useState<PersonListItem | null>(null);
   const [focusKey, setFocusKey] = useState(0);
   const [runtimeFocusId, setRuntimeFocusId] = useState<string | undefined>(undefined);
+
+  // Preload the URL-focused person so the panel opens instantly when the tree settles.
+  useEffect(() => {
+    if (focusPersonId) void personDetailCache.prefetch(focusPersonId);
+  }, [focusPersonId]);
+
+  // Revalidate cached entries when the tab regains focus — covers cross-tab edits.
+  useEffect(() => {
+    const onFocus = () => personDetailCache.invalidateAll();
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, []);
 
   // URL-driven shared filter state (sex, living, search, sort, dir, hide).
   const [isFilterPending, startFiltersTransition] = useTransition();
