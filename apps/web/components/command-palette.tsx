@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/command';
 import { Badge } from '@/components/ui/badge';
 import type { PersonListItem } from '@ancstra/shared';
+import { personDetailCache } from '@/lib/tree/person-detail-cache';
 
 const actions = [
   { label: 'Add New Person', href: '/persons/new', keywords: ['add', 'create', 'new', 'person'] },
@@ -120,6 +121,8 @@ export function CommandPalette() {
                 key={person.id}
                 value={`person-${person.id}`}
                 onSelect={() => handleSelect(`/persons/${person.id}`)}
+                onPointerEnter={() => { void personDetailCache.prefetch(person.id); }}
+                onFocus={() => { void personDetailCache.prefetch(person.id); }}
               >
                 <div className="flex items-center gap-2 w-full">
                   <span className="font-medium">
