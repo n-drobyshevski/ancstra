@@ -50,6 +50,7 @@ import type {
   TreeHidableColumn,
 } from '@/lib/tree/search-params';
 import type { TreeTableRelationships } from '@/lib/persons/query-tree-table-rows';
+import { personDetailCache } from '@/lib/tree/person-detail-cache';
 
 const TT_ROW_HEIGHT_PX: Record<TreeDensity, number> = {
   compact: 32,
@@ -327,6 +328,9 @@ export function TreeTable({
                                 'group/row cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-[-1px] motion-reduce:transition-none ' +
                                 (isSelected ? 'bg-muted/60' : '')
                               }
+                              onPointerEnter={() => { void personDetailCache.prefetch(p.id); }}
+                              onPointerDown={() => { void personDetailCache.prefetch(p.id); }}
+                              onFocus={() => { void personDetailCache.prefetch(p.id); }}
                               onClick={() => {
                                 setFocusedIndex(vRow.index);
                                 onSelectPerson(p.id);
@@ -516,6 +520,8 @@ function MobileTreeRow({
     <div
       role="button"
       tabIndex={0}
+      onPointerDown={() => { void personDetailCache.prefetch(person.id); }}
+      onFocus={() => { void personDetailCache.prefetch(person.id); }}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
       className={
