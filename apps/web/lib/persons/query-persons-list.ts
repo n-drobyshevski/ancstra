@@ -1,7 +1,10 @@
 import { sql } from 'drizzle-orm';
 import type { Database } from '@ancstra/db';
 import type { PersonListItem } from '@ancstra/shared';
-import { completenessScoreExpr } from '@ancstra/db/completeness-sql';
+import {
+  completenessFlagsCteBody,
+  completenessScoreExpr,
+} from '@ancstra/db/completeness-sql';
 import type { PersonsFilters } from './search-params';
 import { buildPersonsWhere } from './filters-to-where';
 import { searchPersonsFts } from '../queries';
@@ -55,18 +58,7 @@ export async function queryPersonsList(
     validation: 'confirmed' | 'proposed'; updated_at: string;
     total: number;
   }>(sql`
-    WITH person_flags AS (
-      SELECT
-        p.id,
-        CASE WHEN pn.given_name IS NOT NULL AND pn.given_name <> '' AND pn.surname IS NOT NULL AND pn.surname <> '' THEN 1 ELSE 0 END AS has_name,
-        CASE WHEN EXISTS (SELECT 1 FROM events e WHERE e.person_id = p.id AND e.event_type = 'birth') THEN 1 ELSE 0 END AS has_birth_event,
-        CASE WHEN EXISTS (SELECT 1 FROM events e WHERE e.person_id = p.id AND e.event_type = 'birth' AND e.place_text IS NOT NULL AND e.place_text <> '') THEN 1 ELSE 0 END AS has_birth_place,
-        CASE WHEN EXISTS (SELECT 1 FROM events e WHERE e.person_id = p.id AND e.event_type = 'death') THEN 1 ELSE 0 END AS has_death_event,
-        CASE WHEN EXISTS (SELECT 1 FROM source_citations sc WHERE sc.person_id = p.id) THEN 1 ELSE 0 END AS has_source
-      FROM persons p
-      INNER JOIN person_names pn ON pn.person_id = p.id AND pn.is_primary = 1
-      WHERE p.deleted_at IS NULL
-    ),
+    WITH person_flags AS (${completenessFlagsCteBody('p')}),
     person_facets AS (
       SELECT
         p.id, p.sex, p.is_living, p.updated_at,
