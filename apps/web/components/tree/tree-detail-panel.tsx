@@ -30,6 +30,7 @@ import {
   DetailTimeline,
   DetailSources,
 } from './detail-sections';
+import { personDetailCache } from '@/lib/tree/person-detail-cache';
 
 /* -------------------------------------------------------------------------- */
 /*  useInlineEdit                                                             */
@@ -75,6 +76,7 @@ function useInlineEdit(personId: string, onSaved: () => void) {
         body: JSON.stringify({ [state.editingField]: state.editValue }),
       });
       if (res.ok) {
+        personDetailCache.invalidate(personId);
         onSaved();
         setState((prev) => ({ ...prev, editingField: null, editValue: '', isSaving: false }));
       } else {
