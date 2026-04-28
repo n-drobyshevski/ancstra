@@ -48,13 +48,6 @@ function srcCit(citId: string, personId: string) {
   db.run(sql`INSERT INTO sources (id, title, created_at, updated_at) VALUES (${sId}, 'src', ${NOW}, ${NOW})`);
   db.run(sql`INSERT INTO source_citations (id, source_id, person_id, confidence, created_at) VALUES (${citId}, ${sId}, ${personId}, 'medium', ${NOW})`);
 }
-function fam(id: string, p1: string | null, p2: string | null, status: string = 'confirmed') {
-  db.run(sql`INSERT INTO families (id, partner1_id, partner2_id, relationship_type, validation_status, created_at, updated_at) VALUES (${id}, ${p1}, ${p2}, 'married', ${status}, ${NOW}, ${NOW})`);
-}
-function pr(id: string, p1: string, p2: string, status: string = 'pending') {
-  db.run(sql`INSERT INTO proposed_relationships (id, relationship_type, person1_id, person2_id, source_type, status, created_at, updated_at) VALUES (${id}, 'parent_child', ${p1}, ${p2}, 'ai_suggestion', ${status}, ${NOW}, ${NOW})`);
-}
-
 beforeEach(() => { db = createTestDb(); });
 
 describe('queryPersonsForCsvExport', () => {
