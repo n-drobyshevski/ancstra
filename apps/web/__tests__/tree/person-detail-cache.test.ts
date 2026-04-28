@@ -140,14 +140,73 @@ describe('personDetailCache', () => {
     mockAction.mockImplementation((id: string) =>
       Promise.resolve({ detail: makeDetail(id), citationCount: 0 }),
     );
+    const baseMs = new Date('2026-04-28T00:00:00Z').getTime();
     for (let i = 0; i < MAX_ENTRIES; i++) {
-      vi.setSystemTime(new Date(`2026-04-28T00:00:${String(i).padStart(2, '0')}Z`));
+      vi.setSystemTime(baseMs + i * 1000);
       await personDetailCache.prefetch(`p${i}`);
     }
     // Insert one more — should evict p0.
-    vi.setSystemTime(new Date('2026-04-28T01:00:00Z'));
+    vi.setSystemTime(baseMs + 3600 * 1000);
     await personDetailCache.prefetch('p999');
     expect(personDetailCache.read('p0')).toBeNull();
     expect(personDetailCache.read('p999')).not.toBeNull();
+  });
+
+  it('rejection clears the in-flight promise so the next prefetch retries (cold reject)', async () => {
+    mockAction.mockRejectedValueOnce(new Error('boom'));
+    await expect(personDetailCache.prefetch('a')).rejects.toThrow('boom');
+    // After rejection, no readable entry; retry should fire a fresh fetch.
+    expect(personDetailCache.read('a')).toBeNull();
+
+    mockAction.mockResolvedValueOnce({ detail: makeDetail('a'), citationCount: 0 });
+    await personDetailCache.prefetch('a');
+    expect(mockAction).toHaveBeenCalledTimes(2);
+    expect(personDetailCache.read('a')?.entry.data?.id).toBe('a');
+  });
+
+  it('rejection during revalidation preserves prior stale data', async () => {
+    // Seed with resolved data.
+    mockAction.mockResolvedValueOnce({ detail: makeDetail('a'), citationCount: 7 });
+    await personDetailCache.prefetch('a');
+
+    // Cross the stale window, then reject the revalidation.
+    vi.advanceTimersByTime(STALE_MS + 1);
+    mockAction.mockRejectedValueOnce(new Error('flaky'));
+    await expect(personDetailCache.prefetch('a')).rejects.toThrow('flaky');
+
+    // Stale data must still be readable; isStale stays true.
+    const read = personDetailCache.read('a');
+    expect(read).not.toBeNull();
+    expect(read!.entry.data?.id).toBe('a');
+    expect(read!.entry.citationCount).toBe(7);
+    expect(read!.isStale).toBe(true);
+  });
+
+  it('SWR: stale data is readable while a revalidation is in flight', async () => {
+    mockAction.mockResolvedValueOnce({ detail: makeDetail('a'), citationCount: 1 });
+    await personDetailCache.prefetch('a');
+
+    vi.advanceTimersByTime(STALE_MS + 1);
+
+    // Hold the revalidation open.
+    let resolveRevalidation!: (v: { detail: PersonDetail; citationCount: number }) => void;
+    mockAction.mockImplementationOnce(
+      () => new Promise((res) => { resolveRevalidation = res; }),
+    );
+    const inflight = personDetailCache.prefetch('a');
+
+    // While revalidation is pending, prior data is still readable and flagged stale.
+    const midRead = personDetailCache.read('a');
+    expect(midRead).not.toBeNull();
+    expect(midRead!.entry.data?.id).toBe('a');
+    expect(midRead!.entry.citationCount).toBe(1);
+    expect(midRead!.isStale).toBe(true);
+
+    // Settle the revalidation; new data swaps in.
+    resolveRevalidation({ detail: makeDetail('a'), citationCount: 9 });
+    await inflight;
+    const finalRead = personDetailCache.read('a');
+    expect(finalRead!.entry.citationCount).toBe(9);
+    expect(finalRead!.isStale).toBe(false);
   });
 });
