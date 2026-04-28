@@ -24,12 +24,13 @@ function notify(id: string) {
   for (const fn of set) fn();
 }
 
-function evictIfNeeded() {
-  if (store.size <= MAX_ENTRIES) return;
+function evictIfNeeded(skipId?: string) {
+  if (store.size < MAX_ENTRIES) return;
   // Drop the oldest resolved entry by ts. In-flight (no ts) entries are exempt.
   let oldestId: string | null = null;
   let oldestTs = Infinity;
   for (const [id, entry] of store) {
+    if (id === skipId) continue;
     if (entry.ts === undefined) continue;
     if (entry.ts < oldestTs) {
       oldestTs = entry.ts;
@@ -40,17 +41,32 @@ function evictIfNeeded() {
 }
 
 async function doFetch(id: string): Promise<PersonDetailEntry> {
-  const { detail, citationCount } = await fetchPersonDetailAction(id);
-  const resolved: PersonDetailEntry = {
-    data: detail ?? null,
-    citationCount,
-    ts: Date.now(),
-  };
-  // Replace in-flight entry with resolved data.
-  store.set(id, { ...resolved });
-  evictIfNeeded();
-  notify(id);
-  return resolved;
+  try {
+    const { detail, citationCount } = await fetchPersonDetailAction(id);
+    const resolved: PersonDetailEntry = {
+      data: detail ?? null,
+      citationCount,
+      ts: Date.now(),
+    };
+    // Evict before inserting so the map never transiently exceeds MAX_ENTRIES.
+    evictIfNeeded(id);
+    store.set(id, { ...resolved });
+    notify(id);
+    return resolved;
+  } catch (err) {
+    // Clear the in-flight promise so the next prefetch retries instead of
+    // re-returning the rejected promise forever.
+    const current = store.get(id);
+    if (current) {
+      const { promise: _ignored, ...rest } = current;
+      if (Object.keys(rest).length > 0) {
+        store.set(id, rest);
+      } else {
+        store.delete(id);
+      }
+    }
+    throw err;
+  }
 }
 
 export const personDetailCache = {
