@@ -16,6 +16,7 @@ import {
 import { toast } from 'sonner';
 import type { PersonListItem } from '@ancstra/shared';
 
+import { personDetailCache } from '@/lib/tree/person-detail-cache';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -360,6 +361,8 @@ export function PersonLinkDialog({
                     key={p.id}
                     value={p.id}
                     onSelect={() => setSelected(p)}
+                    onPointerEnter={() => { void personDetailCache.prefetch(p.id); }}
+                    onFocus={() => { void personDetailCache.prefetch(p.id); }}
                     className="flex items-center gap-3 py-2.5 px-2 cursor-pointer"
                   >
                     {/* Avatar */}
