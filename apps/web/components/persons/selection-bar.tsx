@@ -9,6 +9,7 @@ import { DeleteConfirmationDialog } from './delete-confirmation-dialog';
 import { ExportButton } from './export-button';
 import type { SelectionState } from './use-selection';
 import type { PersonsFilters } from '@/lib/persons/search-params';
+import { personDetailCache } from '@/lib/tree/person-detail-cache';
 
 const CONFIRM_THRESHOLD = 1000;
 
@@ -82,6 +83,12 @@ export function SelectionBar({ selection, total, filters, onClear }: SelectionBa
     }
 
     const data = await res.json();
+    if (selection.kind === 'ids') {
+      personDetailCache.invalidate(Array.from(selection.rowIds));
+    } else {
+      // Bulk-by-filter: we don't have the deleted ids, so mark all stale.
+      personDetailCache.invalidateAll();
+    }
     toast.success(`Deleted ${data.affected} ${data.affected === 1 ? 'person' : 'persons'}`);
     setDialogOpen(false);
     setServerConfirmedCount(null);

@@ -17,6 +17,7 @@ import { PlaceInput } from '@/components/place-input';
 import { toast } from 'sonner';
 import { createRelatedPerson } from '@/app/actions/create-related-person';
 import type { PersonDetail } from '@ancstra/shared';
+import { personDetailCache } from '@/lib/tree/person-detail-cache';
 
 /** Try to parse a flexible date string into a Date object for the calendar */
 function tryParseDate(value: string): Date | undefined {
@@ -132,6 +133,7 @@ function PersonFormInner({ person }: PersonFormProps) {
       return;
     }
 
+    personDetailCache.invalidate(person.id);
     toast.success('Changes saved');
     router.push(`/persons/${person.id}`);
   }

@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/drawer';
 
 import type { RelationType } from '@/components/person-link-dialog';
+import { personDetailCache } from '@/lib/tree/person-detail-cache';
 
 interface PersonCreateDialogProps {
   open: boolean;
@@ -170,6 +171,7 @@ export function PersonCreateDialog({
         }
       }
 
+      personDetailCache.invalidate(personId);
       toast.success(`Created ${givenName} ${surname} as ${RELATION_LABELS[relationType].toLowerCase()}`);
       onOpenChange(false);
       onCreated?.();

@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import type { PersonListItem } from '@ancstra/shared';
 import { toast } from 'sonner';
+import { personDetailCache } from '@/lib/tree/person-detail-cache';
 
 interface ContextMenuProps {
   x: number;
@@ -54,8 +55,10 @@ export function TreeContextMenu({ x, y, type, nodeId, edgeId, edgeType, edgeFami
         onClick: async () => {
           if (!confirm(`Delete ${person.givenName} ${person.surname}?`)) return;
           const res = await fetch(`/api/persons/${nodeId}`, { method: 'DELETE' });
-          if (res.ok) { toast.success('Person deleted'); router.refresh(); }
-          else toast.error('Failed to delete');
+          if (res.ok) {
+            if (nodeId) personDetailCache.invalidate(nodeId);
+            toast.success('Person deleted'); router.refresh();
+          } else toast.error('Failed to delete');
           onClose();
         },
       },
