@@ -6,7 +6,7 @@ import type { Person, Event as PersonEvent, PersonListItem, TreeData } from '@an
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BookOpen } from 'lucide-react';
-import { fetchPersonDetailAction } from '@/app/actions/person-detail';
+import { personDetailCache, type PersonDetailEntry } from '@/lib/tree/person-detail-cache';
 
 /* -------------------------------------------------------------------------- */
 /*  usePersonDetail                                                            */
@@ -19,28 +19,59 @@ export interface PersonDetailState {
   isLoading: boolean;
 }
 
+function entryToState(entry: PersonDetailEntry): PersonDetailState {
+  return {
+    person: entry.data,
+    events: entry.data?.events ?? [],
+    citationCount: entry.citationCount,
+    isLoading: false,
+  };
+}
+
 export function usePersonDetail(personId: string): PersonDetailState & { refresh: () => void } {
-  const [data, setData] = useState<PersonDetailState>({
-    person: null, events: [], citationCount: 0, isLoading: true,
+  const [data, setData] = useState<PersonDetailState>(() => {
+    const read = personDetailCache.read(personId);
+    return read
+      ? entryToState(read.entry)
+      : { person: null, events: [], citationCount: 0, isLoading: true };
   });
 
-  const fetchData = useCallback(async () => {
-    setData((prev) => ({ ...prev, isLoading: true }));
-    try {
-      const { detail, citationCount } = await fetchPersonDetailAction(personId);
-      setData({
-        person: detail ?? null,
-        events: detail?.events ?? [],
-        citationCount,
-        isLoading: false,
+  // Sync state when personId changes (covers panel re-use across selections).
+  useEffect(() => {
+    let cancelled = false;
+    const read = personDetailCache.read(personId);
+    if (read) {
+      setData(entryToState(read.entry));
+      if (read.isStale) {
+        // Background revalidation — subscribe handles the swap.
+        void personDetailCache.prefetch(personId);
+      }
+    } else {
+      setData({ person: null, events: [], citationCount: 0, isLoading: true });
+      personDetailCache.prefetch(personId).then((entry) => {
+        if (!cancelled) setData(entryToState(entry));
+      }).catch(() => {
+        if (!cancelled) setData((prev) => ({ ...prev, isLoading: false }));
       });
-    } catch {
-      setData((prev) => ({ ...prev, isLoading: false }));
     }
+
+    const unsubscribe = personDetailCache.subscribe(personId, () => {
+      const r = personDetailCache.read(personId);
+      if (r && !cancelled) setData(entryToState(r.entry));
+    });
+
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
   }, [personId]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
-  return { ...data, refresh: fetchData };
+  const refresh = useCallback(() => {
+    personDetailCache.invalidate(personId);
+    void personDetailCache.prefetch(personId).then((entry) => setData(entryToState(entry)));
+  }, [personId]);
+
+  return { ...data, refresh };
 }
 
 /* -------------------------------------------------------------------------- */
