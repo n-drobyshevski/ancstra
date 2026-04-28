@@ -1,6 +1,7 @@
 import { memo } from 'react';
 import { Handle, Position, useConnection, type Node, type NodeProps } from '@xyflow/react';
 import { cn } from '@/lib/utils';
+import { personDetailCache } from '@/lib/tree/person-detail-cache';
 import type { PersonNodeData } from './tree-utils';
 import {
   Tooltip,
@@ -172,11 +173,17 @@ function PersonNodeComponent({ id, data, selected }: NodeProps<PersonNodeType>) 
     selected ? ' ring-2 ring-primary shadow-md' : ''
   }${dimmed ? ' opacity-30 pointer-events-none' : ''}${showGaps ? ' overflow-hidden' : ''}`;
 
+  const prefetchHandlers = {
+    onPointerEnter: () => { void personDetailCache.prefetch(id); },
+    onPointerDown:  () => { void personDetailCache.prefetch(id); },
+    onFocus:        () => { void personDetailCache.prefetch(id); },
+  };
+
   return (
     <TooltipProvider delayDuration={300}>
       {handles}
       {isCompact ? (
-        <div className={`w-[120px] ${cardBase}`}>
+        <div className={`w-[120px] ${cardBase}`} tabIndex={-1} {...prefetchHandlers}>
           <div className="flex flex-col items-center gap-1 p-2">
             <div
               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold"
@@ -198,7 +205,7 @@ function PersonNodeComponent({ id, data, selected }: NodeProps<PersonNodeType>) 
           {showGaps && qualityBar}
         </div>
       ) : (
-        <div className={`w-[240px] ${cardBase}`}>
+        <div className={`w-[240px] ${cardBase}`} tabIndex={-1} {...prefetchHandlers}>
           <div className="flex items-center gap-2.5 p-2.5">
             <div
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[13px] font-semibold"
