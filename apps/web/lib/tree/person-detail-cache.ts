@@ -40,33 +40,45 @@ function evictIfNeeded(skipId?: string) {
   if (oldestId) store.delete(oldestId);
 }
 
-async function doFetch(id: string): Promise<PersonDetailEntry> {
-  try {
-    const { detail, citationCount } = await fetchPersonDetailAction(id);
-    const resolved: PersonDetailEntry = {
-      data: detail ?? null,
-      citationCount,
-      ts: Date.now(),
-    };
-    // Evict before inserting so the map never transiently exceeds MAX_ENTRIES.
-    evictIfNeeded(id);
-    store.set(id, { ...resolved });
-    notify(id);
-    return resolved;
-  } catch (err) {
-    // Clear the in-flight promise so the next prefetch retries instead of
-    // re-returning the rejected promise forever.
-    const current = store.get(id);
-    if (current) {
-      const { promise: _ignored, ...rest } = current;
-      if (Object.keys(rest).length > 0) {
-        store.set(id, rest);
-      } else {
-        store.delete(id);
+function doFetch(id: string): Promise<PersonDetailEntry> {
+  // myPromise serves as a race-detection token: when this fetch resolves,
+  // we only write to the store if our promise is still the entry's in-flight
+  // promise. If invalidate() or another prefetch() ran in the meantime, the
+  // entry's promise will be different (or the entry will be gone), and we
+  // skip the write so stale data can't clobber fresh data.
+  let myPromise!: Promise<PersonDetailEntry>;
+
+  const inner = async (): Promise<PersonDetailEntry> => {
+    try {
+      const { detail, citationCount } = await fetchPersonDetailAction(id);
+      const resolved: PersonDetailEntry = {
+        data: detail ?? null,
+        citationCount,
+        ts: Date.now(),
+      };
+      const current = store.get(id);
+      if (current?.promise === myPromise) {
+        evictIfNeeded(id);
+        store.set(id, { ...resolved });
+        notify(id);
       }
+      return resolved;
+    } catch (err) {
+      const current = store.get(id);
+      if (current?.promise === myPromise) {
+        const { promise: _ignored, ...rest } = current;
+        if (Object.keys(rest).length > 0) {
+          store.set(id, rest);
+        } else {
+          store.delete(id);
+        }
+      }
+      throw err;
     }
-    throw err;
-  }
+  };
+
+  myPromise = inner();
+  return myPromise;
 }
 
 export const personDetailCache = {
@@ -111,8 +123,11 @@ export const personDetailCache = {
   },
 
   invalidateAll(): void {
-    for (const entry of store.values()) {
-      if (entry.ts !== undefined) entry.ts = 0;
+    for (const [id, entry] of store) {
+      if (entry.ts !== undefined && entry.ts !== 0) {
+        entry.ts = 0;
+        notify(id);
+      }
     }
   },
 

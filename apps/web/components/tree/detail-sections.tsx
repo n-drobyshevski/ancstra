@@ -57,7 +57,13 @@ export function usePersonDetail(personId: string): PersonDetailState & { refresh
 
     const unsubscribe = personDetailCache.subscribe(personId, () => {
       const r = personDetailCache.read(personId);
-      if (r && !cancelled) setData(entryToState(r.entry));
+      if (!r || cancelled) return;
+      setData(entryToState(r.entry));
+      if (r.isStale) {
+        // Stale flag was set externally (e.g. window-focus invalidateAll);
+        // kick off a background revalidation. Resolution will re-notify with fresh data.
+        void personDetailCache.prefetch(personId);
+      }
     });
 
     return () => {

@@ -209,4 +209,41 @@ describe('personDetailCache', () => {
     expect(finalRead!.entry.citationCount).toBe(9);
     expect(finalRead!.isStale).toBe(false);
   });
+
+  it('invalidateAll notifies subscribers so open panels can revalidate', async () => {
+    mockAction.mockResolvedValue({ detail: makeDetail('a'), citationCount: 0 });
+    await personDetailCache.prefetch('a');
+
+    const listener = vi.fn();
+    personDetailCache.subscribe('a', listener);
+
+    personDetailCache.invalidateAll();
+    expect(listener).toHaveBeenCalledTimes(1);
+
+    // Calling again is a no-op (already stale).
+    personDetailCache.invalidateAll();
+    expect(listener).toHaveBeenCalledTimes(1);
+  });
+
+  it('invalidate during in-flight prefetch prevents stale data from clobbering fresh data', async () => {
+    let resolveStale!: (v: { detail: PersonDetail; citationCount: number }) => void;
+    mockAction.mockImplementationOnce(
+      () => new Promise((res) => { resolveStale = res; }),
+    );
+
+    // Start a prefetch that will be raced.
+    const stalePromise = personDetailCache.prefetch('a');
+
+    // Invalidate (e.g., user saved an edit) and start a fresh prefetch that resolves first.
+    personDetailCache.invalidate('a');
+    mockAction.mockResolvedValueOnce({ detail: makeDetail('a'), citationCount: 99 });
+    await personDetailCache.prefetch('a');
+    expect(personDetailCache.read('a')?.entry.citationCount).toBe(99);
+
+    // Now resolve the original (stale) promise — must NOT overwrite the fresh data.
+    resolveStale({ detail: makeDetail('a'), citationCount: 1 });
+    await stalePromise;
+
+    expect(personDetailCache.read('a')?.entry.citationCount).toBe(99);
+  });
 });
