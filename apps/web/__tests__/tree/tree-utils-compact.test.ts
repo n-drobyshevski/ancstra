@@ -4,7 +4,6 @@ import {
   NODE_HEIGHT,
   COMPACT_NODE_WIDTH,
   COMPACT_NODE_HEIGHT,
-  type NodeStyle,
   applyDagreLayout,
   parseLayoutData,
   serializeLayoutData,
@@ -80,17 +79,9 @@ describe('layout data serialization', () => {
     expect(result.nodeStyle).toBe('compact');
   });
 
-  it('serializes to new format with compact style', () => {
-    const positions = { p1: { x: 10, y: 20 } };
-    const json = serializeLayoutData(positions, 'compact');
-    const parsed = JSON.parse(json);
-    expect(parsed.positions).toEqual(positions);
-    expect(parsed.nodeStyle).toBe('compact');
-  });
-
-  it('omits nodeStyle when wide (default)', () => {
-    const positions = { p1: { x: 10, y: 20 } };
-    const json = serializeLayoutData(positions, 'wide');
+  it('serializes positions only — node-style preference lives outside the layout', () => {
+    const positions = { p1: { x: 10, y: 20 }, p2: { x: 30, y: 40 } };
+    const json = serializeLayoutData(positions);
     const parsed = JSON.parse(json);
     expect(parsed.positions).toEqual(positions);
     expect(parsed.nodeStyle).toBeUndefined();

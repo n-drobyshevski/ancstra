@@ -3,15 +3,14 @@
 import {
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
+  useMemo,
   type CSSProperties,
 } from 'react';
 import {
   flexRender,
   getCoreRowModel,
-  getSortedRowModel,
   useReactTable,
   type SortingState,
   type VisibilityState,
@@ -33,10 +32,8 @@ import {
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import type { TreeData, PersonListItem } from '@ancstra/shared';
-import type { FilterState } from './tree-utils';
+import type { PersonListItem } from '@ancstra/shared';
 import {
   treeTableColumns,
   getAriaSort,
@@ -45,13 +42,14 @@ import {
   type TreePersonRow,
 } from './tree-table-columns';
 import { sexTokens, getInitials } from './detail-sections';
-import { ShieldAlert, ShieldCheck, Sprout } from 'lucide-react';
+import { Network, ShieldAlert, ShieldCheck, Sprout } from 'lucide-react';
 import type {
   TreeDensity,
   TreeSortKey,
   TreeSortDir,
   TreeHidableColumn,
 } from '@/lib/tree/search-params';
+import type { TreeTableRelationships } from '@/lib/persons/query-tree-table-rows';
 
 const TT_ROW_HEIGHT_PX: Record<TreeDensity, number> = {
   compact: 32,
@@ -60,104 +58,51 @@ const TT_ROW_HEIGHT_PX: Record<TreeDensity, number> = {
 };
 
 interface TreeTableProps {
-  treeData: TreeData;
-  relationships: {
-    parents: Record<string, { id: string; name: string }[]>;
-    spouses: Record<string, { id: string; name: string }[]>;
-  };
+  rows: TreePersonRow[];
+  total: number;
+  relationships: TreeTableRelationships;
   onSelectPerson: (personId: string) => void;
   onSetTopologyAnchor?: (person: PersonListItem) => void;
-  filterState?: FilterState;
-  topologyVisibleIds?: Set<string> | null;
-  search?: string;
+  onSeeOnTree: (personId: string) => void;
   sort?: TreeSortKey;
   dir?: TreeSortDir;
   onSortChange?: (sort: TreeSortKey, dir: TreeSortDir) => void;
   density?: TreeDensity;
   hiddenColumns?: readonly TreeHidableColumn[];
   onClearFilters?: () => void;
-  topologyMode?: 'all' | 'ancestors' | 'descendants';
+  isFiltered?: boolean;
   selectedPersonId?: string | null;
-  isLoading?: boolean;
+  /** Called when the virtualizer scrolls near the end so the parent can fetch the next page. */
+  onLoadMore?: () => void;
+  hasMore?: boolean;
+  isAppending?: boolean;
 }
 
 export function TreeTable({
-  treeData,
+  rows,
+  total,
   relationships,
   onSelectPerson,
   onSetTopologyAnchor,
-  filterState,
-  topologyVisibleIds,
-  search = '',
+  onSeeOnTree,
   sort = 'name',
   dir = 'asc',
   onSortChange,
   density = 'comfortable',
   hiddenColumns,
   onClearFilters,
-  topologyMode = 'all',
+  isFiltered = false,
   selectedPersonId,
-  isLoading = false,
+  onLoadMore,
+  hasMore = false,
+  isAppending = false,
 }: TreeTableProps) {
-  // Pre-compute child count map once per treeData (eliminates O(n²) sort).
-  const childCountMap = useMemo(() => {
-    const map = new Map<string, number>();
-    const familyToParents = new Map<string, string[]>();
-    for (const f of treeData.families) {
-      const parents: string[] = [];
-      if (f.partner1Id) parents.push(f.partner1Id);
-      if (f.partner2Id) parents.push(f.partner2Id);
-      familyToParents.set(f.id, parents);
-    }
-    for (const cl of treeData.childLinks) {
-      const parents = familyToParents.get(cl.familyId) ?? [];
-      for (const pid of parents) {
-        map.set(pid, (map.get(pid) ?? 0) + 1);
-      }
-    }
-    return map;
-  }, [treeData.families, treeData.childLinks]);
-
-  // Enrich + filter rows.
-  const rows = useMemo<TreePersonRow[]>(() => {
-    let result: PersonListItem[] = treeData.persons;
-
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      result = result.filter(
-        (p) =>
-          p.givenName.toLowerCase().includes(q) ||
-          p.surname.toLowerCase().includes(q),
-      );
-    }
-
-    if (filterState) {
-      result = result.filter((p) => {
-        const sexVisible = filterState.sex[p.sex as 'M' | 'F' | 'U'] ?? true;
-        const livingVisible = p.isLiving
-          ? filterState.living.living
-          : filterState.living.deceased;
-        return sexVisible && livingVisible;
-      });
-    }
-
-    if (topologyVisibleIds) {
-      result = result.filter((p) => topologyVisibleIds.has(p.id));
-    }
-
-    return result.map((p) => ({
-      ...p,
-      childCount: childCountMap.get(p.id) ?? 0,
-    }));
-  }, [treeData.persons, search, filterState, topologyVisibleIds, childCountMap]);
-
-  // Sorting state synced with parent props.
+  // Sorting state mirrors URL props; sort happens server-side.
   const sorting: SortingState = useMemo(() => {
     const id = TREE_SORT_KEY_TO_COLUMN_ID[sort] ?? 'name';
     return [{ id, desc: dir === 'desc' }];
   }, [sort, dir]);
 
-  // Column visibility from URL `hide` param.
   const columnVisibility: VisibilityState = useMemo(() => {
     const v: VisibilityState = {};
     if (hiddenColumns) {
@@ -178,9 +123,9 @@ export function TreeTable({
     columns: treeTableColumns,
     state: { sorting, columnVisibility },
     enableMultiSort: false,
+    manualSorting: true,
     getRowId: (row) => row.id,
     getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
     onSortingChange: (updater) => {
       const next = typeof updater === 'function' ? updater(sorting) : updater;
       const first = next[0];
@@ -196,30 +141,20 @@ export function TreeTable({
       onSelectPerson,
       onSelectRelative: handleSelectRelative,
       onSetTopologyAnchor,
+      onSeeOnTree,
       selectedPersonId,
-      isAnchorMode: topologyMode !== 'all',
+      isAnchorMode: false,
       relationships,
     },
   });
 
-  const sortedRows = table.getRowModel().rows;
-  const totalCount = treeData.persons.length;
-  const filteredCount = sortedRows.length;
-  const isFiltered =
-    !!search ||
-    !!topologyVisibleIds ||
-    (filterState
-      ? !filterState.sex.M ||
-        !filterState.sex.F ||
-        !filterState.sex.U ||
-        !filterState.living.living ||
-        !filterState.living.deceased
-      : false);
+  const tableRows = table.getRowModel().rows;
+  const filteredCount = rows.length;
 
   // Virtualization (desktop).
   const desktopScrollRef = useRef<HTMLDivElement>(null);
   const desktopVirtualizer = useVirtualizer({
-    count: sortedRows.length,
+    count: tableRows.length,
     getScrollElement: () => desktopScrollRef.current,
     estimateSize: () => TT_ROW_HEIGHT_PX[density],
     overscan: 8,
@@ -228,35 +163,73 @@ export function TreeTable({
   // Virtualization (mobile).
   const mobileScrollRef = useRef<HTMLDivElement>(null);
   const mobileVirtualizer = useVirtualizer({
-    count: sortedRows.length,
+    count: tableRows.length,
     getScrollElement: () => mobileScrollRef.current,
     estimateSize: () => 64,
     overscan: 6,
   });
 
-  // Reset scroll on filter changes.
+  // Reset scroll on sort change (filter changes are handled by the parent
+  // resetting the rows array, which changes count and naturally resets).
   useEffect(() => {
     desktopVirtualizer.scrollToIndex(0);
     mobileVirtualizer.scrollToIndex(0);
-  }, [topologyVisibleIds, search, filterState, desktopVirtualizer, mobileVirtualizer]);
+  }, [sort, dir, desktopVirtualizer, mobileVirtualizer]);
 
   // Re-measure when density changes.
   useEffect(() => {
     desktopVirtualizer.measure();
   }, [density, desktopVirtualizer]);
 
+  // Infinite-scroll trigger — fire onLoadMore as the user nears the end of
+  // the current rows. We only trigger when there is more to load and we
+  // aren't already appending.
+  useEffect(() => {
+    if (!onLoadMore || !hasMore || isAppending) return;
+    const items = desktopVirtualizer.getVirtualItems();
+    if (items.length === 0) return;
+    const lastVisible = items[items.length - 1].index;
+    if (lastVisible >= tableRows.length - 10) {
+      onLoadMore();
+    }
+  }, [
+    desktopVirtualizer,
+    desktopVirtualizer.getVirtualItems(),
+    hasMore,
+    isAppending,
+    onLoadMore,
+    tableRows.length,
+  ]);
+
+  useEffect(() => {
+    if (!onLoadMore || !hasMore || isAppending) return;
+    const items = mobileVirtualizer.getVirtualItems();
+    if (items.length === 0) return;
+    const lastVisible = items[items.length - 1].index;
+    if (lastVisible >= tableRows.length - 10) {
+      onLoadMore();
+    }
+  }, [
+    mobileVirtualizer,
+    mobileVirtualizer.getVirtualItems(),
+    hasMore,
+    isAppending,
+    onLoadMore,
+    tableRows.length,
+  ]);
+
   // Keyboard navigation.
   const [focusedIndex, setFocusedIndex] = useState(0);
   useEffect(() => {
     setFocusedIndex(0);
-  }, [sortedRows.length, sort, dir]);
+  }, [tableRows.length, sort, dir]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTableSectionElement>) => {
-      if (sortedRows.length === 0) return;
+      if (tableRows.length === 0) return;
       if (e.key === 'ArrowDown') {
         e.preventDefault();
-        const next = Math.min(focusedIndex + 1, sortedRows.length - 1);
+        const next = Math.min(focusedIndex + 1, tableRows.length - 1);
         setFocusedIndex(next);
         desktopVirtualizer.scrollToIndex(next, { align: 'auto' });
       } else if (e.key === 'ArrowUp') {
@@ -266,31 +239,19 @@ export function TreeTable({
         desktopVirtualizer.scrollToIndex(next, { align: 'auto' });
       } else if (e.key === 'Enter') {
         e.preventDefault();
-        const row = sortedRows[focusedIndex];
+        const row = tableRows[focusedIndex];
         if (row) onSelectPerson(row.original.id);
       } else if ((e.metaKey || e.ctrlKey) && (e.key === 't' || e.key === 'T')) {
         e.preventDefault();
-        const row = sortedRows[focusedIndex];
+        const row = tableRows[focusedIndex];
         if (row) onSetTopologyAnchor?.(row.original);
       }
     },
-    [focusedIndex, sortedRows, onSelectPerson, onSetTopologyAnchor, desktopVirtualizer],
+    [focusedIndex, tableRows, onSelectPerson, onSetTopologyAnchor, desktopVirtualizer],
   );
 
-  // Empty / loading / no-results.
-  if (isLoading) {
-    return (
-      <div className="flex flex-col h-full" aria-busy="true">
-        <div className="flex-1 p-4 space-y-2">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <Skeleton key={i} className="h-10 w-full" />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  if (totalCount === 0) {
+  // Empty-tree state when there are zero rows AND no active filter.
+  if (total === 0 && !isFiltered) {
     return (
       <div className="flex h-full items-center justify-center p-8">
         <div className="text-center space-y-2">
@@ -308,123 +269,119 @@ export function TreeTable({
       <div className="flex flex-col h-full min-h-0 gap-3">
         {/* Desktop: card-wrapped virtualized TanStack table */}
         <div className="hidden md:flex md:flex-col flex-1 min-h-0 rounded-md border overflow-hidden">
-        <div
-          ref={desktopScrollRef}
-          data-density={density}
-          className="flex-1 overflow-auto relative"
-        >
-          <Table className="border-separate border-spacing-0 [&_th:first-child]:pl-4 [&_td:first-child]:pl-4 [&_th:last-child]:pr-4 [&_td:last-child]:pr-4">
-            <TableHeader className="sticky top-0 bg-background z-20 shadow-[0_1px_0_var(--border)]">
-              {table.getHeaderGroups().map((group) => (
-                <TableRow key={group.id} className="hover:bg-transparent">
-                  {group.headers.map((header) => (
-                    <TableHead
-                      key={header.id}
-                      style={{ width: header.getSize() }}
-                      aria-sort={getAriaSort(header.column.getIsSorted())}
-                    >
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(header.column.columnDef.header, header.getContext())}
-                    </TableHead>
-                  ))}
-                </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody onKeyDown={handleKeyDown}>
-              {sortedRows.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={treeTableColumns.length} className="h-32">
-                    <NoResults onClear={onClearFilters} hasFilters={isFiltered} />
-                  </TableCell>
-                </TableRow>
-              ) : (
-                <>
-                  {desktopVirtualizer.getVirtualItems().length > 0 && (
-                    <tr
-                      aria-hidden
-                      style={{ height: desktopVirtualizer.getVirtualItems()[0].start }}
-                    />
-                  )}
-                  {desktopVirtualizer.getVirtualItems().map((vRow) => {
-                    const row = sortedRows[vRow.index];
-                    if (!row) return null;
-                    const p = row.original;
-                    const isSelected = selectedPersonId === p.id;
-                    const isAnchor = isSelected && topologyMode !== 'all';
-                    return (
-                      <ContextMenu key={row.id}>
-                        <ContextMenuTrigger asChild>
-                          <TableRow
-                            ref={(el) => {
-                              if (el && vRow.index === focusedIndex) {
-                                el.focus({ preventScroll: true });
+          <div
+            ref={desktopScrollRef}
+            data-density={density}
+            className="flex-1 overflow-auto relative"
+          >
+            <Table className="border-separate border-spacing-0 [&_th:first-child]:pl-4 [&_td:first-child]:pl-4 [&_th:last-child]:pr-4 [&_td:last-child]:pr-4">
+              <TableHeader className="sticky top-0 bg-background z-20 shadow-[0_1px_0_var(--border)]">
+                {table.getHeaderGroups().map((group) => (
+                  <TableRow key={group.id} className="hover:bg-transparent">
+                    {group.headers.map((header) => (
+                      <TableHead
+                        key={header.id}
+                        style={{ width: header.getSize() }}
+                        aria-sort={getAriaSort(header.column.getIsSorted())}
+                      >
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(header.column.columnDef.header, header.getContext())}
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableHeader>
+              <TableBody onKeyDown={handleKeyDown}>
+                {tableRows.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={treeTableColumns.length} className="h-32">
+                      <NoResults onClear={onClearFilters} hasFilters={isFiltered} />
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  <>
+                    {desktopVirtualizer.getVirtualItems().length > 0 && (
+                      <tr
+                        aria-hidden
+                        style={{ height: desktopVirtualizer.getVirtualItems()[0].start }}
+                      />
+                    )}
+                    {desktopVirtualizer.getVirtualItems().map((vRow) => {
+                      const row = tableRows[vRow.index];
+                      if (!row) return null;
+                      const p = row.original;
+                      const isSelected = selectedPersonId === p.id;
+                      return (
+                        <ContextMenu key={row.id}>
+                          <ContextMenuTrigger asChild>
+                            <TableRow
+                              ref={(el) => {
+                                if (el && vRow.index === focusedIndex) {
+                                  el.focus({ preventScroll: true });
+                                }
+                              }}
+                              tabIndex={vRow.index === focusedIndex ? 0 : -1}
+                              data-state={isSelected ? 'selected' : undefined}
+                              className={
+                                'group/row cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-[-1px] motion-reduce:transition-none ' +
+                                (isSelected ? 'bg-muted/60' : '')
                               }
-                            }}
-                            tabIndex={vRow.index === focusedIndex ? 0 : -1}
-                            data-state={
-                              isAnchor ? 'anchor' : isSelected ? 'selected' : undefined
-                            }
-                            className={
-                              'cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-[-1px] motion-reduce:transition-none ' +
-                              (isAnchor
-                                ? 'bg-accent/40 outline outline-2 outline-primary outline-offset-[-1px]'
-                                : isSelected
-                                  ? 'bg-muted/60'
-                                  : '')
-                            }
-                            onClick={() => {
-                              setFocusedIndex(vRow.index);
-                              onSelectPerson(p.id);
-                            }}
-                            onDoubleClick={() => onSetTopologyAnchor?.(p)}
-                          >
-                            {row.getVisibleCells().map((cell) => (
-                              <TableCell
-                                key={cell.id}
-                                style={{ width: cell.column.getSize() } as CSSProperties}
-                              >
-                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                              </TableCell>
-                            ))}
-                          </TableRow>
-                        </ContextMenuTrigger>
-                        <ContextMenuContent>
-                          <ContextMenuItem onSelect={() => onSelectPerson(p.id)}>
-                            Open detail
-                          </ContextMenuItem>
-                          {onSetTopologyAnchor && (
-                            <ContextMenuItem onSelect={() => onSetTopologyAnchor(p)}>
-                              Set as topology anchor
+                              onClick={() => {
+                                setFocusedIndex(vRow.index);
+                                onSelectPerson(p.id);
+                              }}
+                              onDoubleClick={() => onSetTopologyAnchor?.(p)}
+                            >
+                              {row.getVisibleCells().map((cell) => (
+                                <TableCell
+                                  key={cell.id}
+                                  style={{ width: cell.column.getSize() } as CSSProperties}
+                                >
+                                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                </TableCell>
+                              ))}
+                            </TableRow>
+                          </ContextMenuTrigger>
+                          <ContextMenuContent>
+                            <ContextMenuItem onSelect={() => onSelectPerson(p.id)}>
+                              Open detail
                             </ContextMenuItem>
-                          )}
-                          <ContextMenuSeparator />
-                          <ContextMenuItem
-                            onSelect={() => {
-                              void navigator.clipboard?.writeText(`${p.givenName} ${p.surname}`);
-                            }}
-                          >
-                            Copy name
-                          </ContextMenuItem>
-                        </ContextMenuContent>
-                      </ContextMenu>
-                    );
-                  })}
-                  {desktopVirtualizer.getVirtualItems().length > 0 && (
-                    <tr
-                      aria-hidden
-                      style={{
-                        height:
-                          desktopVirtualizer.getTotalSize() -
-                          (desktopVirtualizer.getVirtualItems().at(-1)?.end ?? 0),
-                      }}
-                    />
-                  )}
-                </>
-              )}
-            </TableBody>
-          </Table>
-        </div>
+                            <ContextMenuItem onSelect={() => onSeeOnTree(p.id)}>
+                              <Network className="mr-2 size-4" /> View on tree
+                            </ContextMenuItem>
+                            {onSetTopologyAnchor && (
+                              <ContextMenuItem onSelect={() => onSetTopologyAnchor(p)}>
+                                Set as topology anchor
+                              </ContextMenuItem>
+                            )}
+                            <ContextMenuSeparator />
+                            <ContextMenuItem
+                              onSelect={() => {
+                                void navigator.clipboard?.writeText(`${p.givenName} ${p.surname}`);
+                              }}
+                            >
+                              Copy name
+                            </ContextMenuItem>
+                          </ContextMenuContent>
+                        </ContextMenu>
+                      );
+                    })}
+                    {desktopVirtualizer.getVirtualItems().length > 0 && (
+                      <tr
+                        aria-hidden
+                        style={{
+                          height:
+                            desktopVirtualizer.getTotalSize() -
+                            (desktopVirtualizer.getVirtualItems().at(-1)?.end ?? 0),
+                        }}
+                      />
+                    )}
+                  </>
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </div>
 
         {/* Mobile: card-wrapped virtualized cards */}
@@ -436,12 +393,12 @@ export function TreeTable({
             role="list"
             aria-label="People in your family tree"
           >
-            {sortedRows.length === 0 ? (
+            {tableRows.length === 0 ? (
               <NoResults onClear={onClearFilters} hasFilters={isFiltered} />
             ) : (
               <div style={{ height: mobileVirtualizer.getTotalSize(), position: 'relative' }}>
                 {mobileVirtualizer.getVirtualItems().map((vRow) => {
-                  const row = sortedRows[vRow.index];
+                  const row = tableRows[vRow.index];
                   if (!row) return null;
                   const p = row.original;
                   return (
@@ -459,11 +416,11 @@ export function TreeTable({
                       <MobileTreeRow
                         person={p}
                         isSelected={selectedPersonId === p.id}
-                        isAnchor={selectedPersonId === p.id && topologyMode !== 'all'}
                         onSelect={() => onSelectPerson(p.id)}
                         onSetAnchor={
                           onSetTopologyAnchor ? () => onSetTopologyAnchor(p) : undefined
                         }
+                        onSeeOnTree={() => onSeeOnTree(p.id)}
                       />
                     </div>
                   );
@@ -473,15 +430,16 @@ export function TreeTable({
           </div>
         </div>
 
-        {/* Footer status — matches persons-data-table */}
+        {/* Footer status */}
         <div
           className="flex items-center justify-between text-sm text-muted-foreground"
           role="status"
           aria-live="polite"
         >
           <span>
-            Showing {filteredCount.toLocaleString()} of {totalCount.toLocaleString()}{' '}
-            {totalCount === 1 ? 'person' : 'people'}
+            Showing {filteredCount.toLocaleString()} of {total.toLocaleString()}{' '}
+            {total === 1 ? 'person' : 'people'}
+            {isAppending ? ' • loading…' : ''}
           </span>
           {isFiltered && onClearFilters && (
             <Button variant="link" size="sm" className="h-6 px-2 text-xs" onClick={onClearFilters}>
@@ -522,12 +480,18 @@ function NoResults({
 interface MobileTreeRowProps {
   person: PersonListItem;
   isSelected: boolean;
-  isAnchor: boolean;
   onSelect: () => void;
   onSetAnchor?: () => void;
+  onSeeOnTree: () => void;
 }
 
-function MobileTreeRow({ person, isSelected, isAnchor, onSelect, onSetAnchor }: MobileTreeRowProps) {
+function MobileTreeRow({
+  person,
+  isSelected,
+  onSelect,
+  onSetAnchor,
+  onSeeOnTree,
+}: MobileTreeRowProps) {
   const tokens = sexTokens[person.sex];
   const lastTapRef = useRef<number>(0);
 
@@ -541,17 +505,22 @@ function MobileTreeRow({ person, isSelected, isAnchor, onSelect, onSetAnchor }: 
     lastTapRef.current = now;
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleClick();
+    }
+  };
+
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={handleClick}
+      onKeyDown={handleKeyDown}
       className={
-        'flex w-full items-center gap-3 px-4 py-3 text-left border-b border-border transition-colors active:bg-muted ' +
-        (isAnchor
-          ? 'bg-accent/40 outline outline-2 outline-primary outline-offset-[-1px]'
-          : isSelected
-            ? 'bg-muted/60'
-            : 'hover:bg-muted/50')
+        'flex w-full items-center gap-3 px-4 py-3 text-left border-b border-border transition-colors active:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-[-1px] cursor-pointer ' +
+        (isSelected ? 'bg-muted/60' : 'hover:bg-muted/50')
       }
       aria-label={`${person.givenName} ${person.surname}`}
       aria-current={isSelected ? 'true' : undefined}
@@ -580,7 +549,18 @@ function MobileTreeRow({ person, isSelected, isAnchor, onSelect, onSetAnchor }: 
           )}
         </div>
       </div>
-    </button>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onSeeOnTree();
+        }}
+        aria-label={`View ${person.givenName} ${person.surname} on tree`}
+        className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+      >
+        <Network className="size-4" aria-hidden />
+      </button>
+    </div>
   );
 }
 

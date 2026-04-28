@@ -47,12 +47,21 @@ import { toast } from 'sonner';
 import { useQualityData } from '@/lib/tree/use-quality-data';
 import { useConnectionLock } from '@/lib/graph/use-connection-lock';
 import { classifyApiError } from '@/lib/api/classify-error';
+import {
+  readNodeStylePreference,
+  writeNodeStylePreference,
+} from '@/lib/tree/node-style-storage';
+import type { DefaultTreeLayout } from '@/lib/cache/tree';
 
 const nodeTypes = { person: PersonNode, draftPerson: DraftPersonNode, draftFactsheet: DraftFactsheetNode };
 const edgeTypes = { partner: PartnerEdge, parentChild: ParentChildEdge };
 
 interface TreeCanvasProps {
   treeData: TreeData;
+  /** Server-preloaded default layout. When provided, the first render uses
+   *  its saved positions instead of fresh dagre — eliminates the post-mount
+   *  flash that would otherwise reorder all nodes ~300ms after mount. */
+  defaultLayout?: DefaultTreeLayout | null;
   focusPersonId?: string;
   focusKey?: number;
   paletteOpen: boolean;
@@ -75,7 +84,7 @@ interface TreeCanvasProps {
   }) => React.ReactNode;
 }
 
-function TreeCanvasInner({ treeData, focusPersonId, focusKey, paletteOpen, onTogglePalette, onSelectPerson, view, onSetView, isMobile, isDetailOpen, filterState: externalFilterState, onFilterStateChange, showGaps: externalShowGaps, onShowGapsChange, mobileToolbarSlot }: TreeCanvasProps) {
+function TreeCanvasInner({ treeData, defaultLayout, focusPersonId, focusKey, paletteOpen, onTogglePalette, onSelectPerson, view, onSetView, isMobile, isDetailOpen, filterState: externalFilterState, onFilterStateChange, showGaps: externalShowGaps, onShowGapsChange, mobileToolbarSlot }: TreeCanvasProps) {
   const { fitView, screenToFlowPosition, getNodes } = useReactFlow();
   const router = useRouter();
   const connectionLock = useConnectionLock<'spouse' | 'parentChild'>({
@@ -87,13 +96,36 @@ function TreeCanvasInner({ treeData, focusPersonId, focusKey, paletteOpen, onTog
     [treeData],
   );
 
-  const initStyle: NodeStyle = isMobile ? 'compact' : 'wide';
-  const initialNodes = useMemo(
-    () => applyDagreLayout(rawNodes, rawEdges, undefined, initStyle).map(
-      n => n.type === 'person' ? { ...n, data: { ...n.data, nodeStyle: initStyle } } : n
-    ),
-    [rawNodes, rawEdges, initStyle],
-  );
+  // Read the user's preferred node style from localStorage once at mount so
+  // the very first render reflects their choice. Mobile is always compact by
+  // design (touch targets / horizontal density). For users with no preference
+  // yet but a legacy nodeStyle on their server-preloaded layout, migrate it
+  // synchronously so the first paint matches subsequent loads.
+  const [initStyle] = useState<NodeStyle>(() => {
+    if (isMobile) return 'compact';
+    const stored = readNodeStylePreference();
+    if (stored) return stored;
+    if (defaultLayout) {
+      const { nodeStyle: legacyStyle } = parseLayoutData(defaultLayout.layoutData);
+      if (legacyStyle) {
+        writeNodeStylePreference(legacyStyle);
+        return legacyStyle;
+      }
+    }
+    return 'wide';
+  });
+  // First render: dagre auto-layout for sane defaults, then overlay any saved
+  // positions on top. Persons present in the tree but not in the saved layout
+  // (e.g. recently added) keep their dagre-computed positions instead of
+  // collapsing to (0,0).
+  const initialNodes = useMemo(() => {
+    const laid = applyDagreLayout(rawNodes, rawEdges, undefined, initStyle).map(
+      n => n.type === 'person' ? { ...n, data: { ...n.data, nodeStyle: initStyle } } : n,
+    );
+    if (!defaultLayout) return laid;
+    const { positions } = parseLayoutData(defaultLayout.layoutData);
+    return applyPositionMap(laid, positions);
+  }, [rawNodes, rawEdges, initStyle, defaultLayout]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(rawEdges);
@@ -123,7 +155,11 @@ function TreeCanvasInner({ treeData, focusPersonId, focusKey, paletteOpen, onTog
   const showGaps = externalShowGaps ?? internalShowGaps;
   const setShowGaps = onShowGapsChange ?? setInternalShowGaps;
   const [showMinimap, setShowMinimap] = useState(true);
-  const [nodeStyle, setNodeStyle] = useState<NodeStyle>('wide');
+  // nodeStyle preference is sourced from localStorage and seeded synchronously
+  // so the initial render matches the user's last choice.
+  const [nodeStyle, setNodeStyle] = useState<NodeStyle>(
+    () => readNodeStylePreference() ?? 'wide',
+  );
   const effectiveNodeStyle = isMobile ? 'compact' : nodeStyle;
   const { qualityData } = useQualityData(showGaps, treeData.persons);
   const [, startTransition] = useTransition();
@@ -170,27 +206,22 @@ function TreeCanvasInner({ treeData, focusPersonId, focusKey, paletteOpen, onTog
 
   const autoSaveRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  // Fetch layouts on mount and load default (or migrate localStorage)
+  // Fetch the layouts LIST for the dropdown menu. The default layout's
+  // positions are already applied via the server-preloaded `defaultLayout`
+  // prop (see `initialNodes`) so there is no async re-positioning here.
   useEffect(() => {
     fetch('/api/layouts')
       .then((r) => r.json())
       .then((data) => {
         const list = data.layouts ?? [];
         setLayouts(list);
-        const defaultLayout = list.find((l: { isDefault: boolean }) => l.isDefault);
         if (defaultLayout) {
-          fetch(`/api/layouts/${defaultLayout.id}`)
-            .then((r) => r.json())
-            .then((layout) => {
-              const { positions, nodeStyle: savedStyle } = parseLayoutData(layout.layoutData);
-              const style = isMobile ? 'compact' : (savedStyle ?? 'wide');
-              const positioned = applyPositionMap(rawNodes, positions);
-              setNodes(positioned.map(n => n.type === 'person' ? { ...n, data: { ...n.data, nodeStyle: style } } : n));
-              setActiveLayoutId(layout.id);
-              setActiveLayoutName(layout.name);
-              if (savedStyle) setNodeStyle(savedStyle);
-            });
-        } else if (typeof window !== 'undefined' && localStorage.getItem('ancstra-tree-layout')) {
+          setActiveLayoutId(defaultLayout.id);
+          setActiveLayoutName(defaultLayout.name);
+          return;
+        }
+        // No DB layout. Migrate any pre-API localStorage layout into the API.
+        if (typeof window !== 'undefined' && localStorage.getItem('ancstra-tree-layout')) {
           const stored = localStorage.getItem('ancstra-tree-layout');
           if (stored) {
             const { positions } = parseLayoutData(stored);
@@ -237,14 +268,14 @@ function TreeCanvasInner({ treeData, focusPersonId, focusKey, paletteOpen, onTog
             fetch(`/api/layouts/${activeLayoutId}`, {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ layoutData: serializeLayoutData(positions, effectiveNodeStyle) }),
+              body: JSON.stringify({ layoutData: serializeLayoutData(positions) }),
             });
             return currentNodes;
           });
         }, 2000);
       }
     },
-    [onNodesChange, setNodes, activeLayoutId, effectiveNodeStyle],
+    [onNodesChange, setNodes, activeLayoutId],
   );
 
   const onNodeClick = useCallback(
@@ -301,13 +332,39 @@ function TreeCanvasInner({ treeData, focusPersonId, focusKey, paletteOpen, onTog
 
   const handleAutoLayout = useCallback(() => {
     const laid = applyDagreLayout(rawNodes, rawEdges, showGaps ? 82 : undefined, effectiveNodeStyle);
-    setNodes(laid.map(n => n.type === 'person' ? { ...n, data: { ...n.data, nodeStyle: effectiveNodeStyle } } : n));
-    setActiveLayoutId(null);
-    setActiveLayoutName(null);
-  }, [rawNodes, rawEdges, setNodes, showGaps, effectiveNodeStyle]);
+    const newNodes = laid.map(n =>
+      n.type === 'person' ? { ...n, data: { ...n.data, nodeStyle: effectiveNodeStyle } } : n,
+    );
+    setNodes(newNodes);
+
+    // Persist immediately so the auto-layout survives navigation/reload.
+    // setNodes is queued — extract from `newNodes` directly, not from state.
+    const layoutData = serializeLayoutData(extractPositions(newNodes));
+
+    if (activeLayoutId) {
+      void fetch(`/api/layouts/${activeLayoutId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ layoutData }),
+      });
+    } else {
+      void fetch('/api/layouts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: 'Default', layoutData, isDefault: true }),
+      })
+        .then((r) => r.json())
+        .then((layout: { id: string }) => {
+          setActiveLayoutId(layout.id);
+          setActiveLayoutName('Default');
+          refreshLayouts();
+        });
+    }
+  }, [rawNodes, rawEdges, setNodes, showGaps, effectiveNodeStyle, activeLayoutId, refreshLayouts]);
 
   const handleNodeStyleChange = useCallback((style: NodeStyle) => {
     setNodeStyle(style);
+    writeNodeStylePreference(style);
     setNodes(nds => nds.map(n => n.type === 'person' ? { ...n, data: { ...n.data, nodeStyle: style } } : n));
     setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 50);
   }, [setNodes, fitView]);
@@ -317,16 +374,18 @@ function TreeCanvasInner({ treeData, focusPersonId, focusKey, paletteOpen, onTog
       fetch(`/api/layouts/${id}`)
         .then((r) => r.json())
         .then((layout) => {
-          const { positions, nodeStyle: savedStyle } = parseLayoutData(layout.layoutData);
-          const style = isMobile ? 'compact' : (savedStyle ?? 'wide');
+          const { positions } = parseLayoutData(layout.layoutData);
+          // Loading a saved layout applies its positions but does NOT change
+          // the user's node-style preference — style is a separate per-browser
+          // preference, not a property of the layout snapshot.
+          const style = isMobile ? 'compact' : nodeStyle;
           const positioned = applyPositionMap(rawNodes, positions);
           setNodes(positioned.map(n => n.type === 'person' ? { ...n, data: { ...n.data, nodeStyle: style } } : n));
           setActiveLayoutId(layout.id);
           setActiveLayoutName(layout.name);
-          setNodeStyle(savedStyle ?? 'wide');
         });
     },
-    [rawNodes, setNodes],
+    [rawNodes, setNodes, isMobile, nodeStyle],
   );
 
   const handleSaveAsNew = useCallback(() => {
@@ -337,7 +396,7 @@ function TreeCanvasInner({ treeData, focusPersonId, focusKey, paletteOpen, onTog
       fetch('/api/layouts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, layoutData: serializeLayoutData(positions, effectiveNodeStyle) }),
+        body: JSON.stringify({ name, layoutData: serializeLayoutData(positions) }),
       })
         .then((r) => r.json())
         .then((layout) => {
@@ -348,7 +407,7 @@ function TreeCanvasInner({ treeData, focusPersonId, focusKey, paletteOpen, onTog
         });
       return currentNodes;
     });
-  }, [setNodes, refreshLayouts, effectiveNodeStyle]);
+  }, [setNodes, refreshLayouts]);
 
   const handleUpdateLayout = useCallback(() => {
     if (!activeLayoutId) {
@@ -360,13 +419,13 @@ function TreeCanvasInner({ treeData, focusPersonId, focusKey, paletteOpen, onTog
       fetch(`/api/layouts/${activeLayoutId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ layoutData: serializeLayoutData(positions, effectiveNodeStyle) }),
+        body: JSON.stringify({ layoutData: serializeLayoutData(positions) }),
       }).then(() => {
         toast.success('Layout updated');
       });
       return currentNodes;
     });
-  }, [activeLayoutId, setNodes, effectiveNodeStyle]);
+  }, [activeLayoutId, setNodes]);
 
   const handleSetDefault = useCallback(() => {
     if (!activeLayoutId) return;

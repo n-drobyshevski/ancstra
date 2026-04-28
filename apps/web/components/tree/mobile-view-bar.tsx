@@ -15,8 +15,10 @@ import {
 import type { TopologyMode } from './topology-toggle';
 import { EllipsisVertical, BarChart3 } from 'lucide-react';
 import { TreeViewToggle } from './tree-view-toggle';
+import { TreeMobileFiltersDrawer } from './tree-mobile-filters-drawer';
 import type { FilterState } from './tree-utils';
 import type { TreeDensity } from '@/lib/tree/search-params';
+import type { TreeYearBounds } from '@/lib/persons/year-bounds';
 
 interface MobileViewBarProps {
   view: 'canvas' | 'table';
@@ -31,6 +33,8 @@ interface MobileViewBarProps {
   /** Density (table view only). */
   density?: TreeDensity;
   onDensityChange?: (next: TreeDensity) => void;
+  /** Year bounds for the year-range slider (table view only). */
+  yearBounds?: TreeYearBounds;
   /** Render prop for view-specific overflow items (auto layout, export, etc.) */
   extraMenuItems?: ReactNode;
 }
@@ -47,6 +51,7 @@ export function MobileViewBar({
   topologyReferenceName,
   density,
   onDensityChange,
+  yearBounds,
   extraMenuItems,
 }: MobileViewBarProps) {
   const hasActiveFilter =
@@ -63,6 +68,10 @@ export function MobileViewBar({
       <span className="flex-1 truncate text-sm font-semibold px-1">Family Tree</span>
 
       <TreeViewToggle view={view} onSetView={onSetView} />
+
+      {view === 'table' && yearBounds && (
+        <TreeMobileFiltersDrawer yearBounds={yearBounds} />
+      )}
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>

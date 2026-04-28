@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { treeLayouts } from '@ancstra/db';
 import { eq } from 'drizzle-orm';
 import { updateLayoutSchema } from '@/lib/validation';
@@ -73,6 +74,8 @@ export async function PUT(
       .where(eq(treeLayouts.id, id))
       .all();
 
+    revalidateTag('tree-layouts', 'max');
+
     return NextResponse.json(updated);
   } catch (error) {
     return handleAuthError(error);
@@ -101,6 +104,8 @@ export async function DELETE(
     await familyDb.delete(treeLayouts)
       .where(eq(treeLayouts.id, id))
       .run();
+
+    revalidateTag('tree-layouts', 'max');
 
     return NextResponse.json({ success: true });
   } catch (error) {

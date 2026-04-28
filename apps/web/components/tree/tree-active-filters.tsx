@@ -3,10 +3,7 @@
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import type { FilterState } from './tree-utils';
-import type { TopologyMode } from './topology-toggle';
-
-const SEX_LABELS = { M: 'Male', F: 'Female', U: 'Unknown' } as const;
+import { useTreeTableFilters, useTreeFilterUpdate } from './use-tree-table-filters';
 
 interface Chip {
   key: string;
@@ -14,65 +11,108 @@ interface Chip {
   remove: () => void;
 }
 
+const SEX_LABELS = { M: 'Male', F: 'Female', U: 'Unknown' } as const;
+const LIVING_LABELS = { living: 'Living', deceased: 'Deceased' } as const;
+const VALIDATION_LABELS = { confirmed: 'Confirmed', proposed: 'Proposed' } as const;
+const CITATIONS_LABELS = {
+  any: '',
+  none: 'No sources',
+  gte1: '≥ 1 source',
+  gte3: '≥ 3 sources',
+} as const;
+
 interface TreeActiveFiltersProps {
-  filterState: FilterState;
-  search: string;
-  topologyMode: TopologyMode;
+  /** Display name of the topology anchor for chip text. Looked up by parent. */
   topologyReferenceName: string | null;
-  onClearSearch: () => void;
-  onToggleFilter: (category: 'sex' | 'living', key: string) => void;
-  onClearTopology: () => void;
 }
 
-export function TreeActiveFilters({
-  filterState,
-  search,
-  topologyMode,
-  topologyReferenceName,
-  onClearSearch,
-  onToggleFilter,
-  onClearTopology,
-}: TreeActiveFiltersProps) {
+/**
+ * URL-driven chip strip for the tree-table view. Reads filters from nuqs and
+ * writes removals back via setFilters. Mirrors /persons ActiveFilters with the
+ * additional topology chip for the tree's anchor-based lineage filter.
+ */
+export function TreeActiveFilters({ topologyReferenceName }: TreeActiveFiltersProps) {
+  const { filters } = useTreeTableFilters();
+  const update = useTreeFilterUpdate();
+
   const chips: Chip[] = [];
 
-  if (search.trim()) {
+  if (filters.q.trim()) {
     chips.push({
       key: 'q',
-      label: `Search: "${search.trim()}"`,
-      remove: onClearSearch,
+      label: `Search: "${filters.q.trim()}"`,
+      remove: () => update({ q: '' }),
     });
   }
-
-  for (const k of ['M', 'F', 'U'] as const) {
-    if (!filterState.sex[k]) {
-      chips.push({
-        key: `sex-${k}`,
-        label: `Hide ${SEX_LABELS[k]}`,
-        remove: () => onToggleFilter('sex', k),
-      });
-    }
-  }
-
-  if (!filterState.living.living) {
+  if (filters.sex.length > 0 && filters.sex.length < 3) {
     chips.push({
-      key: 'no-living',
-      label: 'Hide living',
-      remove: () => onToggleFilter('living', 'living'),
+      key: 'sex',
+      label: `Sex: ${filters.sex.map((s) => SEX_LABELS[s]).join(', ')}`,
+      remove: () => update({ sex: [] }),
     });
   }
-  if (!filterState.living.deceased) {
+  if (filters.living.length === 1) {
     chips.push({
-      key: 'no-deceased',
-      label: 'Hide deceased',
-      remove: () => onToggleFilter('living', 'deceased'),
+      key: 'living',
+      label: `Living: ${LIVING_LABELS[filters.living[0]]}`,
+      remove: () => update({ living: [] }),
     });
   }
-
-  if (topologyMode !== 'all' && topologyReferenceName) {
+  if (filters.validation.length === 1) {
+    chips.push({
+      key: 'validation',
+      label: `Validation: ${VALIDATION_LABELS[filters.validation[0]]}`,
+      remove: () => update({ validation: [] }),
+    });
+  }
+  if (filters.bornFrom !== null || filters.bornTo !== null) {
+    chips.push({
+      key: 'born',
+      label: `Born: ${filters.bornFrom ?? '…'}–${filters.bornTo ?? '…'}`,
+      remove: () => update({ bornFrom: null, bornTo: null }),
+    });
+  }
+  if (filters.diedFrom !== null || filters.diedTo !== null) {
+    chips.push({
+      key: 'died',
+      label: `Died: ${filters.diedFrom ?? '…'}–${filters.diedTo ?? '…'}`,
+      remove: () => update({ diedFrom: null, diedTo: null }),
+    });
+  }
+  if (filters.place.trim()) {
+    const scopeLabel = filters.placeScope === 'birth' ? '(birth)' : '(any)';
+    chips.push({
+      key: 'place',
+      label: `Place: "${filters.place.trim()}" ${scopeLabel}`,
+      remove: () => update({ place: '', placeScope: 'birth' }),
+    });
+  }
+  if (filters.citations !== 'any') {
+    chips.push({
+      key: 'citations',
+      label: CITATIONS_LABELS[filters.citations],
+      remove: () => update({ citations: 'any' }),
+    });
+  }
+  if (filters.complGte !== null) {
+    chips.push({
+      key: 'compl',
+      label: `Completeness: ≥ ${filters.complGte}%`,
+      remove: () => update({ complGte: null }),
+    });
+  }
+  if (filters.hasProposals) {
+    chips.push({
+      key: 'proposals',
+      label: 'AI proposals open',
+      remove: () => update({ hasProposals: false }),
+    });
+  }
+  if (filters.topologyMode !== 'all' && topologyReferenceName) {
     chips.push({
       key: 'topology',
-      label: `${topologyMode === 'ancestors' ? 'Ancestors' : 'Descendants'} of ${topologyReferenceName}`,
-      remove: onClearTopology,
+      label: `${filters.topologyMode === 'ancestors' ? 'Ancestors' : 'Descendants'} of ${topologyReferenceName}`,
+      remove: () => update({ topologyMode: 'all', topologyAnchor: '' }),
     });
   }
 

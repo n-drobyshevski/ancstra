@@ -1,13 +1,12 @@
 'use client';
 
-import type { TreeData } from '@ancstra/shared';
-import { TreeLayout } from './tree-layout';
+import { TreeLayout, type TreeViewData } from './tree-layout';
 
 interface TreePageClientProps {
-  treeData: TreeData;
+  viewData: TreeViewData;
   focusPersonId?: string;
 }
 
-export function TreePageClient({ treeData, focusPersonId }: TreePageClientProps) {
-  return <TreeLayout treeData={treeData} focusPersonId={focusPersonId} />;
+export function TreePageClient({ viewData, focusPersonId }: TreePageClientProps) {
+  return <TreeLayout viewData={viewData} focusPersonId={focusPersonId} />;
 }

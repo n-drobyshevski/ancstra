@@ -16,7 +16,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
-  X, Pencil, Search, FileText, UserPlus,
+  X, Pencil, Search, FileText, UserPlus, Network,
 } from 'lucide-react';
 import {
   usePersonDetail,
@@ -154,16 +154,26 @@ function DetailHeader({
 /* -------------------------------------------------------------------------- */
 
 function DetailActionStrip({
-  personId, isEditMode, onToggleEdit,
+  personId, isEditMode, onToggleEdit, onSeeOnTree,
 }: {
   personId: string;
   isEditMode: boolean;
   onToggleEdit: () => void;
+  onSeeOnTree: (personId: string) => void;
 }) {
   const router = useRouter();
 
   return (
     <div className="flex items-center gap-1 px-4 py-2 bg-muted/30 border-b">
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-7 text-xs gap-1.5"
+        onClick={() => onSeeOnTree(personId)}
+      >
+        <Network className="size-3.5" />
+        View on tree
+      </Button>
       <Button
         variant="ghost"
         size="sm"
@@ -426,16 +436,22 @@ interface TreeDetailPanelProps {
   treeData: TreeData;
   onClose: () => void;
   onFocusNode: (personId: string) => void;
+  onSeeOnTree: (personId: string) => void;
 }
 
-export function TreeDetailPanel({ person, treeData, onClose, onFocusNode }: TreeDetailPanelProps) {
+export function TreeDetailPanel({ person, treeData, onClose, onFocusNode, onSeeOnTree }: TreeDetailPanelProps) {
   const { person: fullPerson, events, citationCount, isLoading, refresh } = usePersonDetail(person.id);
   const editState = useInlineEdit(person.id, refresh);
 
   return (
     <div className="w-[400px] shrink-0 border-l border-border bg-card overflow-y-auto">
       <DetailHeader person={person} fullPerson={fullPerson} isLoading={isLoading} onClose={onClose} />
-      <DetailActionStrip personId={person.id} isEditMode={editState.isEditMode} onToggleEdit={editState.toggleEdit} />
+      <DetailActionStrip
+        personId={person.id}
+        isEditMode={editState.isEditMode}
+        onToggleEdit={editState.toggleEdit}
+        onSeeOnTree={onSeeOnTree}
+      />
       <DetailVitalInfo fullPerson={fullPerson} isLoading={isLoading} editState={editState} />
       <DetailFamily person={person} treeData={treeData} onFocusNode={onFocusNode} />
       <DetailTimeline events={events} person={person} isLoading={isLoading} />

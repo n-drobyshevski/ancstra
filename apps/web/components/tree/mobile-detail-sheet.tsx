@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { Network } from 'lucide-react';
 import type { PersonListItem, TreeData } from '@ancstra/shared';
 import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer';
 import {
@@ -23,6 +24,7 @@ interface MobileDetailSheetProps {
   treeData: TreeData;
   onClose: () => void;
   onFocusNode: (personId: string) => void;
+  onSeeOnTree: (personId: string) => void;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -34,11 +36,13 @@ function SheetContent({
   treeData,
   snap,
   onFocusNode,
+  onSeeOnTree,
 }: {
   person: PersonListItem;
   treeData: TreeData;
   snap: number | string | null;
   onFocusNode: (personId: string) => void;
+  onSeeOnTree: (personId: string) => void;
 }) {
   const { person: fullPerson, events, citationCount, isLoading } = usePersonDetail(person.id);
   const isFullSnap = snap === 0.85;
@@ -57,14 +61,23 @@ function SheetContent({
           fullPerson={fullPerson}
           isLoading={isLoading}
         />
-        {/* Sex badge */}
-        {!isLoading && fullPerson && (
-          <div className="flex items-center gap-2 mt-1.5 ml-9">
+        <div className="flex items-center gap-2 mt-1.5 ml-9">
+          {/* Sex badge */}
+          {!isLoading && fullPerson && (
             <span className="inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
               {fullPerson.sex === 'M' ? 'Male' : fullPerson.sex === 'F' ? 'Female' : 'Unknown'}
             </span>
-          </div>
-        )}
+          )}
+          <button
+            type="button"
+            onClick={() => onSeeOnTree(person.id)}
+            aria-label={`View ${person.givenName} ${person.surname} on tree`}
+            className="ml-auto inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium text-foreground hover:bg-muted active:bg-muted"
+          >
+            <Network className="size-3" aria-hidden />
+            Tree
+          </button>
+        </div>
       </div>
 
       {/* Full content — scrollable, only accessible at 0.85 snap */}
@@ -109,6 +122,7 @@ export function MobileDetailSheet({
   treeData,
   onClose,
   onFocusNode,
+  onSeeOnTree,
 }: MobileDetailSheetProps) {
   const [snap, setSnap] = useState<number | string | null>(0.35);
 
@@ -156,6 +170,7 @@ export function MobileDetailSheet({
             treeData={treeData}
             snap={snap}
             onFocusNode={onFocusNode}
+            onSeeOnTree={onSeeOnTree}
           />
         )}
       </DrawerContent>

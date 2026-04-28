@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { treeLayouts } from '@ancstra/db';
 import { eq } from 'drizzle-orm';
 import { createLayoutSchema } from '@/lib/validation';
@@ -50,6 +51,8 @@ export async function POST(request: Request) {
       .from(treeLayouts)
       .where(eq(treeLayouts.id, id))
       .all();
+
+    revalidateTag('tree-layouts', 'max');
 
     return NextResponse.json(layout, { status: 201 });
   } catch (error) {

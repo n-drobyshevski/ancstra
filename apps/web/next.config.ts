@@ -27,6 +27,14 @@ const nextConfig: NextConfig = {
       revalidate: 1800,  // 30 min
       expire: 86400,     // 1 day
     },
+    // Tree-table — high-cardinality filter-driven cache (one entry per filter
+    // tuple). Fresher than `tree` because filter changes reset URL state and
+    // we want quick cache turnover when the user iterates on filters.
+    'tree-table': {
+      stale: 60,         // 1 min
+      revalidate: 600,   // 10 min
+      expire: 7200,      // 2 hours
+    },
     // Dashboard — shows recent activity, needs to be fresher
     dashboard: {
       stale: 60,         // 1 min

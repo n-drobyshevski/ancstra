@@ -1,16 +1,27 @@
 'use client';
 
-import { useState, useCallback, useEffect, useMemo, useTransition } from 'react';
+import {
+  useState,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useTransition,
+} from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { useQueryStates } from 'nuqs';
 import type { PersonListItem, TreeData } from '@ancstra/shared';
+// Note: buildRelationships is no longer needed — table view receives
+// server-precomputed relationships, and the canvas does not consume them.
 import { PersonPalette } from './person-palette';
 import { TreeDetailPanel } from './tree-detail-panel';
 import { MobileDetailSheet } from './mobile-detail-sheet';
 import { MobileViewBar } from './mobile-view-bar';
 import { TreeTableToolbar } from './tree-table-toolbar';
 import { TreeActiveFilters } from './tree-active-filters';
+import { TreeSidebarClient } from './tree-sidebar-client';
+import { useSeeOnTree } from './use-see-on-tree';
 import { useSidebar } from '@/components/ui/sidebar';
 import {
   DropdownMenuItem,
@@ -28,6 +39,10 @@ import {
   type TreeSortDir,
   type TreeHidableColumn,
 } from '@/lib/tree/search-params';
+import type { TreePersonRow } from './tree-table-columns';
+import type { TreeTableRelationships } from '@/lib/persons/query-tree-table-rows';
+import type { TreeYearBounds } from '@/lib/persons/year-bounds';
+import type { DefaultTreeLayout } from '@/lib/cache/tree';
 
 const DENSITY_STORAGE_KEY = 'tree-table-density';
 
@@ -61,46 +76,34 @@ const TreeCanvas = dynamic(
   { ssr: false },
 );
 
-const TreeTableWrapper = dynamic(
-  () => import('./tree-table-wrapper').then((m) => ({ default: m.TreeTableWrapper })),
+const TreeTable = dynamic(
+  () => import('./tree-table').then((m) => ({ default: m.TreeTable })),
   { ssr: false },
 );
 
-function buildRelationships(treeData: TreeData) {
-  const parents: Record<string, { id: string; name: string }[]> = {};
-  const spouses: Record<string, { id: string; name: string }[]> = {};
-  const nameMap = new Map(treeData.persons.map((p) => [p.id, `${p.givenName} ${p.surname}`]));
-
-  for (const child of treeData.childLinks) {
-    const family = treeData.families.find((f) => f.id === child.familyId);
-    if (!family) continue;
-    if (!parents[child.personId]) parents[child.personId] = [];
-    if (family.partner1Id && nameMap.has(family.partner1Id)) {
-      parents[child.personId].push({ id: family.partner1Id, name: nameMap.get(family.partner1Id)! });
+export type TreeViewData =
+  | {
+      kind: 'canvas';
+      treeData: TreeData;
+      /** Server-preloaded default layout — eliminates the post-mount position
+       *  flash. May be null if the user has no saved layouts yet. */
+      defaultLayout: DefaultTreeLayout | null;
     }
-    if (family.partner2Id && nameMap.has(family.partner2Id)) {
-      parents[child.personId].push({ id: family.partner2Id, name: nameMap.get(family.partner2Id)! });
-    }
-  }
-
-  for (const family of treeData.families) {
-    if (!family.partner1Id || !family.partner2Id) continue;
-    if (!nameMap.has(family.partner1Id) || !nameMap.has(family.partner2Id)) continue;
-    if (!spouses[family.partner1Id]) spouses[family.partner1Id] = [];
-    spouses[family.partner1Id].push({ id: family.partner2Id, name: nameMap.get(family.partner2Id)! });
-    if (!spouses[family.partner2Id]) spouses[family.partner2Id] = [];
-    spouses[family.partner2Id].push({ id: family.partner1Id, name: nameMap.get(family.partner1Id)! });
-  }
-
-  return { parents, spouses };
-}
+  | {
+      kind: 'table';
+      rows: TreePersonRow[];
+      total: number;
+      relationships: TreeTableRelationships;
+      hasMore: boolean;
+      yearBounds: TreeYearBounds;
+    };
 
 interface TreeLayoutProps {
-  treeData: TreeData;
+  viewData: TreeViewData;
   focusPersonId?: string;
 }
 
-export function TreeLayout({ treeData, focusPersonId }: TreeLayoutProps) {
+export function TreeLayout({ viewData, focusPersonId }: TreeLayoutProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -116,12 +119,13 @@ export function TreeLayout({ treeData, focusPersonId }: TreeLayoutProps) {
   // URL-driven shared filter state (sex, living, search, sort, dir, hide).
   const [isFilterPending, startFiltersTransition] = useTransition();
   const [filters, setFilters] = useQueryStates(treeTableParsers, {
-    shallow: true,
+    shallow: false, // server reads these to refetch the table page
     history: 'replace',
     startTransition: startFiltersTransition,
   });
 
-  // FilterState shape (used by canvas + table) derived from URL.
+  // FilterState shape (used by canvas) derived from URL. Table view filters
+  // server-side; this is only consumed by the canvas tinting/topology UI.
   const filterState = useMemo(
     () => deriveFilterState(filters.sex, filters.living),
     [filters.sex, filters.living],
@@ -146,25 +150,47 @@ export function TreeLayout({ treeData, focusPersonId }: TreeLayoutProps) {
   }, []);
 
   const [showGaps, setShowGaps] = useState(false);
-  const [topologyMode, setTopologyMode] = useState<'all' | 'ancestors' | 'descendants'>('all');
 
-  const topologyReferenceId = selectedPerson?.id ?? null;
+  // Topology lifted to URL (phase 2): the server uses the anchor + mode to
+  // restrict the table page via the closure table; the canvas reads the same
+  // params and computes locally for snappiness.
+  const topologyMode = filters.topologyMode;
+  const setTopologyMode = useCallback(
+    (mode: 'all' | 'ancestors' | 'descendants') => {
+      void setFilters({
+        topologyMode: mode,
+        topologyAnchor:
+          mode === 'all' ? '' : (filters.topologyAnchor || selectedPerson?.id || ''),
+        page: 1,
+      });
+    },
+    [setFilters, filters.topologyAnchor, selectedPerson],
+  );
+  const topologyReferenceId = filters.topologyAnchor || null;
 
+  // Topology only applies to canvas in phase 1 (table view is server-paginated
+  // and topology pushdown is phase 2). In table mode topologyVisibleIds is
+  // always null.
   const topologyVisibleIds = useMemo<Set<string> | null>(() => {
+    if (viewData.kind !== 'canvas') return null;
     if (topologyMode === 'all' || !topologyReferenceId) return null;
     const result =
       topologyMode === 'ancestors'
-        ? computeAncestors(topologyReferenceId, treeData)
-        : computeDescendants(topologyReferenceId, treeData);
+        ? computeAncestors(topologyReferenceId, viewData.treeData)
+        : computeDescendants(topologyReferenceId, viewData.treeData);
     result.add(topologyReferenceId);
     return result;
-  }, [topologyMode, topologyReferenceId, treeData]);
+  }, [topologyMode, topologyReferenceId, viewData]);
 
   const topologyReferenceName = useMemo(() => {
     if (!topologyReferenceId) return null;
-    const person = treeData.persons.find((p) => p.id === topologyReferenceId);
+    if (viewData.kind === 'canvas') {
+      const person = viewData.treeData.persons.find((p) => p.id === topologyReferenceId);
+      return person ? `${person.givenName} ${person.surname}` : null;
+    }
+    const person = viewData.rows.find((p) => p.id === topologyReferenceId);
     return person ? `${person.givenName} ${person.surname}` : null;
-  }, [topologyReferenceId, treeData]);
+  }, [topologyReferenceId, viewData]);
 
   const setView = useCallback(
     (v: 'canvas' | 'table') => {
@@ -174,6 +200,8 @@ export function TreeLayout({ treeData, focusPersonId }: TreeLayoutProps) {
     },
     [searchParams, router, pathname],
   );
+
+  const seeOnTree = useSeeOnTree();
 
   const handleToggleFilter = useCallback(
     (category: 'sex' | 'living', key: string) => {
@@ -185,7 +213,7 @@ export function TreeLayout({ treeData, focusPersonId }: TreeLayoutProps) {
         const nextVisible = isVisible
           ? baseVisible.filter((v) => v !== k)
           : [...baseVisible, k];
-        void setFilters({ sex: nextVisible.length === all.length ? [] : nextVisible });
+        void setFilters({ sex: nextVisible.length === all.length ? [] : nextVisible, page: 1 });
       } else {
         const all: TreeLivingValue[] = ['living', 'deceased'];
         const k = key as TreeLivingValue;
@@ -194,7 +222,7 @@ export function TreeLayout({ treeData, focusPersonId }: TreeLayoutProps) {
         const nextVisible = isVisible
           ? baseVisible.filter((v) => v !== k)
           : [...baseVisible, k];
-        void setFilters({ living: nextVisible.length === all.length ? [] : nextVisible });
+        void setFilters({ living: nextVisible.length === all.length ? [] : nextVisible, page: 1 });
       }
     },
     [filters.sex, filters.living, setFilters],
@@ -202,14 +230,14 @@ export function TreeLayout({ treeData, focusPersonId }: TreeLayoutProps) {
 
   const handleSearchChange = useCallback(
     (next: string) => {
-      void setFilters({ q: next });
+      void setFilters({ q: next, page: 1 });
     },
     [setFilters],
   );
 
   const handleSortChange = useCallback(
     (sort: TreeSortKey, dir: TreeSortDir) => {
-      void setFilters({ sort, dir });
+      void setFilters({ sort, dir, page: 1 });
     },
     [setFilters],
   );
@@ -222,17 +250,33 @@ export function TreeLayout({ treeData, focusPersonId }: TreeLayoutProps) {
   );
 
   const handleClearFilters = useCallback(() => {
-    void setFilters({ q: '', sex: [], living: [] });
-    setTopologyMode('all');
+    void setFilters({
+      q: '',
+      sex: [],
+      living: [],
+      topologyMode: 'all',
+      topologyAnchor: '',
+      validation: [],
+      bornFrom: null,
+      bornTo: null,
+      diedFrom: null,
+      diedTo: null,
+      place: '',
+      placeScope: 'birth',
+      citations: 'any',
+      hasProposals: false,
+      complGte: null,
+      page: 1,
+    });
   }, [setFilters]);
 
   const handleClearSearch = useCallback(() => {
-    void setFilters({ q: '' });
+    void setFilters({ q: '', page: 1 });
   }, [setFilters]);
 
   const handleClearTopology = useCallback(() => {
-    setTopologyMode('all');
-  }, []);
+    void setFilters({ topologyMode: 'all', topologyAnchor: '', page: 1 });
+  }, [setFilters]);
 
   const handleToggleGaps = useCallback(() => {
     setShowGaps((v) => !v);
@@ -246,10 +290,30 @@ export function TreeLayout({ treeData, focusPersonId }: TreeLayoutProps) {
     setSelectedPerson(person);
   }, []);
 
-  const handleSetTopologyAnchor = useCallback((person: PersonListItem) => {
-    setSelectedPerson(person);
-    setTopologyMode('ancestors');
-  }, []);
+  const handleSelectPersonById = useCallback(
+    (personId: string) => {
+      if (viewData.kind === 'canvas') {
+        const person = viewData.treeData.persons.find((p) => p.id === personId);
+        if (person) setSelectedPerson(person);
+      } else {
+        const person = viewData.rows.find((p) => p.id === personId);
+        if (person) setSelectedPerson(person);
+      }
+    },
+    [viewData],
+  );
+
+  const handleSetTopologyAnchor = useCallback(
+    (person: PersonListItem) => {
+      setSelectedPerson(person);
+      void setFilters({
+        topologyAnchor: person.id,
+        topologyMode: 'ancestors',
+        page: 1,
+      });
+    },
+    [setFilters],
+  );
 
   const handleFilterStateChange = useCallback(
     (next: FilterState) => {
@@ -263,6 +327,7 @@ export function TreeLayout({ treeData, focusPersonId }: TreeLayoutProps) {
       void setFilters({
         sex: sex.length === 3 ? [] : sex,
         living: living.length === 2 ? [] : living,
+        page: 1,
       });
     },
     [setFilters],
@@ -270,14 +335,29 @@ export function TreeLayout({ treeData, focusPersonId }: TreeLayoutProps) {
 
   const handleFocusNode = useCallback(
     (personId: string) => {
-      const person = treeData.persons.find((p) => p.id === personId);
+      if (viewData.kind !== 'canvas') return;
+      const person = viewData.treeData.persons.find((p) => p.id === personId);
       if (person) {
         setSelectedPerson(person);
         setRuntimeFocusId(personId);
-        setFocusKey(k => k + 1);
+        setFocusKey((k) => k + 1);
       }
     },
-    [treeData],
+    [viewData],
+  );
+
+  // "View on tree" dispatcher. On canvas → runtime in-place focus (no URL push).
+  // On table → URL push (server roundtrip). buildSeeOnTreeSearch clears the
+  // topology anchor so the focused person is guaranteed visible.
+  const handleSeeOnTree = useCallback(
+    (personId: string) => {
+      if (viewData.kind === 'canvas') {
+        handleFocusNode(personId);
+      } else {
+        seeOnTree(personId);
+      }
+    },
+    [viewData.kind, handleFocusNode, seeOnTree],
   );
 
   const clearSelection = useCallback(() => {
@@ -290,10 +370,105 @@ export function TreeLayout({ treeData, focusPersonId }: TreeLayoutProps) {
     }
   }, [sidebarOpen, sidebarMobile, setSidebarOpen]);
 
-  const relationships = useMemo(() => buildRelationships(treeData), [treeData]);
+  // ---------------------------------------------------------------------------
+  // Table-mode infinite scroll: accumulate pages keyed by id; reset whenever
+  // the URL filter signature changes (anything other than `page`).
+  // ---------------------------------------------------------------------------
+  const filterSignature = useMemo(() => {
+    if (viewData.kind !== 'table') return '';
+    return JSON.stringify({
+      q: filters.q,
+      sex: filters.sex,
+      living: filters.living,
+      sort: filters.sort,
+      dir: filters.dir,
+      topologyMode: filters.topologyMode,
+      topologyAnchor: filters.topologyAnchor,
+      validation: filters.validation,
+      bornFrom: filters.bornFrom,
+      bornTo: filters.bornTo,
+      diedFrom: filters.diedFrom,
+      diedTo: filters.diedTo,
+      place: filters.place,
+      placeScope: filters.placeScope,
+      citations: filters.citations,
+      hasProposals: filters.hasProposals,
+      complGte: filters.complGte,
+    });
+  }, [
+    filters.q,
+    filters.sex,
+    filters.living,
+    filters.sort,
+    filters.dir,
+    filters.topologyMode,
+    filters.topologyAnchor,
+    filters.validation,
+    filters.bornFrom,
+    filters.bornTo,
+    filters.diedFrom,
+    filters.diedTo,
+    filters.place,
+    filters.placeScope,
+    filters.citations,
+    filters.hasProposals,
+    filters.complGte,
+    viewData.kind,
+  ]);
+
+  const [accumulatedRows, setAccumulatedRows] = useState<TreePersonRow[]>(
+    viewData.kind === 'table' ? viewData.rows : [],
+  );
+  const [accumulatedRels, setAccumulatedRels] = useState<TreeTableRelationships>(
+    viewData.kind === 'table' ? viewData.relationships : { parents: {}, spouses: {} },
+  );
+  const lastFilterSigRef = useRef(filterSignature);
+
+  useEffect(() => {
+    if (viewData.kind !== 'table') return;
+    const sigChanged = filterSignature !== lastFilterSigRef.current;
+    lastFilterSigRef.current = filterSignature;
+    if (sigChanged || filters.page === 1) {
+      // Reset on filter change or first page.
+      setAccumulatedRows(viewData.rows);
+      setAccumulatedRels(viewData.relationships);
+      return;
+    }
+    // Append unique rows for subsequent pages.
+    setAccumulatedRows((prev) => {
+      const seen = new Set(prev.map((r) => r.id));
+      const next = [...prev];
+      for (const row of viewData.rows) {
+        if (!seen.has(row.id)) next.push(row);
+      }
+      return next;
+    });
+    setAccumulatedRels((prev) => ({
+      parents: { ...prev.parents, ...viewData.relationships.parents },
+      spouses: { ...prev.spouses, ...viewData.relationships.spouses },
+    }));
+  }, [viewData, filterSignature, filters.page]);
+
+  const handleLoadMore = useCallback(() => {
+    if (viewData.kind !== 'table') return;
+    if (!viewData.hasMore) return;
+    if (isFilterPending) return;
+    void setFilters({ page: filters.page + 1 });
+  }, [viewData, filters.page, isFilterPending, setFilters]);
+
+  // Detail-panel data shape: canvas mode passes the full graph; table mode
+  // synthesizes a minimal "treeData-like" object so the panel still renders.
+  const detailPanelTreeData: TreeData = useMemo(() => {
+    if (viewData.kind === 'canvas') return viewData.treeData;
+    return {
+      persons: accumulatedRows,
+      families: [],
+      childLinks: [],
+    };
+  }, [viewData, accumulatedRows]);
 
   // Hide palette in table view
-  const showPalette = paletteOpen && view === 'canvas';
+  const showPalette = paletteOpen && view === 'canvas' && viewData.kind === 'canvas';
 
   return (
     <div className="h-full min-w-0 overflow-hidden">
@@ -301,9 +476,10 @@ export function TreeLayout({ treeData, focusPersonId }: TreeLayoutProps) {
       <div className="hidden h-full min-w-0 md:flex" onClick={dismissSidebar}>
         {showPalette && <PersonPalette onClose={() => setPaletteOpen(false)} />}
 
-        {view === 'canvas' ? (
+        {viewData.kind === 'canvas' ? (
           <TreeCanvas
-            treeData={treeData}
+            treeData={viewData.treeData}
+            defaultLayout={viewData.defaultLayout}
             focusPersonId={focusPersonId}
             paletteOpen={paletteOpen}
             onTogglePalette={handleTogglePalette}
@@ -317,7 +493,9 @@ export function TreeLayout({ treeData, focusPersonId }: TreeLayoutProps) {
             onShowGapsChange={setShowGaps}
           />
         ) : (
-          <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+          <>
+            <TreeSidebarClient yearBounds={viewData.yearBounds} />
+            <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
             <TreeTableToolbar
               view={view}
               onSetView={setView}
@@ -341,54 +519,65 @@ export function TreeLayout({ treeData, focusPersonId }: TreeLayoutProps) {
               }`}
               aria-busy={isFilterPending}
             >
-              <TreeActiveFilters
-                filterState={filterState}
-                search={filters.q}
-                topologyMode={topologyMode}
-                topologyReferenceName={topologyReferenceName}
-                onClearSearch={handleClearSearch}
-                onToggleFilter={handleToggleFilter}
-                onClearTopology={handleClearTopology}
-              />
+              <TreeActiveFilters topologyReferenceName={topologyReferenceName} />
               <div className="flex-1 min-h-0">
-                <TreeTableWrapper
-                  treeData={treeData}
-                  relationships={relationships}
-                  onSelectPerson={handleSelectPerson}
+                <TreeTable
+                  rows={accumulatedRows}
+                  total={viewData.total}
+                  relationships={accumulatedRels}
+                  onSelectPerson={handleSelectPersonById}
                   onSetTopologyAnchor={handleSetTopologyAnchor}
-                  filterState={filterState}
-                  topologyVisibleIds={topologyVisibleIds}
-                  search={filters.q}
+                  onSeeOnTree={handleSeeOnTree}
                   sort={filters.sort}
                   dir={filters.dir}
                   onSortChange={handleSortChange}
                   density={density}
                   hiddenColumns={filters.hide}
                   onClearFilters={handleClearFilters}
-                  topologyMode={topologyMode}
+                  isFiltered={
+                    !!filters.q ||
+                    filters.sex.length > 0 ||
+                    filters.living.length > 0 ||
+                    filters.topologyMode !== 'all' ||
+                    filters.validation.length > 0 ||
+                    filters.bornFrom !== null ||
+                    filters.bornTo !== null ||
+                    filters.diedFrom !== null ||
+                    filters.diedTo !== null ||
+                    filters.place.trim() !== '' ||
+                    filters.citations !== 'any' ||
+                    filters.hasProposals ||
+                    filters.complGte !== null
+                  }
                   selectedPersonId={selectedPerson?.id ?? null}
+                  onLoadMore={handleLoadMore}
+                  hasMore={viewData.hasMore}
+                  isAppending={isFilterPending && filters.page > 1}
                 />
               </div>
             </div>
           </div>
+          </>
         )}
 
         {selectedPerson && (
           <TreeDetailPanel
             person={selectedPerson}
-            treeData={treeData}
+            treeData={detailPanelTreeData}
             onClose={clearSelection}
             onFocusNode={handleFocusNode}
+            onSeeOnTree={handleSeeOnTree}
           />
         )}
       </div>
 
       {/* Mobile layout */}
       <div className="flex h-full flex-col md:hidden">
-        {view === 'canvas' ? (
+        {viewData.kind === 'canvas' ? (
           <>
             <TreeCanvas
-              treeData={treeData}
+              treeData={viewData.treeData}
+              defaultLayout={viewData.defaultLayout}
               focusPersonId={runtimeFocusId ?? focusPersonId}
               focusKey={focusKey}
               paletteOpen={false}
@@ -455,6 +644,7 @@ export function TreeLayout({ treeData, focusPersonId }: TreeLayoutProps) {
               topologyReferenceName={topologyReferenceName}
               density={density}
               onDensityChange={handleDensityChange}
+              yearBounds={viewData.yearBounds}
             />
             <div
               className={`flex-1 flex flex-col min-h-0 p-3 gap-2 ${
@@ -462,32 +652,40 @@ export function TreeLayout({ treeData, focusPersonId }: TreeLayoutProps) {
               }`}
               aria-busy={isFilterPending}
             >
-              <TreeActiveFilters
-                filterState={filterState}
-                search={filters.q}
-                topologyMode={topologyMode}
-                topologyReferenceName={topologyReferenceName}
-                onClearSearch={handleClearSearch}
-                onToggleFilter={handleToggleFilter}
-                onClearTopology={handleClearTopology}
-              />
+              <TreeActiveFilters topologyReferenceName={topologyReferenceName} />
               <div className="flex-1 min-h-0">
-                <TreeTableWrapper
-                  treeData={treeData}
-                  relationships={relationships}
-                  onSelectPerson={handleSelectPerson}
+                <TreeTable
+                  rows={accumulatedRows}
+                  total={viewData.total}
+                  relationships={accumulatedRels}
+                  onSelectPerson={handleSelectPersonById}
                   onSetTopologyAnchor={handleSetTopologyAnchor}
-                  filterState={filterState}
-                  topologyVisibleIds={topologyVisibleIds}
-                  search={filters.q}
+                  onSeeOnTree={handleSeeOnTree}
                   sort={filters.sort}
                   dir={filters.dir}
                   onSortChange={handleSortChange}
                   density={density}
                   hiddenColumns={filters.hide}
                   onClearFilters={handleClearFilters}
-                  topologyMode={topologyMode}
+                  isFiltered={
+                    !!filters.q ||
+                    filters.sex.length > 0 ||
+                    filters.living.length > 0 ||
+                    filters.topologyMode !== 'all' ||
+                    filters.validation.length > 0 ||
+                    filters.bornFrom !== null ||
+                    filters.bornTo !== null ||
+                    filters.diedFrom !== null ||
+                    filters.diedTo !== null ||
+                    filters.place.trim() !== '' ||
+                    filters.citations !== 'any' ||
+                    filters.hasProposals ||
+                    filters.complGte !== null
+                  }
                   selectedPersonId={selectedPerson?.id ?? null}
+                  onLoadMore={handleLoadMore}
+                  hasMore={viewData.hasMore}
+                  isAppending={isFilterPending && filters.page > 1}
                 />
               </div>
             </div>
@@ -495,11 +693,13 @@ export function TreeLayout({ treeData, focusPersonId }: TreeLayoutProps) {
         )}
         <MobileDetailSheet
           person={sidebarMobile ? selectedPerson : null}
-          treeData={treeData}
+          treeData={detailPanelTreeData}
           onClose={clearSelection}
           onFocusNode={handleFocusNode}
+          onSeeOnTree={handleSeeOnTree}
         />
       </div>
+
     </div>
   );
 }

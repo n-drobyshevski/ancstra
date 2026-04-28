@@ -255,15 +255,17 @@ export function parseLayoutData(json: string): LayoutDataV2 {
   return { positions: raw };
 }
 
-/** Serialize positions + nodeStyle to JSON for API storage */
+/** Serialize positions to JSON for API storage.
+ *
+ * Node-style preference is stored separately in localStorage (see
+ * `lib/tree/node-style-storage.ts`) and is not part of the layout snapshot —
+ * a layout records WHERE nodes are, not HOW the user prefers to view them.
+ * `parseLayoutData` still reads a legacy `nodeStyle` field for one-time
+ * migration on load. */
 export function serializeLayoutData(
   positions: Record<string, { x: number; y: number }>,
-  nodeStyle?: NodeStyle,
 ): string {
   const data: LayoutDataV2 = { positions };
-  if (nodeStyle && nodeStyle !== 'wide') {
-    data.nodeStyle = nodeStyle;
-  }
   return JSON.stringify(data);
 }
 

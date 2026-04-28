@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowDown, ArrowUp, ShieldAlert, ShieldCheck, Sprout } from 'lucide-react';
+import { ArrowDown, ArrowUp, Network, ShieldAlert, ShieldCheck, Sprout } from 'lucide-react';
 import type { ColumnDef, SortDirection } from '@tanstack/react-table';
 import type { PersonListItem } from '@ancstra/shared';
 import { Button } from '@/components/ui/button';
@@ -23,6 +23,7 @@ declare module '@tanstack/react-table' {
     onSelectPerson?: (personId: string) => void;
     onSelectRelative?: (personId: string) => void;
     onSetTopologyAnchor?: (person: PersonListItem) => void;
+    onSeeOnTree?: (personId: string) => void;
     selectedPersonId?: string | null;
     isAnchorMode?: boolean;
     relationships?: {
@@ -308,6 +309,35 @@ export const treeTableColumns: ColumnDef<TreePersonRow>[] = [
     ),
     enableSorting: true,
     size: 80,
+  },
+  {
+    id: 'seeOnTree',
+    enableSorting: false,
+    size: 48,
+    header: () => <span className="sr-only">View on tree</span>,
+    cell: ({ row, table }) => {
+      const p = row.original;
+      const onSeeOnTree = table.options.meta?.onSeeOnTree;
+      if (!onSeeOnTree) return null;
+      return (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              aria-label={`View ${p.givenName} ${p.surname} on tree`}
+              onClick={(e) => {
+                e.stopPropagation();
+                onSeeOnTree(p.id);
+              }}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-opacity hover:bg-muted hover:text-foreground focus-visible:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary md:opacity-0 md:group-hover/row:opacity-100"
+            >
+              <Network className="size-4" aria-hidden />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>View on tree</TooltipContent>
+        </Tooltip>
+      );
+    },
   },
 ];
 
