@@ -1,16 +1,10 @@
 'use server';
 
 import { redirect } from 'next/navigation';
-import { z } from 'zod/v3';
 import { formAction } from '../../trpc';
 import { invalidateTags } from '../../cache';
-import { createPersonSchema } from '@/lib/validation';
 import { insertRelatedPerson } from './_logic';
-
-const createRelatedPersonSchema = createPersonSchema.extend({
-  relation: z.string().nullable().optional(),
-  ofPersonId: z.string().nullable().optional(),
-});
+import { PERSON_MUTATION_TAGS, createRelatedPersonSchema } from './_shared';
 
 export const createRelatedPerson = formAction
   .meta({ permission: 'person:create', span: 'person.createRelated' })
@@ -23,6 +17,6 @@ export const createRelatedPerson = formAction
       { relation: relation ?? null, ofPersonId: ofPersonId ?? null },
       ctx.userId,
     );
-    invalidateTags(['persons', 'tree-data', 'dashboard']);
+    invalidateTags(PERSON_MUTATION_TAGS);
     redirect(ofPersonId ? `/persons/${ofPersonId}` : `/persons/${personId}`);
   });

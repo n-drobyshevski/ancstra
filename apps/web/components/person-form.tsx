@@ -185,10 +185,14 @@ function PersonFormInner({ person }: PersonFormProps) {
   }
 
   // Relation context uses server action via form action.
-  // Cast required: tRPC's formAction types the input as the schema shape, but
-  // at runtime normalizeFormData=true converts FormData before schema parsing.
+  // Two-step cast through `unknown` is required because tRPC's formAction types
+  // the input as the Zod schema shape, making it structurally incompatible with
+  // React 19's `(formData: FormData) => Promise<void>` form-action signature.
+  // At runtime, normalizeFormData=true converts FormData before schema parsing,
+  // so the cast is safe. `Promise<void>` (not `void`) preserves the async return
+  // so React's transition machinery can await the action correctly.
   const formProps = isRelationContext
-    ? { action: createRelatedPerson as unknown as (formData: FormData) => void }
+    ? { action: createRelatedPerson as unknown as (formData: FormData) => Promise<void> }
     : { onSubmit: isEditMode ? handleEditSubmit : handleCreateSubmit };
 
   const relationLabel =
