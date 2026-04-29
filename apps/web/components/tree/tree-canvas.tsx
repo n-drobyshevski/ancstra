@@ -169,7 +169,6 @@ function TreeCanvasInner({ treeData, defaultLayout, focusPersonId, focusKey, pal
   const filterState = externalFilterState ?? internalFilterState;
   const setFilterState = onFilterStateChange ?? setInternalFilterState;
   const showGaps = externalShowGaps ?? internalShowGaps;
-  const setShowGaps = onShowGapsChange ?? setInternalShowGaps;
   const prefs = useTreeViewPrefs();
   const { showMinimap } = prefs;
   // nodeStyle preference is sourced from localStorage and seeded synchronously
@@ -844,21 +843,30 @@ function TreeCanvasInner({ treeData, defaultLayout, focusPersonId, focusKey, pal
   const handleCenterOnSelected = useCallback(() => {
     const selected = reactFlow.getNodes().find((n) => n.selected);
     if (!selected) return;
-    reactFlow.setCenter(selected.position.x, selected.position.y, {
-      zoom: 1,
-      duration: 250,
-    });
+    // node.position is the top-left; add half-extent to land the node's center
+    // at the viewport center.
+    const w = selected.measured?.width ?? selected.width ?? 0;
+    const h = selected.measured?.height ?? selected.height ?? 0;
+    reactFlow.setCenter(
+      selected.position.x + w / 2,
+      selected.position.y + h / 2,
+      { zoom: 1, duration: 250 },
+    );
   }, [reactFlow]);
 
   const handleResetZoom = useCallback(() => {
-    reactFlow.setViewport({ x: 0, y: 0, zoom: 1 }, { duration: 250 });
+    const { x, y } = reactFlow.getViewport();
+    reactFlow.setViewport({ x, y, zoom: 1 }, { duration: 250 });
   }, [reactFlow]);
 
   const hasSelection = reactFlow.getNodes().some((n) => n.selected);
 
-  // Bridge: prefs.showDataQuality is the source of truth on canvas; mirror
-  // it into the prop chain so tree-table-toolbar (table view) can keep using
-  // the same toggle button.
+  // Bridge: canvas is authoritative — `prefs.showDataQuality` (localStorage)
+  // is mirrored into the parent's `showGaps` state so the existing prop chain
+  // keeps working. v1 limitation: toggling Data Quality from `tree-table-toolbar`
+  // in the table view does NOT write through to prefs, so on switching back to
+  // canvas this effect overrides the table-view choice with the localStorage value.
+  // Acceptable for v1; resolve by routing the table-view toggle through prefs in v2.
   useEffect(() => {
     if (prefs.showDataQuality !== showGaps) {
       onShowGapsChange?.(prefs.showDataQuality);
