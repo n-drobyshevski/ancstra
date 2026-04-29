@@ -57,6 +57,7 @@ import {
 import { readShowDates, readShowLivingIndicator } from '@/lib/tree/view-prefs-storage';
 import type { DefaultTreeLayout } from '@/lib/cache/tree';
 import { useTreeViewPrefs } from '@/lib/tree/use-tree-view-prefs';
+import { useTreeExport } from '@/lib/tree/use-tree-export';
 
 const nodeTypes = { person: PersonNode, draftPerson: DraftPersonNode, draftFactsheet: DraftFactsheetNode };
 const edgeTypes = { partner: PartnerEdge, parentChild: ParentChildEdge };
@@ -756,84 +757,9 @@ function TreeCanvasInner({ treeData, defaultLayout, focusPersonId, focusKey, pal
   // Compute filtered edges (dimmed based on node dimmed status)
   const filteredEdges = useMemo(() => applyEdgeFilters(edges, nodes), [edges, nodes]);
 
-  // Export helpers (for mobile toolbar slot)
-  const getFlowElement = useCallback(() => {
-    return document.querySelector('.react-flow__viewport') as HTMLElement | null;
-  }, []);
-
-  const exportPng = useCallback(async () => {
-    const element = getFlowElement();
-    if (!element) return;
-    const nodes = getNodes();
-    if (nodes.length === 0) { toast.error('No nodes to export'); return; }
-    const { getNodesBounds, getViewportForBounds } = await import('@xyflow/react');
-    const { toPng } = await import('html-to-image');
-    const IMAGE_WIDTH = 4096;
-    const IMAGE_HEIGHT = 3072;
-    const bg = getComputedStyle(document.documentElement).getPropertyValue('--color-background').trim() || '#f8fafc';
-    const bounds = getNodesBounds(nodes);
-    const viewport = getViewportForBounds(bounds, IMAGE_WIDTH, IMAGE_HEIGHT, 0.5, 2, 0.1);
-    try {
-      const dataUrl = await toPng(element, {
-        backgroundColor: bg,
-        width: IMAGE_WIDTH, height: IMAGE_HEIGHT,
-        style: { width: `${IMAGE_WIDTH}px`, height: `${IMAGE_HEIGHT}px`, transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})` },
-      });
-      const a = document.createElement('a');
-      a.href = dataUrl; a.download = 'ancstra-tree.png'; a.click();
-      toast.success('PNG exported');
-    } catch { toast.error('Export failed'); }
-  }, [getFlowElement, getNodes]);
-
-  const exportSvg = useCallback(async () => {
-    const element = getFlowElement();
-    if (!element) return;
-    const nodes = getNodes();
-    if (nodes.length === 0) { toast.error('No nodes to export'); return; }
-    const { getNodesBounds, getViewportForBounds } = await import('@xyflow/react');
-    const { toSvg } = await import('html-to-image');
-    const IMAGE_WIDTH = 4096;
-    const IMAGE_HEIGHT = 3072;
-    const bg = getComputedStyle(document.documentElement).getPropertyValue('--color-background').trim() || '#f8fafc';
-    const bounds = getNodesBounds(nodes);
-    const viewport = getViewportForBounds(bounds, IMAGE_WIDTH, IMAGE_HEIGHT, 0.5, 2, 0.1);
-    try {
-      const dataUrl = await toSvg(element, {
-        backgroundColor: bg,
-        width: IMAGE_WIDTH, height: IMAGE_HEIGHT,
-        style: { width: `${IMAGE_WIDTH}px`, height: `${IMAGE_HEIGHT}px`, transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})` },
-      });
-      const a = document.createElement('a');
-      a.href = dataUrl; a.download = 'ancstra-tree.svg'; a.click();
-      toast.success('SVG exported');
-    } catch { toast.error('Export failed'); }
-  }, [getFlowElement, getNodes]);
-
-  const exportPdf = useCallback(async () => {
-    const element = getFlowElement();
-    if (!element) return;
-    const nodes = getNodes();
-    if (nodes.length === 0) { toast.error('No nodes to export'); return; }
-    const { getNodesBounds, getViewportForBounds } = await import('@xyflow/react');
-    const { toPng } = await import('html-to-image');
-    const IMAGE_WIDTH = 4096;
-    const IMAGE_HEIGHT = 3072;
-    const bg = getComputedStyle(document.documentElement).getPropertyValue('--color-background').trim() || '#f8fafc';
-    const bounds = getNodesBounds(nodes);
-    const viewport = getViewportForBounds(bounds, IMAGE_WIDTH, IMAGE_HEIGHT, 0.5, 2, 0.1);
-    try {
-      const dataUrl = await toPng(element, {
-        backgroundColor: bg,
-        width: IMAGE_WIDTH, height: IMAGE_HEIGHT,
-        style: { width: `${IMAGE_WIDTH}px`, height: `${IMAGE_HEIGHT}px`, transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})` },
-      });
-      const { jsPDF } = await import('jspdf');
-      const pdf = new jsPDF({ orientation: 'landscape', unit: 'px', format: [IMAGE_WIDTH, IMAGE_HEIGHT] });
-      pdf.addImage(dataUrl, 'PNG', 0, 0, IMAGE_WIDTH, IMAGE_HEIGHT);
-      pdf.save('ancstra-tree.pdf');
-      toast.success('PDF exported');
-    } catch { toast.error('Export failed'); }
-  }, [getFlowElement, getNodes]);
+  // Export helpers (mobile toolbar slot consumes these; desktop uses
+  // `<TreeExportMenu />` which calls the same hook).
+  const { exportPng, exportSvg, exportPdf } = useTreeExport();
 
   // Camera commands
   const handleFitToScreen = useCallback(() => {
