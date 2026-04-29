@@ -2,10 +2,16 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { PersonDetail } from '@ancstra/shared';
 
-const mockAction = vi.fn();
+const mockQuery = vi.fn();
 
-vi.mock('@/app/actions/person-detail', () => ({
-  fetchPersonDetailAction: (id: string) => mockAction(id),
+vi.mock('@/lib/trpc/vanilla', () => ({
+  vanillaTrpc: {
+    person: {
+      fetchDetail: {
+        query: (args: { personId: string }) => mockQuery(args.personId),
+      },
+    },
+  },
 }));
 
 import {
@@ -42,7 +48,7 @@ function makeDetail(id: string): PersonDetail {
 
 beforeEach(() => {
   __resetCacheForTests();
-  mockAction.mockReset();
+  mockQuery.mockReset();
   vi.useFakeTimers();
   vi.setSystemTime(new Date('2026-04-28T00:00:00Z'));
 });
@@ -53,38 +59,38 @@ afterEach(() => {
 
 describe('personDetailCache', () => {
   it('dedupes concurrent in-flight fetches for the same id', async () => {
-    let resolveAction!: (v: { detail: PersonDetail; citationCount: number }) => void;
-    mockAction.mockImplementation(
-      () => new Promise((res) => { resolveAction = res; }),
+    let resolveQuery!: (v: { detail: PersonDetail; citationCount: number }) => void;
+    mockQuery.mockImplementation(
+      () => new Promise((res) => { resolveQuery = res; }),
     );
 
     const p1 = personDetailCache.prefetch('a');
     const p2 = personDetailCache.prefetch('a');
 
-    expect(mockAction).toHaveBeenCalledTimes(1);
+    expect(mockQuery).toHaveBeenCalledTimes(1);
     expect(p1).toBe(p2);
 
-    resolveAction({ detail: makeDetail('a'), citationCount: 0 });
+    resolveQuery({ detail: makeDetail('a'), citationCount: 0 });
     await p1;
-    expect(mockAction).toHaveBeenCalledTimes(1);
+    expect(mockQuery).toHaveBeenCalledTimes(1);
   });
 
   it('returns synchronously without re-fetching on a fresh hit', async () => {
-    mockAction.mockResolvedValue({ detail: makeDetail('a'), citationCount: 0 });
+    mockQuery.mockResolvedValue({ detail: makeDetail('a'), citationCount: 0 });
     await personDetailCache.prefetch('a');
-    expect(mockAction).toHaveBeenCalledTimes(1);
+    expect(mockQuery).toHaveBeenCalledTimes(1);
 
     vi.advanceTimersByTime(STALE_MS - 1);
     await personDetailCache.prefetch('a');
-    expect(mockAction).toHaveBeenCalledTimes(1);
+    expect(mockQuery).toHaveBeenCalledTimes(1);
   });
 
   it('refetches on a stale hit', async () => {
-    mockAction.mockResolvedValue({ detail: makeDetail('a'), citationCount: 0 });
+    mockQuery.mockResolvedValue({ detail: makeDetail('a'), citationCount: 0 });
     await personDetailCache.prefetch('a');
     vi.advanceTimersByTime(STALE_MS + 1);
     await personDetailCache.prefetch('a');
-    expect(mockAction).toHaveBeenCalledTimes(2);
+    expect(mockQuery).toHaveBeenCalledTimes(2);
   });
 
   it('read returns null when no entry exists', () => {
@@ -92,13 +98,13 @@ describe('personDetailCache', () => {
   });
 
   it('read returns null while an entry is only in-flight', () => {
-    mockAction.mockImplementation(() => new Promise(() => {}));
+    mockQuery.mockImplementation(() => new Promise(() => {}));
     void personDetailCache.prefetch('a');
     expect(personDetailCache.read('a')).toBeNull();
   });
 
   it('read flags staleness by age', async () => {
-    mockAction.mockResolvedValue({ detail: makeDetail('a'), citationCount: 0 });
+    mockQuery.mockResolvedValue({ detail: makeDetail('a'), citationCount: 0 });
     await personDetailCache.prefetch('a');
     expect(personDetailCache.read('a')?.isStale).toBe(false);
     vi.advanceTimersByTime(STALE_MS + 1);
@@ -106,16 +112,16 @@ describe('personDetailCache', () => {
   });
 
   it('invalidate(id) drops the entry; next prefetch refetches', async () => {
-    mockAction.mockResolvedValue({ detail: makeDetail('a'), citationCount: 0 });
+    mockQuery.mockResolvedValue({ detail: makeDetail('a'), citationCount: 0 });
     await personDetailCache.prefetch('a');
     personDetailCache.invalidate('a');
     expect(personDetailCache.read('a')).toBeNull();
     await personDetailCache.prefetch('a');
-    expect(mockAction).toHaveBeenCalledTimes(2);
+    expect(mockQuery).toHaveBeenCalledTimes(2);
   });
 
   it('invalidate accepts an array of ids', async () => {
-    mockAction.mockResolvedValue({ detail: makeDetail('a'), citationCount: 0 });
+    mockQuery.mockResolvedValue({ detail: makeDetail('a'), citationCount: 0 });
     await personDetailCache.prefetch('a');
     await personDetailCache.prefetch('b');
     personDetailCache.invalidate(['a', 'b']);
@@ -124,7 +130,7 @@ describe('personDetailCache', () => {
   });
 
   it('invalidateAll marks resolved entries stale without dropping data', async () => {
-    mockAction.mockResolvedValue({ detail: makeDetail('a'), citationCount: 0 });
+    mockQuery.mockResolvedValue({ detail: makeDetail('a'), citationCount: 0 });
     await personDetailCache.prefetch('a');
     personDetailCache.invalidateAll();
     const read = personDetailCache.read('a');
@@ -134,7 +140,7 @@ describe('personDetailCache', () => {
   });
 
   it('subscribe fires on resolved fetch and unsubscribe stops further calls', async () => {
-    mockAction.mockResolvedValue({ detail: makeDetail('a'), citationCount: 0 });
+    mockQuery.mockResolvedValue({ detail: makeDetail('a'), citationCount: 0 });
     const listener = vi.fn();
     const unsub = personDetailCache.subscribe('a', listener);
     await personDetailCache.prefetch('a');
@@ -146,7 +152,7 @@ describe('personDetailCache', () => {
   });
 
   it('LRU eviction drops the oldest entry by ts when over MAX_ENTRIES', async () => {
-    mockAction.mockImplementation((id: string) =>
+    mockQuery.mockImplementation((id: string) =>
       Promise.resolve({ detail: makeDetail(id), citationCount: 0 }),
     );
     const baseMs = new Date('2026-04-28T00:00:00Z').getTime();
@@ -162,25 +168,25 @@ describe('personDetailCache', () => {
   });
 
   it('rejection clears the in-flight promise so the next prefetch retries (cold reject)', async () => {
-    mockAction.mockRejectedValueOnce(new Error('boom'));
+    mockQuery.mockRejectedValueOnce(new Error('boom'));
     await expect(personDetailCache.prefetch('a')).rejects.toThrow('boom');
     // After rejection, no readable entry; retry should fire a fresh fetch.
     expect(personDetailCache.read('a')).toBeNull();
 
-    mockAction.mockResolvedValueOnce({ detail: makeDetail('a'), citationCount: 0 });
+    mockQuery.mockResolvedValueOnce({ detail: makeDetail('a'), citationCount: 0 });
     await personDetailCache.prefetch('a');
-    expect(mockAction).toHaveBeenCalledTimes(2);
+    expect(mockQuery).toHaveBeenCalledTimes(2);
     expect(personDetailCache.read('a')?.entry.data?.id).toBe('a');
   });
 
   it('rejection during revalidation preserves prior stale data', async () => {
     // Seed with resolved data.
-    mockAction.mockResolvedValueOnce({ detail: makeDetail('a'), citationCount: 7 });
+    mockQuery.mockResolvedValueOnce({ detail: makeDetail('a'), citationCount: 7 });
     await personDetailCache.prefetch('a');
 
     // Cross the stale window, then reject the revalidation.
     vi.advanceTimersByTime(STALE_MS + 1);
-    mockAction.mockRejectedValueOnce(new Error('flaky'));
+    mockQuery.mockRejectedValueOnce(new Error('flaky'));
     await expect(personDetailCache.prefetch('a')).rejects.toThrow('flaky');
 
     // Stale data must still be readable; isStale stays true.
@@ -192,14 +198,14 @@ describe('personDetailCache', () => {
   });
 
   it('SWR: stale data is readable while a revalidation is in flight', async () => {
-    mockAction.mockResolvedValueOnce({ detail: makeDetail('a'), citationCount: 1 });
+    mockQuery.mockResolvedValueOnce({ detail: makeDetail('a'), citationCount: 1 });
     await personDetailCache.prefetch('a');
 
     vi.advanceTimersByTime(STALE_MS + 1);
 
     // Hold the revalidation open.
     let resolveRevalidation!: (v: { detail: PersonDetail; citationCount: number }) => void;
-    mockAction.mockImplementationOnce(
+    mockQuery.mockImplementationOnce(
       () => new Promise((res) => { resolveRevalidation = res; }),
     );
     const inflight = personDetailCache.prefetch('a');
@@ -220,7 +226,7 @@ describe('personDetailCache', () => {
   });
 
   it('invalidateAll notifies subscribers so open panels can revalidate', async () => {
-    mockAction.mockResolvedValue({ detail: makeDetail('a'), citationCount: 0 });
+    mockQuery.mockResolvedValue({ detail: makeDetail('a'), citationCount: 0 });
     await personDetailCache.prefetch('a');
 
     const listener = vi.fn();
@@ -236,7 +242,7 @@ describe('personDetailCache', () => {
 
   it('invalidate during in-flight prefetch prevents stale data from clobbering fresh data', async () => {
     let resolveStale!: (v: { detail: PersonDetail; citationCount: number }) => void;
-    mockAction.mockImplementationOnce(
+    mockQuery.mockImplementationOnce(
       () => new Promise((res) => { resolveStale = res; }),
     );
 
@@ -245,7 +251,7 @@ describe('personDetailCache', () => {
 
     // Invalidate (e.g., user saved an edit) and start a fresh prefetch that resolves first.
     personDetailCache.invalidate('a');
-    mockAction.mockResolvedValueOnce({ detail: makeDetail('a'), citationCount: 99 });
+    mockQuery.mockResolvedValueOnce({ detail: makeDetail('a'), citationCount: 99 });
     await personDetailCache.prefetch('a');
     expect(personDetailCache.read('a')?.entry.citationCount).toBe(99);
 

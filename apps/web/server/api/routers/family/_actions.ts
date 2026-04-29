@@ -1,13 +1,11 @@
 'use server';
 
+import { redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import { createFamily } from '@ancstra/auth';
 import { createCentralDb } from '@ancstra/db';
-import { redirect } from 'next/navigation';
 
-export type CreateFamilyState = {
-  error?: string;
-} | undefined;
+export type CreateFamilyState = { error?: string } | undefined;
 
 export async function createFamilyAction(
   _state: CreateFamilyState,
@@ -18,16 +16,17 @@ export async function createFamilyAction(
     throw new Error('Not authenticated');
   }
 
-  const name = formData.get('name') as string;
-  if (!name || name.trim().length === 0) {
+  const name = (formData.get('name') as string | null)?.trim() ?? '';
+  if (!name) {
     return { error: 'Family name is required' };
   }
 
   const centralDb = createCentralDb();
   const { familyId } = await createFamily(centralDb, {
-    name: name.trim(),
+    name,
     ownerId: session.user.id,
   });
+  // TODO(sub-spec-A): bump users.memberships_version once the column exists
 
   redirect(`/dashboard?family=${familyId}`);
 }

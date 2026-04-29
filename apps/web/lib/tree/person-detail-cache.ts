@@ -1,6 +1,6 @@
 // apps/web/lib/tree/person-detail-cache.ts
 import type { PersonDetail } from '@ancstra/shared';
-import { fetchPersonDetailAction } from '@/app/actions/person-detail';
+import { vanillaTrpc } from '@/lib/trpc/vanilla';
 
 export interface PersonDetailEntry {
   data: PersonDetail | null;
@@ -50,7 +50,7 @@ function doFetch(id: string): Promise<PersonDetailEntry> {
 
   const inner = async (): Promise<PersonDetailEntry> => {
     try {
-      const { detail, citationCount } = await fetchPersonDetailAction(id);
+      const { detail, citationCount } = await vanillaTrpc.person.fetchDetail.query({ personId: id });
       const resolved: PersonDetailEntry = {
         data: detail ?? null,
         citationCount,

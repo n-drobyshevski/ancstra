@@ -3,21 +3,20 @@
 import { useTransition } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { acceptInviteAction } from '@/app/actions/join';
+import { acceptInviteAction } from '@/server/api/routers/auth/_actions';
 
 interface JoinCardProps {
   familyName: string;
   role: string;
   token: string;
-  userId: string;
 }
 
-export function JoinCard({ familyName, role, token, userId }: JoinCardProps) {
+export function JoinCard({ familyName, role, token }: JoinCardProps) {
   const [isPending, startTransition] = useTransition();
 
   function handleAccept() {
     startTransition(async () => {
-      await acceptInviteAction(token, userId);
+      await acceptInviteAction({ token });
     });
   }
 

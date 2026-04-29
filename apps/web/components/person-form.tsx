@@ -15,7 +15,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { PlaceInput } from '@/components/place-input';
 import { toast } from 'sonner';
-import { createRelatedPerson } from '@/app/actions/create-related-person';
+import { createRelatedPerson } from '@/server/api/routers/person/_actions';
 import type { PersonDetail } from '@ancstra/shared';
 import { personDetailCache } from '@/lib/tree/person-detail-cache';
 
@@ -184,9 +184,15 @@ function PersonFormInner({ person }: PersonFormProps) {
     router.push(`/persons/${created.id}`);
   }
 
-  // Relation context uses server action via form action
+  // Relation context uses server action via form action.
+  // Two-step cast through `unknown` is required because tRPC's formAction types
+  // the input as the Zod schema shape, making it structurally incompatible with
+  // React 19's `(formData: FormData) => Promise<void>` form-action signature.
+  // At runtime, normalizeFormData=true converts FormData before schema parsing,
+  // so the cast is safe. `Promise<void>` (not `void`) preserves the async return
+  // so React's transition machinery can await the action correctly.
   const formProps = isRelationContext
-    ? { action: createRelatedPerson }
+    ? { action: createRelatedPerson as unknown as (formData: FormData) => Promise<void> }
     : { onSubmit: isEditMode ? handleEditSubmit : handleCreateSubmit };
 
   const relationLabel =
