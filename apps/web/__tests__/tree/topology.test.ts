@@ -89,7 +89,7 @@ describe('computeDescendants', () => {
     expect(computeDescendants('grandchild', makeTree())).toEqual(new Set());
   });
 
-  it('walks down through grandchildren', () => {
+  it('walks down through grandchildren (strict blood line by default)', () => {
     expect(computeDescendants('p1', makeTree())).toEqual(new Set(['c1', 'c2', 'grandchild']));
   });
 
@@ -119,5 +119,74 @@ describe('computeDescendants', () => {
     const result = computeDescendants('A', tree);
     expect(result.has('B')).toBe(true);
     expect(result.has('A')).toBe(false);
+  });
+});
+
+describe('computeDescendants (includeCoParents)', () => {
+  it('adds the co-parent (spouse) of every family that produces a descendant', () => {
+    // p1's biological descendants are c1, c2, grandchild. With
+    // includeCoParents, we also surface p2 (p1's spouse — co-parent of
+    // c1 and c2) and 'spouse' (c1's spouse — co-parent of grandchild)
+    // so the rendered tree shows each child with both parents.
+    expect(
+      computeDescendants('p1', makeTree(), { includeCoParents: true }),
+    ).toEqual(new Set(['p2', 'c1', 'c2', 'spouse', 'grandchild']));
+  });
+
+  it('adds spouses across multiple families (remarriage)', () => {
+    const tree: TreeData = {
+      persons: [p('parent'), p('a'), p('b'), p('c1'), p('c2')],
+      families: [fam('f1', 'parent', 'a'), fam('f2', 'parent', 'b')],
+      childLinks: [child('f1', 'c1'), child('f2', 'c2')],
+    };
+    expect(
+      computeDescendants('parent', tree, { includeCoParents: true }),
+    ).toEqual(new Set(['a', 'b', 'c1', 'c2']));
+  });
+
+  it('does NOT add the spouse of a childless marriage', () => {
+    // X is married to Y but they have no children. Y is not a co-parent
+    // of any descendant of X, so Y is not added. Otherwise "Show
+    // descendants of X" would surface Y as a "descendant" — wrong.
+    const tree: TreeData = {
+      persons: [p('X'), p('Y')],
+      families: [fam('f1', 'X', 'Y')],
+      childLinks: [],
+    };
+    expect(computeDescendants('X', tree, { includeCoParents: true })).toEqual(
+      new Set(),
+    );
+  });
+
+  it('does NOT traverse through co-parents (no step-grandchildren)', () => {
+    // X has child C with spouse S. S also has another marriage with
+    // SOther, producing 'step' (S's child but NOT X's descendant).
+    // S is added (X's co-parent of C) but NOT enqueued, so 'step' and
+    // 'SOther' must NOT be added.
+    const tree: TreeData = {
+      persons: [p('X'), p('S'), p('SOther'), p('C'), p('step')],
+      families: [
+        fam('fXS', 'X', 'S'),
+        fam('fSOther', 'S', 'SOther'),
+      ],
+      childLinks: [
+        child('fXS', 'C'),
+        child('fSOther', 'step'),
+      ],
+    };
+    expect(computeDescendants('X', tree, { includeCoParents: true })).toEqual(
+      new Set(['S', 'C']),
+    );
+  });
+
+  it('default (no opts) behaves as strict blood line — does not include co-parents', () => {
+    // Regression guard: branch-coloring callers and other consumers
+    // expect the default to be unchanged.
+    const tree: TreeData = {
+      persons: [p('X'), p('Y'), p('child')],
+      families: [fam('f1', 'X', 'Y')],
+      childLinks: [child('f1', 'child')],
+    };
+    expect(computeDescendants('X', tree)).toEqual(new Set(['child']));
   });
 });

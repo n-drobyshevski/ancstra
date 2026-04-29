@@ -26,7 +26,17 @@ import { PartnerEdge } from './partner-edge';
 import { ParentChildEdge } from './parent-child-edge';
 import { ProposedEdge } from './proposed-edge';
 import { TreeToolbar } from './tree-toolbar';
-import { TreeContextMenu } from './tree-context-menu';
+import { TreeContextMenu, type ContextMenuTrigger } from './tree-context-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { DraftPersonNode } from './draft-person-node';
 import { DraftFactsheetNode } from './draft-factsheet-node';
 import { PersonCreateDialog } from '@/components/person-create-dialog';
@@ -96,9 +106,22 @@ interface TreeCanvasProps {
   }) => React.ReactNode;
   /** Imperative focus callback — used by the context menu's "Switch to person" toast action. */
   onFocusPerson?: (personId: string) => void;
+  /** Pin a person as the topology anchor and switch the URL filter to
+   *  ancestors-only or descendants-only. Wired to the right-click menu's
+   *  "Show ancestors only" / "Show descendants only" items. */
+  onSetTopologyAnchor?: (
+    person: PersonListItem,
+    mode: 'ancestors' | 'descendants',
+  ) => void;
+  /** Person ids visible under the active topology filter (anchor + mode).
+   *  When `null` (or omitted), no topology filter applies — every person
+   *  renders. When a Set is provided, person nodes whose id is not in the
+   *  Set are hidden via xyflow's native `hidden` flag, along with any
+   *  edge that touches a hidden endpoint. Drafts are unaffected. */
+  topologyVisibleIds?: Set<string> | null;
 }
 
-function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focusPersonId, focusKey, paletteOpen, onTogglePalette, onSelectPerson, view, onSetView, isMobile, isDetailOpen, filterState: externalFilterState, onFilterStateChange, showGaps: externalShowGaps, onShowGapsChange: _onShowGapsChange, mobileToolbarSlot, onFocusPerson }: TreeCanvasProps) {
+function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focusPersonId, focusKey, paletteOpen, onTogglePalette, onSelectPerson, view, onSetView, isMobile, isDetailOpen, filterState: externalFilterState, onFilterStateChange, showGaps: externalShowGaps, onShowGapsChange: _onShowGapsChange, mobileToolbarSlot, onFocusPerson, onSetTopologyAnchor, topologyVisibleIds }: TreeCanvasProps) {
   void _onShowGapsChange;
   const reactFlow = useReactFlow();
   const { fitView, screenToFlowPosition, getNodes } = reactFlow;
@@ -151,16 +174,18 @@ function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focus
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(rawEdges);
 
-  const [contextMenu, setContextMenu] = useState<{
-    x: number;
-    y: number;
-    type: 'node' | 'edge' | 'canvas';
-    nodeId?: string;
-    edgeId?: string;
-    edgeType?: string;
-    edgeFamilyId?: string;
-    edgeChildId?: string;
-  } | null>(null);
+  const [contextMenu, setContextMenu] = useState<ContextMenuTrigger | null>(
+    null,
+  );
+
+  // Delete confirmation — drives the AlertDialog mount(s). We support two
+  // shapes: single-person (driven by the right-click menu's "Delete person"
+  // item) and bulk (driven by the multi-select menu's "Delete N people").
+  const [deleteDialog, setDeleteDialog] = useState<
+    | { kind: 'single'; personId: string; personName: string }
+    | { kind: 'bulk'; personIds: string[] }
+    | null
+  >(null);
 
   // Add-relation dialog state — hoisted to canvas so it survives the context
   // menu unmounting. Driven by the menu's onAddRelation callback (or in the
@@ -330,14 +355,29 @@ function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focus
   const onNodeContextMenu = useCallback(
     (event: React.MouseEvent, node: Node) => {
       event.preventDefault();
+      // If the right-clicked node is part of a multi-selection, preserve the
+      // whole selection so the multi-select menu surfaces. Otherwise reset
+      // selection to just this node — the standard OS pattern, and ensures
+      // any subsequent bulk action targets exactly what the user expects.
+      const allNodes = reactFlow.getNodes();
+      const currentSelection = allNodes.filter((n) => n.selected).map((n) => n.id);
+      let selectionIds: string[];
+      if (node.selected && currentSelection.length > 1) {
+        selectionIds = currentSelection;
+      } else {
+        setNodes((nds) =>
+          nds.map((n) => ({ ...n, selected: n.id === node.id })),
+        );
+        selectionIds = [node.id];
+      }
       setContextMenu({
         x: event.clientX,
         y: event.clientY,
-        type: 'node',
-        nodeId: node.id,
+        surface: { kind: 'node', nodeId: node.id },
+        selectionIds,
       });
     },
-    [],
+    [reactFlow, setNodes],
   );
 
   const onEdgeContextMenu = useCallback(
@@ -346,11 +386,14 @@ function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focus
       setContextMenu({
         x: event.clientX,
         y: event.clientY,
-        edgeType: edge.type as string,
-        edgeFamilyId: (edge.data as { familyId?: string })?.familyId,
-        edgeChildId: edge.type === 'parentChild' ? edge.target : undefined,
-        type: 'edge',
-        edgeId: edge.id,
+        surface: {
+          kind: 'edge',
+          edgeId: edge.id,
+          edgeType: edge.type as string,
+          edgeFamilyId: (edge.data as { familyId?: string })?.familyId,
+          edgeChildId: edge.type === 'parentChild' ? edge.target : undefined,
+        },
+        selectionIds: [],
       });
     },
     [],
@@ -362,7 +405,8 @@ function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focus
       setContextMenu({
         x: event.clientX,
         y: event.clientY,
-        type: 'canvas',
+        surface: { kind: 'pane' },
+        selectionIds: [],
       });
     },
     [],
@@ -742,12 +786,41 @@ function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focus
     return () => clearTimeout(timer);
   }, [focusPersonId, focusKey, fitView, treeData, isMobile]);
 
-  // Coloring: derived from prefs.coloring + focusPersonId + treeData. Empty
-  // map for 'off' (and 'branch' without focus); the per-node application
-  // sets the tone or clears it.
+  // Branch-coloring root tracks the *last* single-person selection on the
+  // canvas — sticky semantics. Once the user has clicked a person, that
+  // anchor persists across deselects and multi-selects until the next
+  // single-click replaces it. Only the `length === 1` branch ever writes
+  // here; deselects and multi-selects intentionally leave the anchor
+  // untouched so paternal/maternal coloring stays stable while the user
+  // explores. On initial mount with no selection ever made, this stays
+  // `undefined` and the coloring falls back to URL `focusPersonId`.
+  const [branchSelectedPersonId, setBranchSelectedPersonId] = useState<
+    string | undefined
+  >();
+
+  const handleSelectionChange = useCallback(
+    (params: { nodes: Node[]; edges: Edge[] }) => {
+      const persons = params.nodes.filter((n) => n.type === 'person');
+      if (persons.length === 1) {
+        setBranchSelectedPersonId(persons[0].id);
+      }
+      // length === 0 (deselect) or > 1 (multi-select): keep the last
+      // single-selection sticky. Do NOT clear.
+    },
+    [],
+  );
+
+  // Coloring: derived from prefs.coloring + (sticky single selection ??
+  // focusPersonId) + treeData. Empty map for 'off' (and 'branch' without a
+  // root). The selection-driven override only applies in 'branch' mode —
+  // generation depth keeps its existing focus-anchored semantics.
+  const branchColoringRoot =
+    prefs.coloring === 'branch' && branchSelectedPersonId
+      ? branchSelectedPersonId
+      : focusPersonId;
   const coloringMap = useMemo(
-    () => computeColoringMap(treeData, prefs.coloring, focusPersonId),
-    [treeData, prefs.coloring, focusPersonId],
+    () => computeColoringMap(treeData, prefs.coloring, branchColoringRoot),
+    [treeData, prefs.coloring, branchColoringRoot],
   );
 
   // Apply filters, quality data, and nodeStyle in a single pass
@@ -771,45 +844,61 @@ function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focus
     }));
   }, [filterState, showGaps, qualityData, effectiveNodeStyle, setNodes, prefs.showDates, prefs.showLivingIndicator, prefs.showCitations]);
 
-  // Render-phase decoration: inject coloring fields onto every person node
-  // without touching the underlying state. This keeps tones + style stable
-  // across auto-layout, drag, and other state mutations (mirrors the pattern
-  // used by `filteredEdges` below).
+  // Render-phase decoration: inject coloring fields onto every person node,
+  // and apply the topology filter (Show ancestors only / Show descendants
+  // only) by setting xyflow's native `hidden` on persons outside the visible
+  // set. Drafts are intentionally never hidden — they're transient and
+  // shouldn't disappear when the user pins a topology anchor. This keeps
+  // tones + style stable across auto-layout, drag, and other state
+  // mutations (mirrors the pattern used by `filteredEdges` below).
   const decoratedNodes = useMemo(
-    () => nodes.map((n) =>
-      n.type === 'person'
-        ? {
-            ...n,
-            data: {
-              ...n.data,
-              coloringTone: coloringMap.get(n.id),
-              coloringStyle: prefs.coloringStyle,
-            },
-          }
-        : n,
-    ),
-    [nodes, coloringMap, prefs.coloringStyle],
+    () => nodes.map((n) => {
+      if (n.type !== 'person') return n;
+      const hiddenByTopology =
+        topologyVisibleIds != null && !topologyVisibleIds.has(n.id);
+      return {
+        ...n,
+        hidden: hiddenByTopology,
+        data: {
+          ...n.data,
+          coloringTone: coloringMap.get(n.id),
+          coloringStyle: prefs.coloringStyle,
+        },
+      };
+    }),
+    [nodes, coloringMap, prefs.coloringStyle, topologyVisibleIds],
   );
 
   // Compute filtered edges (dimmed based on node dimmed status), inject the
-  // user's edge-path preference into parent-child edges, and append synthetic
-  // ghost edges for pending proposals when the toggle is on.
+  // user's edge-path preference into parent-child edges, hide edges that
+  // touch a topology-hidden endpoint, and append synthetic ghost edges for
+  // pending proposals when the toggle is on.
   const filteredEdges = useMemo(() => {
     const dimmed = applyEdgeFilters(edges, nodes);
-    const styled: Edge[] = dimmed.map((edge) =>
-      edge.type === 'parentChild'
-        ? { ...edge, data: { ...edge.data, pathStyle: prefs.edges } }
-        : edge,
-    );
+    const isTopologyHidden = (id: string) =>
+      topologyVisibleIds != null && !topologyVisibleIds.has(id);
+    const styled: Edge[] = dimmed.map((edge) => {
+      const base =
+        edge.type === 'parentChild'
+          ? { ...edge, data: { ...edge.data, pathStyle: prefs.edges } }
+          : edge;
+      if (isTopologyHidden(edge.source) || isTopologyHidden(edge.target)) {
+        return { ...base, hidden: true };
+      }
+      return base;
+    });
     if (!prefs.showProposals || !proposedRelationships?.length) return styled;
     const nodeIds = new Set(nodes.map((n) => n.id));
     for (const p of proposedRelationships) {
       if (!nodeIds.has(p.person1Id) || !nodeIds.has(p.person2Id)) continue;
+      const hidden =
+        isTopologyHidden(p.person1Id) || isTopologyHidden(p.person2Id);
       styled.push({
         id: `proposed-${p.id}`,
         type: 'proposed',
         source: p.person1Id,
         target: p.person2Id,
+        hidden,
         data: {
           relationshipType: p.relationshipType,
           sourceType: p.sourceType,
@@ -818,11 +907,116 @@ function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focus
       });
     }
     return styled;
-  }, [edges, nodes, prefs.edges, prefs.showProposals, proposedRelationships]);
+  }, [edges, nodes, prefs.edges, prefs.showProposals, proposedRelationships, topologyVisibleIds]);
 
   // Export helpers (mobile toolbar slot consumes these; desktop uses
   // `<TreeExportMenu />` which calls the same hook).
   const { exportPng, exportSvg, exportPdf } = useTreeExport();
+
+  // ---------------------------------------------------------------------------
+  // Right-click menu action handlers
+  // ---------------------------------------------------------------------------
+
+  // Focus on a specific person — select them in the detail panel, pan and
+  // zoom the camera to the node, and (if wired) bubble up to the parent so
+  // branch-coloring re-roots and `runtimeFocusId` updates. Mirrors the
+  // pattern used by the "Switch to person" success-toast action in
+  // PersonCreate/LinkDialog. Used by the context menu's "Focus on person"
+  // item.
+  const handleFocusOnPerson = useCallback(
+    (personId: string) => {
+      const person = treeData.persons.find((p) => p.id === personId);
+      if (person) onSelectPerson(person);
+      reactFlow.fitView({
+        nodes: [{ id: personId }],
+        duration: 500,
+        padding: 0.5,
+      });
+      onFocusPerson?.(personId);
+    },
+    [treeData, onSelectPerson, reactFlow, onFocusPerson],
+  );
+
+  // Single-person delete — runs after the AlertDialog confirm. Mirrors the
+  // pre-rework behavior (DELETE /api/persons/{id}, invalidate detail cache,
+  // refresh) but no longer calls window.confirm().
+  const performDeletePerson = useCallback(
+    async (personId: string) => {
+      try {
+        const res = await fetch(`/api/persons/${personId}`, {
+          method: 'DELETE',
+        });
+        if (res.ok) {
+          personDetailCache.invalidate(personId);
+          toast.success('Person deleted');
+          router.refresh();
+        } else {
+          toast.error(classifyApiError(res));
+        }
+      } catch {
+        toast.error('Network error — check your connection');
+      }
+    },
+    [router],
+  );
+
+  // Bulk delete — fires DELETE /api/persons/{id} for each selected id in
+  // parallel. Toasts a single success/failure summary. Optimistic rollback
+  // is intentionally not implemented (the page refresh after re-fetches the
+  // canonical state).
+  const performBulkDeletePersons = useCallback(
+    async (personIds: string[]) => {
+      const results = await Promise.allSettled(
+        personIds.map((id) =>
+          fetch(`/api/persons/${id}`, { method: 'DELETE' }).then(async (r) => {
+            if (!r.ok) throw new Error(`status ${r.status}`);
+            personDetailCache.invalidate(id);
+            return id;
+          }),
+        ),
+      );
+      const ok = results.filter((r) => r.status === 'fulfilled').length;
+      const failed = results.length - ok;
+      if (failed === 0) {
+        toast.success(`${ok} ${ok === 1 ? 'person' : 'people'} deleted`);
+      } else if (ok === 0) {
+        toast.error(`Failed to delete ${failed} ${failed === 1 ? 'person' : 'people'}`);
+      } else {
+        toast.warning(`Deleted ${ok}; ${failed} failed`);
+      }
+      router.refresh();
+    },
+    [router],
+  );
+
+  const handleBulkExport = useCallback(
+    (format: 'png' | 'svg' | 'pdf') => {
+      const selectedIds = reactFlow
+        .getNodes()
+        .filter((n) => n.selected)
+        .map((n) => n.id);
+      const opts = { onlyIds: selectedIds };
+      if (format === 'png') void exportPng(opts);
+      else if (format === 'svg') void exportSvg(opts);
+      else void exportPdf(opts);
+    },
+    [reactFlow, exportPng, exportSvg, exportPdf],
+  );
+
+  const handleSetTopologyAnchorFromMenu = useCallback(
+    (person: PersonListItem, mode: 'ancestors' | 'descendants') => {
+      onSetTopologyAnchor?.(person, mode);
+    },
+    [onSetTopologyAnchor],
+  );
+
+  const handleAddPersonFromMenu = useCallback(() => {
+    router.push('/persons/new');
+  }, [router]);
+
+  const handleToggleMinimapFromMenu = useCallback(() => {
+    prefs.setShowMinimap(!prefs.showMinimap);
+  }, [prefs]);
 
   // Camera commands
   const handleFitToScreen = useCallback(() => {
@@ -860,7 +1054,18 @@ function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focus
       }
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'a') {
         e.preventDefault();
-        setNodes((nds) => nds.map((n) => ({ ...n, selected: !n.data?.dimmed })));
+        setNodes((nds) =>
+          nds.map((n) => {
+            const hiddenByTopology =
+              topologyVisibleIds != null &&
+              n.type === 'person' &&
+              !topologyVisibleIds.has(n.id);
+            return {
+              ...n,
+              selected: !n.data?.dimmed && !hiddenByTopology,
+            };
+          }),
+        );
         return;
       }
 
@@ -949,6 +1154,7 @@ function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focus
     handleFitToScreen,
     handleCenterOnSelected,
     handleResetZoom,
+    topologyVisibleIds,
   ]);
 
   const hasSelection = reactFlow.getNodes().some((n) => n.selected);
@@ -1014,10 +1220,11 @@ function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focus
           onNodesChange={handleNodesChange}
           onEdgesChange={isMobile ? undefined : onEdgesChange}
           onNodeClick={onNodeClick}
-          onNodeContextMenu={isMobile ? undefined : onNodeContextMenu}
-          onEdgeContextMenu={isMobile ? undefined : onEdgeContextMenu}
-          onPaneContextMenu={isMobile ? undefined : onPaneContextMenu}
+          onNodeContextMenu={onNodeContextMenu}
+          onEdgeContextMenu={onEdgeContextMenu}
+          onPaneContextMenu={onPaneContextMenu}
           onPaneClick={onPaneClick}
+          onSelectionChange={handleSelectionChange}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           isValidConnection={isMobile ? undefined : isValidConnection}
@@ -1067,20 +1274,74 @@ function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focus
           />
         </ReactFlow>
 
-        {!isMobile && contextMenu && (
-          <TreeContextMenu
-            {...contextMenu}
-            persons={treeData.persons}
-            onClose={() => setContextMenu(null)}
-            onDeleteRelationship={(edgeId) => {
-              const edge = edges.find(e => e.id === edgeId);
-              if (edge) deleteRelationship(edge);
-            }}
-            onAddRelation={(kind, relation, target) => {
-              setRelationDialog({ kind, relation, target });
-            }}
-          />
-        )}
+        <TreeContextMenu
+          trigger={contextMenu}
+          persons={treeData.persons}
+          onClose={() => setContextMenu(null)}
+          onAddRelation={(kind, relation, target) => {
+            setRelationDialog({ kind, relation, target });
+          }}
+          onDeleteRelationship={(edgeId) => {
+            const edge = edges.find((e) => e.id === edgeId);
+            if (edge) deleteRelationship(edge);
+          }}
+          onRequestDeletePerson={(personId) => {
+            const p = treeData.persons.find((x) => x.id === personId);
+            const personName = p
+              ? `${p.givenName} ${p.surname}`.trim() || '(unnamed)'
+              : 'this person';
+            setDeleteDialog({ kind: 'single', personId, personName });
+            setContextMenu(null);
+          }}
+          onRequestBulkDelete={(personIds) => {
+            setDeleteDialog({ kind: 'bulk', personIds });
+            setContextMenu(null);
+          }}
+          onFocusOnPerson={handleFocusOnPerson}
+          onSetTopologyAnchor={handleSetTopologyAnchorFromMenu}
+          onFitView={handleFitToScreen}
+          onResetZoom={handleResetZoom}
+          onToggleMinimap={handleToggleMinimapFromMenu}
+          onAddPerson={handleAddPersonFromMenu}
+          onExportSelection={handleBulkExport}
+        />
+
+        <AlertDialog
+          open={deleteDialog !== null}
+          onOpenChange={(o) => {
+            if (!o) setDeleteDialog(null);
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {deleteDialog?.kind === 'bulk'
+                  ? `Delete ${deleteDialog.personIds.length} people?`
+                  : `Delete ${deleteDialog?.kind === 'single' ? deleteDialog.personName : 'person'}?`}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                This permanently removes the{' '}
+                {deleteDialog?.kind === 'bulk' ? 'selected people' : 'person'}{' '}
+                and any relationships connecting them. This cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  if (deleteDialog?.kind === 'single') {
+                    void performDeletePerson(deleteDialog.personId);
+                  } else if (deleteDialog?.kind === 'bulk') {
+                    void performBulkDeletePersons(deleteDialog.personIds);
+                  }
+                  setDeleteDialog(null);
+                }}
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {relationDialog?.kind === 'create' && (
           <PersonCreateDialog

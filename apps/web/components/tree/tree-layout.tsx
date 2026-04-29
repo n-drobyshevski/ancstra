@@ -194,7 +194,9 @@ export function TreeLayout({ viewData, focusPersonId }: TreeLayoutProps) {
     const result =
       topologyMode === 'ancestors'
         ? computeAncestors(topologyReferenceId, viewData.treeData)
-        : computeDescendants(topologyReferenceId, viewData.treeData);
+        : computeDescendants(topologyReferenceId, viewData.treeData, {
+            includeCoParents: true,
+          });
     result.add(topologyReferenceId);
     return result;
   }, [topologyMode, topologyReferenceId, viewData]);
@@ -314,11 +316,11 @@ export function TreeLayout({ viewData, focusPersonId }: TreeLayoutProps) {
   );
 
   const handleSetTopologyAnchor = useCallback(
-    (person: PersonListItem) => {
+    (person: PersonListItem, mode: 'ancestors' | 'descendants' = 'ancestors') => {
       setSelectedPerson(person);
       void setFilters({
         topologyAnchor: person.id,
-        topologyMode: 'ancestors',
+        topologyMode: mode,
         page: 1,
       });
     },
@@ -491,7 +493,8 @@ export function TreeLayout({ viewData, focusPersonId }: TreeLayoutProps) {
             treeData={viewData.treeData}
             defaultLayout={viewData.defaultLayout}
             proposedRelationships={viewData.proposedRelationships}
-            focusPersonId={focusPersonId}
+            focusPersonId={runtimeFocusId ?? focusPersonId}
+            focusKey={focusKey}
             paletteOpen={paletteOpen}
             onTogglePalette={handleTogglePalette}
             onSelectPerson={handleSelectPerson}
@@ -503,6 +506,8 @@ export function TreeLayout({ viewData, focusPersonId }: TreeLayoutProps) {
             showGaps={showGaps}
             onShowGapsChange={setShowGaps}
             onFocusPerson={handleFocusNode}
+            onSetTopologyAnchor={handleSetTopologyAnchor}
+            topologyVisibleIds={topologyVisibleIds}
           />
         ) : (
           <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
@@ -602,6 +607,9 @@ export function TreeLayout({ viewData, focusPersonId }: TreeLayoutProps) {
               onFilterStateChange={handleFilterStateChange}
               showGaps={showGaps}
               onShowGapsChange={setShowGaps}
+              onFocusPerson={handleFocusNode}
+              onSetTopologyAnchor={handleSetTopologyAnchor}
+              topologyVisibleIds={topologyVisibleIds}
               mobileToolbarSlot={(canvasActions) => (
                 <MobileViewBar
                   view={view}

@@ -1,41 +1,170 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import type { PersonListItem } from '@ancstra/shared';
 import { toast } from 'sonner';
-import { personDetailCache } from '@/lib/tree/person-detail-cache';
+import {
+  Pencil,
+  FlaskConical,
+  UserPlus,
+  Target,
+  ArrowUpToLine,
+  ArrowDownToLine,
+  Table2,
+  Hash,
+  Link2,
+  ExternalLink,
+  Trash2,
+  Eye,
+  Maximize,
+  RefreshCw,
+  Map as MapIcon,
+  Download,
+} from 'lucide-react';
+import type { PersonListItem } from '@ancstra/shared';
+
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuShortcut,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { formatShortcut } from '@/lib/tree/format-shortcut';
 import type { RelationType } from '@/components/person-link-dialog';
 
-interface ContextMenuProps {
+// ---------------------------------------------------------------------------
+// Surface + trigger types
+// ---------------------------------------------------------------------------
+
+export type ContextMenuSurface =
+  | { kind: 'node'; nodeId: string }
+  | {
+      kind: 'edge';
+      edgeId: string;
+      edgeFamilyId?: string;
+      edgeChildId?: string;
+      edgeType?: string;
+    }
+  | { kind: 'pane' };
+
+export interface ContextMenuTrigger {
   x: number;
   y: number;
-  type: 'node' | 'edge' | 'canvas';
-  nodeId?: string;
-  edgeId?: string;
-  edgeType?: string;
-  edgeFamilyId?: string;
-  edgeChildId?: string;
+  surface: ContextMenuSurface;
+  /** Ids of all currently selected nodes. When length > 1 and surface is
+   *  'node', the multi-select branch renders. */
+  selectionIds: string[];
+}
+
+interface TreeContextMenuProps {
+  trigger: ContextMenuTrigger | null;
   persons: PersonListItem[];
   onClose: () => void;
-  onDeleteRelationship?: (edgeId: string) => void;
-  /** Open the create-or-link dialog for a relation. The parent is responsible
-   *  for actually mounting the dialog so it survives this menu being unmounted. */
-  onAddRelation?: (
+  onAddRelation: (
     kind: 'create' | 'link',
     relation: RelationType,
     target: { id: string; name: string; sex: 'M' | 'F' | 'U' },
   ) => void;
+  onDeleteRelationship: (edgeId: string) => void;
+  /** Open the AlertDialog confirm for a single-person delete. The actual
+   *  delete API call is owned by the parent. */
+  onRequestDeletePerson: (personId: string) => void;
+  /** Open the AlertDialog confirm for a bulk delete. */
+  onRequestBulkDelete: (personIds: string[]) => void;
+  onFocusOnPerson: (personId: string) => void;
+  onSetTopologyAnchor: (
+    person: PersonListItem,
+    mode: 'ancestors' | 'descendants',
+  ) => void;
+  onFitView: () => void;
+  onResetZoom: () => void;
+  onToggleMinimap: () => void;
+  onAddPerson: () => void;
+  onExportSelection: (format: 'png' | 'svg' | 'pdf') => void;
 }
 
-type MenuItem = {
-  label: string;
-  onClick?: () => void;
-  destructive?: boolean;
-  separator?: boolean;
-  header?: boolean;
-  submenu?: MenuItem[];
-};
+// ---------------------------------------------------------------------------
+// Root: controlled DropdownMenu anchored at (x, y)
+// ---------------------------------------------------------------------------
+
+export function TreeContextMenu(props: TreeContextMenuProps) {
+  const { trigger, onClose, ...rest } = props;
+  const open = trigger !== null;
+
+  // Virtual trigger element sits at the cursor position. Radix DropdownMenu
+  // anchors `Content` to its `Trigger` element — there is no separate Anchor
+  // primitive on DropdownMenu (unlike Popover). `pointerEvents: 'none'` and
+  // `tabIndex={-1}` keep it out of the way of the canvas; Radix uses only
+  // its bounding box for positioning.
+  const triggerStyle: React.CSSProperties = React.useMemo(
+    () => ({
+      position: 'fixed',
+      left: trigger?.x ?? 0,
+      top: trigger?.y ?? 0,
+      width: 1,
+      height: 1,
+      pointerEvents: 'none',
+    }),
+    [trigger?.x, trigger?.y],
+  );
+
+  return (
+    <DropdownMenu
+      open={open}
+      onOpenChange={(o) => {
+        if (!o) onClose();
+      }}
+      modal={false}
+    >
+      <DropdownMenuTrigger asChild>
+        <span aria-hidden style={triggerStyle} tabIndex={-1} />
+      </DropdownMenuTrigger>
+      {trigger && <Body trigger={trigger} onClose={onClose} {...rest} />}
+    </DropdownMenu>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Body: switches per surface
+// ---------------------------------------------------------------------------
+
+function Body(
+  props: Omit<TreeContextMenuProps, 'trigger'> & { trigger: ContextMenuTrigger },
+) {
+  const { trigger } = props;
+  const isMultiNode =
+    trigger.surface.kind === 'node' && trigger.selectionIds.length > 1;
+
+  return (
+    <DropdownMenuContent
+      align="start"
+      sideOffset={2}
+      collisionPadding={8}
+      className="min-w-56 pointer-coarse:min-w-64"
+      onCloseAutoFocus={(e) => e.preventDefault()}
+    >
+      {isMultiNode ? (
+        <MultiSelectItems {...props} />
+      ) : trigger.surface.kind === 'node' ? (
+        <NodeItems {...props} surface={trigger.surface} />
+      ) : trigger.surface.kind === 'edge' ? (
+        <EdgeItems {...props} surface={trigger.surface} />
+      ) : (
+        <PaneItems {...props} />
+      )}
+    </DropdownMenuContent>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Single-node menu
+// ---------------------------------------------------------------------------
 
 const ADD_RELATION_GROUPS: Array<{ relation: RelationType; label: string }> = [
   { relation: 'spouse', label: 'Spouse' },
@@ -45,148 +174,366 @@ const ADD_RELATION_GROUPS: Array<{ relation: RelationType; label: string }> = [
   { relation: 'sibling', label: 'Sibling' },
 ];
 
-export function TreeContextMenu({
-  x, y, type, nodeId, edgeId, persons, onClose, onDeleteRelationship, onAddRelation,
-}: ContextMenuProps) {
+function NodeItems({
+  surface,
+  persons,
+  onClose,
+  onAddRelation,
+  onRequestDeletePerson,
+  onFocusOnPerson,
+  onSetTopologyAnchor,
+}: TreeContextMenuProps & { surface: { kind: 'node'; nodeId: string } }) {
   const router = useRouter();
-  const menuRef = useRef<HTMLDivElement>(null);
-  const submenuRef = useRef<HTMLDivElement>(null);
-  const [openSubmenu, setOpenSubmenu] = useState<number | null>(null);
+  const person = persons.find((p) => p.id === surface.nodeId);
+  if (!person) return null;
 
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      if (menuRef.current?.contains(target)) return;
-      if (submenuRef.current?.contains(target)) return;
-      onClose();
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [onClose]);
+  const fullName = `${person.givenName} ${person.surname}`.trim();
+  const lifespan = formatLifespan(person);
+  const target = { id: person.id, name: fullName, sex: person.sex };
 
-  const person = nodeId ? persons.find((p) => p.id === nodeId) : null;
-
-  const requestAddRelation = useCallback(
-    (kind: 'create' | 'link', relation: RelationType) => {
-      if (!person || !nodeId || !onAddRelation) return;
-      onAddRelation(kind, relation, {
-        id: nodeId,
-        name: `${person.givenName} ${person.surname}`,
-        sex: person.sex,
-      });
-      onClose();
-    },
-    [person, nodeId, onAddRelation, onClose],
-  );
-
-  const items: MenuItem[] = [];
-
-  if (type === 'node' && person) {
-    items.push(
-      { label: `${person.givenName} ${person.surname}`, header: true },
-      { separator: true, label: '' },
-      { label: 'View Details', onClick: () => onClose() },
-      { label: 'Edit Person', onClick: () => { router.push(`/persons/${nodeId}?view=record`); onClose(); } },
-      { label: 'Research this person', onClick: () => { router.push(`/persons/${nodeId}?view=board`); onClose(); } },
-      { separator: true, label: '' },
-      ...ADD_RELATION_GROUPS.map(({ relation, label }) => ({
-        label: `Add ${label}`,
-        submenu: [
-          { label: 'Link existing', onClick: () => requestAddRelation('link', relation) },
-          { label: '+ New', onClick: () => requestAddRelation('create', relation) },
-        ],
-      })),
-      { separator: true, label: '' },
-      {
-        label: 'Delete Person', destructive: true,
-        onClick: async () => {
-          if (!confirm(`Delete ${person.givenName} ${person.surname}?`)) return;
-          const res = await fetch(`/api/persons/${nodeId}`, { method: 'DELETE' });
-          if (res.ok) {
-            if (nodeId) personDetailCache.invalidate(nodeId);
-            toast.success('Person deleted'); router.refresh();
-          } else toast.error('Failed to delete');
-          onClose();
-        },
-      },
-    );
-  } else if (type === 'edge') {
-    items.push({
-      label: 'Delete Relationship', destructive: true,
-      onClick: () => {
-        if (edgeId && onDeleteRelationship) onDeleteRelationship(edgeId);
-        onClose();
-      },
-    });
-  } else if (type === 'canvas') {
-    items.push(
-      { label: 'Add Person', onClick: () => { router.push('/persons/new'); onClose(); } },
-      { label: 'Fit View', onClick: () => onClose() },
-    );
-  }
-
-  if (items.length === 0) return null;
+  const requestAddRelation = (
+    kind: 'create' | 'link',
+    relation: RelationType,
+  ) => {
+    onAddRelation(kind, relation, target);
+    onClose();
+  };
 
   return (
-    <div
-      ref={menuRef}
-      className="fixed z-50 min-w-[180px] rounded-lg border bg-popover p-1 shadow-lg"
-      style={{ left: x, top: y }}
-    >
-      {items.map((item, i) => {
-        if (item.separator) return <div key={i} className="my-1 h-px bg-border" />;
-        if (item.header) return (
-          <div key={i} className="px-3 py-1.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-            {item.label}
-          </div>
-        );
-        if (item.submenu) {
-          const isOpen = openSubmenu === i;
-          return (
-            <div
-              key={i}
-              className="relative"
-              onMouseEnter={() => setOpenSubmenu(i)}
-              onMouseLeave={() => setOpenSubmenu((cur) => (cur === i ? null : cur))}
-            >
-              <button
-                type="button"
-                className="w-full rounded-md px-3 py-1.5 text-left text-sm hover:bg-accent flex items-center justify-between"
-              >
-                <span>{item.label}</span>
-                <span className="ml-2 text-muted-foreground">›</span>
-              </button>
-              {isOpen && (
-                <div
-                  ref={submenuRef}
-                  className="absolute left-full top-0 ml-1 min-w-[150px] rounded-lg border bg-popover p-1 shadow-lg"
+    <>
+      <DropdownMenuLabel className="flex flex-col gap-0.5 px-2 py-1.5">
+        <span className="text-sm font-medium text-foreground truncate">
+          {fullName || '(unnamed)'}
+        </span>
+        {lifespan && (
+          <span className="text-[11px] text-muted-foreground">{lifespan}</span>
+        )}
+      </DropdownMenuLabel>
+
+      <DropdownMenuSeparator />
+
+      {/* Navigate group */}
+      <DropdownMenuItem onSelect={onClose}>
+        <Eye />
+        <span>View details</span>
+      </DropdownMenuItem>
+      <DropdownMenuItem
+        onSelect={() => {
+          router.push(`/persons/${person.id}?view=record`);
+          onClose();
+        }}
+      >
+        <Pencil />
+        <span>Edit person</span>
+        <DropdownMenuShortcut>{formatShortcut('E')}</DropdownMenuShortcut>
+      </DropdownMenuItem>
+      <DropdownMenuItem
+        onSelect={() => {
+          router.push(`/persons/${person.id}?view=board`);
+          onClose();
+        }}
+      >
+        <FlaskConical />
+        <span>Research this person</span>
+      </DropdownMenuItem>
+
+      <DropdownMenuSeparator />
+
+      {/* Add relation submenu */}
+      <DropdownMenuSub>
+        <DropdownMenuSubTrigger>
+          <UserPlus />
+          <span>Add relation</span>
+        </DropdownMenuSubTrigger>
+        <DropdownMenuSubContent className="min-w-44">
+          {ADD_RELATION_GROUPS.map(({ relation, label }) => (
+            <DropdownMenuSub key={relation}>
+              <DropdownMenuSubTrigger>
+                <span>{label}</span>
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent className="min-w-40">
+                <DropdownMenuItem
+                  onSelect={() => requestAddRelation('link', relation)}
                 >
-                  {item.submenu.map((sub, j) => (
-                    <button
-                      key={j}
-                      type="button"
-                      onClick={sub.onClick}
-                      className="w-full rounded-md px-3 py-1.5 text-left text-sm hover:bg-accent"
-                    >
-                      {sub.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          );
-        }
-        return (
-          <button
-            key={i}
-            type="button"
-            onClick={item.onClick}
-            className={`w-full rounded-md px-3 py-1.5 text-left text-sm hover:bg-accent ${item.destructive ? 'text-destructive hover:bg-destructive/10' : ''}`}
-          >
-            {item.label}
-          </button>
-        );
-      })}
-    </div>
+                  <span>Link existing…</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={() => requestAddRelation('create', relation)}
+                >
+                  <span>+ New person</span>
+                </DropdownMenuItem>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          ))}
+        </DropdownMenuSubContent>
+      </DropdownMenuSub>
+
+      <DropdownMenuSeparator />
+
+      {/* Focus / filter */}
+      <DropdownMenuItem
+        onSelect={() => {
+          onFocusOnPerson(person.id);
+          onClose();
+        }}
+      >
+        <Target />
+        <span>Focus on person</span>
+      </DropdownMenuItem>
+      <DropdownMenuItem
+        onSelect={() => {
+          onSetTopologyAnchor(person, 'ancestors');
+          onClose();
+        }}
+      >
+        <ArrowUpToLine />
+        <span>Show ancestors only</span>
+      </DropdownMenuItem>
+      <DropdownMenuItem
+        onSelect={() => {
+          onSetTopologyAnchor(person, 'descendants');
+          onClose();
+        }}
+      >
+        <ArrowDownToLine />
+        <span>Show descendants only</span>
+      </DropdownMenuItem>
+      <DropdownMenuItem
+        onSelect={() => {
+          router.push(`/tree?view=table&topologyAnchor=${person.id}`);
+          onClose();
+        }}
+      >
+        <Table2 />
+        <span>See in table view</span>
+      </DropdownMenuItem>
+
+      <DropdownMenuSeparator />
+
+      {/* Sharing / utility */}
+      <DropdownMenuItem
+        onSelect={async () => {
+          try {
+            await navigator.clipboard.writeText(person.id);
+            toast.success('Person ID copied');
+          } catch {
+            toast.error('Could not copy to clipboard');
+          }
+          onClose();
+        }}
+      >
+        <Hash />
+        <span>Copy person ID</span>
+      </DropdownMenuItem>
+      <DropdownMenuItem
+        onSelect={async () => {
+          try {
+            const link = `${window.location.origin}/persons/${person.id}`;
+            await navigator.clipboard.writeText(link);
+            toast.success('Share link copied');
+          } catch {
+            toast.error('Could not copy to clipboard');
+          }
+          onClose();
+        }}
+      >
+        <Link2 />
+        <span>Copy share link</span>
+      </DropdownMenuItem>
+      <DropdownMenuItem
+        onSelect={() => {
+          window.open(`/persons/${person.id}`, '_blank', 'noopener,noreferrer');
+          onClose();
+        }}
+      >
+        <ExternalLink />
+        <span>Open in new tab</span>
+      </DropdownMenuItem>
+
+      <DropdownMenuSeparator />
+
+      {/* Destructive */}
+      <DropdownMenuItem
+        variant="destructive"
+        onSelect={() => {
+          onRequestDeletePerson(person.id);
+          // Don't onClose() — the AlertDialog mount supersedes the menu;
+          // closing here would race the dialog open.
+        }}
+      >
+        <Trash2 />
+        <span>Delete person…</span>
+      </DropdownMenuItem>
+    </>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Multi-select menu (n >= 2)
+// ---------------------------------------------------------------------------
+
+function MultiSelectItems({
+  trigger,
+  onClose,
+  onRequestBulkDelete,
+  onExportSelection,
+}: TreeContextMenuProps & { trigger: ContextMenuTrigger }) {
+  const ids = trigger.selectionIds;
+  return (
+    <>
+      <DropdownMenuLabel className="px-2 py-1.5">
+        <span className="text-sm font-medium text-foreground">
+          Selected ({ids.length}) people
+        </span>
+      </DropdownMenuLabel>
+      <DropdownMenuSeparator />
+      <DropdownMenuSub>
+        <DropdownMenuSubTrigger>
+          <Download />
+          <span>Bulk export</span>
+        </DropdownMenuSubTrigger>
+        <DropdownMenuSubContent className="min-w-32">
+          {(['png', 'svg', 'pdf'] as const).map((fmt) => (
+            <DropdownMenuItem
+              key={fmt}
+              onSelect={() => {
+                onExportSelection(fmt);
+                onClose();
+              }}
+            >
+              <span>{fmt.toUpperCase()}</span>
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuSubContent>
+      </DropdownMenuSub>
+      <DropdownMenuSeparator />
+      <DropdownMenuItem
+        variant="destructive"
+        onSelect={() => onRequestBulkDelete(ids)}
+      >
+        <Trash2 />
+        <span>Delete {ids.length} people…</span>
+      </DropdownMenuItem>
+    </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Edge menu
+// ---------------------------------------------------------------------------
+
+function EdgeItems({
+  surface,
+  onClose,
+  onDeleteRelationship,
+}: TreeContextMenuProps & {
+  surface: {
+    kind: 'edge';
+    edgeId: string;
+    edgeFamilyId?: string;
+  };
+}) {
+  const router = useRouter();
+  return (
+    <>
+      {surface.edgeFamilyId && (
+        <DropdownMenuItem
+          onSelect={() => {
+            router.push(`/families/${surface.edgeFamilyId}`);
+            onClose();
+          }}
+        >
+          <Pencil />
+          <span>Edit relationship details</span>
+        </DropdownMenuItem>
+      )}
+      {surface.edgeFamilyId && <DropdownMenuSeparator />}
+      <DropdownMenuItem
+        variant="destructive"
+        onSelect={() => {
+          onDeleteRelationship(surface.edgeId);
+          onClose();
+        }}
+      >
+        <Trash2 />
+        <span>Delete relationship</span>
+      </DropdownMenuItem>
+    </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Pane (empty canvas) menu
+// ---------------------------------------------------------------------------
+
+function PaneItems({
+  onClose,
+  onFitView,
+  onResetZoom,
+  onToggleMinimap,
+  onAddPerson,
+}: TreeContextMenuProps) {
+  return (
+    <>
+      <DropdownMenuItem
+        onSelect={() => {
+          onAddPerson();
+          onClose();
+        }}
+      >
+        <UserPlus />
+        <span>Add person</span>
+      </DropdownMenuItem>
+      <DropdownMenuSeparator />
+      <DropdownMenuItem
+        onSelect={() => {
+          onFitView();
+          onClose();
+        }}
+      >
+        <Maximize />
+        <span>Fit view</span>
+        <DropdownMenuShortcut>{formatShortcut('F')}</DropdownMenuShortcut>
+      </DropdownMenuItem>
+      <DropdownMenuItem
+        onSelect={() => {
+          onResetZoom();
+          onClose();
+        }}
+      >
+        <RefreshCw />
+        <span>Reset zoom</span>
+        <DropdownMenuShortcut>{formatShortcut('0')}</DropdownMenuShortcut>
+      </DropdownMenuItem>
+      <DropdownMenuItem
+        onSelect={() => {
+          onToggleMinimap();
+          onClose();
+        }}
+      >
+        <MapIcon />
+        <span>Toggle minimap</span>
+        <DropdownMenuShortcut>{formatShortcut('Mod M')}</DropdownMenuShortcut>
+      </DropdownMenuItem>
+    </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function formatLifespan(p: PersonListItem): string | null {
+  // PersonListItem has birth/death year fields shaped per @ancstra/shared.
+  // Be permissive — different builds may expose these as `birthYear`,
+  // `birth_year`, or nested under `vitals`. Probe defensively.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const any = p as any;
+  const birth =
+    any.birthYear ?? any.birth_year ?? any.vitals?.birthYear ?? null;
+  const death =
+    any.deathYear ?? any.death_year ?? any.vitals?.deathYear ?? null;
+  if (!birth && !death) return null;
+  return `${birth ?? '?'} – ${death ?? (p.isLiving ? '' : '?')}`.trim();
+}
+

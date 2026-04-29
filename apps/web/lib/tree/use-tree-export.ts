@@ -24,11 +24,19 @@ function downloadDataUrl(dataUrl: string, filename: string) {
   a.click();
 }
 
+export interface TreeExportOpts {
+  /** When provided, the export crops to the bounding box of these node ids
+   *  and hides any `.react-flow__node` whose `data-id` is not in the set.
+   *  Edges are NOT filtered — edges that cross the selection bounds will
+   *  still appear (acceptable v1 limitation). */
+  onlyIds?: string[];
+}
+
 export interface TreeExportApi {
   exporting: boolean;
-  exportPng: () => Promise<void>;
-  exportSvg: () => Promise<void>;
-  exportPdf: () => Promise<void>;
+  exportPng: (opts?: TreeExportOpts) => Promise<void>;
+  exportSvg: (opts?: TreeExportOpts) => Promise<void>;
+  exportPdf: (opts?: TreeExportOpts) => Promise<void>;
 }
 
 /**
@@ -51,19 +59,31 @@ export function useTreeExport(): TreeExportApi {
   }, []);
 
   const exportImage = useCallback(
-    async (kind: ExportKind) => {
+    async (kind: ExportKind, opts?: TreeExportOpts) => {
       const element = getFlowElement();
       if (!element) return;
 
       setExporting(true);
       try {
-        const nodes = getNodes();
-        if (nodes.length === 0) {
+        const allNodes = getNodes();
+        if (allNodes.length === 0) {
           toast.error('No nodes to export');
           return;
         }
 
-        const bounds = getNodesBounds(nodes);
+        const onlyIdSet =
+          opts?.onlyIds && opts.onlyIds.length > 0
+            ? new Set(opts.onlyIds)
+            : null;
+        const boundsNodes = onlyIdSet
+          ? allNodes.filter((n) => onlyIdSet.has(n.id))
+          : allNodes;
+        if (boundsNodes.length === 0) {
+          toast.error('Nothing in selection to export');
+          return;
+        }
+
+        const bounds = getNodesBounds(boundsNodes);
         const viewport = getViewportForBounds(
           bounds,
           IMAGE_WIDTH,
@@ -84,6 +104,17 @@ export function useTreeExport(): TreeExportApi {
             height: `${IMAGE_HEIGHT}px`,
             transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`,
           },
+          // Hide any non-selected react-flow nodes when exporting a subset.
+          filter: onlyIdSet
+            ? (node) => {
+                if (!(node instanceof HTMLElement)) return true;
+                if (node.classList.contains('react-flow__node')) {
+                  const id = node.getAttribute('data-id');
+                  return id !== null && onlyIdSet.has(id);
+                }
+                return true;
+              }
+            : undefined,
         });
 
         if (kind === 'pdf') {
@@ -109,9 +140,18 @@ export function useTreeExport(): TreeExportApi {
     [getFlowElement, getNodes],
   );
 
-  const exportPng = useCallback(() => exportImage('png'), [exportImage]);
-  const exportSvg = useCallback(() => exportImage('svg'), [exportImage]);
-  const exportPdf = useCallback(() => exportImage('pdf'), [exportImage]);
+  const exportPng = useCallback(
+    (opts?: TreeExportOpts) => exportImage('png', opts),
+    [exportImage],
+  );
+  const exportSvg = useCallback(
+    (opts?: TreeExportOpts) => exportImage('svg', opts),
+    [exportImage],
+  );
+  const exportPdf = useCallback(
+    (opts?: TreeExportOpts) => exportImage('pdf', opts),
+    [exportImage],
+  );
 
   return { exporting, exportPng, exportSvg, exportPdf };
 }
