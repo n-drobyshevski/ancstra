@@ -6,8 +6,22 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { previewGedcom, commitGedcomImport } from '@/app/actions/import-gedcom';
+import { trpc } from '@/lib/trpc/client';
 import type { GedcomPreview } from '@/lib/gedcom/types';
+
+/** Read a File as a base64 string (data URL prefix stripped). Works for any file size. */
+async function fileToBase64(file: File): Promise<string> {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      // Strip "data:<mime>;base64," prefix
+      resolve(dataUrl.split(',', 2)[1]);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
 export function GedcomImport() {
   const router = useRouter();
@@ -21,6 +35,9 @@ export function GedcomImport() {
   const [dragOver, setDragOver] = useState(false);
   const [warningsExpanded, setWarningsExpanded] = useState(false);
 
+  const previewMutation = trpc.gedcom.previewImport.useMutation();
+  const commitMutation = trpc.gedcom.commitImport.useMutation();
+
   const handleFile = useCallback(async (selectedFile: File) => {
     if (!selectedFile.name.endsWith('.ged')) {
       setError('Please select a .ged file');
@@ -32,9 +49,11 @@ export function GedcomImport() {
     setLoading(true);
 
     try {
-      const formData = new FormData();
-      formData.set('file', selectedFile);
-      const result = await previewGedcom(formData);
+      const gedcomBase64 = await fileToBase64(selectedFile);
+      const result = await previewMutation.mutateAsync({
+        gedcomBase64,
+        filename: selectedFile.name,
+      });
       setPreview(result);
       setStep('preview');
     } catch (err) {
@@ -42,6 +61,7 @@ export function GedcomImport() {
     } finally {
       setLoading(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function handleDragOver(e: React.DragEvent) {
@@ -80,9 +100,11 @@ export function GedcomImport() {
 
     setStep('importing');
     try {
-      const formData = new FormData();
-      formData.set('file', file);
-      const result = await commitGedcomImport(formData);
+      const gedcomBase64 = await fileToBase64(file);
+      const result = await commitMutation.mutateAsync({
+        gedcomBase64,
+        filename: file.name,
+      });
       toast.success(
         `Imported ${result.imported.persons} persons, ${result.imported.families} families, ${result.imported.events} events`
       );
