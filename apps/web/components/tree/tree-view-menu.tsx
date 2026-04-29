@@ -117,11 +117,11 @@ export function TreeViewMenu(props: TreeViewMenuProps) {
         >
           <MenubarRadioItem value="wide">
             Wide
-            <MenubarShortcut>{formatShortcut('Mod 1')}</MenubarShortcut>
+            <MenubarShortcut>{formatShortcut('Mod Alt 1')}</MenubarShortcut>
           </MenubarRadioItem>
           <MenubarRadioItem value="compact">
             Compact
-            <MenubarShortcut>{formatShortcut('Mod 2')}</MenubarShortcut>
+            <MenubarShortcut>{formatShortcut('Mod Alt 2')}</MenubarShortcut>
           </MenubarRadioItem>
         </MenubarRadioGroup>
 

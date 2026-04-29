@@ -886,13 +886,17 @@ function TreeCanvasInner({ treeData, defaultLayout, focusPersonId, focusKey, pal
 
       const mod = e.metaKey || e.ctrlKey;
 
-      // Mod+1 / Mod+2 — node style
-      if (mod && !e.shiftKey && !e.altKey && e.key === '1') {
+      // Mod+Alt+1 / Mod+Alt+2 — node style. Mod+1/Mod+2 conflict with
+      // browser tab-switching (which most browsers claim before the page
+      // can preventDefault), so we require Alt as a second modifier in
+      // the Figma/Linear convention. Use `e.code === 'Digit1'` instead
+      // of `e.key === '1'` because on macOS Option+1 reports `e.key === '¡'`.
+      if (mod && !e.shiftKey && e.altKey && e.code === 'Digit1') {
         e.preventDefault();
         handleNodeStyleChange('wide');
         return;
       }
-      if (mod && !e.shiftKey && !e.altKey && e.key === '2') {
+      if (mod && !e.shiftKey && e.altKey && e.code === 'Digit2') {
         e.preventDefault();
         handleNodeStyleChange('compact');
         return;
