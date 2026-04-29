@@ -751,23 +751,6 @@ function TreeCanvasInner({ treeData, defaultLayout, focusPersonId, focusKey, pal
   // Compute filtered edges (dimmed based on node dimmed status)
   const filteredEdges = useMemo(() => applyEdgeFilters(edges, nodes), [edges, nodes]);
 
-  // Keyboard shortcuts
-  useEffect(() => {
-    if (isMobile) return; // No keyboard shortcuts on mobile
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onSelectPerson(null);
-        setContextMenu(null);
-      }
-      if ((e.metaKey || e.ctrlKey) && e.key === 'a') {
-        e.preventDefault();
-        setNodes(nds => nds.map(n => ({ ...n, selected: !n.data?.dimmed })));
-      }
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [setNodes, isMobile]);
-
   // Export helpers (for mobile toolbar slot)
   const getFlowElement = useCallback(() => {
     return document.querySelector('.react-flow__viewport') as HTMLElement | null;
@@ -870,6 +853,102 @@ function TreeCanvasInner({ treeData, defaultLayout, focusPersonId, focusKey, pal
     const { x, y } = reactFlow.getViewport();
     reactFlow.setViewport({ x, y, zoom: 1 }, { duration: 250 });
   }, [reactFlow]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    if (isMobile) return;
+    const handler = (e: KeyboardEvent) => {
+      // Existing shortcuts (unchanged behavior — fire even when typing).
+      if (e.key === 'Escape') {
+        onSelectPerson(null);
+        setContextMenu(null);
+        return;
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'a') {
+        e.preventDefault();
+        setNodes((nds) => nds.map((n) => ({ ...n, selected: !n.data?.dimmed })));
+        return;
+      }
+
+      // Guard new shortcuts only — don't intercept while typing in inputs.
+      const target = e.target as HTMLElement | null;
+      const inEditableField =
+        !!target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable);
+      if (inEditableField) return;
+
+      const mod = e.metaKey || e.ctrlKey;
+
+      // Mod+1 / Mod+2 — node style
+      if (mod && !e.shiftKey && e.key === '1') {
+        e.preventDefault();
+        handleNodeStyleChange('wide');
+        return;
+      }
+      if (mod && !e.shiftKey && e.key === '2') {
+        e.preventDefault();
+        handleNodeStyleChange('compact');
+        return;
+      }
+
+      // Mod+M — toggle minimap
+      if (mod && !e.shiftKey && e.key.toLowerCase() === 'm') {
+        e.preventDefault();
+        prefs.setShowMinimap(!prefs.showMinimap);
+        return;
+      }
+
+      // Mod+G — toggle data quality
+      if (mod && !e.shiftKey && e.key.toLowerCase() === 'g') {
+        e.preventDefault();
+        prefs.setShowDataQuality(!prefs.showDataQuality);
+        return;
+      }
+
+      // Mod+Shift+L — auto layout
+      if (mod && e.shiftKey && e.key.toLowerCase() === 'l') {
+        e.preventDefault();
+        handleAutoLayout();
+        return;
+      }
+
+      // F — fit to screen (no modifier)
+      if (!mod && !e.shiftKey && e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        handleFitToScreen();
+        return;
+      }
+
+      // C — center on selected
+      if (!mod && !e.shiftKey && e.key.toLowerCase() === 'c') {
+        e.preventDefault();
+        handleCenterOnSelected();
+        return;
+      }
+
+      // 0 — reset zoom
+      if (!mod && !e.shiftKey && e.key === '0') {
+        e.preventDefault();
+        handleResetZoom();
+        return;
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [
+    setNodes,
+    isMobile,
+    onSelectPerson,
+    setContextMenu,
+    handleNodeStyleChange,
+    prefs,
+    handleAutoLayout,
+    handleFitToScreen,
+    handleCenterOnSelected,
+    handleResetZoom,
+  ]);
 
   const hasSelection = reactFlow.getNodes().some((n) => n.selected);
 
