@@ -1,5 +1,7 @@
 export type Role = 'owner' | 'admin' | 'editor' | 'viewer';
 
+export const VALID_ROLES = ['owner', 'admin', 'editor', 'viewer'] as const satisfies readonly Role[];
+
 export type Permission =
   | 'tree:view' | 'tree:export' | 'tree:delete'
   | 'person:create' | 'person:edit' | 'person:delete'

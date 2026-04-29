@@ -5,6 +5,11 @@ import type { Session } from 'next-auth';
 import { auth } from '@/auth';
 import { createCentralDb, createFamilyDb, type CentralDatabase, type FamilyDatabase } from '@ancstra/db';
 import type { Role } from '@ancstra/auth';
+import { VALID_ROLES } from '@ancstra/auth';
+
+function parseRole(s: string): Role | null {
+  return (VALID_ROLES as readonly string[]).includes(s) ? (s as Role) : null;
+}
 
 export interface Meta {
   permission?: string;
@@ -55,12 +60,27 @@ export async function createTRPCContext(opts: { headers: Headers }): Promise<Bas
     };
   }
 
+  const role = parseRole(membership.role);
+  if (!role) {
+    // Treat malformed role as "no membership" — fail closed
+    return {
+      session,
+      userId: session.user.id,
+      familyId: null,
+      role: null,
+      dbFilename: null,
+      familyDb: null,
+      centralDb,
+    };
+  }
+
   const familyDb = createFamilyDb(membership.dbFilename);
   return {
     session,
     userId: session.user.id,
     familyId: membership.familyId,
-    role: membership.role as Role,
+    // role re-derived from JWT membership; never trust x-family-role header (cross-cutting D2)
+    role,
     dbFilename: membership.dbFilename,
     familyDb,
     centralDb,
