@@ -195,7 +195,11 @@ function PersonNodeComponent({ id, data, selected }: NodeProps<PersonNodeType>) 
                 {initials}
               </div>
               {showLivingIndicator && isLiving && (
-                <span className="absolute bottom-0 right-0 block h-2 w-2 rounded-full bg-green-500 ring-1 ring-background" />
+                <span
+                  role="img"
+                  aria-label="Living"
+                  className="absolute bottom-0 right-0 block h-2 w-2 rounded-full bg-completion-high ring-1 ring-background"
+                />
               )}
             </div>
             <div className="w-full text-center leading-tight">
@@ -222,7 +226,11 @@ function PersonNodeComponent({ id, data, selected }: NodeProps<PersonNodeType>) 
                 {initials}
               </div>
               {showLivingIndicator && isLiving && (
-                <span className="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full bg-green-500 ring-1 ring-background" />
+                <span
+                  role="img"
+                  aria-label="Living"
+                  className="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full bg-completion-high ring-1 ring-background"
+                />
               )}
             </div>
             <div className="min-w-0 flex-1">

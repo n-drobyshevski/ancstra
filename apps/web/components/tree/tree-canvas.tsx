@@ -54,6 +54,7 @@ import {
   readNodeStylePreference,
   writeNodeStylePreference,
 } from '@/lib/tree/node-style-storage';
+import { readShowDates, readShowLivingIndicator } from '@/lib/tree/view-prefs-storage';
 import type { DefaultTreeLayout } from '@/lib/cache/tree';
 import { useTreeViewPrefs } from '@/lib/tree/use-tree-view-prefs';
 
@@ -126,8 +127,12 @@ function TreeCanvasInner({ treeData, defaultLayout, focusPersonId, focusKey, pal
   // (e.g. recently added) keep their dagre-computed positions instead of
   // collapsing to (0,0).
   const initialNodes = useMemo(() => {
+    const initShowDates = readShowDates() ?? true;
+    const initShowLivingIndicator = readShowLivingIndicator() ?? true;
     const laid = applyDagreLayout(rawNodes, rawEdges, undefined, initStyle).map(
-      n => n.type === 'person' ? { ...n, data: { ...n.data, nodeStyle: initStyle } } : n,
+      n => n.type === 'person'
+        ? { ...n, data: { ...n.data, nodeStyle: initStyle, showDates: initShowDates, showLivingIndicator: initShowLivingIndicator } }
+        : n,
     );
     if (!defaultLayout) return laid;
     const { positions } = parseLayoutData(defaultLayout.layoutData);
