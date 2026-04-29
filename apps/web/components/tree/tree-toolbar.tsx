@@ -24,6 +24,10 @@ interface TreeToolbarProps extends TreeViewMenuProps {
 }
 
 export function TreeToolbar(props: TreeToolbarProps) {
+  // Partition: pull toolbar-only props out so they are NOT forwarded into
+  // <TreeViewMenu />. The rest is structurally `TreeViewMenuProps` because
+  // `TreeToolbarProps extends TreeViewMenuProps` plus the six toolbar-only
+  // fields below — removing them leaves exactly the menu's prop surface.
   const {
     onTogglePalette,
     paletteOpen,
@@ -31,6 +35,7 @@ export function TreeToolbar(props: TreeToolbarProps) {
     onSetView,
     filterState,
     onToggleFilter,
+    ...viewMenuProps
   } = props;
 
   return (
@@ -51,7 +56,7 @@ export function TreeToolbar(props: TreeToolbarProps) {
         <Separator orientation="vertical" className="h-5 mx-0.5" />
 
         <Menubar className="border-0 bg-transparent p-0 h-7">
-          <TreeViewMenu {...props} />
+          <TreeViewMenu {...viewMenuProps} />
           <TreeExportMenu />
         </Menubar>
       </div>
