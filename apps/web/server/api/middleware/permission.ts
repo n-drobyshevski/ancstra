@@ -1,9 +1,9 @@
 import { TRPCError } from '@trpc/server';
-import { hasPermission, type Permission } from '@ancstra/auth';
+import { hasPermission } from '@ancstra/auth';
 import { t } from '../init';
 
 export const permissionMiddleware = t.middleware(({ ctx, meta, next }) => {
-  const required = meta?.permission as Permission | undefined;
+  const required = meta?.permission;
   if (!required) {
     return next();
   }

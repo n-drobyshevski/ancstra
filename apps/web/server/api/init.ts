@@ -4,7 +4,7 @@ import { ZodError } from 'zod';
 import type { Session } from 'next-auth';
 import { auth } from '@/auth';
 import { createCentralDb, createFamilyDb, type CentralDatabase, type FamilyDatabase } from '@ancstra/db';
-import type { Role } from '@ancstra/auth';
+import type { Role, Permission } from '@ancstra/auth';
 import { VALID_ROLES } from '@ancstra/auth';
 
 function parseRole(s: string): Role | null {
@@ -12,7 +12,7 @@ function parseRole(s: string): Role | null {
 }
 
 export interface Meta {
-  permission?: string;
+  permission?: Permission;
   span?: string;
 }
 

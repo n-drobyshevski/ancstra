@@ -10,7 +10,15 @@ export const familyScopeMiddleware = t.middleware(async ({ ctx, next }) => {
     });
   }
   // Idempotent and process-cached per db key — safe to call on every request.
-  await ensureFamilySchema(ctx.familyDb, ctx.dbFilename);
+  try {
+    await ensureFamilySchema(ctx.familyDb, ctx.dbFilename);
+  } catch (cause) {
+    throw new TRPCError({
+      code: 'INTERNAL_SERVER_ERROR',
+      message: `Family schema init failed for ${ctx.familyId}`,
+      cause,
+    });
+  }
   return next({
     ctx: {
       ...ctx,
