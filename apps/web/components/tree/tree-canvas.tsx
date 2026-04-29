@@ -54,7 +54,9 @@ import {
   readNodeStylePreference,
   writeNodeStylePreference,
 } from '@/lib/tree/node-style-storage';
+import { readShowDates, readShowLivingIndicator } from '@/lib/tree/view-prefs-storage';
 import type { DefaultTreeLayout } from '@/lib/cache/tree';
+import { useTreeViewPrefs } from '@/lib/tree/use-tree-view-prefs';
 
 const nodeTypes = { person: PersonNode, draftPerson: DraftPersonNode, draftFactsheet: DraftFactsheetNode };
 const edgeTypes = { partner: PartnerEdge, parentChild: ParentChildEdge };
@@ -90,7 +92,8 @@ interface TreeCanvasProps {
 }
 
 function TreeCanvasInner({ treeData, defaultLayout, focusPersonId, focusKey, paletteOpen, onTogglePalette, onSelectPerson, view, onSetView, isMobile, isDetailOpen, filterState: externalFilterState, onFilterStateChange, showGaps: externalShowGaps, onShowGapsChange, mobileToolbarSlot, onFocusPerson }: TreeCanvasProps) {
-  const { fitView, screenToFlowPosition, getNodes } = useReactFlow();
+  const reactFlow = useReactFlow();
+  const { fitView, screenToFlowPosition, getNodes } = reactFlow;
   const router = useRouter();
   const connectionLock = useConnectionLock<'spouse' | 'parentChild'>({
     symmetricTypes: ['spouse'],
@@ -124,8 +127,12 @@ function TreeCanvasInner({ treeData, defaultLayout, focusPersonId, focusKey, pal
   // (e.g. recently added) keep their dagre-computed positions instead of
   // collapsing to (0,0).
   const initialNodes = useMemo(() => {
+    const initShowDates = readShowDates() ?? true;
+    const initShowLivingIndicator = readShowLivingIndicator() ?? true;
     const laid = applyDagreLayout(rawNodes, rawEdges, undefined, initStyle).map(
-      n => n.type === 'person' ? { ...n, data: { ...n.data, nodeStyle: initStyle } } : n,
+      n => n.type === 'person'
+        ? { ...n, data: { ...n.data, nodeStyle: initStyle, showDates: initShowDates, showLivingIndicator: initShowLivingIndicator } }
+        : n,
     );
     if (!defaultLayout) return laid;
     const { positions } = parseLayoutData(defaultLayout.layoutData);
@@ -167,8 +174,8 @@ function TreeCanvasInner({ treeData, defaultLayout, focusPersonId, focusKey, pal
   const filterState = externalFilterState ?? internalFilterState;
   const setFilterState = onFilterStateChange ?? setInternalFilterState;
   const showGaps = externalShowGaps ?? internalShowGaps;
-  const setShowGaps = onShowGapsChange ?? setInternalShowGaps;
-  const [showMinimap, setShowMinimap] = useState(true);
+  const prefs = useTreeViewPrefs();
+  const { showMinimap } = prefs;
   // nodeStyle preference is sourced from localStorage and seeded synchronously
   // so the initial render matches the user's last choice.
   const [nodeStyle, setNodeStyle] = useState<NodeStyle>(
@@ -195,7 +202,12 @@ function TreeCanvasInner({ treeData, defaultLayout, focusPersonId, focusKey, pal
         return laid.map((n) => ({
           ...n,
           position: posMap[n.id] ?? n.position,
-          data: { ...n.data, nodeStyle: effectiveNodeStyle },
+          data: {
+            ...n.data,
+            nodeStyle: effectiveNodeStyle,
+            showDates: prefs.showDates,
+            showLivingIndicator: prefs.showLivingIndicator,
+          },
         }));
       });
       // Replace with server edges, keeping any optimistic edges not yet in server data
@@ -205,7 +217,7 @@ function TreeCanvasInner({ treeData, defaultLayout, focusPersonId, focusKey, pal
         return [...rawEdges, ...optimistic];
       });
     });
-  }, [treeData, rawNodes, rawEdges, setNodes, setEdges, showGaps, effectiveNodeStyle]);
+  }, [treeData, rawNodes, rawEdges, setNodes, setEdges, showGaps, effectiveNodeStyle, prefs.showDates, prefs.showLivingIndicator]);
 
   const handleToggleFilter = useCallback((category: 'sex' | 'living', key: string) => {
     const next = {
@@ -240,7 +252,7 @@ function TreeCanvasInner({ treeData, defaultLayout, focusPersonId, focusKey, pal
           if (stored) {
             const { positions } = parseLayoutData(stored);
             const positioned = applyPositionMap(rawNodes, positions);
-            setNodes(positioned.map(n => n.type === 'person' ? { ...n, data: { ...n.data, nodeStyle: effectiveNodeStyle } } : n));
+            setNodes(positioned.map(n => n.type === 'person' ? { ...n, data: { ...n.data, nodeStyle: effectiveNodeStyle, showDates: prefs.showDates, showLivingIndicator: prefs.showLivingIndicator } } : n));
             fetch('/api/layouts', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -347,7 +359,7 @@ function TreeCanvasInner({ treeData, defaultLayout, focusPersonId, focusKey, pal
   const handleAutoLayout = useCallback(() => {
     const laid = applyDagreLayout(rawNodes, rawEdges, showGaps ? 82 : undefined, effectiveNodeStyle);
     const newNodes = laid.map(n =>
-      n.type === 'person' ? { ...n, data: { ...n.data, nodeStyle: effectiveNodeStyle } } : n,
+      n.type === 'person' ? { ...n, data: { ...n.data, nodeStyle: effectiveNodeStyle, showDates: prefs.showDates, showLivingIndicator: prefs.showLivingIndicator } } : n,
     );
     setNodes(newNodes);
 
@@ -374,14 +386,14 @@ function TreeCanvasInner({ treeData, defaultLayout, focusPersonId, focusKey, pal
           refreshLayouts();
         });
     }
-  }, [rawNodes, rawEdges, setNodes, showGaps, effectiveNodeStyle, activeLayoutId, refreshLayouts]);
+  }, [rawNodes, rawEdges, setNodes, showGaps, effectiveNodeStyle, activeLayoutId, refreshLayouts, prefs.showDates, prefs.showLivingIndicator]);
 
   const handleNodeStyleChange = useCallback((style: NodeStyle) => {
     setNodeStyle(style);
     writeNodeStylePreference(style);
-    setNodes(nds => nds.map(n => n.type === 'person' ? { ...n, data: { ...n.data, nodeStyle: style } } : n));
+    setNodes(nds => nds.map(n => n.type === 'person' ? { ...n, data: { ...n.data, nodeStyle: style, showDates: prefs.showDates, showLivingIndicator: prefs.showLivingIndicator } } : n));
     setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 50);
-  }, [setNodes, fitView]);
+  }, [setNodes, fitView, prefs.showDates, prefs.showLivingIndicator]);
 
   const handleLoadLayout = useCallback(
     (id: string) => {
@@ -394,12 +406,12 @@ function TreeCanvasInner({ treeData, defaultLayout, focusPersonId, focusKey, pal
           // preference, not a property of the layout snapshot.
           const style = isMobile ? 'compact' : nodeStyle;
           const positioned = applyPositionMap(rawNodes, positions);
-          setNodes(positioned.map(n => n.type === 'person' ? { ...n, data: { ...n.data, nodeStyle: style } } : n));
+          setNodes(positioned.map(n => n.type === 'person' ? { ...n, data: { ...n.data, nodeStyle: style, showDates: prefs.showDates, showLivingIndicator: prefs.showLivingIndicator } } : n));
           setActiveLayoutId(layout.id);
           setActiveLayoutName(layout.name);
         });
     },
-    [rawNodes, setNodes, isMobile, nodeStyle],
+    [rawNodes, setNodes, isMobile, nodeStyle, prefs.showDates, prefs.showLivingIndicator],
   );
 
   const handleSaveAsNew = useCallback(() => {
@@ -729,30 +741,15 @@ function TreeCanvasInner({ treeData, defaultLayout, focusPersonId, focusKey, pal
           showGaps,
           qualityScore: q?.score ?? 0,
           missingFields: q?.missingFields ?? [],
+          showDates: prefs.showDates,
+          showLivingIndicator: prefs.showLivingIndicator,
         },
       };
     }));
-  }, [filterState, showGaps, qualityData, effectiveNodeStyle, setNodes]);
+  }, [filterState, showGaps, qualityData, effectiveNodeStyle, setNodes, prefs.showDates, prefs.showLivingIndicator]);
 
   // Compute filtered edges (dimmed based on node dimmed status)
   const filteredEdges = useMemo(() => applyEdgeFilters(edges, nodes), [edges, nodes]);
-
-  // Keyboard shortcuts
-  useEffect(() => {
-    if (isMobile) return; // No keyboard shortcuts on mobile
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onSelectPerson(null);
-        setContextMenu(null);
-      }
-      if ((e.metaKey || e.ctrlKey) && e.key === 'a') {
-        e.preventDefault();
-        setNodes(nds => nds.map(n => ({ ...n, selected: !n.data?.dimmed })));
-      }
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [setNodes, isMobile]);
 
   // Export helpers (for mobile toolbar slot)
   const getFlowElement = useCallback(() => {
@@ -833,6 +830,143 @@ function TreeCanvasInner({ treeData, defaultLayout, focusPersonId, focusKey, pal
     } catch { toast.error('Export failed'); }
   }, [getFlowElement, getNodes]);
 
+  // Camera commands
+  const handleFitToScreen = useCallback(() => {
+    reactFlow.fitView({ padding: 0.2, duration: 250 });
+  }, [reactFlow]);
+
+  const handleCenterOnSelected = useCallback(() => {
+    const selected = reactFlow.getNodes().find((n) => n.selected);
+    if (!selected) return;
+    // node.position is the top-left; add half-extent to land the node's center
+    // at the viewport center.
+    const w = selected.measured?.width ?? selected.width ?? 0;
+    const h = selected.measured?.height ?? selected.height ?? 0;
+    reactFlow.setCenter(
+      selected.position.x + w / 2,
+      selected.position.y + h / 2,
+      { zoom: 1, duration: 250 },
+    );
+  }, [reactFlow]);
+
+  const handleResetZoom = useCallback(() => {
+    const { x, y } = reactFlow.getViewport();
+    reactFlow.setViewport({ x, y, zoom: 1 }, { duration: 250 });
+  }, [reactFlow]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    if (isMobile) return;
+    const handler = (e: KeyboardEvent) => {
+      // Existing shortcuts (unchanged behavior — fire even when typing).
+      if (e.key === 'Escape') {
+        onSelectPerson(null);
+        setContextMenu(null);
+        return;
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'a') {
+        e.preventDefault();
+        setNodes((nds) => nds.map((n) => ({ ...n, selected: !n.data?.dimmed })));
+        return;
+      }
+
+      // Guard new shortcuts only — don't intercept while typing in inputs.
+      const target = e.target as HTMLElement | null;
+      const inEditableField =
+        !!target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable);
+      if (inEditableField) return;
+
+      const mod = e.metaKey || e.ctrlKey;
+
+      // Mod+1 / Mod+2 — node style
+      if (mod && !e.shiftKey && !e.altKey && e.key === '1') {
+        e.preventDefault();
+        handleNodeStyleChange('wide');
+        return;
+      }
+      if (mod && !e.shiftKey && !e.altKey && e.key === '2') {
+        e.preventDefault();
+        handleNodeStyleChange('compact');
+        return;
+      }
+
+      // Mod+M — toggle minimap
+      if (mod && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'm') {
+        e.preventDefault();
+        prefs.setShowMinimap(!prefs.showMinimap);
+        return;
+      }
+
+      // Mod+G — toggle data quality
+      if (mod && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'g') {
+        e.preventDefault();
+        prefs.setShowDataQuality(!prefs.showDataQuality);
+        return;
+      }
+
+      // Mod+Shift+L — auto layout
+      if (mod && e.shiftKey && !e.altKey && e.key.toLowerCase() === 'l') {
+        e.preventDefault();
+        handleAutoLayout();
+        return;
+      }
+
+      // F — fit to screen (no modifier)
+      if (!mod && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        handleFitToScreen();
+        return;
+      }
+
+      // C — center on selected
+      if (!mod && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'c') {
+        e.preventDefault();
+        handleCenterOnSelected();
+        return;
+      }
+
+      // 0 — reset zoom
+      if (!mod && !e.shiftKey && !e.altKey && e.key === '0') {
+        e.preventDefault();
+        handleResetZoom();
+        return;
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [
+    setNodes,
+    isMobile,
+    onSelectPerson,
+    setContextMenu,
+    handleNodeStyleChange,
+    prefs.showMinimap,
+    prefs.setShowMinimap,
+    prefs.showDataQuality,
+    prefs.setShowDataQuality,
+    handleAutoLayout,
+    handleFitToScreen,
+    handleCenterOnSelected,
+    handleResetZoom,
+  ]);
+
+  const hasSelection = reactFlow.getNodes().some((n) => n.selected);
+
+  // Bridge: canvas is authoritative — `prefs.showDataQuality` (localStorage)
+  // is mirrored into the parent's `showGaps` state so the existing prop chain
+  // keeps working. v1 limitation: toggling Data Quality from `tree-table-toolbar`
+  // in the table view does NOT write through to prefs, so on switching back to
+  // canvas this effect overrides the table-view choice with the localStorage value.
+  // Acceptable for v1; resolve by routing the table-view toggle through prefs in v2.
+  useEffect(() => {
+    if (prefs.showDataQuality !== showGaps) {
+      onShowGapsChange?.(prefs.showDataQuality);
+    }
+  }, [prefs.showDataQuality, showGaps, onShowGapsChange]);
+
   return (
     <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
       {isMobile ? mobileToolbarSlot?.({
@@ -841,9 +975,12 @@ function TreeCanvasInner({ treeData, defaultLayout, focusPersonId, focusKey, pal
         onExportSvg: exportSvg,
         onExportPdf: exportPdf,
       }) : (<TreeToolbar
-        onAutoLayout={handleAutoLayout}
         onTogglePalette={onTogglePalette}
         paletteOpen={paletteOpen}
+        view={view}
+        onSetView={onSetView}
+        filterState={filterState}
+        onToggleFilter={handleToggleFilter}
         layouts={layouts}
         activeLayoutId={activeLayoutId}
         activeLayoutName={activeLayoutName}
@@ -853,16 +990,29 @@ function TreeCanvasInner({ treeData, defaultLayout, focusPersonId, focusKey, pal
         onSetDefault={handleSetDefault}
         onDeleteLayout={handleDeleteLayout}
         onRenameLayout={handleRenameLayout}
-        filterState={filterState}
-        onToggleFilter={handleToggleFilter}
-        showGaps={showGaps}
-        onToggleGaps={() => setShowGaps(!showGaps)}
-        showMinimap={showMinimap}
-        onToggleMinimap={() => setShowMinimap(v => !v)}
-        view={view}
-        onSetView={onSetView}
+        onAutoLayout={handleAutoLayout}
         nodeStyle={nodeStyle}
         onNodeStyleChange={handleNodeStyleChange}
+        showDates={prefs.showDates}
+        onShowDatesChange={prefs.setShowDates}
+        showLivingIndicator={prefs.showLivingIndicator}
+        onShowLivingIndicatorChange={prefs.setShowLivingIndicator}
+        showMinimap={prefs.showMinimap}
+        onShowMinimapChange={prefs.setShowMinimap}
+        showDataQuality={prefs.showDataQuality}
+        onShowDataQualityChange={prefs.setShowDataQuality}
+        showProposals={prefs.showProposals}
+        onShowProposalsChange={prefs.setShowProposals}
+        showCitations={prefs.showCitations}
+        onShowCitationsChange={prefs.setShowCitations}
+        coloring={prefs.coloring}
+        onColoringChange={prefs.setColoring}
+        edges={prefs.edges}
+        onEdgesChange={prefs.setEdges}
+        onFitToScreen={handleFitToScreen}
+        onCenterOnSelected={handleCenterOnSelected}
+        onResetZoom={handleResetZoom}
+        hasSelection={hasSelection}
       />)}
 
       <div className="flex-1 relative overflow-hidden">

@@ -41,6 +41,8 @@ function PersonNodeComponent({ id, data, selected }: NodeProps<PersonNodeType>) 
   const score = data.qualityScore ?? 0;
   const isLiving = data.isLiving;
   const isCompact = data.nodeStyle === 'compact';
+  const showDates = data.showDates ?? true;
+  const showLivingIndicator = data.showLivingIndicator ?? true;
 
   // Drag-connection visual hint: when the user is dragging from another node's
   // handle, light up only the handles on this node where a drop will succeed,
@@ -185,21 +187,30 @@ function PersonNodeComponent({ id, data, selected }: NodeProps<PersonNodeType>) 
       {isCompact ? (
         <div className={`w-[120px] ${cardBase}`} tabIndex={-1} {...prefetchHandlers}>
           <div className="flex flex-col items-center gap-1 p-2">
-            <div
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold"
-              style={{ backgroundColor: colors.bg, color: colors.text }}
-            >
-              {initials}
+            <div className="relative shrink-0">
+              <div
+                className="flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-semibold"
+                style={{ backgroundColor: colors.bg, color: colors.text }}
+              >
+                {initials}
+              </div>
+              {showLivingIndicator && isLiving && (
+                <span
+                  role="img"
+                  aria-label="Living"
+                  className="absolute bottom-0 right-0 block h-2 w-2 rounded-full bg-completion-high ring-1 ring-background"
+                />
+              )}
             </div>
             <div className="w-full text-center leading-tight">
               <div className="truncate text-[11px] font-semibold text-foreground">{data.givenName}</div>
               <div className="truncate text-[9px] text-muted-foreground">{data.surname}</div>
             </div>
-            {lifespan ? (
+            {showDates && (lifespan ? (
               <div className="text-[9px] text-muted-foreground">{lifespan}</div>
             ) : (
               <div className="text-[9px] text-muted-foreground italic">no dates</div>
-            )}
+            ))}
             {showGaps && gapDots('size-1')}
           </div>
           {showGaps && qualityBar}
@@ -207,23 +218,32 @@ function PersonNodeComponent({ id, data, selected }: NodeProps<PersonNodeType>) 
       ) : (
         <div className={`w-[240px] ${cardBase}`} tabIndex={-1} {...prefetchHandlers}>
           <div className="flex items-center gap-2.5 p-2.5">
-            <div
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[13px] font-semibold"
-              style={{ backgroundColor: colors.bg, color: colors.text }}
-            >
-              {initials}
+            <div className="relative shrink-0">
+              <div
+                className="flex h-9 w-9 items-center justify-center rounded-full text-[13px] font-semibold"
+                style={{ backgroundColor: colors.bg, color: colors.text }}
+              >
+                {initials}
+              </div>
+              {showLivingIndicator && isLiving && (
+                <span
+                  role="img"
+                  aria-label="Living"
+                  className="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full bg-completion-high ring-1 ring-background"
+                />
+              )}
             </div>
             <div className="min-w-0 flex-1">
               <div className="truncate text-[13px] font-semibold text-foreground">
                 {data.givenName} {data.surname}
               </div>
-              {data.birthDate && (
+              {showDates && data.birthDate && (
                 <div className="text-[11px] text-muted-foreground">b. {data.birthDate}</div>
               )}
-              {data.deathDate && (
+              {showDates && data.deathDate && (
                 <div className="text-[11px] text-muted-foreground">d. {data.deathDate}</div>
               )}
-              {!data.birthDate && !data.deathDate && (
+              {showDates && !data.birthDate && !data.deathDate && (
                 <div className="text-[11px] text-muted-foreground italic">no dates</div>
               )}
               {showGaps && gapDots('size-1.5')}

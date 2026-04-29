@@ -26,6 +26,8 @@ export interface PersonNodeData extends PersonListItem {
   missingFields?: string[];
   showGaps?: boolean;
   nodeStyle?: NodeStyle;
+  showDates?: boolean;
+  showLivingIndicator?: boolean;
   [key: string]: unknown;
 }
 
