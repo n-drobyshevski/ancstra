@@ -1,7 +1,7 @@
 'use client';
 
 import { useActionState } from 'react';
-import { createFamilyAction, type CreateFamilyState } from '@/app/actions/create-family';
+import { createFamilyAction, type CreateFamilyState } from '@/server/api/routers/family/_actions';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
