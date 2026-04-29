@@ -2,7 +2,7 @@ import { cacheLife, cacheTag } from 'next/cache';
 import { eq } from 'drizzle-orm';
 import { treeLayouts } from '@ancstra/db';
 import { getFamilyDb } from '../db';
-import { getTreeData } from '../queries';
+import { getTreeData, getProposedRelationshipsForTree } from '../queries';
 
 // ---------------------------------------------------------------------------
 // Cached: full tree data (tree profile — 30min revalidate, remote cache)
@@ -48,4 +48,19 @@ export async function getCachedDefaultLayout(
     .where(eq(treeLayouts.isDefault, true))
     .limit(1);
   return row ?? null;
+}
+
+// ---------------------------------------------------------------------------
+// Cached: pending proposed relationships (canvas overlay)
+//
+// Same cache profile as tree-data — both move together when the user
+// validates/rejects a proposal or when AI tools insert new ones.
+// ---------------------------------------------------------------------------
+export async function getCachedProposedRelationships(dbFilename: string) {
+  'use cache: remote';
+  cacheLife('tree');
+  cacheTag('tree-proposed-relationships', 'tree-data');
+
+  const db = await getFamilyDb(dbFilename);
+  return getProposedRelationshipsForTree(db);
 }

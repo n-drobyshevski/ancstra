@@ -14,6 +14,8 @@ import {
   writeShowCitations,
   readColoring,
   writeColoring,
+  readColoringStyle,
+  writeColoringStyle,
   readEdgeStyle,
   writeEdgeStyle,
 } from '../../lib/tree/view-prefs-storage';
@@ -126,6 +128,24 @@ describe('view-prefs-storage', () => {
   it('coloring returns null for unknown values', () => {
     localStorageShim.setItem('ancstra-tree-coloring', 'rainbow');
     expect(readColoring()).toBeNull();
+  });
+
+  // --- coloring style radio (fill / border) -------------------------------
+  it('coloring-style returns null when unset', () => {
+    expect(readColoringStyle()).toBeNull();
+  });
+
+  it.each(['fill', 'border'] as const)(
+    'coloring-style roundtrips %s',
+    (value) => {
+      writeColoringStyle(value);
+      expect(readColoringStyle()).toBe(value);
+    },
+  );
+
+  it('coloring-style returns null for unknown values', () => {
+    localStorageShim.setItem('ancstra-tree-coloring-style', 'outline');
+    expect(readColoringStyle()).toBeNull();
   });
 
   // --- edge-style radio ----------------------------------------------------

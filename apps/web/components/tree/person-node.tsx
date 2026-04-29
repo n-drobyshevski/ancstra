@@ -1,5 +1,6 @@
-import { memo } from 'react';
+import { memo, type CSSProperties } from 'react';
 import { Handle, Position, useConnection, type Node, type NodeProps } from '@xyflow/react';
+import { Quote } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { personDetailCache } from '@/lib/tree/person-detail-cache';
 import type { PersonNodeData } from './tree-utils';
@@ -43,6 +44,20 @@ function PersonNodeComponent({ id, data, selected }: NodeProps<PersonNodeType>) 
   const isCompact = data.nodeStyle === 'compact';
   const showDates = data.showDates ?? true;
   const showLivingIndicator = data.showLivingIndicator ?? true;
+  const showCitations = !!data.showCitations;
+  const sourcesCount = data.sourcesCount ?? 0;
+  const renderCitationBadge = showCitations && sourcesCount > 0;
+
+  // Apply the active coloring tone. 'fill' overrides the card background;
+  // 'border' tints the existing 1px border slot in place (no layout shift,
+  // no conflict with Tailwind's ring-2 selection state which lives in
+  // box-shadow). Vivid border tokens (L≈0.6 light / 0.7 dark) keep the
+  // 1px stroke readable against the card surface.
+  const tonedCardStyle: CSSProperties | undefined = data.coloringTone
+    ? data.coloringStyle === 'border'
+      ? { borderColor: data.coloringTone.border }
+      : { backgroundColor: data.coloringTone.bg }
+    : undefined;
 
   // Drag-connection visual hint: when the user is dragging from another node's
   // handle, light up only the handles on this node where a drop will succeed,
@@ -171,9 +186,32 @@ function PersonNodeComponent({ id, data, selected }: NodeProps<PersonNodeType>) 
   );
 
   // Shared: card base classes
-  const cardBase = `rounded-lg bg-card shadow-sm border transition-all${
+  const cardBase = `relative rounded-lg bg-card shadow-sm border transition-all${
     selected ? ' ring-2 ring-primary shadow-md' : ''
   }${dimmed ? ' opacity-30 pointer-events-none' : ''}${showGaps ? ' overflow-hidden' : ''}`;
+
+  // Shared: citation indicator badge (top-right corner, inside card bounds so
+  // it survives `overflow-hidden` when the quality bar is on).
+  const citationBadge = renderCitationBadge ? (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span
+          aria-label={`${sourcesCount} source${sourcesCount > 1 ? 's' : ''}`}
+          className="absolute right-1 top-1 inline-flex items-center gap-0.5 rounded-full bg-background px-1 py-0.5 ring-1 ring-border shadow-sm"
+        >
+          <Quote className="size-2.5 text-muted-foreground" aria-hidden />
+          {sourcesCount > 1 && (
+            <span className="text-[9px] font-medium tabular-nums text-muted-foreground leading-none">
+              {sourcesCount}
+            </span>
+          )}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="text-xs">
+        {sourcesCount} source{sourcesCount > 1 ? 's' : ''}
+      </TooltipContent>
+    </Tooltip>
+  ) : null;
 
   const prefetchHandlers = {
     onPointerEnter: () => { void personDetailCache.prefetch(id); },
@@ -185,7 +223,13 @@ function PersonNodeComponent({ id, data, selected }: NodeProps<PersonNodeType>) 
     <TooltipProvider delayDuration={300}>
       {handles}
       {isCompact ? (
-        <div className={`w-[120px] ${cardBase}`} tabIndex={-1} {...prefetchHandlers}>
+        <div
+          className={`w-[120px] ${cardBase}`}
+          style={tonedCardStyle}
+          tabIndex={-1}
+          {...prefetchHandlers}
+        >
+          {citationBadge}
           <div className="flex flex-col items-center gap-1 p-2">
             <div className="relative shrink-0">
               <div
@@ -216,7 +260,13 @@ function PersonNodeComponent({ id, data, selected }: NodeProps<PersonNodeType>) 
           {showGaps && qualityBar}
         </div>
       ) : (
-        <div className={`w-[240px] ${cardBase}`} tabIndex={-1} {...prefetchHandlers}>
+        <div
+          className={`w-[240px] ${cardBase}`}
+          style={tonedCardStyle}
+          tabIndex={-1}
+          {...prefetchHandlers}
+        >
+          {citationBadge}
           <div className="flex items-center gap-2.5 p-2.5">
             <div className="relative shrink-0">
               <div

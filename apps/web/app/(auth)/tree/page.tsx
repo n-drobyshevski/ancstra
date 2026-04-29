@@ -2,7 +2,11 @@ import { Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import type { SearchParams } from 'nuqs/server';
-import { getCachedTreeData, getCachedDefaultLayout } from '@/lib/cache/tree';
+import {
+  getCachedTreeData,
+  getCachedDefaultLayout,
+  getCachedProposedRelationships,
+} from '@/lib/cache/tree';
 import { getCachedTreeTableRows } from '@/lib/cache/tree-table';
 import { getCachedTreeYearBounds } from '@/lib/cache/person';
 import { getAuthContext } from '@/lib/auth/context';
@@ -97,9 +101,10 @@ async function TreePageContent({
     );
   }
 
-  const [treeData, defaultLayout] = await Promise.all([
+  const [treeData, defaultLayout, proposedRelationships] = await Promise.all([
     getCachedTreeData(authContext.dbFilename),
     getCachedDefaultLayout(authContext.dbFilename),
+    getCachedProposedRelationships(authContext.dbFilename),
   ]);
 
   if (treeData.persons.length === 0) {
@@ -123,7 +128,12 @@ async function TreePageContent({
 
   return (
     <TreePageClient
-      viewData={{ kind: 'canvas', treeData, defaultLayout }}
+      viewData={{
+        kind: 'canvas',
+        treeData,
+        defaultLayout,
+        proposedRelationships,
+      }}
       focusPersonId={focus}
     />
   );

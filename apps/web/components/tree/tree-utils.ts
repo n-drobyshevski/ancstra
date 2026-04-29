@@ -9,6 +9,8 @@ import {
   validateNoDuplicate,
   validateAcyclic,
 } from '@/lib/graph/validate-connection';
+import type { ColorTone } from '@/lib/tree/coloring';
+import type { ColoringStyle } from '@/lib/tree/view-prefs-storage';
 
 const NODE_WIDTH = 240;
 const NODE_HEIGHT = 70;
@@ -28,6 +30,9 @@ export interface PersonNodeData extends PersonListItem {
   nodeStyle?: NodeStyle;
   showDates?: boolean;
   showLivingIndicator?: boolean;
+  showCitations?: boolean;
+  coloringTone?: ColorTone;
+  coloringStyle?: ColoringStyle;
   [key: string]: unknown;
 }
 

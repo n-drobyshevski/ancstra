@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/menubar';
 import { Star } from 'lucide-react';
 import type { NodeStyle } from './tree-utils';
-import type { Coloring, EdgeStyle } from '@/lib/tree/view-prefs-storage';
+import type { Coloring, ColoringStyle, EdgeStyle } from '@/lib/tree/view-prefs-storage';
 import { formatShortcut } from '@/lib/tree/format-shortcut';
 
 export interface TreeViewMenuProps {
@@ -44,6 +44,8 @@ export interface TreeViewMenuProps {
   // Coloring
   coloring: Coloring;
   onColoringChange: (v: Coloring) => void;
+  coloringStyle: ColoringStyle;
+  onColoringStyleChange: (v: ColoringStyle) => void;
 
   // Edges
   edges: EdgeStyle;
@@ -88,6 +90,8 @@ export function TreeViewMenu(props: TreeViewMenuProps) {
     onShowCitationsChange,
     coloring,
     onColoringChange,
+    coloringStyle,
+    onColoringStyleChange,
     edges,
     onEdgesChange,
     onFitToScreen,
@@ -184,6 +188,15 @@ export function TreeViewMenu(props: TreeViewMenuProps) {
             Paternal / maternal branch
           </MenubarRadioItem>
           <MenubarRadioItem value="living">Living status</MenubarRadioItem>
+        </MenubarRadioGroup>
+
+        <MenubarLabel>Apply as</MenubarLabel>
+        <MenubarRadioGroup
+          value={coloringStyle}
+          onValueChange={(v) => onColoringStyleChange(v as ColoringStyle)}
+        >
+          <MenubarRadioItem value="fill">Fill</MenubarRadioItem>
+          <MenubarRadioItem value="border">Border</MenubarRadioItem>
         </MenubarRadioGroup>
 
         <MenubarSeparator />

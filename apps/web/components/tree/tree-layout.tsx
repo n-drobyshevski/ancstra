@@ -43,6 +43,7 @@ import type { TreePersonRow } from './tree-table-columns';
 import type { TreeTableRelationships } from '@/lib/persons/query-tree-table-rows';
 import type { TreeYearBounds } from '@/lib/persons/year-bounds';
 import type { DefaultTreeLayout } from '@/lib/cache/tree';
+import type { ProposedRelationshipForCanvas } from '@/lib/queries';
 import { personDetailCache } from '@/lib/tree/person-detail-cache';
 
 const DENSITY_STORAGE_KEY = 'tree-table-density';
@@ -89,6 +90,9 @@ export type TreeViewData =
       /** Server-preloaded default layout — eliminates the post-mount position
        *  flash. May be null if the user has no saved layouts yet. */
       defaultLayout: DefaultTreeLayout | null;
+      /** Pending proposed relationships rendered as a toggleable overlay
+       *  when `prefs.showProposals` is true. */
+      proposedRelationships: ProposedRelationshipForCanvas[];
     }
   | {
       kind: 'table';
@@ -239,13 +243,6 @@ export function TreeLayout({ viewData, focusPersonId }: TreeLayoutProps) {
       }
     },
     [filters.sex, filters.living, setFilters],
-  );
-
-  const handleSearchChange = useCallback(
-    (next: string) => {
-      void setFilters({ q: next, page: 1 });
-    },
-    [setFilters],
   );
 
   const handleSortChange = useCallback(
@@ -493,6 +490,7 @@ export function TreeLayout({ viewData, focusPersonId }: TreeLayoutProps) {
           <TreeCanvas
             treeData={viewData.treeData}
             defaultLayout={viewData.defaultLayout}
+            proposedRelationships={viewData.proposedRelationships}
             focusPersonId={focusPersonId}
             paletteOpen={paletteOpen}
             onTogglePalette={handleTogglePalette}
@@ -507,71 +505,69 @@ export function TreeLayout({ viewData, focusPersonId }: TreeLayoutProps) {
             onFocusPerson={handleFocusNode}
           />
         ) : (
-          <>
-            <TreeSidebarClient yearBounds={viewData.yearBounds} />
-            <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+          <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
             <TreeTableToolbar
               view={view}
               onSetView={setView}
-              filterState={filterState}
-              onToggleFilter={handleToggleFilter}
               showGaps={showGaps}
               onToggleGaps={handleToggleGaps}
               topologyMode={topologyMode}
               onTopologyModeChange={setTopologyMode}
               topologyReferenceName={topologyReferenceName}
-              search={filters.q}
-              onSearchChange={handleSearchChange}
               density={density}
               onDensityChange={handleDensityChange}
               hiddenColumns={filters.hide}
               onHiddenColumnsChange={handleHiddenColumnsChange}
             />
-            <div
-              className={`flex-1 flex flex-col min-h-0 p-4 gap-3 ${
-                isFilterPending ? 'motion-safe:opacity-50 motion-safe:transition-opacity' : ''
-              }`}
-              aria-busy={isFilterPending}
-            >
-              <TreeActiveFilters topologyReferenceName={topologyReferenceName} />
-              <div className="flex-1 min-h-0">
-                <TreeTable
-                  rows={accumulatedRows}
-                  total={viewData.total}
-                  relationships={accumulatedRels}
-                  onSelectPerson={handleSelectPersonById}
-                  onSetTopologyAnchor={handleSetTopologyAnchor}
-                  onSeeOnTree={handleSeeOnTree}
-                  sort={filters.sort}
-                  dir={filters.dir}
-                  onSortChange={handleSortChange}
-                  density={density}
-                  hiddenColumns={filters.hide}
-                  onClearFilters={handleClearFilters}
-                  isFiltered={
-                    !!filters.q ||
-                    filters.sex.length > 0 ||
-                    filters.living.length > 0 ||
-                    filters.topologyMode !== 'all' ||
-                    filters.validation.length > 0 ||
-                    filters.bornFrom !== null ||
-                    filters.bornTo !== null ||
-                    filters.diedFrom !== null ||
-                    filters.diedTo !== null ||
-                    filters.place.trim() !== '' ||
-                    filters.citations !== 'any' ||
-                    filters.hasProposals ||
-                    filters.complGte !== null
-                  }
-                  selectedPersonId={selectedPerson?.id ?? null}
-                  onLoadMore={handleLoadMore}
-                  hasMore={viewData.hasMore}
-                  isAppending={isFilterPending && filters.page > 1}
-                />
+            <div className="flex flex-1 min-h-0 min-w-0">
+              <TreeSidebarClient yearBounds={viewData.yearBounds} />
+              <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+                <div
+                  className={`flex-1 flex flex-col min-h-0 p-4 gap-3 ${
+                    isFilterPending ? 'motion-safe:opacity-50 motion-safe:transition-opacity' : ''
+                  }`}
+                  aria-busy={isFilterPending}
+                >
+                  <TreeActiveFilters topologyReferenceName={topologyReferenceName} />
+                  <div className="flex-1 min-h-0">
+                    <TreeTable
+                      rows={accumulatedRows}
+                      total={viewData.total}
+                      relationships={accumulatedRels}
+                      onSelectPerson={handleSelectPersonById}
+                      onSetTopologyAnchor={handleSetTopologyAnchor}
+                      onSeeOnTree={handleSeeOnTree}
+                      sort={filters.sort}
+                      dir={filters.dir}
+                      onSortChange={handleSortChange}
+                      density={density}
+                      hiddenColumns={filters.hide}
+                      onClearFilters={handleClearFilters}
+                      isFiltered={
+                        !!filters.q ||
+                        filters.sex.length > 0 ||
+                        filters.living.length > 0 ||
+                        filters.topologyMode !== 'all' ||
+                        filters.validation.length > 0 ||
+                        filters.bornFrom !== null ||
+                        filters.bornTo !== null ||
+                        filters.diedFrom !== null ||
+                        filters.diedTo !== null ||
+                        filters.place.trim() !== '' ||
+                        filters.citations !== 'any' ||
+                        filters.hasProposals ||
+                        filters.complGte !== null
+                      }
+                      selectedPersonId={selectedPerson?.id ?? null}
+                      onLoadMore={handleLoadMore}
+                      hasMore={viewData.hasMore}
+                      isAppending={isFilterPending && filters.page > 1}
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-          </>
         )}
 
         {selectedPerson && (
@@ -592,6 +588,7 @@ export function TreeLayout({ viewData, focusPersonId }: TreeLayoutProps) {
             <TreeCanvas
               treeData={viewData.treeData}
               defaultLayout={viewData.defaultLayout}
+              proposedRelationships={viewData.proposedRelationships}
               focusPersonId={runtimeFocusId ?? focusPersonId}
               focusKey={focusKey}
               paletteOpen={false}

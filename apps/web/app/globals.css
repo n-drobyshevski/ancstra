@@ -71,6 +71,36 @@
   --completion-low: oklch(0.60 0.15 25);
   --completion-medium: oklch(0.65 0.15 80);
   --completion-high: oklch(0.55 0.15 150);
+  /* Tree-canvas coloring overlays — subtle tints applied to person card
+     backgrounds when the View ▾ → Coloring mode is set. Same lightness/
+     chroma profile as --status-*-bg so they read as "info" rather than
+     warning/destructive. Hue ramp keeps adjacent generations distinguishable. */
+  --tree-coloring-gen-0: oklch(0.94 0.04 90);
+  --tree-coloring-gen-1: oklch(0.93 0.04 30);
+  --tree-coloring-gen-2: oklch(0.93 0.04 200);
+  --tree-coloring-gen-3: oklch(0.93 0.04 150);
+  --tree-coloring-gen-4: oklch(0.93 0.04 290);
+  --tree-coloring-gen-5: oklch(0.93 0.04 350);
+  --tree-coloring-branch-paternal: oklch(0.93 0.04 240);
+  --tree-coloring-branch-maternal: oklch(0.93 0.04 340);
+  --tree-coloring-branch-self: oklch(0.94 0.05 90);
+  --tree-coloring-living-living: oklch(0.93 0.04 150);
+  --tree-coloring-living-deceased: oklch(0.92 0.01 250);
+  /* Border variants — vivid stroke colors used when coloringStyle=border.
+     Tracks the project's "label" pattern (~--status-*-text / --sex-male):
+     L 0.55–0.65 + chroma 0.12 reads clearly at 1px stroke against the
+     white card surface without becoming text-grade vivid. */
+  --tree-coloring-gen-0-border: oklch(0.65 0.12 90);
+  --tree-coloring-gen-1-border: oklch(0.62 0.13 30);
+  --tree-coloring-gen-2-border: oklch(0.60 0.12 200);
+  --tree-coloring-gen-3-border: oklch(0.55 0.13 150);
+  --tree-coloring-gen-4-border: oklch(0.58 0.13 290);
+  --tree-coloring-gen-5-border: oklch(0.62 0.13 350);
+  --tree-coloring-branch-paternal-border: oklch(0.60 0.12 240);
+  --tree-coloring-branch-maternal-border: oklch(0.65 0.12 340);
+  --tree-coloring-branch-self-border: oklch(0.62 0.13 90);
+  --tree-coloring-living-living-border: oklch(0.55 0.13 150);
+  --tree-coloring-living-deceased-border: oklch(0.55 0.02 250);
   /* Elevation scale */
   --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.04);
   --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.06);
@@ -313,6 +343,33 @@ body {
   --status-confirmed: oklch(0.65 0.12 150);
   --status-proposed: oklch(0.70 0.12 250);
   --status-disputed: oklch(0.72 0.12 80);
+  /* Tree-canvas coloring overlays — dark variants. Lightness ~0.30 lifts the
+     tint above the dark card surface (L 0.24) without competing with the
+     light foreground text (L 0.87 → contrast >7:1). */
+  --tree-coloring-gen-0: oklch(0.30 0.04 90);
+  --tree-coloring-gen-1: oklch(0.30 0.04 30);
+  --tree-coloring-gen-2: oklch(0.30 0.04 200);
+  --tree-coloring-gen-3: oklch(0.30 0.04 150);
+  --tree-coloring-gen-4: oklch(0.30 0.04 290);
+  --tree-coloring-gen-5: oklch(0.30 0.04 350);
+  --tree-coloring-branch-paternal: oklch(0.30 0.05 240);
+  --tree-coloring-branch-maternal: oklch(0.30 0.05 340);
+  --tree-coloring-branch-self: oklch(0.32 0.05 90);
+  --tree-coloring-living-living: oklch(0.30 0.04 150);
+  --tree-coloring-living-deceased: oklch(0.30 0.01 250);
+  /* Border variants — dark mode lifts L to 0.65–0.72 so the stroke pops
+     against the dark card surface (L 0.24) the way --status-*-text labels do. */
+  --tree-coloring-gen-0-border: oklch(0.72 0.10 90);
+  --tree-coloring-gen-1-border: oklch(0.68 0.12 30);
+  --tree-coloring-gen-2-border: oklch(0.68 0.10 200);
+  --tree-coloring-gen-3-border: oklch(0.65 0.12 150);
+  --tree-coloring-gen-4-border: oklch(0.68 0.12 290);
+  --tree-coloring-gen-5-border: oklch(0.70 0.12 350);
+  --tree-coloring-branch-paternal-border: oklch(0.70 0.10 240);
+  --tree-coloring-branch-maternal-border: oklch(0.72 0.10 340);
+  --tree-coloring-branch-self-border: oklch(0.70 0.12 90);
+  --tree-coloring-living-living-border: oklch(0.65 0.12 150);
+  --tree-coloring-living-deceased-border: oklch(0.60 0.02 250);
 }
 
 /* Tree canvas — show connection handles only on node hover */

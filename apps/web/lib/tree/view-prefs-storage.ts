@@ -9,6 +9,7 @@
  */
 
 export type Coloring = 'off' | 'generation' | 'branch' | 'living';
+export type ColoringStyle = 'fill' | 'border';
 export type EdgeStyle = 'curved' | 'stepped' | 'straight';
 
 const KEY_SHOW_DATES = 'ancstra-tree-show-dates';
@@ -18,6 +19,7 @@ const KEY_SHOW_DATA_QUALITY = 'ancstra-tree-show-data-quality';
 const KEY_SHOW_PROPOSALS = 'ancstra-tree-show-proposals';
 const KEY_SHOW_CITATIONS = 'ancstra-tree-show-citations';
 const KEY_COLORING = 'ancstra-tree-coloring';
+const KEY_COLORING_STYLE = 'ancstra-tree-coloring-style';
 const KEY_EDGES = 'ancstra-tree-edges';
 
 function readBool(key: string): boolean | null {
@@ -78,6 +80,25 @@ export function writeColoring(value: Coloring): void {
   if (typeof window === 'undefined') return;
   try {
     window.localStorage.setItem(KEY_COLORING, value);
+  } catch {
+    // Silent.
+  }
+}
+
+export function readColoringStyle(): ColoringStyle | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const v = window.localStorage.getItem(KEY_COLORING_STYLE);
+    return v === 'fill' || v === 'border' ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+export function writeColoringStyle(value: ColoringStyle): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(KEY_COLORING_STYLE, value);
   } catch {
     // Silent.
   }

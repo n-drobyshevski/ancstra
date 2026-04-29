@@ -24,6 +24,7 @@ import { cn } from '@/lib/utils';
 import { PersonNode } from './person-node';
 import { PartnerEdge } from './partner-edge';
 import { ParentChildEdge } from './parent-child-edge';
+import { ProposedEdge } from './proposed-edge';
 import { TreeToolbar } from './tree-toolbar';
 import { TreeContextMenu } from './tree-context-menu';
 import { DraftPersonNode } from './draft-person-node';
@@ -54,13 +55,15 @@ import {
   readNodeStylePreference,
   writeNodeStylePreference,
 } from '@/lib/tree/node-style-storage';
-import { readShowDates, readShowLivingIndicator } from '@/lib/tree/view-prefs-storage';
+import { readShowDates, readShowLivingIndicator, readShowCitations } from '@/lib/tree/view-prefs-storage';
 import type { DefaultTreeLayout } from '@/lib/cache/tree';
+import type { ProposedRelationshipForCanvas } from '@/lib/queries';
 import { useTreeViewPrefs } from '@/lib/tree/use-tree-view-prefs';
 import { useTreeExport } from '@/lib/tree/use-tree-export';
+import { computeColoringMap } from '@/lib/tree/coloring';
 
 const nodeTypes = { person: PersonNode, draftPerson: DraftPersonNode, draftFactsheet: DraftFactsheetNode };
-const edgeTypes = { partner: PartnerEdge, parentChild: ParentChildEdge };
+const edgeTypes = { partner: PartnerEdge, parentChild: ParentChildEdge, proposed: ProposedEdge };
 
 interface TreeCanvasProps {
   treeData: TreeData;
@@ -68,6 +71,9 @@ interface TreeCanvasProps {
    *  its saved positions instead of fresh dagre — eliminates the post-mount
    *  flash that would otherwise reorder all nodes ~300ms after mount. */
   defaultLayout?: DefaultTreeLayout | null;
+  /** Pending proposed relationships. Rendered as ghost edges only when
+   *  `prefs.showProposals` is true. Empty array if none. */
+  proposedRelationships?: ProposedRelationshipForCanvas[];
   focusPersonId?: string;
   focusKey?: number;
   paletteOpen: boolean;
@@ -92,7 +98,7 @@ interface TreeCanvasProps {
   onFocusPerson?: (personId: string) => void;
 }
 
-function TreeCanvasInner({ treeData, defaultLayout, focusPersonId, focusKey, paletteOpen, onTogglePalette, onSelectPerson, view, onSetView, isMobile, isDetailOpen, filterState: externalFilterState, onFilterStateChange, showGaps: externalShowGaps, onShowGapsChange: _onShowGapsChange, mobileToolbarSlot, onFocusPerson }: TreeCanvasProps) {
+function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focusPersonId, focusKey, paletteOpen, onTogglePalette, onSelectPerson, view, onSetView, isMobile, isDetailOpen, filterState: externalFilterState, onFilterStateChange, showGaps: externalShowGaps, onShowGapsChange: _onShowGapsChange, mobileToolbarSlot, onFocusPerson }: TreeCanvasProps) {
   void _onShowGapsChange;
   const reactFlow = useReactFlow();
   const { fitView, screenToFlowPosition, getNodes } = reactFlow;
@@ -131,9 +137,10 @@ function TreeCanvasInner({ treeData, defaultLayout, focusPersonId, focusKey, pal
   const initialNodes = useMemo(() => {
     const initShowDates = readShowDates() ?? true;
     const initShowLivingIndicator = readShowLivingIndicator() ?? true;
+    const initShowCitations = readShowCitations() ?? false;
     const laid = applyDagreLayout(rawNodes, rawEdges, undefined, initStyle).map(
       n => n.type === 'person'
-        ? { ...n, data: { ...n.data, nodeStyle: initStyle, showDates: initShowDates, showLivingIndicator: initShowLivingIndicator } }
+        ? { ...n, data: { ...n.data, nodeStyle: initStyle, showDates: initShowDates, showLivingIndicator: initShowLivingIndicator, showCitations: initShowCitations } }
         : n,
     );
     if (!defaultLayout) return laid;
@@ -213,6 +220,7 @@ function TreeCanvasInner({ treeData, defaultLayout, focusPersonId, focusKey, pal
             nodeStyle: effectiveNodeStyle,
             showDates: prefs.showDates,
             showLivingIndicator: prefs.showLivingIndicator,
+            showCitations: prefs.showCitations,
           },
         }));
       });
@@ -223,7 +231,7 @@ function TreeCanvasInner({ treeData, defaultLayout, focusPersonId, focusKey, pal
         return [...rawEdges, ...optimistic];
       });
     });
-  }, [treeData, rawNodes, rawEdges, setNodes, setEdges, showGaps, effectiveNodeStyle, prefs.showDates, prefs.showLivingIndicator]);
+  }, [treeData, rawNodes, rawEdges, setNodes, setEdges, showGaps, effectiveNodeStyle, prefs.showDates, prefs.showLivingIndicator, prefs.showCitations]);
 
   const handleToggleFilter = useCallback((category: 'sex' | 'living', key: string) => {
     const next = {
@@ -258,7 +266,7 @@ function TreeCanvasInner({ treeData, defaultLayout, focusPersonId, focusKey, pal
           if (stored) {
             const { positions } = parseLayoutData(stored);
             const positioned = applyPositionMap(rawNodes, positions);
-            setNodes(positioned.map(n => n.type === 'person' ? { ...n, data: { ...n.data, nodeStyle: effectiveNodeStyle, showDates: prefs.showDates, showLivingIndicator: prefs.showLivingIndicator } } : n));
+            setNodes(positioned.map(n => n.type === 'person' ? { ...n, data: { ...n.data, nodeStyle: effectiveNodeStyle, showDates: prefs.showDates, showLivingIndicator: prefs.showLivingIndicator, showCitations: prefs.showCitations } } : n));
             fetch('/api/layouts', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -365,7 +373,7 @@ function TreeCanvasInner({ treeData, defaultLayout, focusPersonId, focusKey, pal
   const handleAutoLayout = useCallback(() => {
     const laid = applyDagreLayout(rawNodes, rawEdges, showGaps ? 82 : undefined, effectiveNodeStyle);
     const newNodes = laid.map(n =>
-      n.type === 'person' ? { ...n, data: { ...n.data, nodeStyle: effectiveNodeStyle, showDates: prefs.showDates, showLivingIndicator: prefs.showLivingIndicator } } : n,
+      n.type === 'person' ? { ...n, data: { ...n.data, nodeStyle: effectiveNodeStyle, showDates: prefs.showDates, showLivingIndicator: prefs.showLivingIndicator, showCitations: prefs.showCitations } } : n,
     );
     setNodes(newNodes);
 
@@ -392,14 +400,14 @@ function TreeCanvasInner({ treeData, defaultLayout, focusPersonId, focusKey, pal
           refreshLayouts();
         });
     }
-  }, [rawNodes, rawEdges, setNodes, showGaps, effectiveNodeStyle, activeLayoutId, refreshLayouts, prefs.showDates, prefs.showLivingIndicator]);
+  }, [rawNodes, rawEdges, setNodes, showGaps, effectiveNodeStyle, activeLayoutId, refreshLayouts, prefs.showDates, prefs.showLivingIndicator, prefs.showCitations]);
 
   const handleNodeStyleChange = useCallback((style: NodeStyle) => {
     setNodeStyle(style);
     writeNodeStylePreference(style);
-    setNodes(nds => nds.map(n => n.type === 'person' ? { ...n, data: { ...n.data, nodeStyle: style, showDates: prefs.showDates, showLivingIndicator: prefs.showLivingIndicator } } : n));
+    setNodes(nds => nds.map(n => n.type === 'person' ? { ...n, data: { ...n.data, nodeStyle: style, showDates: prefs.showDates, showLivingIndicator: prefs.showLivingIndicator, showCitations: prefs.showCitations } } : n));
     setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 50);
-  }, [setNodes, fitView, prefs.showDates, prefs.showLivingIndicator]);
+  }, [setNodes, fitView, prefs.showDates, prefs.showLivingIndicator, prefs.showCitations]);
 
   const handleLoadLayout = useCallback(
     (id: string) => {
@@ -412,12 +420,12 @@ function TreeCanvasInner({ treeData, defaultLayout, focusPersonId, focusKey, pal
           // preference, not a property of the layout snapshot.
           const style = isMobile ? 'compact' : nodeStyle;
           const positioned = applyPositionMap(rawNodes, positions);
-          setNodes(positioned.map(n => n.type === 'person' ? { ...n, data: { ...n.data, nodeStyle: style, showDates: prefs.showDates, showLivingIndicator: prefs.showLivingIndicator } } : n));
+          setNodes(positioned.map(n => n.type === 'person' ? { ...n, data: { ...n.data, nodeStyle: style, showDates: prefs.showDates, showLivingIndicator: prefs.showLivingIndicator, showCitations: prefs.showCitations } } : n));
           setActiveLayoutId(layout.id);
           setActiveLayoutName(layout.name);
         });
     },
-    [rawNodes, setNodes, isMobile, nodeStyle, prefs.showDates, prefs.showLivingIndicator],
+    [rawNodes, setNodes, isMobile, nodeStyle, prefs.showDates, prefs.showLivingIndicator, prefs.showCitations],
   );
 
   const handleSaveAsNew = useCallback(() => {
@@ -734,6 +742,14 @@ function TreeCanvasInner({ treeData, defaultLayout, focusPersonId, focusKey, pal
     return () => clearTimeout(timer);
   }, [focusPersonId, focusKey, fitView, treeData, isMobile]);
 
+  // Coloring: derived from prefs.coloring + focusPersonId + treeData. Empty
+  // map for 'off' (and 'branch' without focus); the per-node application
+  // sets the tone or clears it.
+  const coloringMap = useMemo(
+    () => computeColoringMap(treeData, prefs.coloring, focusPersonId),
+    [treeData, prefs.coloring, focusPersonId],
+  );
+
   // Apply filters, quality data, and nodeStyle in a single pass
   useEffect(() => {
     setNodes(nds => applyFilters(nds, filterState).map(node => {
@@ -749,13 +765,60 @@ function TreeCanvasInner({ treeData, defaultLayout, focusPersonId, focusKey, pal
           missingFields: q?.missingFields ?? [],
           showDates: prefs.showDates,
           showLivingIndicator: prefs.showLivingIndicator,
+          showCitations: prefs.showCitations,
         },
       };
     }));
-  }, [filterState, showGaps, qualityData, effectiveNodeStyle, setNodes, prefs.showDates, prefs.showLivingIndicator]);
+  }, [filterState, showGaps, qualityData, effectiveNodeStyle, setNodes, prefs.showDates, prefs.showLivingIndicator, prefs.showCitations]);
 
-  // Compute filtered edges (dimmed based on node dimmed status)
-  const filteredEdges = useMemo(() => applyEdgeFilters(edges, nodes), [edges, nodes]);
+  // Render-phase decoration: inject coloring fields onto every person node
+  // without touching the underlying state. This keeps tones + style stable
+  // across auto-layout, drag, and other state mutations (mirrors the pattern
+  // used by `filteredEdges` below).
+  const decoratedNodes = useMemo(
+    () => nodes.map((n) =>
+      n.type === 'person'
+        ? {
+            ...n,
+            data: {
+              ...n.data,
+              coloringTone: coloringMap.get(n.id),
+              coloringStyle: prefs.coloringStyle,
+            },
+          }
+        : n,
+    ),
+    [nodes, coloringMap, prefs.coloringStyle],
+  );
+
+  // Compute filtered edges (dimmed based on node dimmed status), inject the
+  // user's edge-path preference into parent-child edges, and append synthetic
+  // ghost edges for pending proposals when the toggle is on.
+  const filteredEdges = useMemo(() => {
+    const dimmed = applyEdgeFilters(edges, nodes);
+    const styled: Edge[] = dimmed.map((edge) =>
+      edge.type === 'parentChild'
+        ? { ...edge, data: { ...edge.data, pathStyle: prefs.edges } }
+        : edge,
+    );
+    if (!prefs.showProposals || !proposedRelationships?.length) return styled;
+    const nodeIds = new Set(nodes.map((n) => n.id));
+    for (const p of proposedRelationships) {
+      if (!nodeIds.has(p.person1Id) || !nodeIds.has(p.person2Id)) continue;
+      styled.push({
+        id: `proposed-${p.id}`,
+        type: 'proposed',
+        source: p.person1Id,
+        target: p.person2Id,
+        data: {
+          relationshipType: p.relationshipType,
+          sourceType: p.sourceType,
+          confidence: p.confidence,
+        },
+      });
+    }
+    return styled;
+  }, [edges, nodes, prefs.edges, prefs.showProposals, proposedRelationships]);
 
   // Export helpers (mobile toolbar slot consumes these; desktop uses
   // `<TreeExportMenu />` which calls the same hook).
@@ -932,6 +995,8 @@ function TreeCanvasInner({ treeData, defaultLayout, focusPersonId, focusKey, pal
         onShowCitationsChange={prefs.setShowCitations}
         coloring={prefs.coloring}
         onColoringChange={prefs.setColoring}
+        coloringStyle={prefs.coloringStyle}
+        onColoringStyleChange={prefs.setColoringStyle}
         edges={prefs.edges}
         onEdgesChange={prefs.setEdges}
         onFitToScreen={handleFitToScreen}
@@ -944,7 +1009,7 @@ function TreeCanvasInner({ treeData, defaultLayout, focusPersonId, focusKey, pal
         <ReactFlow
           aria-label="Family tree"
           proOptions={{ hideAttribution: true }}
-          nodes={nodes}
+          nodes={decoratedNodes}
           edges={filteredEdges}
           onNodesChange={handleNodesChange}
           onEdgesChange={isMobile ? undefined : onEdgesChange}

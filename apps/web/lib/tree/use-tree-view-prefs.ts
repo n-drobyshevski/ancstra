@@ -16,9 +16,12 @@ import {
   writeShowCitations,
   readColoring,
   writeColoring,
+  readColoringStyle,
+  writeColoringStyle,
   readEdgeStyle,
   writeEdgeStyle,
   type Coloring,
+  type ColoringStyle,
   type EdgeStyle,
 } from './view-prefs-storage';
 
@@ -30,6 +33,7 @@ export interface TreeViewPrefs {
   showProposals: boolean;
   showCitations: boolean;
   coloring: Coloring;
+  coloringStyle: ColoringStyle;
   edges: EdgeStyle;
 }
 
@@ -41,6 +45,7 @@ const DEFAULTS: TreeViewPrefs = {
   showProposals: false,
   showCitations: false,
   coloring: 'off',
+  coloringStyle: 'fill',
   edges: 'curved',
 };
 
@@ -52,6 +57,7 @@ export interface TreeViewPrefsApi extends TreeViewPrefs {
   setShowProposals: (v: boolean) => void;
   setShowCitations: (v: boolean) => void;
   setColoring: (v: Coloring) => void;
+  setColoringStyle: (v: ColoringStyle) => void;
   setEdges: (v: EdgeStyle) => void;
 }
 
@@ -70,6 +76,7 @@ export function useTreeViewPrefs(): TreeViewPrefsApi {
     showProposals: readShowProposals() ?? DEFAULTS.showProposals,
     showCitations: readShowCitations() ?? DEFAULTS.showCitations,
     coloring: readColoring() ?? DEFAULTS.coloring,
+    coloringStyle: readColoringStyle() ?? DEFAULTS.coloringStyle,
     edges: readEdgeStyle() ?? DEFAULTS.edges,
   }));
 
@@ -108,6 +115,11 @@ export function useTreeViewPrefs(): TreeViewPrefsApi {
     writeColoring(v);
   }, []);
 
+  const setColoringStyle = useCallback((v: ColoringStyle) => {
+    setState((s) => ({ ...s, coloringStyle: v }));
+    writeColoringStyle(v);
+  }, []);
+
   const setEdges = useCallback((v: EdgeStyle) => {
     setState((s) => ({ ...s, edges: v }));
     writeEdgeStyle(v);
@@ -122,6 +134,7 @@ export function useTreeViewPrefs(): TreeViewPrefsApi {
     setShowProposals,
     setShowCitations,
     setColoring,
+    setColoringStyle,
     setEdges,
   };
 }

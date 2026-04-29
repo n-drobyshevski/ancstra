@@ -601,3 +601,57 @@ export async function getTreeData(db: Database): Promise<TreeData> {
     childLinks: childRows as ChildLink[],
   };
 }
+
+// ---------------------------------------------------------------------------
+// Exported: pending proposed relationships (canvas overlay)
+//
+// Per CLAUDE.md, AI/API discoveries land in `proposed_relationships` and are
+// kept off the canonical tree until validated. The web app stores each user's
+// tree in its own SQLite DB (see authContext.dbFilename), so there is no
+// treeId scoping — every row belongs to this user's tree. The JOIN against
+// `persons` skips proposals whose endpoints have been soft-deleted.
+// ---------------------------------------------------------------------------
+export interface ProposedRelationshipForCanvas {
+  id: string;
+  person1Id: string;
+  person2Id: string;
+  relationshipType: 'parent_child' | 'partner' | 'sibling';
+  sourceType:
+    | 'familysearch'
+    | 'nara'
+    | 'ai_suggestion'
+    | 'record_match'
+    | 'ocr_extraction'
+    | 'user_proposal';
+  confidence: number | null;
+}
+
+export async function getProposedRelationshipsForTree(
+  db: Database,
+): Promise<ProposedRelationshipForCanvas[]> {
+  const rows = await db.all<{
+    id: string;
+    person1_id: string;
+    person2_id: string;
+    relationship_type: ProposedRelationshipForCanvas['relationshipType'];
+    source_type: ProposedRelationshipForCanvas['sourceType'];
+    confidence: number | null;
+  }>(sql`
+    SELECT pr.id, pr.person1_id, pr.person2_id, pr.relationship_type,
+           pr.source_type, pr.confidence
+    FROM proposed_relationships pr
+    JOIN persons p1 ON p1.id = pr.person1_id
+    JOIN persons p2 ON p2.id = pr.person2_id
+    WHERE pr.status = 'pending'
+      AND p1.deleted_at IS NULL
+      AND p2.deleted_at IS NULL
+  `);
+  return rows.map((r) => ({
+    id: r.id,
+    person1Id: r.person1_id,
+    person2Id: r.person2_id,
+    relationshipType: r.relationship_type,
+    sourceType: r.source_type,
+    confidence: r.confidence,
+  }));
+}
