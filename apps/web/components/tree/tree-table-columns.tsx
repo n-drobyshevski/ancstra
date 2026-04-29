@@ -314,7 +314,7 @@ export const treeTableColumns: ColumnDef<TreePersonRow>[] = [
     id: 'seeOnTree',
     enableSorting: false,
     size: 48,
-    header: () => <span className="sr-only">View on tree</span>,
+    header: () => <span className="sr-only">Focus</span>,
     cell: ({ row, table }) => {
       const p = row.original;
       const onSeeOnTree = table.options.meta?.onSeeOnTree;
@@ -324,7 +324,7 @@ export const treeTableColumns: ColumnDef<TreePersonRow>[] = [
           <TooltipTrigger asChild>
             <button
               type="button"
-              aria-label={`View ${p.givenName} ${p.surname} on tree`}
+              aria-label={`Focus ${p.givenName} ${p.surname} on tree`}
               onClick={(e) => {
                 e.stopPropagation();
                 onSeeOnTree(p.id);
@@ -334,7 +334,7 @@ export const treeTableColumns: ColumnDef<TreePersonRow>[] = [
               <Network className="size-4" aria-hidden />
             </button>
           </TooltipTrigger>
-          <TooltipContent>View on tree</TooltipContent>
+          <TooltipContent>Focus</TooltipContent>
         </Tooltip>
       );
     },

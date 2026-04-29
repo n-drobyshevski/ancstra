@@ -133,7 +133,7 @@ function SheetContent({
           <button
             type="button"
             onClick={() => onSeeOnTree(person.id)}
-            aria-label={`View ${person.givenName} ${person.surname} on tree`}
+            aria-label={`Focus ${person.givenName} ${person.surname} on tree`}
             className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium text-foreground hover:bg-muted active:bg-muted"
           >
             <Network className="size-3" aria-hidden />

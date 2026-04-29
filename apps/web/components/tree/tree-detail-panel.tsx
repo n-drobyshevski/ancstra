@@ -170,7 +170,7 @@ function DetailActionStrip({
         onClick={() => onSeeOnTree(personId)}
       >
         <Network className="size-3.5" />
-        View on tree
+        Focus
       </Button>
       <Button
         variant="ghost"

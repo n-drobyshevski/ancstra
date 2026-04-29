@@ -352,7 +352,7 @@ export function TreeTable({
                               Open detail
                             </ContextMenuItem>
                             <ContextMenuItem onSelect={() => onSeeOnTree(p.id)}>
-                              <Network className="mr-2 size-4" /> View on tree
+                              <Network className="mr-2 size-4" /> Focus
                             </ContextMenuItem>
                             {onSetTopologyAnchor && (
                               <ContextMenuItem onSelect={() => onSetTopologyAnchor(p)}>
@@ -561,7 +561,7 @@ function MobileTreeRow({
           e.stopPropagation();
           onSeeOnTree();
         }}
-        aria-label={`View ${person.givenName} ${person.surname} on tree`}
+        aria-label={`Focus ${person.givenName} ${person.surname} on tree`}
         className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
       >
         <Network className="size-4" aria-hidden />
