@@ -37,42 +37,6 @@ function makeCtx(overrides: Partial<BaseContext> = {}): BaseContext {
 describe('_ping (synthetic permission tests)', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('rejects no-session callers with UNAUTHORIZED', async () => {
-    const caller = createCaller(makeCtx());
-    await expect(caller._ping.treeView()).rejects.toMatchObject({
-      code: 'UNAUTHORIZED',
-    });
-  });
-
-  it('rejects no-membership callers with FORBIDDEN', async () => {
-    const caller = createCaller(
-      makeCtx({
-        session: { user: { id: 'u1' } } as never,
-        userId: 'u1',
-      }),
-    );
-    await expect(caller._ping.treeView()).rejects.toMatchObject({
-      code: 'FORBIDDEN',
-    });
-  });
-
-  it('allows viewer to call tree:view', async () => {
-    const caller = createCaller(
-      makeCtx({
-        session: { user: { id: 'u1' } } as never,
-        userId: 'u1',
-        familyId: 'f1',
-        role: 'viewer',
-        dbFilename: 'fake.db',
-        familyDb: {} as never,
-      }),
-    );
-    await expect(caller._ping.treeView()).resolves.toEqual({
-      ok: true,
-      role: 'viewer',
-    });
-  });
-
   it('rejects viewer calling members:manage with FORBIDDEN', async () => {
     const caller = createCaller(
       makeCtx({

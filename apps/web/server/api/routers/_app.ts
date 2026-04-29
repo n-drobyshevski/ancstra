@@ -4,6 +4,7 @@ import { authRouter } from './auth';
 import { familyRouter } from './family';
 import { accountRouter } from './account';
 import { gedcomRouter } from './gedcom';
+import { personRouter } from './person';
 
 export const appRouter = createTRPCRouter({
   _ping: pingRouter,
@@ -11,6 +12,7 @@ export const appRouter = createTRPCRouter({
   family: familyRouter,
   account: accountRouter,
   gedcom: gedcomRouter,
+  person: personRouter,
 });
 
 export type AppRouter = typeof appRouter;
