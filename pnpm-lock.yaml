@@ -322,7 +322,7 @@ importers:
     dependencies:
       '@ai-sdk/anthropic':
         specifier: ^3.0.66
-        version: 3.0.66(zod@3.25.76)
+        version: 3.0.66(zod@4.3.6)
       '@ai-sdk/provider':
         specifier: ^3.0.8
         version: 3.0.8
@@ -337,13 +337,13 @@ importers:
         version: link:../shared
       ai:
         specifier: ^6.0.145
-        version: 6.0.145(zod@3.25.76)
+        version: 6.0.145(zod@4.3.6)
       drizzle-orm:
         specifier: 0.45.2
         version: 0.45.2(@libsql/client@0.17.2)(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.13)(better-sqlite3@12.8.0)
       zod:
-        specifier: ^3.24.0
-        version: 3.25.76
+        specifier: ^4.3.6
+        version: 4.3.6
     devDependencies:
       '@types/better-sqlite3':
         specifier: ^7.6.13
@@ -509,17 +509,6 @@ importers:
 
 packages:
 
-  /@ai-sdk/anthropic@3.0.66(zod@3.25.76):
-    resolution: {integrity: sha512-yJpQ2x6ACwbXo5D6HsVWd2FFnnWcetfGx4oxkG66P8FawusvrY2vL2qMiiNTruWrxEYDy+YHc3ctv8C769MMJA==}
-    engines: {node: '>=18'}
-    peerDependencies:
-      zod: ^3.25.76 || ^4.1.8
-    dependencies:
-      '@ai-sdk/provider': 3.0.8
-      '@ai-sdk/provider-utils': 4.0.22(zod@3.25.76)
-      zod: 3.25.76
-    dev: false
-
   /@ai-sdk/anthropic@3.0.66(zod@4.3.6):
     resolution: {integrity: sha512-yJpQ2x6ACwbXo5D6HsVWd2FFnnWcetfGx4oxkG66P8FawusvrY2vL2qMiiNTruWrxEYDy+YHc3ctv8C769MMJA==}
     engines: {node: '>=18'}
@@ -541,18 +530,6 @@ packages:
       '@ai-sdk/provider-utils': 3.0.23(zod@4.3.6)
       '@vercel/oidc': 3.1.0
       zod: 4.3.6
-    dev: false
-
-  /@ai-sdk/gateway@3.0.87(zod@3.25.76):
-    resolution: {integrity: sha512-knLx/VY0u5KAZGgrTorWCTbEnwK3oCCdm8yjxVQm3s14erqVo60SP08dsFWm+xNULPTusftQGVD/l0/hx5QOHg==}
-    engines: {node: '>=18'}
-    peerDependencies:
-      zod: ^3.25.76 || ^4.1.8
-    dependencies:
-      '@ai-sdk/provider': 3.0.8
-      '@ai-sdk/provider-utils': 4.0.22(zod@3.25.76)
-      '@vercel/oidc': 3.1.0
-      zod: 3.25.76
     dev: false
 
   /@ai-sdk/gateway@3.0.87(zod@4.3.6):
@@ -577,18 +554,6 @@ packages:
       '@standard-schema/spec': 1.1.0
       eventsource-parser: 3.0.6
       zod: 4.3.6
-    dev: false
-
-  /@ai-sdk/provider-utils@4.0.22(zod@3.25.76):
-    resolution: {integrity: sha512-B2OTFcRw/Pdka9ZTjpXv6T6qZ6RruRuLokyb8HwW+aoW9ndJ3YasA3/mVswyJw7VMBF8ofXgqvcrCt9KYvFifg==}
-    engines: {node: '>=18'}
-    peerDependencies:
-      zod: ^3.25.76 || ^4.1.8
-    dependencies:
-      '@ai-sdk/provider': 3.0.8
-      '@standard-schema/spec': 1.1.0
-      eventsource-parser: 3.0.6
-      zod: 3.25.76
     dev: false
 
   /@ai-sdk/provider-utils@4.0.22(zod@4.3.6):
@@ -6843,19 +6808,6 @@ packages:
       '@ai-sdk/provider-utils': 3.0.23(zod@4.3.6)
       '@opentelemetry/api': 1.9.0
       zod: 4.3.6
-    dev: false
-
-  /ai@6.0.145(zod@3.25.76):
-    resolution: {integrity: sha512-RbMiFsPZxE4uf5Hhs8rscp5bIwvjQOrqS5dQGWNVRHGM947QZgkKX7Ih5hto8MK/7xkbtneoOZruZ8oSLO828A==}
-    engines: {node: '>=18'}
-    peerDependencies:
-      zod: ^3.25.76 || ^4.1.8
-    dependencies:
-      '@ai-sdk/gateway': 3.0.87(zod@3.25.76)
-      '@ai-sdk/provider': 3.0.8
-      '@ai-sdk/provider-utils': 4.0.22(zod@3.25.76)
-      '@opentelemetry/api': 1.9.0
-      zod: 3.25.76
     dev: false
 
   /ai@6.0.145(zod@4.3.6):
