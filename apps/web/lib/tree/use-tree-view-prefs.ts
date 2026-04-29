@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import {
   readShowDates,
   writeShowDates,
@@ -56,22 +56,22 @@ export interface TreeViewPrefsApi extends TreeViewPrefs {
 }
 
 export function useTreeViewPrefs(): TreeViewPrefsApi {
-  // SSR-safe: start from defaults, then hydrate from localStorage on mount.
-  // Same pattern as `readStoredDensity` in `tree-layout.tsx`.
-  const [state, setState] = useState<TreeViewPrefs>(DEFAULTS);
-
-  useEffect(() => {
-    setState({
-      showDates: readShowDates() ?? DEFAULTS.showDates,
-      showLivingIndicator: readShowLivingIndicator() ?? DEFAULTS.showLivingIndicator,
-      showMinimap: readShowMinimap() ?? DEFAULTS.showMinimap,
-      showDataQuality: readShowDataQuality() ?? DEFAULTS.showDataQuality,
-      showProposals: readShowProposals() ?? DEFAULTS.showProposals,
-      showCitations: readShowCitations() ?? DEFAULTS.showCitations,
-      coloring: readColoring() ?? DEFAULTS.coloring,
-      edges: readEdgeStyle() ?? DEFAULTS.edges,
-    });
-  }, []);
+  // Lazy initializer reads localStorage during the FIRST render. This avoids
+  // a post-mount `setState` cascade that triggered "Maximum update depth"
+  // when combined with the canvas's bridge effect + apply-filters effect.
+  // Safe here because the only consumer (`TreeCanvas`) is `dynamic({ ssr: false })`,
+  // so there is no SSR/CSR HTML to mismatch — the storage helpers return their
+  // own SSR-safe `null` if `window` is somehow undefined.
+  const [state, setState] = useState<TreeViewPrefs>(() => ({
+    showDates: readShowDates() ?? DEFAULTS.showDates,
+    showLivingIndicator: readShowLivingIndicator() ?? DEFAULTS.showLivingIndicator,
+    showMinimap: readShowMinimap() ?? DEFAULTS.showMinimap,
+    showDataQuality: readShowDataQuality() ?? DEFAULTS.showDataQuality,
+    showProposals: readShowProposals() ?? DEFAULTS.showProposals,
+    showCitations: readShowCitations() ?? DEFAULTS.showCitations,
+    coloring: readColoring() ?? DEFAULTS.coloring,
+    edges: readEdgeStyle() ?? DEFAULTS.edges,
+  }));
 
   const setShowDates = useCallback((v: boolean) => {
     setState((s) => ({ ...s, showDates: v }));
