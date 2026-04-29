@@ -9,6 +9,7 @@ import { CommandPalette } from "@/components/command-palette";
 import { ServiceWorkerRegister } from "@/components/sw-register";
 import { WebVitalsReporter } from './web-vitals';
 import { NuqsAdapter } from 'nuqs/adapters/next/app';
+import { TRPCReactProvider } from '@/lib/trpc/provider';
 
 const inter = Inter({
   subsets: ["latin"],
@@ -45,7 +46,9 @@ export default function RootLayout({
             <Suspense>
               <WebVitalsReporter />
             </Suspense>
-            {children}
+            <TRPCReactProvider>
+              {children}
+            </TRPCReactProvider>
             <Suspense>
               <CommandPalette />
             </Suspense>
