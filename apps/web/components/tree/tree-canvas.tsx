@@ -1078,6 +1078,42 @@ function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focus
           target.isContentEditable);
       if (inEditableField) return;
 
+      // Delete / Backspace — route to the AlertDialog confirm flow so the
+      // server-side DELETE actually fires. xyflow's built-in deleteKeyCode
+      // is disabled (set to null on the ReactFlow JSX) because it only
+      // strips nodes from local state — no API call, so they reappear on
+      // the next router.refresh. This handler reads xyflow's selection
+      // via reactFlow.getNodes() (always-fresh, no stale closure) and
+      // opens the same dialog the right-click menu's Delete person item
+      // uses. Edge keyboard-delete is intentionally not handled here —
+      // edges are deleted via right-click only (low-frequency action).
+      if (
+        (e.key === 'Delete' || e.key === 'Backspace') &&
+        !e.metaKey &&
+        !e.ctrlKey &&
+        !e.altKey
+      ) {
+        const selectedPersons = reactFlow
+          .getNodes()
+          .filter((n) => n.selected && n.type === 'person');
+        if (selectedPersons.length === 0) return;
+        e.preventDefault();
+        if (selectedPersons.length === 1) {
+          const id = selectedPersons[0].id;
+          const p = treeData.persons.find((x) => x.id === id);
+          const personName = p
+            ? `${p.givenName} ${p.surname}`.trim() || '(unnamed)'
+            : 'this person';
+          setDeleteDialog({ kind: 'single', personId: id, personName });
+        } else {
+          setDeleteDialog({
+            kind: 'bulk',
+            personIds: selectedPersons.map((n) => n.id),
+          });
+        }
+        return;
+      }
+
       const mod = e.metaKey || e.ctrlKey;
 
       // Mod+Alt+1 / Mod+Alt+2 — node style. Mod+1/Mod+2 conflict with
@@ -1155,6 +1191,9 @@ function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focus
     handleCenterOnSelected,
     handleResetZoom,
     topologyVisibleIds,
+    reactFlow,
+    treeData,
+    setDeleteDialog,
   ]);
 
   const hasSelection = reactFlow.getNodes().some((n) => n.selected);
@@ -1240,7 +1279,7 @@ function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focus
           onlyRenderVisibleElements
           minZoom={0.1}
           maxZoom={2}
-          deleteKeyCode={isMobile ? null : "Delete"}
+          deleteKeyCode={null}
           selectionOnDrag={!isMobile}
           selectionMode={isMobile ? undefined : SelectionMode.Partial}
           multiSelectionKeyCode={isMobile ? null : "Shift"}
