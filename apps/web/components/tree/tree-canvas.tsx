@@ -197,7 +197,12 @@ function TreeCanvasInner({ treeData, defaultLayout, focusPersonId, focusKey, pal
         return laid.map((n) => ({
           ...n,
           position: posMap[n.id] ?? n.position,
-          data: { ...n.data, nodeStyle: effectiveNodeStyle },
+          data: {
+            ...n.data,
+            nodeStyle: effectiveNodeStyle,
+            showDates: prefs.showDates,
+            showLivingIndicator: prefs.showLivingIndicator,
+          },
         }));
       });
       // Replace with server edges, keeping any optimistic edges not yet in server data
@@ -207,7 +212,7 @@ function TreeCanvasInner({ treeData, defaultLayout, focusPersonId, focusKey, pal
         return [...rawEdges, ...optimistic];
       });
     });
-  }, [treeData, rawNodes, rawEdges, setNodes, setEdges, showGaps, effectiveNodeStyle]);
+  }, [treeData, rawNodes, rawEdges, setNodes, setEdges, showGaps, effectiveNodeStyle, prefs.showDates, prefs.showLivingIndicator]);
 
   const handleToggleFilter = useCallback((category: 'sex' | 'living', key: string) => {
     const next = {
@@ -242,7 +247,7 @@ function TreeCanvasInner({ treeData, defaultLayout, focusPersonId, focusKey, pal
           if (stored) {
             const { positions } = parseLayoutData(stored);
             const positioned = applyPositionMap(rawNodes, positions);
-            setNodes(positioned.map(n => n.type === 'person' ? { ...n, data: { ...n.data, nodeStyle: effectiveNodeStyle } } : n));
+            setNodes(positioned.map(n => n.type === 'person' ? { ...n, data: { ...n.data, nodeStyle: effectiveNodeStyle, showDates: prefs.showDates, showLivingIndicator: prefs.showLivingIndicator } } : n));
             fetch('/api/layouts', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -349,7 +354,7 @@ function TreeCanvasInner({ treeData, defaultLayout, focusPersonId, focusKey, pal
   const handleAutoLayout = useCallback(() => {
     const laid = applyDagreLayout(rawNodes, rawEdges, showGaps ? 82 : undefined, effectiveNodeStyle);
     const newNodes = laid.map(n =>
-      n.type === 'person' ? { ...n, data: { ...n.data, nodeStyle: effectiveNodeStyle } } : n,
+      n.type === 'person' ? { ...n, data: { ...n.data, nodeStyle: effectiveNodeStyle, showDates: prefs.showDates, showLivingIndicator: prefs.showLivingIndicator } } : n,
     );
     setNodes(newNodes);
 
@@ -376,14 +381,14 @@ function TreeCanvasInner({ treeData, defaultLayout, focusPersonId, focusKey, pal
           refreshLayouts();
         });
     }
-  }, [rawNodes, rawEdges, setNodes, showGaps, effectiveNodeStyle, activeLayoutId, refreshLayouts]);
+  }, [rawNodes, rawEdges, setNodes, showGaps, effectiveNodeStyle, activeLayoutId, refreshLayouts, prefs.showDates, prefs.showLivingIndicator]);
 
   const handleNodeStyleChange = useCallback((style: NodeStyle) => {
     setNodeStyle(style);
     writeNodeStylePreference(style);
-    setNodes(nds => nds.map(n => n.type === 'person' ? { ...n, data: { ...n.data, nodeStyle: style } } : n));
+    setNodes(nds => nds.map(n => n.type === 'person' ? { ...n, data: { ...n.data, nodeStyle: style, showDates: prefs.showDates, showLivingIndicator: prefs.showLivingIndicator } } : n));
     setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 50);
-  }, [setNodes, fitView]);
+  }, [setNodes, fitView, prefs.showDates, prefs.showLivingIndicator]);
 
   const handleLoadLayout = useCallback(
     (id: string) => {
@@ -396,12 +401,12 @@ function TreeCanvasInner({ treeData, defaultLayout, focusPersonId, focusKey, pal
           // preference, not a property of the layout snapshot.
           const style = isMobile ? 'compact' : nodeStyle;
           const positioned = applyPositionMap(rawNodes, positions);
-          setNodes(positioned.map(n => n.type === 'person' ? { ...n, data: { ...n.data, nodeStyle: style } } : n));
+          setNodes(positioned.map(n => n.type === 'person' ? { ...n, data: { ...n.data, nodeStyle: style, showDates: prefs.showDates, showLivingIndicator: prefs.showLivingIndicator } } : n));
           setActiveLayoutId(layout.id);
           setActiveLayoutName(layout.name);
         });
     },
-    [rawNodes, setNodes, isMobile, nodeStyle],
+    [rawNodes, setNodes, isMobile, nodeStyle, prefs.showDates, prefs.showLivingIndicator],
   );
 
   const handleSaveAsNew = useCallback(() => {
@@ -731,10 +736,12 @@ function TreeCanvasInner({ treeData, defaultLayout, focusPersonId, focusKey, pal
           showGaps,
           qualityScore: q?.score ?? 0,
           missingFields: q?.missingFields ?? [],
+          showDates: prefs.showDates,
+          showLivingIndicator: prefs.showLivingIndicator,
         },
       };
     }));
-  }, [filterState, showGaps, qualityData, effectiveNodeStyle, setNodes]);
+  }, [filterState, showGaps, qualityData, effectiveNodeStyle, setNodes, prefs.showDates, prefs.showLivingIndicator]);
 
   // Compute filtered edges (dimmed based on node dimmed status)
   const filteredEdges = useMemo(() => applyEdgeFilters(edges, nodes), [edges, nodes]);
