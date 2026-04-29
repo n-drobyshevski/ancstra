@@ -4,7 +4,7 @@ import { isNull, sql } from 'drizzle-orm';
 import { createTRPCRouter, protectedProcedure } from '../trpc';
 import { getTreeData } from '@/lib/queries';
 import { serializeToGedcom, type ExportMode } from '@/lib/gedcom/serialize';
-import { parseGedcomString } from '@/lib/gedcom/parse';
+import { parseGedcomFile } from '@/lib/gedcom/parse';
 import { mapGedcomToImport } from '@/lib/gedcom/mapper';
 import { logActivity, type ActivityAction } from '@ancstra/auth';
 import { invalidateTags } from '../cache';
@@ -42,8 +42,9 @@ export const gedcomRouter = createTRPCRouter({
     .meta({ permission: 'gedcom:import' })
     .input(base64GedcomInput)
     .mutation(async ({ ctx, input }) => {
-      const text = Buffer.from(input.gedcomBase64, 'base64').toString('utf8');
-      const ast = parseGedcomString(text);
+      const buf = Buffer.from(input.gedcomBase64, 'base64');
+      const arrayBuffer = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+      const ast = parseGedcomFile(arrayBuffer);
       const data = mapGedcomToImport(ast);
 
       const db = ctx.familyDb!;
@@ -64,8 +65,9 @@ export const gedcomRouter = createTRPCRouter({
     .meta({ permission: 'gedcom:import' })
     .input(base64GedcomInput)
     .mutation(async ({ ctx, input }) => {
-      const text = Buffer.from(input.gedcomBase64, 'base64').toString('utf8');
-      const ast = parseGedcomString(text);
+      const buf = Buffer.from(input.gedcomBase64, 'base64');
+      const arrayBuffer = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+      const ast = parseGedcomFile(arrayBuffer);
       const data = mapGedcomToImport(ast);
 
       const db = ctx.familyDb!;
