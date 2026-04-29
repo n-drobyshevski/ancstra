@@ -3,13 +3,13 @@
 import { Button } from '@/components/ui/button';
 import { Menubar } from '@/components/ui/menubar';
 import { Separator } from '@/components/ui/separator';
-import type { FilterState, NodeStyle } from './tree-utils';
-import type { Coloring, EdgeStyle } from '@/lib/tree/view-prefs-storage';
+import type { FilterState } from './tree-utils';
+import type { TreeViewMenuProps } from './tree-view-menu';
 import { TreeViewToggle } from './tree-view-toggle';
 import { TreeViewMenu } from './tree-view-menu';
 import { TreeExportMenu } from './tree-export-menu';
 
-interface TreeToolbarProps {
+interface TreeToolbarProps extends TreeViewMenuProps {
   // Palette
   onTogglePalette: () => void;
   paletteOpen: boolean;
@@ -21,46 +21,6 @@ interface TreeToolbarProps {
   // Filters (right side)
   filterState: FilterState;
   onToggleFilter: (category: 'sex' | 'living', key: string) => void;
-
-  // Saved layouts (passes through to TreeViewMenu)
-  layouts: { id: string; name: string; isDefault: boolean }[];
-  activeLayoutId: string | null;
-  activeLayoutName: string | null;
-  onLoadLayout: (id: string) => void;
-  onSaveAsNew: () => void;
-  onUpdateLayout: () => void;
-  onSetDefault: () => void;
-  onDeleteLayout: () => void;
-  onRenameLayout: () => void;
-  onAutoLayout: () => void;
-
-  // Node style (existing)
-  nodeStyle: NodeStyle;
-  onNodeStyleChange: (style: NodeStyle) => void;
-
-  // View prefs
-  showDates: boolean;
-  onShowDatesChange: (v: boolean) => void;
-  showLivingIndicator: boolean;
-  onShowLivingIndicatorChange: (v: boolean) => void;
-  showMinimap: boolean;
-  onShowMinimapChange: (v: boolean) => void;
-  showDataQuality: boolean;
-  onShowDataQualityChange: (v: boolean) => void;
-  showProposals: boolean;
-  onShowProposalsChange: (v: boolean) => void;
-  showCitations: boolean;
-  onShowCitationsChange: (v: boolean) => void;
-  coloring: Coloring;
-  onColoringChange: (v: Coloring) => void;
-  edges: EdgeStyle;
-  onEdgesChange: (v: EdgeStyle) => void;
-
-  // Camera
-  onFitToScreen: () => void;
-  onCenterOnSelected: () => void;
-  onResetZoom: () => void;
-  hasSelection: boolean;
 }
 
 export function TreeToolbar(props: TreeToolbarProps) {
@@ -91,40 +51,7 @@ export function TreeToolbar(props: TreeToolbarProps) {
         <Separator orientation="vertical" className="h-5 mx-0.5" />
 
         <Menubar className="border-0 bg-transparent p-0 h-7">
-          <TreeViewMenu
-            nodeStyle={props.nodeStyle}
-            onNodeStyleChange={props.onNodeStyleChange}
-            showDates={props.showDates}
-            onShowDatesChange={props.onShowDatesChange}
-            showLivingIndicator={props.showLivingIndicator}
-            onShowLivingIndicatorChange={props.onShowLivingIndicatorChange}
-            showMinimap={props.showMinimap}
-            onShowMinimapChange={props.onShowMinimapChange}
-            showDataQuality={props.showDataQuality}
-            onShowDataQualityChange={props.onShowDataQualityChange}
-            showProposals={props.showProposals}
-            onShowProposalsChange={props.onShowProposalsChange}
-            showCitations={props.showCitations}
-            onShowCitationsChange={props.onShowCitationsChange}
-            coloring={props.coloring}
-            onColoringChange={props.onColoringChange}
-            edges={props.edges}
-            onEdgesChange={props.onEdgesChange}
-            onFitToScreen={props.onFitToScreen}
-            onCenterOnSelected={props.onCenterOnSelected}
-            onResetZoom={props.onResetZoom}
-            hasSelection={props.hasSelection}
-            layouts={props.layouts}
-            activeLayoutId={props.activeLayoutId}
-            activeLayoutName={props.activeLayoutName}
-            onLoadLayout={props.onLoadLayout}
-            onSaveAsNew={props.onSaveAsNew}
-            onUpdateLayout={props.onUpdateLayout}
-            onSetDefault={props.onSetDefault}
-            onRenameLayout={props.onRenameLayout}
-            onDeleteLayout={props.onDeleteLayout}
-            onAutoLayout={props.onAutoLayout}
-          />
+          <TreeViewMenu {...props} />
           <TreeExportMenu />
         </Menubar>
       </div>

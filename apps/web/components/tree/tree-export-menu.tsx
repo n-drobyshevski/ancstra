@@ -98,7 +98,7 @@ export function TreeExportMenu() {
 
   return (
     <MenubarMenu>
-      <MenubarTrigger className="gap-1" disabled={exporting}>
+      <MenubarTrigger className="gap-1 text-xs" disabled={exporting}>
         <Download className="size-3.5" aria-hidden />
         {exporting ? 'Exporting…' : 'Export'}
       </MenubarTrigger>

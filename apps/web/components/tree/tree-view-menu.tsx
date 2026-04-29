@@ -108,7 +108,7 @@ export function TreeViewMenu(props: TreeViewMenuProps) {
 
   return (
     <MenubarMenu>
-      <MenubarTrigger>View</MenubarTrigger>
+      <MenubarTrigger className="text-xs">View</MenubarTrigger>
       <MenubarContent align="start">
         <MenubarLabel>Node style</MenubarLabel>
         <MenubarRadioGroup
