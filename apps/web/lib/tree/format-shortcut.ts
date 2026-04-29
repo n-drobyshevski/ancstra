@@ -13,10 +13,20 @@
  *
  * Pass tokens space-separated, e.g. `formatShortcut('Mod 1')` → `⌘1` on mac.
  * On Windows/Linux: `Ctrl+1`.
+ *
+ * **Hydration note:** Renders `Ctrl+...` during SSR (no `navigator`) and
+ * the platform-correct value after mount. Safe inside Radix portals (e.g.
+ * `MenubarShortcut`) which only mount post-hydration. Statically-rendered
+ * consumers may flicker on macOS — wrap them in a mount-gated effect if
+ * that is a concern.
  */
 function isMac(): boolean {
   if (typeof navigator === 'undefined') return false;
-  return /Mac|iPhone|iPad|iPod/.test(navigator.platform);
+  // Prefer the modern userAgentData API when available; fall back to the
+  // legacy navigator.platform (deprecated but still widely supported).
+  const uaData = (navigator as { userAgentData?: { platform?: string } }).userAgentData;
+  const platform = uaData?.platform ?? navigator.platform ?? '';
+  return /mac|iphone|ipad|ipod/i.test(platform);
 }
 
 export function formatShortcut(tokens: string): string {
