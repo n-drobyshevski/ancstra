@@ -15,7 +15,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { PlaceInput } from '@/components/place-input';
 import { toast } from 'sonner';
-import { createRelatedPerson } from '@/app/actions/create-related-person';
+import { createRelatedPerson } from '@/server/api/routers/person/_actions';
 import type { PersonDetail } from '@ancstra/shared';
 import { personDetailCache } from '@/lib/tree/person-detail-cache';
 
@@ -184,9 +184,11 @@ function PersonFormInner({ person }: PersonFormProps) {
     router.push(`/persons/${created.id}`);
   }
 
-  // Relation context uses server action via form action
+  // Relation context uses server action via form action.
+  // Cast required: tRPC's formAction types the input as the schema shape, but
+  // at runtime normalizeFormData=true converts FormData before schema parsing.
   const formProps = isRelationContext
-    ? { action: createRelatedPerson }
+    ? { action: createRelatedPerson as unknown as (formData: FormData) => void }
     : { onSubmit: isEditMode ? handleEditSubmit : handleCreateSubmit };
 
   const relationLabel =

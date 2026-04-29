@@ -3,9 +3,15 @@ import { appRouter } from '@/server/api/routers/_app';
 import { createCallerFactory } from '@/server/api/trpc';
 import type { BaseContext } from '@/server/api/init';
 
+vi.mock('@/server/api/routers/person/_logic', () => ({
+  insertRelatedPerson: vi.fn(async () => 'new-person-id'),
+}));
+
 vi.mock('@/auth', () => ({
   auth: vi.fn(async () => null),
 }));
+
+vi.mock('next/cache', () => ({ revalidateTag: vi.fn() }));
 
 vi.mock('@ancstra/db', async (importOriginal) => {
   const original = await importOriginal<typeof import('@ancstra/db')>();
@@ -126,5 +132,47 @@ describe('person.fetchDetail', () => {
     await expect(caller.person.fetchDetail({ personId: '' })).rejects.toMatchObject({
       code: 'BAD_REQUEST',
     });
+  });
+});
+
+const minimalPersonInput = {
+  givenName: 'Jane',
+  surname: 'Doe',
+  sex: 'F' as const,
+  isLiving: true,
+};
+
+describe('person.createRelated', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('viewer cannot create related person → FORBIDDEN', async () => {
+    const caller = createCaller(
+      makeCtx({
+        session: { user: { id: 'u1' } } as never,
+        userId: 'u1',
+        familyId: 'f1',
+        role: 'viewer',
+        dbFilename: 'fake.db',
+        familyDb: {} as never,
+      }),
+    );
+    await expect(caller.person.createRelated(minimalPersonInput)).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+  });
+
+  it('editor can create related person → returns { personId }', async () => {
+    const caller = createCaller(
+      makeCtx({
+        session: { user: { id: 'u1' } } as never,
+        userId: 'u1',
+        familyId: 'f1',
+        role: 'editor',
+        dbFilename: 'fake.db',
+        familyDb: {} as never,
+      }),
+    );
+    const result = await caller.person.createRelated(minimalPersonInput);
+    expect(result).toEqual({ personId: 'new-person-id' });
   });
 });
