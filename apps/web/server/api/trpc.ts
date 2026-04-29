@@ -1,0 +1,27 @@
+import { experimental_nextAppDirCaller } from '@trpc/server/adapters/next-app-dir';
+import { headers } from 'next/headers';
+import { t, type Meta, createTRPCContext } from './init';
+import { sessionMiddleware } from './middleware/session';
+import { familyScopeMiddleware } from './middleware/family-scope';
+import { permissionMiddleware } from './middleware/permission';
+
+export const createTRPCRouter = t.router;
+export const createCallerFactory = t.createCallerFactory;
+
+export const publicProcedure = t.procedure;
+
+export const authenticatedProcedure = t.procedure.use(sessionMiddleware);
+
+export const protectedProcedure = t.procedure
+  .use(sessionMiddleware)
+  .use(familyScopeMiddleware)
+  .use(permissionMiddleware);
+
+const formCaller = experimental_nextAppDirCaller({
+  pathExtractor: ({ meta }) => (meta as Meta)?.span ?? '',
+  createContext: async () => createTRPCContext({ headers: await headers() }),
+});
+
+export const formAction = protectedProcedure.experimental_caller(formCaller);
+export const authedFormAction = authenticatedProcedure.experimental_caller(formCaller);
+export const publicFormAction = publicProcedure.experimental_caller(formCaller);
