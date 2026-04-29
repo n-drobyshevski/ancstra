@@ -49,7 +49,6 @@ export default async function JoinPage({
         familyName={familyName}
         role={invitation!.role}
         token={token}
-        userId={session.user.id}
       />
     );
   }
