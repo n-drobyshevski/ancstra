@@ -228,7 +228,7 @@ export function TreeViewMenu(props: TreeViewMenuProps) {
                 {layout.isDefault ? (
                   <Star className="size-3.5 fill-current" aria-hidden />
                 ) : (
-                  <span className="size-3.5" />
+                  <span className="size-3.5" aria-hidden />
                 )}
                 {layout.name}
               </MenubarItem>
@@ -236,19 +236,14 @@ export function TreeViewMenu(props: TreeViewMenuProps) {
             {layouts.length > 0 && <MenubarSeparator />}
             <MenubarItem onSelect={onSaveAsNew}>Save current as…</MenubarItem>
             {activeLayoutId && (
-              <MenubarItem onSelect={onUpdateLayout}>
-                Update &ldquo;{activeLayoutName}&rdquo;
-              </MenubarItem>
-            )}
-            {activeLayoutId && <MenubarSeparator />}
-            {activeLayoutId && (
               <>
+                <MenubarItem onSelect={onUpdateLayout}>
+                  Update &ldquo;{activeLayoutName}&rdquo;
+                </MenubarItem>
+                <MenubarSeparator />
                 <MenubarItem onSelect={onSetDefault}>Set as default</MenubarItem>
                 <MenubarItem onSelect={onRenameLayout}>Rename</MenubarItem>
-                <MenubarItem
-                  variant="destructive"
-                  onSelect={onDeleteLayout}
-                >
+                <MenubarItem variant="destructive" onSelect={onDeleteLayout}>
                   Delete
                 </MenubarItem>
               </>
