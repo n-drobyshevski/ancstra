@@ -2,7 +2,7 @@
 
 import { useActionState } from 'react';
 import Link from 'next/link';
-import { signUp, type SignUpState } from '@/app/actions/auth';
+import { signUpAction as signUp, type SignUpState } from '@/server/api/routers/account/_actions';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
