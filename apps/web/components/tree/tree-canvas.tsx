@@ -882,54 +882,54 @@ function TreeCanvasInner({ treeData, defaultLayout, focusPersonId, focusKey, pal
       const mod = e.metaKey || e.ctrlKey;
 
       // Mod+1 / Mod+2 — node style
-      if (mod && !e.shiftKey && e.key === '1') {
+      if (mod && !e.shiftKey && !e.altKey && e.key === '1') {
         e.preventDefault();
         handleNodeStyleChange('wide');
         return;
       }
-      if (mod && !e.shiftKey && e.key === '2') {
+      if (mod && !e.shiftKey && !e.altKey && e.key === '2') {
         e.preventDefault();
         handleNodeStyleChange('compact');
         return;
       }
 
       // Mod+M — toggle minimap
-      if (mod && !e.shiftKey && e.key.toLowerCase() === 'm') {
+      if (mod && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'm') {
         e.preventDefault();
         prefs.setShowMinimap(!prefs.showMinimap);
         return;
       }
 
       // Mod+G — toggle data quality
-      if (mod && !e.shiftKey && e.key.toLowerCase() === 'g') {
+      if (mod && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'g') {
         e.preventDefault();
         prefs.setShowDataQuality(!prefs.showDataQuality);
         return;
       }
 
       // Mod+Shift+L — auto layout
-      if (mod && e.shiftKey && e.key.toLowerCase() === 'l') {
+      if (mod && e.shiftKey && !e.altKey && e.key.toLowerCase() === 'l') {
         e.preventDefault();
         handleAutoLayout();
         return;
       }
 
       // F — fit to screen (no modifier)
-      if (!mod && !e.shiftKey && e.key.toLowerCase() === 'f') {
+      if (!mod && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'f') {
         e.preventDefault();
         handleFitToScreen();
         return;
       }
 
       // C — center on selected
-      if (!mod && !e.shiftKey && e.key.toLowerCase() === 'c') {
+      if (!mod && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'c') {
         e.preventDefault();
         handleCenterOnSelected();
         return;
       }
 
       // 0 — reset zoom
-      if (!mod && !e.shiftKey && e.key === '0') {
+      if (!mod && !e.shiftKey && !e.altKey && e.key === '0') {
         e.preventDefault();
         handleResetZoom();
         return;
@@ -943,7 +943,10 @@ function TreeCanvasInner({ treeData, defaultLayout, focusPersonId, focusKey, pal
     onSelectPerson,
     setContextMenu,
     handleNodeStyleChange,
-    prefs,
+    prefs.showMinimap,
+    prefs.setShowMinimap,
+    prefs.showDataQuality,
+    prefs.setShowDataQuality,
     handleAutoLayout,
     handleFitToScreen,
     handleCenterOnSelected,
