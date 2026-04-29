@@ -433,21 +433,12 @@ function EdgeItems({
     edgeFamilyId?: string;
   };
 }) {
-  const router = useRouter();
+  // Note: the previously-considered "Edit relationship details" item
+  // (router.push(`/families/${familyId}`)) was dropped — only an API
+  // route exists at /api/families/[id]; there's no UI page, so the
+  // navigation would 404. Re-add this when a families/[id] page lands.
   return (
     <>
-      {surface.edgeFamilyId && (
-        <DropdownMenuItem
-          onSelect={() => {
-            router.push(`/families/${surface.edgeFamilyId}`);
-            onClose();
-          }}
-        >
-          <Pencil />
-          <span>Edit relationship details</span>
-        </DropdownMenuItem>
-      )}
-      {surface.edgeFamilyId && <DropdownMenuSeparator />}
       <DropdownMenuItem
         variant="destructive"
         onSelect={() => {
