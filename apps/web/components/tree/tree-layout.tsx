@@ -211,6 +211,27 @@ export function TreeLayout({ viewData, focusPersonId }: TreeLayoutProps) {
     return person ? `${person.givenName} ${person.surname}` : null;
   }, [topologyReferenceId, viewData]);
 
+  // Auto-clear topology when the anchor person no longer exists in the
+  // canvas data — covers two cases: user deleted the anchor, or arrived
+  // with a stale URL (e.g., bookmark to /tree?topologyAnchor=<deleted-id>).
+  // Without this, computeAncestors/computeDescendants on a missing id
+  // returns an empty set and the canvas hides every person — blank
+  // tree with no recovery path except manually clearing via the toolbar.
+  // Silent reset (no toast) — if the user just deleted the anchor, the
+  // existing "Person deleted" toast covers communication. Only canvas
+  // mode is authoritative for absence (table mode is server-paginated
+  // and the row may simply be off the current page).
+  useEffect(() => {
+    if (viewData.kind !== 'canvas') return;
+    if (topologyMode === 'all' || !topologyReferenceId) return;
+    const exists = viewData.treeData.persons.some(
+      (p) => p.id === topologyReferenceId,
+    );
+    if (!exists) {
+      void setFilters({ topologyMode: 'all', topologyAnchor: '', page: 1 });
+    }
+  }, [viewData, topologyMode, topologyReferenceId, setFilters]);
+
   const setView = useCallback(
     (v: 'canvas' | 'table') => {
       const params = new URLSearchParams(searchParams.toString());
