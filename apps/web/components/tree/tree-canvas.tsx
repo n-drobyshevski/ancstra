@@ -55,6 +55,7 @@ import {
   writeNodeStylePreference,
 } from '@/lib/tree/node-style-storage';
 import type { DefaultTreeLayout } from '@/lib/cache/tree';
+import { useTreeViewPrefs } from '@/lib/tree/use-tree-view-prefs';
 
 const nodeTypes = { person: PersonNode, draftPerson: DraftPersonNode, draftFactsheet: DraftFactsheetNode };
 const edgeTypes = { partner: PartnerEdge, parentChild: ParentChildEdge };
@@ -90,7 +91,8 @@ interface TreeCanvasProps {
 }
 
 function TreeCanvasInner({ treeData, defaultLayout, focusPersonId, focusKey, paletteOpen, onTogglePalette, onSelectPerson, view, onSetView, isMobile, isDetailOpen, filterState: externalFilterState, onFilterStateChange, showGaps: externalShowGaps, onShowGapsChange, mobileToolbarSlot, onFocusPerson }: TreeCanvasProps) {
-  const { fitView, screenToFlowPosition, getNodes } = useReactFlow();
+  const reactFlow = useReactFlow();
+  const { fitView, screenToFlowPosition, getNodes } = reactFlow;
   const router = useRouter();
   const connectionLock = useConnectionLock<'spouse' | 'parentChild'>({
     symmetricTypes: ['spouse'],
@@ -168,7 +170,8 @@ function TreeCanvasInner({ treeData, defaultLayout, focusPersonId, focusKey, pal
   const setFilterState = onFilterStateChange ?? setInternalFilterState;
   const showGaps = externalShowGaps ?? internalShowGaps;
   const setShowGaps = onShowGapsChange ?? setInternalShowGaps;
-  const [showMinimap, setShowMinimap] = useState(true);
+  const prefs = useTreeViewPrefs();
+  const { showMinimap } = prefs;
   // nodeStyle preference is sourced from localStorage and seeded synchronously
   // so the initial render matches the user's last choice.
   const [nodeStyle, setNodeStyle] = useState<NodeStyle>(
@@ -833,6 +836,35 @@ function TreeCanvasInner({ treeData, defaultLayout, focusPersonId, focusKey, pal
     } catch { toast.error('Export failed'); }
   }, [getFlowElement, getNodes]);
 
+  // Camera commands
+  const handleFitToScreen = useCallback(() => {
+    reactFlow.fitView({ padding: 0.2, duration: 250 });
+  }, [reactFlow]);
+
+  const handleCenterOnSelected = useCallback(() => {
+    const selected = reactFlow.getNodes().find((n) => n.selected);
+    if (!selected) return;
+    reactFlow.setCenter(selected.position.x, selected.position.y, {
+      zoom: 1,
+      duration: 250,
+    });
+  }, [reactFlow]);
+
+  const handleResetZoom = useCallback(() => {
+    reactFlow.setViewport({ x: 0, y: 0, zoom: 1 }, { duration: 250 });
+  }, [reactFlow]);
+
+  const hasSelection = reactFlow.getNodes().some((n) => n.selected);
+
+  // Bridge: prefs.showDataQuality is the source of truth on canvas; mirror
+  // it into the prop chain so tree-table-toolbar (table view) can keep using
+  // the same toggle button.
+  useEffect(() => {
+    if (prefs.showDataQuality !== showGaps) {
+      onShowGapsChange?.(prefs.showDataQuality);
+    }
+  }, [prefs.showDataQuality, showGaps, onShowGapsChange]);
+
   return (
     <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
       {isMobile ? mobileToolbarSlot?.({
@@ -841,9 +873,12 @@ function TreeCanvasInner({ treeData, defaultLayout, focusPersonId, focusKey, pal
         onExportSvg: exportSvg,
         onExportPdf: exportPdf,
       }) : (<TreeToolbar
-        onAutoLayout={handleAutoLayout}
         onTogglePalette={onTogglePalette}
         paletteOpen={paletteOpen}
+        view={view}
+        onSetView={onSetView}
+        filterState={filterState}
+        onToggleFilter={handleToggleFilter}
         layouts={layouts}
         activeLayoutId={activeLayoutId}
         activeLayoutName={activeLayoutName}
@@ -853,16 +888,29 @@ function TreeCanvasInner({ treeData, defaultLayout, focusPersonId, focusKey, pal
         onSetDefault={handleSetDefault}
         onDeleteLayout={handleDeleteLayout}
         onRenameLayout={handleRenameLayout}
-        filterState={filterState}
-        onToggleFilter={handleToggleFilter}
-        showGaps={showGaps}
-        onToggleGaps={() => setShowGaps(!showGaps)}
-        showMinimap={showMinimap}
-        onToggleMinimap={() => setShowMinimap(v => !v)}
-        view={view}
-        onSetView={onSetView}
+        onAutoLayout={handleAutoLayout}
         nodeStyle={nodeStyle}
         onNodeStyleChange={handleNodeStyleChange}
+        showDates={prefs.showDates}
+        onShowDatesChange={prefs.setShowDates}
+        showLivingIndicator={prefs.showLivingIndicator}
+        onShowLivingIndicatorChange={prefs.setShowLivingIndicator}
+        showMinimap={prefs.showMinimap}
+        onShowMinimapChange={prefs.setShowMinimap}
+        showDataQuality={prefs.showDataQuality}
+        onShowDataQualityChange={prefs.setShowDataQuality}
+        showProposals={prefs.showProposals}
+        onShowProposalsChange={prefs.setShowProposals}
+        showCitations={prefs.showCitations}
+        onShowCitationsChange={prefs.setShowCitations}
+        coloring={prefs.coloring}
+        onColoringChange={prefs.setColoring}
+        edges={prefs.edges}
+        onEdgesChange={prefs.setEdges}
+        onFitToScreen={handleFitToScreen}
+        onCenterOnSelected={handleCenterOnSelected}
+        onResetZoom={handleResetZoom}
+        hasSelection={hasSelection}
       />)}
 
       <div className="flex-1 relative overflow-hidden">
