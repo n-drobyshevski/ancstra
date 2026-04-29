@@ -91,7 +91,8 @@ interface TreeCanvasProps {
   onFocusPerson?: (personId: string) => void;
 }
 
-function TreeCanvasInner({ treeData, defaultLayout, focusPersonId, focusKey, paletteOpen, onTogglePalette, onSelectPerson, view, onSetView, isMobile, isDetailOpen, filterState: externalFilterState, onFilterStateChange, showGaps: externalShowGaps, onShowGapsChange, mobileToolbarSlot, onFocusPerson }: TreeCanvasProps) {
+function TreeCanvasInner({ treeData, defaultLayout, focusPersonId, focusKey, paletteOpen, onTogglePalette, onSelectPerson, view, onSetView, isMobile, isDetailOpen, filterState: externalFilterState, onFilterStateChange, showGaps: externalShowGaps, onShowGapsChange: _onShowGapsChange, mobileToolbarSlot, onFocusPerson }: TreeCanvasProps) {
+  void _onShowGapsChange;
   const reactFlow = useReactFlow();
   const { fitView, screenToFlowPosition, getNodes } = reactFlow;
   const router = useRouter();
@@ -168,14 +169,18 @@ function TreeCanvasInner({ treeData, defaultLayout, focusPersonId, focusKey, pal
   const [activeLayoutName, setActiveLayoutName] = useState<string | null>(null);
 
   const [internalFilterState, setInternalFilterState] = useState<FilterState>(DEFAULT_FILTERS);
-  const [internalShowGaps, setInternalShowGaps] = useState(false);
 
   // Use external state when provided, otherwise fall back to internal
   const filterState = externalFilterState ?? internalFilterState;
   const setFilterState = onFilterStateChange ?? setInternalFilterState;
-  const showGaps = externalShowGaps ?? internalShowGaps;
   const prefs = useTreeViewPrefs();
   const { showMinimap } = prefs;
+  // Canvas reads showGaps directly from prefs (localStorage). Parent's showGaps
+  // prop is accepted (legacy) but ignored on canvas. Table view manages its own
+  // showGaps via the parent state. v1 limitation: canvas/table toggles do not
+  // sync across views.
+  void externalShowGaps;
+  const showGaps = prefs.showDataQuality;
   // nodeStyle preference is sourced from localStorage and seeded synchronously
   // so the initial render matches the user's last choice.
   const [nodeStyle, setNodeStyle] = useState<NodeStyle>(
@@ -955,17 +960,7 @@ function TreeCanvasInner({ treeData, defaultLayout, focusPersonId, focusKey, pal
 
   const hasSelection = reactFlow.getNodes().some((n) => n.selected);
 
-  // Bridge: canvas is authoritative — `prefs.showDataQuality` (localStorage)
-  // is mirrored into the parent's `showGaps` state so the existing prop chain
-  // keeps working. v1 limitation: toggling Data Quality from `tree-table-toolbar`
-  // in the table view does NOT write through to prefs, so on switching back to
-  // canvas this effect overrides the table-view choice with the localStorage value.
-  // Acceptable for v1; resolve by routing the table-view toggle through prefs in v2.
-  useEffect(() => {
-    if (prefs.showDataQuality !== showGaps) {
-      onShowGapsChange?.(prefs.showDataQuality);
-    }
-  }, [prefs.showDataQuality, showGaps, onShowGapsChange]);
+  // (Bridge effect removed — `showGaps` now reads directly from `prefs.showDataQuality`.)
 
   return (
     <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
