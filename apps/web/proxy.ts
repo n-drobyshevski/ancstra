@@ -47,6 +47,26 @@ export const proxy = auth(async (request) => {
     console.warn('[PROXY] memberships_version fetch failed, continuing with JWT', err);
   }
 
+  // Sub-spec A: refuse mutations on stale JWT — the user's role may have changed.
+  // GETs are allowed (read-only stale data clears on next request after JWT refresh).
+  const isMutation = request.method === 'POST'
+    || request.method === 'PUT'
+    || request.method === 'PATCH'
+    || request.method === 'DELETE';
+  if (staleJwtDetected && isMutation && request.nextUrl.pathname.startsWith('/api/')) {
+    const response = NextResponse.json(
+      { error: 'Session stale, please retry', code: 'JWT_STALE' },
+      { status: 409 },
+    );
+    response.cookies.set('force-jwt-refresh', '1', {
+      httpOnly: true,
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60,
+    });
+    return response;
+  }
+
   const memberships = session.user.memberships;
   const familyParam = request.nextUrl.searchParams.get('family');
   const familyCookie = request.cookies.get('active-family')?.value;
@@ -96,12 +116,12 @@ export const proxy = auth(async (request) => {
   }
 
   if (staleJwtDetected) {
-    // Set a short-lived cookie that signals staleness. Auth.js v5 jwt() callbacks
-    // don't receive request cookies directly, so forcing an in-place JWT refresh
-    // from middleware is not supported. The deferred path: on the next request the
-    // proxy re-detects staleness, and a future Task will wire trigger='update' from
-    // a client component that reads a response header/cookie. For now, setting this
-    // cookie is the staleness signal; Task 9 verifies the detection logic end-to-end.
+    // TODO(sub-spec-a-followup): Wire up client-side observer for force-jwt-refresh cookie.
+    // Today: the cookie is set on staleness detection but no consumer reads it. Mutations are
+    // blocked above with 409; subsequent reads still see stale role until next sign-in.
+    // Full fix: add a client-side hook in TRPCReactProvider that reads document.cookie,
+    // calls useSession().update(), then clears the cookie via /api/session/refresh.
+    // Not blocking sub-spec A's primary security invariant (mutation block above).
     response.cookies.set('force-jwt-refresh', '1', {
       httpOnly: true,
       sameSite: 'lax',
