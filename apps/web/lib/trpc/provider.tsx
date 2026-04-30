@@ -5,13 +5,13 @@ import { useSession } from 'next-auth/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { httpBatchLink } from '@trpc/client';
-import { toast } from 'sonner';
 import superjson from 'superjson';
 import { JWT_REFRESH_COOKIE_NAME } from '@ancstra/auth';
 import { trpc } from './client';
 import { AppSessionProvider } from '@/lib/auth/session-provider';
 import { JwtRefreshObserver } from './jwt-refresh-observer';
 import { jwtStaleLink } from './jwt-stale-link';
+import { runRefresh } from './jwt-refresh-debounce';
 
 function TRPCInner({ children }: { children: React.ReactNode }) {
   const { update } = useSession();
@@ -30,13 +30,11 @@ function TRPCInner({ children }: { children: React.ReactNode }) {
       links: [
         jwtStaleLink({
           onJwtStale: () => {
-            // Clear cookie BEFORE update so the cookie observer doesn't double-fire
+            // Clear cookie BEFORE runRefresh so the cookie observer doesn't double-fire
             if (typeof document !== 'undefined') {
               document.cookie = `${JWT_REFRESH_COOKIE_NAME}=; path=/; max-age=0; sameSite=Lax`;
             }
-            void updateRef.current().then(() => {
-              toast.info('Session refreshed — please retry');
-            });
+            void runRefresh(updateRef.current, queryClient, 'Session refreshed — please retry');
           },
         }),
         httpBatchLink({
