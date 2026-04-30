@@ -101,6 +101,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             )
             .all();
           token.memberships = memberships as FamilyMembership[];
+
+          // Sub-spec A: also fetch users.memberships_version for staleness detection
+          const userRow = await db
+            .select({ v: centralSchema.users.membershipsVersion })
+            .from(centralSchema.users)
+            .where(eq(centralSchema.users.id, token.userId as string))
+            .get();
+          token.membershipsVersion = userRow?.v ?? 0;
         } catch (error) {
           console.error('[AUTH] Error loading memberships into JWT:', error);
         }
@@ -113,6 +121,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
       if (token.memberships) {
         session.user.memberships = token.memberships;
+      }
+      if (typeof token.membershipsVersion === 'number') {
+        session.user.membershipsVersion = token.membershipsVersion;
       }
       return session;
     },
