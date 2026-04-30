@@ -36,9 +36,22 @@ export async function getAuthContext(request?: Request): Promise<AuthContext | n
   // Always derive role from JWT memberships — never from x-family-role header (sub-spec A D2)
   const session = await auth();
   const memberships = session?.user?.memberships ?? [];
-  const membership = familyIdHint
-    ? memberships.find((m) => m.familyId === familyIdHint)
-    : memberships[0];
+  let membership: (typeof memberships)[number] | undefined;
+  if (familyIdHint) {
+    membership = memberships.find((m) => m.familyId === familyIdHint);
+  } else if (memberships.length === 1) {
+    // Single membership = unambiguous default
+    membership = memberships[0];
+  } else if (memberships.length > 1) {
+    // Multiple memberships and no hint — caller must specify which family.
+    // Production proxy always sets x-family-id; this branch surfaces test-harness
+    // bugs and non-proxied callers. Returning null forces the caller to be explicit.
+    console.warn('[AUTH] getAuthContext called without x-family-id but user has multiple memberships', {
+      userId,
+      membershipCount: memberships.length,
+    });
+    return null;
+  }
 
   if (membership) {
     const role = parseRole(membership.role);
@@ -50,6 +63,13 @@ export async function getAuthContext(request?: Request): Promise<AuthContext | n
         dbFilename: membership.dbFilename,
       };
     }
+    // Failed to parse — could be JWT tampering or a role enum that hasn't been added
+    // to VALID_ROLES yet. Log + fall through to DB to verify.
+    console.warn('[AUTH] JWT membership.role failed parseRole — falling through to DB', {
+      userId,
+      familyId: membership.familyId,
+      role: membership.role,
+    });
   }
 
   // Fallback: stale JWT (user just accepted invite, JWT not yet refreshed) — query DB
