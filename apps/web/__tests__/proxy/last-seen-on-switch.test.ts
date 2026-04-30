@@ -137,4 +137,26 @@ describe('proxy: lastSeenAt on family switch', () => {
 
     expect(bumpLastSeenAtMock).not.toHaveBeenCalled();
   });
+
+  it('does NOT call bumpLastSeenAt when ?family= is invalid (URL-mismatch redirect path)', async () => {
+    mockSession = {
+      user: {
+        id: 'u1',
+        memberships: [{ familyId: 'VALID', role: 'admin', dbFilename: 'valid.db' }],
+        membershipsVersion: 1,
+      },
+    };
+
+    // Request asks for a family the user is not a member of — triggers URL-mismatch redirect.
+    const req = makeRequest('http://localhost/dashboard?family=BOGUS_FAMILY');
+    const response = await proxy(req as Parameters<typeof proxy>[0], noopCtx) as Response;
+
+    // The proxy should redirect (307/302) before reaching the cookie-set/bump block.
+    expect(bumpLastSeenAtMock).not.toHaveBeenCalled();
+    expect(response.status).toBeGreaterThanOrEqual(300);
+    expect(response.status).toBeLessThan(400);
+    // Redirect URL must not contain the bogus family param.
+    const location = response.headers.get('location') ?? '';
+    expect(location).not.toContain('BOGUS_FAMILY');
+  });
 });

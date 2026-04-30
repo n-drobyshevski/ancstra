@@ -171,6 +171,14 @@ calls `invalidateQueries()` and fires exactly one toast. Both consumers delegate
   the role swap, version bumps, and registry update in a single SQLite transaction.
 - ~10 routes still call `createCentralDb()` directly, bypassing the singleton. Cleanup
   deferred; tracked in the RBAC roadmap bucket.
+- **Post-invite JWT-stale race (deferred to sub-spec C):** When a user accepts an invite
+  while logged in, `acceptInviteAction` redirects with `?invite=accepted&family=<newId>`.
+  The dashboard's `<InviteAcceptedToast>` queries `family.listMine` to look up the family
+  name, but if the JWT hasn't been refreshed yet (memberships still reflect pre-invite
+  state), the new family won't appear in the list. The toast falls back to the generic
+  "Welcome to your new family" message — not broken, just less personalized. Forcing a
+  JWT refresh on invite-accept would resolve this; deferred to sub-spec C (members
+  management UX) which already needs to refresh JWTs after role changes.
 
 ## Related Decisions
 
