@@ -6,6 +6,7 @@ import { ModeToggle } from '@/components/mode-toggle';
 import { Button } from '@/components/ui/button';
 import { Search } from 'lucide-react';
 import { useHeaderContent } from '@/lib/header-context';
+import { FamilyPicker } from '@/components/auth/family-picker';
 
 export function AppHeader({ title }: { title?: string }) {
   const { headerContent } = useHeaderContent();
@@ -31,6 +32,7 @@ export function AppHeader({ title }: { title?: string }) {
           ⌘K
         </kbd>
       </Button>
+      <FamilyPicker />
       <ModeToggle />
     </header>
   );
