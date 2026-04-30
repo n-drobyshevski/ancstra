@@ -65,6 +65,7 @@
 - [ADR-004: family-chart for visualization](architecture/decisions/004-family-chart-viz.md)
 - [ADR-013: tRPC as action substrate](architecture/decisions/013-trpc-as-action-substrate.md) (sub-spec B)
 - [ADR-014: RBAC enforcement hardening](architecture/decisions/014-rbac-enforcement-hardening.md) (sub-spec A)
+- [ADR-015: RBAC client-side enforcement foundation](architecture/decisions/015-rbac-client-foundation.md) (sub-spec D1)
 
 ## Reference
 

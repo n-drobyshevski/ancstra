@@ -8,7 +8,7 @@ Permanent reference for the role-based access control work in Ancstra. The cross
 |---|---|---|---|---|
 | **B** | tRPC migration (action substrate) | ✅ Shipped 2026-04-29 | `sub-spec-b-complete` | [ADR-013](architecture/decisions/013-trpc-as-action-substrate.md) |
 | **A** | Enforcement hardening (header trust, JWT staleness, owner-uniqueness) | ✅ Shipped 2026-04-30 | `sub-spec-a-complete` | [ADR-014](architecture/decisions/014-rbac-enforcement-hardening.md) |
-| **D1** | Client-side enforcement foundation (SessionProvider, useHasPermission, RoleGate, JWT refresh observer + 409 link) | 📋 Spec + plan ready, awaiting execution | — | (ADR-015 planned) |
+| **D1** | Client-side enforcement foundation (SessionProvider, useHasPermission, RoleGate, JWT refresh observer + 409 link) | ✅ Shipped 2026-04-30 | `sub-spec-d1-complete` | [ADR-015](architecture/decisions/015-rbac-client-foundation.md) |
 | **D2** | Family switcher UX + RoleGate adoption sweep + lastSeenAt + onboarding | ⏳ Pending (depends on D1) | — | — |
 | **C** | Share / invite UX (settings/members page) | ⏳ Pending | — | — |
 | **E** | Audit, tests, docs (test fixture consolidation, matrix tests) | ⏳ Pending | — | — |
@@ -25,16 +25,16 @@ docs/
 │   ├── b-trpc-migration/
 │   │   ├── design.md            ← spec
 │   │   └── plan.md              ← 26-task implementation plan
-│   └── a-hardening/
+│   ├── a-hardening/
+│   │   ├── design.md            ← spec
+│   │   └── plan.md              ← 17-task implementation plan
+│   └── d1-foundation/
 │       ├── design.md            ← spec
-│       └── plan.md              ← 17-task implementation plan
+│       └── plan.md              ← 13-task implementation plan
 └── architecture/decisions/
     ├── 013-trpc-as-action-substrate.md
-    └── 014-rbac-enforcement-hardening.md
-
-docs/superpowers/                 ← scratch space (gitignored)
-├── specs/2026-04-30-rbac-subspec-d1-foundation-design.md   ← D1 spec (pending promotion)
-└── plans/2026-04-30-rbac-subspec-d1-foundation.md          ← D1 plan (13 tasks, pending execution)
+    ├── 014-rbac-enforcement-hardening.md
+    └── 015-rbac-client-foundation.md
 ```
 
 The per-sub-spec design + plan files in `docs/rbac/<name>/` are the historical artifacts as they were at execution time, committed alongside this roadmap. Working drafts for in-flight sub-specs live in `docs/superpowers/{specs,plans}/` (gitignored) and are promoted to `docs/rbac/` when the sub-spec ships.
@@ -74,40 +74,41 @@ The per-sub-spec design + plan files in `docs/rbac/<name>/` are the historical a
 - `/api/debug` gated behind `NODE_ENV !== 'production'`
 - ADR-014; new tests: header-strip + jwt-staleness + owner-uniqueness
 
+**Sub-spec D1 — Client-side enforcement foundation** ([design](rbac/d1-foundation/design.md) · [plan](rbac/d1-foundation/plan.md))
+- `<AppSessionProvider>` mounts NextAuth's `<SessionProvider>` inside `<TRPCReactProvider>` (any descendant can call `useSession()`)
+- `useActiveMembership(familyIdHint?)` + `useHasPermission(permission)` hooks (hint precedence: explicit > URL `?family=` > `memberships[0]`)
+- `<RoleGate permission="x:y" fallback?>` — UX-only client affordance hiding (server still enforces via 403/409)
+- `<JwtRefreshObserver>` reads `force-jwt-refresh` cookie on mount + every navigation, calls `useSession().update()`, clears cookie, toasts
+- `jwtStaleLink` — custom tRPC link intercepts 409 with `code: 'JWT_STALE'`; clears cookie before update to prevent observer double-fire; toast `'Session refreshed — please retry'`
+- `force-jwt-refresh` cookie made non-httpOnly (carries no secret; JWT itself stays httpOnly)
+- `TRPCReactProvider` split into outer (SessionProvider mount) + inner (uses `useSession` to wire link); `useRef(update)` pattern protects against NextAuth v5's per-render `update` identity
+- Carry-forwards from A: `getCentralDbSync()` triggers `ensureCentralSchema` via shared `_ensurePromise` (closes fresh-deploy hazard); `formAction` renamed to `protectedFormAction` for symmetry
+- ADR-015; new tests: 11 hooks + 5 RoleGate + 4 observer + 3 stale-link = 23; total apps/web 429 (was 406)
+
 ---
 
 ## What's pending
 
-### Sub-spec D1 — Client-side enforcement foundation (📋 plan ready)
-
-**Spec/plan**: `docs/superpowers/specs/2026-04-30-rbac-subspec-d1-foundation-design.md` + `docs/superpowers/plans/2026-04-30-rbac-subspec-d1-foundation.md` (13 tasks, 5 phases). Promoted to `docs/rbac/d1-foundation/` on completion.
-
-**Scope** (foundation only — UX work is D2):
-- Make `force-jwt-refresh` cookie non-httpOnly in `proxy.ts` (carries no secret; only signal)
-- Mount NextAuth `<SessionProvider>` (from `next-auth/react`) inside `<TRPCReactProvider>`
-- New `useActiveMembership(familyIdHint?)` + `useHasPermission(permission)` hooks
-- New `<RoleGate permission="x:y" fallback?={ReactNode}>` — hides children by default; `fallback` overrides per-instance for "disable+tooltip" cases
-- New `<JwtRefreshObserver>` — reads cookie on mount + on `usePathname()` change, calls `useSession().update()`, clears cookie, emits toast
-- New tRPC custom link `jwtStaleLink` — intercepts 409 with `code: 'JWT_STALE'` (sub-spec A's mutation block) and triggers the same `update()`
-
-**Carry-forwards folded into D1** (from sub-spec A's final review):
-- `getCentralDbSync()` triggers `ensureCentralSchema` on first call via shared promise (closes fresh-deploy hazard for `/api/auth/*`)
-- `formAction` renamed to `protectedFormAction` for symmetry with `authedFormAction`/`publicFormAction`
-
-**Carry-forwards deferred to other PRs:**
-- `createCentralDb` singleton sweep across ~10 routes — minor cleanup PR or E
-- `transferOwnership` non-atomic — its own focused transaction-wrap PR
-- CommandPalette inside TRPCReactProvider — only if a future tRPC consumer lives there
-
 ### Sub-spec D2 — Family switcher UX + RoleGate adoption (depends on D1)
 
-**Scope** (UX layer — depends on D1's foundation):
+**Scope** (UX layer — D1's foundation now in place):
 - Wire `apps/web/components/auth/family-picker.tsx` into `<AppHeader>` (component exists at `family-picker.tsx:21-56`, fully reusable; `AppHeader` has a clear right-align slot next to `<ModeToggle>`)
 - Persist `lastSeenAt` on `familyMembers` per active-family request (column exists in central-schema, never written)
-- Use `lastSeenAt DESC` to pick default active family in proxy (replaces current `memberships[0]` fallback)
+- Use `lastSeenAt DESC` to pick default active family in proxy (replaces current `memberships[0]` fallback in both proxy AND `useActiveMembership`)
 - Redirect-on-deletion: if active family no longer in memberships, fall back to last-used or `/onboarding`
 - Apply `<RoleGate>` to ~30 client-side affordances across 18 files: tree toolbar (3 surfaces), tree context menu single+multi+pane (12+ surfaces), person form save button, person detail workspace header (3), GEDCOM import/export, members management (4), settings provider config (5), dashboard quick actions (3), biography generation (2)
 - Multi-family onboarding: handle "user accepts invite while logged in to another family" edge case
+
+**Carries forward into D2** (from D1's final review + ADR-015 follow-ups):
+- **`useActiveMembership` URL-mismatch fallback** — currently returns `null` when `?family=X` is in URL but X isn't in memberships; proxy falls through to `memberships[0]`. Divergence: client hides everything, server serves family[0] data. Decide: align client OR have proxy reject unknown family params with redirect.
+- **End-to-end test for 409 → toast → retry flow** (no integration test today — only unit tests for the link + observer in isolation)
+- **Concurrent observer + link race** — both can fire simultaneously and produce duplicate toasts. Add debounce or test that single `update()` is called.
+- **Extract `force-jwt-refresh` cookie name to a shared constant** (currently duplicated in proxy.ts, jwt-refresh-observer.tsx, and provider.tsx — fragile to rename)
+- **`SameSite` cookie attribute casing** in `jwt-refresh-observer.tsx:18` and `provider.tsx:34` uses `sameSite=Lax` (camelCase) — works in Chrome/Firefox but conventional `SameSite=Lax` is safer
+- **SSR session prehydration** via the unused `session?` prop on `<AppSessionProvider>` — root layout could `await auth()` and pass it down, skipping the client `/api/auth/session` round-trip
+- **`queryClient.invalidateQueries()` after `update()` resolves** — a successful refresh changes role; cached queries tied to old role are now stale
+- **`SessionProvider` refetch-on-focus default** — desirable for staleness detection but worth an explicit decision if bundle/refetch noise becomes an issue
+- **Synchronous `ensureCentralSchema` blocking variant** for the auth adapter cold path (sub-spec D1 made the sync version fire-and-forget; the auth adapter's first signIn could race the schema-ensure)
 
 ### Sub-spec C — Share / invite UX
 
@@ -170,17 +171,15 @@ The per-sub-spec design + plan files in `docs/rbac/<name>/` are the historical a
 
 ## Suggested execution order for what's next
 
-Updated post-split: B → A → **D1 → D2** → C → E.
+Updated post-D1: B → A → ~~D1~~ → **D2** → C → E.
 
-**D1 is up next** (spec + 13-task plan ready in `docs/superpowers/`). Reasons:
-1. D1 is the substrate every subsequent UI piece (D2's RoleGate sweep, C's settings/members UI) depends on
-2. The cookie-observer + 409 link from A's review belong here — they're meaningless without a `useSession()` mount
-3. Two small carry-forwards from A (ensureCentralSchema in getCentralDbSync; formAction rename) fit naturally and ship with D1
-4. Foundation-only scope keeps the PR reviewable (~13 tasks, similar size to A's later phases)
+**D2 is up next** — D1's foundation is in place; D2 wires the family switcher into the header, applies RoleGate to ~30 affordances, and absorbs D1's review carry-forwards (URL-mismatch fallback decision, E2E test, race debounce, cookie-name const, SameSite casing, SSR prehydration, queryClient invalidation).
 
-**D2 follows immediately**, building on D1's hooks + gate to wire the family switcher and apply RoleGate to ~30 surfaces. The mechanical sweep is straightforward once the foundation lands.
+**C (share/invite UX)** follows D2 naturally — once RoleGate is adopted across the UI, the members management page will benefit from `<RoleGate permission="members:manage">` wrapping its action buttons.
 
-**No more pre-D cleanup PRs needed** — the cleanup items deferred from D1 (createCentralDb singleton sweep, transferOwnership atomicity) are tracked in the follow-ups bucket and can land independently whenever convenient (or be folded into E).
+**E (audit, tests, docs)** is best done last — once C ships, the integration-test grid will exercise the full RBAC matrix end-to-end, and the shared test fixture for central schema can be designed against the final shape.
+
+**Standalone cleanup PRs** can land independently whenever convenient (createCentralDb singleton sweep, transferOwnership atomicity).
 
 ---
 
