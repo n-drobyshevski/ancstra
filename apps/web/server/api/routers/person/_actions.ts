@@ -1,12 +1,12 @@
 'use server';
 
 import { redirect } from 'next/navigation';
-import { formAction } from '../../trpc';
+import { protectedFormAction } from '../../trpc';
 import { invalidateTags } from '../../cache';
 import { insertRelatedPerson } from './_logic';
 import { PERSON_MUTATION_TAGS, createRelatedPersonSchema } from './_shared';
 
-export const createRelatedPerson = formAction
+export const createRelatedPerson = protectedFormAction
   .meta({ permission: 'person:create', span: 'person.createRelated' })
   .input(createRelatedPersonSchema)
   .mutation(async ({ ctx, input }) => {

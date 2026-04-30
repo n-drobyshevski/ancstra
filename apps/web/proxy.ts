@@ -58,8 +58,11 @@ export const proxy = auth(async (request) => {
       { error: 'Session stale, please retry', code: 'JWT_STALE' },
       { status: 409 },
     );
+    // Cookie is non-httpOnly so client-side <JwtRefreshObserver> can read it.
+    // Carries no secret — only a signal that the server detected staleness.
+    // The actual JWT cookie remains correctly httpOnly.
     response.cookies.set('force-jwt-refresh', '1', {
-      httpOnly: true,
+      httpOnly: false,
       sameSite: 'lax',
       path: '/',
       maxAge: 60,
@@ -116,14 +119,9 @@ export const proxy = auth(async (request) => {
   }
 
   if (staleJwtDetected) {
-    // TODO(sub-spec-a-followup): Wire up client-side observer for force-jwt-refresh cookie.
-    // Today: the cookie is set on staleness detection but no consumer reads it. Mutations are
-    // blocked above with 409; subsequent reads still see stale role until next sign-in.
-    // Full fix: add a client-side hook in TRPCReactProvider that reads document.cookie,
-    // calls useSession().update(), then clears the cookie via /api/session/refresh.
-    // Not blocking sub-spec A's primary security invariant (mutation block above).
+    // Non-httpOnly: read by client-side <JwtRefreshObserver> (sub-spec D1).
     response.cookies.set('force-jwt-refresh', '1', {
-      httpOnly: true,
+      httpOnly: false,
       sameSite: 'lax',
       path: '/',
       maxAge: 60,
