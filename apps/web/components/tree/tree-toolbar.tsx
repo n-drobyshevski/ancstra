@@ -3,6 +3,7 @@
 import { Button } from '@/components/ui/button';
 import { Menubar } from '@/components/ui/menubar';
 import { Separator } from '@/components/ui/separator';
+import { RoleGate } from '@/components/auth/role-gate';
 import type { FilterState } from './tree-utils';
 import type { TreeViewMenuProps } from './tree-view-menu';
 import { TreeViewToggle } from './tree-view-toggle';
@@ -45,13 +46,15 @@ export function TreeToolbar(props: TreeToolbarProps) {
 
         <Separator orientation="vertical" className="h-5 mx-0.5" />
 
-        <Button
-          size="sm"
-          variant={paletteOpen ? 'default' : 'secondary'}
-          onClick={onTogglePalette}
-        >
-          + New Person
-        </Button>
+        <RoleGate permission="person:create">
+          <Button
+            size="sm"
+            variant={paletteOpen ? 'default' : 'secondary'}
+            onClick={onTogglePalette}
+          >
+            + New Person
+          </Button>
+        </RoleGate>
 
         <Separator orientation="vertical" className="h-5 mx-0.5" />
 

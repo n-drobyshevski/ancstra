@@ -35,6 +35,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { RoleGate } from '@/components/auth/role-gate';
 import { formatShortcut } from '@/lib/tree/format-shortcut';
 import type { RelationType } from '@/components/person-link-dialog';
 
@@ -217,16 +218,18 @@ function NodeItems({
         <Eye />
         <span>View details</span>
       </DropdownMenuItem>
-      <DropdownMenuItem
-        onSelect={() => {
-          router.push(`/persons/${person.id}?view=record`);
-          onClose();
-        }}
-      >
-        <Pencil />
-        <span>Edit person</span>
-        <DropdownMenuShortcut>{formatShortcut('E')}</DropdownMenuShortcut>
-      </DropdownMenuItem>
+      <RoleGate permission="person:edit">
+        <DropdownMenuItem
+          onSelect={() => {
+            router.push(`/persons/${person.id}?view=record`);
+            onClose();
+          }}
+        >
+          <Pencil />
+          <span>Edit person</span>
+          <DropdownMenuShortcut>{formatShortcut('E')}</DropdownMenuShortcut>
+        </DropdownMenuItem>
+      </RoleGate>
       <DropdownMenuItem
         onSelect={() => {
           router.push(`/persons/${person.id}?view=board`);
@@ -240,33 +243,39 @@ function NodeItems({
       <DropdownMenuSeparator />
 
       {/* Add relation submenu */}
-      <DropdownMenuSub>
-        <DropdownMenuSubTrigger>
-          <UserPlus />
-          <span>Add relation</span>
-        </DropdownMenuSubTrigger>
-        <DropdownMenuSubContent className="min-w-44">
-          {ADD_RELATION_GROUPS.map(({ relation, label }) => (
-            <DropdownMenuSub key={relation}>
-              <DropdownMenuSubTrigger>
-                <span>{label}</span>
-              </DropdownMenuSubTrigger>
-              <DropdownMenuSubContent className="min-w-40">
-                <DropdownMenuItem
-                  onSelect={() => requestAddRelation('link', relation)}
-                >
-                  <span>Link existing…</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onSelect={() => requestAddRelation('create', relation)}
-                >
-                  <span>+ New person</span>
-                </DropdownMenuItem>
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
-          ))}
-        </DropdownMenuSubContent>
-      </DropdownMenuSub>
+      <RoleGate permission="family:create">
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger>
+            <UserPlus />
+            <span>Add relation</span>
+          </DropdownMenuSubTrigger>
+          <DropdownMenuSubContent className="min-w-44">
+            {ADD_RELATION_GROUPS.map(({ relation, label }) => (
+              <DropdownMenuSub key={relation}>
+                <DropdownMenuSubTrigger>
+                  <span>{label}</span>
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent className="min-w-40">
+                  <RoleGate permission="family:create">
+                    <DropdownMenuItem
+                      onSelect={() => requestAddRelation('link', relation)}
+                    >
+                      <span>Link existing…</span>
+                    </DropdownMenuItem>
+                  </RoleGate>
+                  <RoleGate permission="person:create">
+                    <DropdownMenuItem
+                      onSelect={() => requestAddRelation('create', relation)}
+                    >
+                      <span>+ New person</span>
+                    </DropdownMenuItem>
+                  </RoleGate>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+            ))}
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
+      </RoleGate>
 
       <DropdownMenuSeparator />
 
@@ -353,17 +362,19 @@ function NodeItems({
       <DropdownMenuSeparator />
 
       {/* Destructive */}
-      <DropdownMenuItem
-        variant="destructive"
-        onSelect={() => {
-          onRequestDeletePerson(person.id);
-          // Don't onClose() — the AlertDialog mount supersedes the menu;
-          // closing here would race the dialog open.
-        }}
-      >
-        <Trash2 />
-        <span>Delete person…</span>
-      </DropdownMenuItem>
+      <RoleGate permission="person:delete">
+        <DropdownMenuItem
+          variant="destructive"
+          onSelect={() => {
+            onRequestDeletePerson(person.id);
+            // Don't onClose() — the AlertDialog mount supersedes the menu;
+            // closing here would race the dialog open.
+          }}
+        >
+          <Trash2 />
+          <span>Delete person…</span>
+        </DropdownMenuItem>
+      </RoleGate>
     </>
   );
 }
@@ -387,33 +398,38 @@ function MultiSelectItems({
         </span>
       </DropdownMenuLabel>
       <DropdownMenuSeparator />
-      <DropdownMenuSub>
-        <DropdownMenuSubTrigger>
-          <Download />
-          <span>Bulk export</span>
-        </DropdownMenuSubTrigger>
-        <DropdownMenuSubContent className="min-w-32">
-          {(['png', 'svg', 'pdf'] as const).map((fmt) => (
-            <DropdownMenuItem
-              key={fmt}
-              onSelect={() => {
-                onExportSelection(fmt);
-                onClose();
-              }}
-            >
-              <span>{fmt.toUpperCase()}</span>
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuSubContent>
-      </DropdownMenuSub>
+      <RoleGate permission="tree:export">
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger>
+            <Download />
+            <span>Bulk export</span>
+          </DropdownMenuSubTrigger>
+          <DropdownMenuSubContent className="min-w-32">
+            {(['png', 'svg', 'pdf'] as const).map((fmt) => (
+              <RoleGate key={fmt} permission="tree:export">
+                <DropdownMenuItem
+                  onSelect={() => {
+                    onExportSelection(fmt);
+                    onClose();
+                  }}
+                >
+                  <span>{fmt.toUpperCase()}</span>
+                </DropdownMenuItem>
+              </RoleGate>
+            ))}
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
+      </RoleGate>
       <DropdownMenuSeparator />
-      <DropdownMenuItem
-        variant="destructive"
-        onSelect={() => onRequestBulkDelete(ids)}
-      >
-        <Trash2 />
-        <span>Delete {ids.length} people…</span>
-      </DropdownMenuItem>
+      <RoleGate permission="person:delete">
+        <DropdownMenuItem
+          variant="destructive"
+          onSelect={() => onRequestBulkDelete(ids)}
+        >
+          <Trash2 />
+          <span>Delete {ids.length} people…</span>
+        </DropdownMenuItem>
+      </RoleGate>
     </>
   );
 }
@@ -439,16 +455,18 @@ function EdgeItems({
   // navigation would 404. Re-add this when a families/[id] page lands.
   return (
     <>
-      <DropdownMenuItem
-        variant="destructive"
-        onSelect={() => {
-          onDeleteRelationship(surface.edgeId);
-          onClose();
-        }}
-      >
-        <Trash2 />
-        <span>Delete relationship</span>
-      </DropdownMenuItem>
+      <RoleGate permission="family:delete">
+        <DropdownMenuItem
+          variant="destructive"
+          onSelect={() => {
+            onDeleteRelationship(surface.edgeId);
+            onClose();
+          }}
+        >
+          <Trash2 />
+          <span>Delete relationship</span>
+        </DropdownMenuItem>
+      </RoleGate>
     </>
   );
 }
@@ -466,15 +484,17 @@ function PaneItems({
 }: TreeContextMenuProps) {
   return (
     <>
-      <DropdownMenuItem
-        onSelect={() => {
-          onAddPerson();
-          onClose();
-        }}
-      >
-        <UserPlus />
-        <span>Add person</span>
-      </DropdownMenuItem>
+      <RoleGate permission="person:create">
+        <DropdownMenuItem
+          onSelect={() => {
+            onAddPerson();
+            onClose();
+          }}
+        >
+          <UserPlus />
+          <span>Add person</span>
+        </DropdownMenuItem>
+      </RoleGate>
       <DropdownMenuSeparator />
       <DropdownMenuItem
         onSelect={() => {
