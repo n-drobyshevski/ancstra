@@ -14,6 +14,7 @@ import { Separator } from '@/components/ui/separator';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { PlaceInput } from '@/components/place-input';
+import { RoleGate } from '@/components/auth/role-gate';
 import { toast } from 'sonner';
 import { createRelatedPerson } from '@/server/api/routers/person/_actions';
 import type { PersonDetail } from '@ancstra/shared';
@@ -201,6 +202,8 @@ function PersonFormInner({ person }: PersonFormProps) {
     relation === 'spouse' ? 'spouse' :
     relation === 'child' ? 'child' :
     relation === 'sibling' ? 'sibling' : relation;
+
+  const submitPermission = isEditMode ? 'person:edit' : 'person:create';
 
   return (
     <>
@@ -417,9 +420,11 @@ function PersonFormInner({ person }: PersonFormProps) {
 
             {/* Desktop: inline buttons */}
             <div className="hidden gap-2 md:flex">
-              <Button type="submit" disabled={loading}>
-                {loading ? 'Saving...' : isEditMode ? 'Save Changes' : 'Save Person'}
-              </Button>
+              <RoleGate permission={submitPermission}>
+                <Button type="submit" disabled={loading}>
+                  {loading ? 'Saving...' : isEditMode ? 'Save Changes' : 'Save Person'}
+                </Button>
+              </RoleGate>
               <Button
                 type="button"
                 variant="ghost"
@@ -434,14 +439,16 @@ function PersonFormInner({ person }: PersonFormProps) {
 
       {/* Mobile: sticky save bar */}
       <div className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background px-4 pb-[env(safe-area-inset-bottom,0px)] pt-2 shadow-lg md:hidden">
-        <Button
-          type="submit"
-          form="person-form"
-          disabled={loading}
-          className="w-full"
-        >
-          {loading ? 'Saving...' : isEditMode ? 'Save Changes' : 'Save Person'}
-        </Button>
+        <RoleGate permission={submitPermission}>
+          <Button
+            type="submit"
+            form="person-form"
+            disabled={loading}
+            className="w-full"
+          >
+            {loading ? 'Saving...' : isEditMode ? 'Save Changes' : 'Save Person'}
+          </Button>
+        </RoleGate>
       </div>
     </>
   );
