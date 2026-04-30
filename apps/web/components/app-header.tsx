@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Separator } from '@/components/ui/separator';
 import { ModeToggle } from '@/components/mode-toggle';
@@ -32,7 +33,9 @@ export function AppHeader({ title }: { title?: string }) {
           ⌘K
         </kbd>
       </Button>
-      <FamilyPicker />
+      <Suspense fallback={null}>
+        <FamilyPicker />
+      </Suspense>
       <ModeToggle />
     </header>
   );

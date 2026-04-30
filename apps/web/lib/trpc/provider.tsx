@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { httpBatchLink } from '@trpc/client';
 import superjson from 'superjson';
-import { JWT_REFRESH_COOKIE_NAME } from '@ancstra/auth';
+import { JWT_REFRESH_COOKIE_NAME } from '@ancstra/auth/constants';
 import { trpc } from './client';
 import { AppSessionProvider } from '@/lib/auth/session-provider';
 import { JwtRefreshObserver } from './jwt-refresh-observer';
@@ -48,7 +48,9 @@ function TRPCInner({ children }: { children: React.ReactNode }) {
   return (
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
       <QueryClientProvider client={queryClient}>
-        <JwtRefreshObserver />
+        <Suspense fallback={null}>
+          <JwtRefreshObserver />
+        </Suspense>
         {children}
         {process.env.NODE_ENV === 'development' ? <ReactQueryDevtools initialIsOpen={false} /> : null}
       </QueryClientProvider>

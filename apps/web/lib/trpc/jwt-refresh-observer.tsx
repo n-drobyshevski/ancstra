@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { usePathname } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
-import { JWT_REFRESH_COOKIE_NAME } from '@ancstra/auth';
+import { JWT_REFRESH_COOKIE_NAME } from '@ancstra/auth/constants';
 import { runRefresh } from './jwt-refresh-debounce';
 
 function readCookie(name: string): string | null {

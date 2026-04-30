@@ -2,7 +2,8 @@
 
 import { useSession } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
-import { hasPermission, parseRole, type Permission } from '@ancstra/auth';
+import { hasPermission } from '@ancstra/auth/permissions';
+import { parseRole, type Permission } from '@ancstra/auth/types';
 
 export interface ActiveMembership {
   familyId: string;
