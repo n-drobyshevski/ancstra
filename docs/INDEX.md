@@ -6,6 +6,7 @@
 - [Data Model](architecture/data-model.md)
 - [AI Strategy](architecture/ai-strategy.md)
 - [Information Architecture](design/information-architecture.md)
+- [RBAC Roadmap](RBAC_ROADMAP.md) — cross-cutting RBAC work, sub-specs B + A shipped, D/C/E pending
 
 ## System Specs
 
@@ -62,6 +63,8 @@
 - [ADR-002: SQLite local-first](architecture/decisions/002-sqlite-local-first.md)
 - [ADR-003: Gramps as reference only](architecture/decisions/003-gramps-reference-only.md)
 - [ADR-004: family-chart for visualization](architecture/decisions/004-family-chart-viz.md)
+- [ADR-013: tRPC as action substrate](architecture/decisions/013-trpc-as-action-substrate.md) (sub-spec B)
+- [ADR-014: RBAC enforcement hardening](architecture/decisions/014-rbac-enforcement-hardening.md) (sub-spec A)
 
 ## Reference
 
