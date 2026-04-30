@@ -3,7 +3,8 @@ import superjson from 'superjson';
 import { ZodError } from 'zod';
 import type { Session } from 'next-auth';
 import { auth } from '@/auth';
-import { createCentralDb, createFamilyDb, type CentralDatabase, type FamilyDatabase } from '@ancstra/db';
+import { createFamilyDb, type CentralDatabase, type FamilyDatabase } from '@ancstra/db';
+import { getCentralDb } from '@/lib/db-singleton';
 import type { Role, Permission } from '@ancstra/auth';
 import { VALID_ROLES } from '@ancstra/auth';
 
@@ -28,7 +29,7 @@ export interface BaseContext {
 
 export async function createTRPCContext(opts: { headers: Headers }): Promise<BaseContext> {
   const session = await auth();
-  const centralDb = createCentralDb();
+  const centralDb = await getCentralDb();
 
   if (!session?.user?.id) {
     return {
