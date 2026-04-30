@@ -22,6 +22,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Check, Copy, Loader2, Plus } from 'lucide-react';
 import { toast } from 'sonner';
+import { RoleGate } from '@/components/auth/role-gate';
 
 interface InviteDialogProps {
   familyId: string;
@@ -93,12 +94,14 @@ export function InviteDialog({ familyId }: InviteDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
-        <Button>
-          <Plus className="size-4 mr-2" />
-          Invite Member
-        </Button>
-      </DialogTrigger>
+      <RoleGate permission="members:invite">
+        <DialogTrigger asChild>
+          <Button>
+            <Plus className="size-4 mr-2" />
+            Invite Member
+          </Button>
+        </DialogTrigger>
+      </RoleGate>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Invite a new member</DialogTitle>
@@ -173,10 +176,12 @@ export function InviteDialog({ familyId }: InviteDialogProps) {
               <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting && <Loader2 className="size-4 mr-2 animate-spin" />}
-                Create Invite
-              </Button>
+              <RoleGate permission="members:invite">
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting && <Loader2 className="size-4 mr-2 animate-spin" />}
+                  Create Invite
+                </Button>
+              </RoleGate>
             </DialogFooter>
           </form>
         )}
