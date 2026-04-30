@@ -3,6 +3,10 @@ import { createCentralDb, centralSchema } from '@ancstra/db';
 import { sql } from 'drizzle-orm';
 
 export async function GET() {
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json({ error: 'Not available in production' }, { status: 404 });
+  }
+
   const results: Record<string, unknown> = {};
 
   try {

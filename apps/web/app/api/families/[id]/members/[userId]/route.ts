@@ -16,7 +16,7 @@ const ASSIGNABLE_ROLES = ['admin', 'editor', 'viewer'] as const;
 export async function PATCH(request: Request, { params }: Params) {
   try {
     const { id: familyId, userId: targetUserId } = await params;
-    const ctx = await requireAuthContext();
+    const ctx = await requireAuthContext(request);
     requirePermission(ctx.role, 'members:manage');
 
     if (ctx.familyId !== familyId) {
@@ -127,10 +127,10 @@ export async function PATCH(request: Request, { params }: Params) {
  * DELETE /api/families/[id]/members/[userId]
  * Remove a member from the family. Requires members:manage permission.
  */
-export async function DELETE(_request: Request, { params }: Params) {
+export async function DELETE(request: Request, { params }: Params) {
   try {
     const { id: familyId, userId: targetUserId } = await params;
-    const ctx = await requireAuthContext();
+    const ctx = await requireAuthContext(request);
     requirePermission(ctx.role, 'members:manage');
 
     if (ctx.familyId !== familyId) {

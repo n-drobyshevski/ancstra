@@ -8,7 +8,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   await params;
-  const ctx = await requireAuthContext();
+  const ctx = await requireAuthContext(request);
   requirePermission(ctx.role, 'contributions:review');
 
   const familyDb = createFamilyDb(ctx.dbFilename);

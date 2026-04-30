@@ -9,7 +9,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string; contributionId: string }> }
 ) {
   const { contributionId } = await params;
-  const ctx = await requireAuthContext();
+  const ctx = await requireAuthContext(request);
   requirePermission(ctx.role, 'contributions:review');
 
   const body = await request.json();

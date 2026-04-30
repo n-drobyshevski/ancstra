@@ -6,11 +6,11 @@ import { createCentralDb, centralSchema } from '@ancstra/db';
 import { eq, and, isNull, gt } from 'drizzle-orm';
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const ctx = await requireAuthContext();
+    const ctx = await requireAuthContext(request);
     const { id: familyId } = await params;
 
     requirePermission(ctx.role, 'members:manage');
@@ -49,7 +49,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const ctx = await requireAuthContext();
+    const ctx = await requireAuthContext(request);
     const { id: familyId } = await params;
 
     requirePermission(ctx.role, 'members:manage');
@@ -107,7 +107,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const ctx = await requireAuthContext();
+    const ctx = await requireAuthContext(request);
     await params; // consume params for consistency
 
     requirePermission(ctx.role, 'members:manage');

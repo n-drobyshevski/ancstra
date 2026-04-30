@@ -9,12 +9,12 @@ import { eq, and } from 'drizzle-orm';
  * List all active members of a family with user details.
  */
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id: familyId } = await params;
-    const ctx = await requireAuthContext();
+    const ctx = await requireAuthContext(request);
     requirePermission(ctx.role, 'members:manage');
 
     // Verify the request is for the user's current family
