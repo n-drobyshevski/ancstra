@@ -22,6 +22,6 @@ const formCaller = experimental_nextAppDirCaller({
   createContext: async () => createTRPCContext({ headers: await headers() }),
 });
 
-export const formAction = protectedProcedure.experimental_caller(formCaller);
+export const protectedFormAction = protectedProcedure.experimental_caller(formCaller);
 export const authedFormAction = authenticatedProcedure.experimental_caller(formCaller);
 export const publicFormAction = publicProcedure.experimental_caller(formCaller);
