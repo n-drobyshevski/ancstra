@@ -3,20 +3,13 @@ import Credentials from 'next-auth/providers/credentials';
 import Google from 'next-auth/providers/google';
 import Apple from 'next-auth/providers/apple';
 import type { Provider } from 'next-auth/providers';
-import { createCentralDb } from '@ancstra/db';
 import { centralSchema } from '@ancstra/db';
 import { and, eq } from 'drizzle-orm';
 import type { FamilyMembership } from '@/types/next-auth';
 import bcrypt from 'bcryptjs';
 import { AncstraAdapter } from '@ancstra/auth';
 import { linkOrCreateUser } from '@ancstra/auth';
-
-// Lazy init — don't create DB connection at import time (breaks Vercel build)
-let _centralDb: ReturnType<typeof createCentralDb> | null = null;
-function getCentralDb() {
-  if (!_centralDb) _centralDb = createCentralDb();
-  return _centralDb;
-}
+import { getCentralDbSync } from './lib/db-singleton';
 
 // Build providers list dynamically — skip OAuth providers if env vars missing
 const providers: Provider[] = [
@@ -32,7 +25,7 @@ const providers: Provider[] = [
 
         if (!email || !password) return null;
 
-        const db = getCentralDb();
+        const db = getCentralDbSync();
         const users = await db
           .select()
           .from(centralSchema.users)
@@ -69,7 +62,7 @@ if (process.env.APPLE_CLIENT_ID && process.env.APPLE_CLIENT_SECRET) {
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   // Only use adapter at runtime (not during build — no DB available on Vercel build)
-  ...(process.env.CENTRAL_DATABASE_URL ? { adapter: AncstraAdapter(getCentralDb()) } : {}),
+  ...(process.env.CENTRAL_DATABASE_URL ? { adapter: AncstraAdapter(getCentralDbSync()) } : {}),
   providers,
   session: { strategy: 'jwt' },
   pages: { signIn: '/login' },
@@ -88,7 +81,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         (token.userId && !token.memberships);
       if (shouldRefresh && token.userId) {
         try {
-          const db = getCentralDb();
+          const db = getCentralDbSync();
           const memberships = await db
             .select({
               familyId: centralSchema.familyMembers.familyId,
@@ -108,6 +101,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             )
             .all();
           token.memberships = memberships as FamilyMembership[];
+
+          // Sub-spec A: also fetch users.memberships_version for staleness detection
+          const userRow = await db
+            .select({ v: centralSchema.users.membershipsVersion })
+            .from(centralSchema.users)
+            .where(eq(centralSchema.users.id, token.userId as string))
+            .get();
+          token.membershipsVersion = userRow?.v ?? 0;
         } catch (error) {
           console.error('[AUTH] Error loading memberships into JWT:', error);
         }
@@ -120,6 +121,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
       if (token.memberships) {
         session.user.memberships = token.memberships;
+      }
+      if (typeof token.membershipsVersion === 'number') {
+        session.user.membershipsVersion = token.membershipsVersion;
       }
       return session;
     },

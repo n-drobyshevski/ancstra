@@ -8,7 +8,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { familyDb, ctx } = await withAuth('ai:research');
+    const { familyDb, ctx } = await withAuth('ai:research', request);
     const { id: factsheetId } = await params;
     const body = await request.json();
 

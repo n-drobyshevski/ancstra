@@ -7,7 +7,7 @@ import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
 
 export async function POST(request: Request) {
   try {
-    const { familyDb } = await withAuth('person:edit');
+    const { familyDb } = await withAuth('person:edit', request);
 
     const body = await request.json();
     const parsed = createLayoutSchema.safeParse(body);
@@ -60,9 +60,9 @@ export async function POST(request: Request) {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const { familyDb } = await withAuth('tree:view');
+    const { familyDb } = await withAuth('tree:view', request);
 
     const layouts = await familyDb
       .select({

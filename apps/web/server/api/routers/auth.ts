@@ -21,7 +21,6 @@ export const authRouter = createTRPCRouter({
         summary: 'Joined the family',
       });
       invalidateTags(['activity']);
-      // TODO(sub-spec-A): bump users.memberships_version once the column exists
       return { familyId: result.familyId };
     }),
 });

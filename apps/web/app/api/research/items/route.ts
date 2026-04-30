@@ -7,7 +7,7 @@ import {
 
 export async function GET(request: Request) {
   try {
-    const { ctx, familyDb } = await withAuth('ai:research');
+    const { ctx, familyDb } = await withAuth('ai:research', request);
 
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status') as 'draft' | 'promoted' | 'dismissed' | null;
@@ -29,7 +29,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const { ctx, familyDb } = await withAuth('ai:research');
+    const { ctx, familyDb } = await withAuth('ai:research', request);
 
     const body = await request.json();
 

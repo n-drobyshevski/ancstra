@@ -3,11 +3,11 @@ import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
 import { checkDuplicates } from '@ancstra/research';
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { familyDb } = await withAuth('ai:research');
+    const { familyDb } = await withAuth('ai:research', request);
     const { id } = await params;
 
     const matches = await checkDuplicates(familyDb, id);

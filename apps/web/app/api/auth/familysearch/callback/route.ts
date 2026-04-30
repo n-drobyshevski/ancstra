@@ -5,7 +5,7 @@ import { exchangeCodeForTokens } from '@ancstra/research';
 
 export async function GET(request: NextRequest) {
   try {
-    await withAuth('ai:research');
+    await withAuth('ai:research', request);
 
     const { searchParams } = new URL(request.url);
     const code = searchParams.get('code');

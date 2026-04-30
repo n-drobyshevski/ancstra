@@ -8,6 +8,7 @@ export const users = sqliteTable('users', {
   name: text('name').notNull(),
   avatarUrl: text('avatar_url'),
   emailVerified: integer('email_verified').notNull().default(0),
+  membershipsVersion: integer('memberships_version').notNull().default(0),
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
   updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
 });

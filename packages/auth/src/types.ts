@@ -2,6 +2,14 @@ export type Role = 'owner' | 'admin' | 'editor' | 'viewer';
 
 export const VALID_ROLES = ['owner', 'admin', 'editor', 'viewer'] as const satisfies readonly Role[];
 
+/** Returns the value as Role if it is a valid role string, otherwise null. */
+export function parseRole(value: unknown): Role | null {
+  if (typeof value === 'string' && (VALID_ROLES as readonly string[]).includes(value)) {
+    return value as Role;
+  }
+  return null;
+}
+
 export type Permission =
   | 'tree:view' | 'tree:export' | 'tree:delete'
   | 'person:create' | 'person:edit' | 'person:delete'

@@ -17,7 +17,7 @@ import { eq, and } from 'drizzle-orm';
 
 export async function POST(request: Request) {
   try {
-    const { ctx, familyDb } = await withAuth('gedcom:export');
+    const { ctx, familyDb } = await withAuth('gedcom:export', request);
     const body = await request.json();
     const { template, personId, options = {} } = body;
 

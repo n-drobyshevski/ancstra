@@ -4,11 +4,11 @@ import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
 import { getFactsheet, updateFactsheet, deleteFactsheet } from '@ancstra/research';
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { familyDb } = await withAuth('ai:research');
+    const { familyDb } = await withAuth('ai:research', request);
     const { id } = await params;
 
     const result = await getFactsheet(familyDb, id);
@@ -29,7 +29,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { familyDb } = await withAuth('ai:research');
+    const { familyDb } = await withAuth('ai:research', request);
     const { id } = await params;
     const body = await request.json();
 
@@ -56,11 +56,11 @@ export async function PUT(
 }
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { familyDb } = await withAuth('ai:research');
+    const { familyDb } = await withAuth('ai:research', request);
     const { id } = await params;
 
     await deleteFactsheet(familyDb, id);

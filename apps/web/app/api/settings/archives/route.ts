@@ -23,9 +23,9 @@ async function clearDirectory(dirPath: string): Promise<number> {
   return freed;
 }
 
-export async function DELETE() {
+export async function DELETE(request: Request) {
   try {
-    const { familyDb } = await withAuth('settings:manage');
+    const { familyDb } = await withAuth('settings:manage', request);
 
     const archivePath = process.env.ARCHIVE_PATH || join(process.cwd(), 'data', 'archives');
     const screenshotPath = process.env.SCREENSHOT_PATH || join(process.cwd(), 'data', 'screenshots');

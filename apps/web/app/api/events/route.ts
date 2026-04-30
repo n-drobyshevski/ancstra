@@ -8,7 +8,7 @@ import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
 
 export async function POST(request: Request) {
   try {
-    const { familyDb } = await withAuth('event:create');
+    const { familyDb } = await withAuth('event:create', request);
 
     const body = await request.json();
     const parsed = createEventSchema.safeParse(body);
@@ -76,7 +76,7 @@ export async function POST(request: Request) {
 
 export async function GET(request: Request) {
   try {
-    const { familyDb } = await withAuth('tree:view');
+    const { familyDb } = await withAuth('tree:view', request);
 
     const { searchParams } = new URL(request.url);
     const page = Math.max(1, parseInt(searchParams.get('page') ?? '1'));

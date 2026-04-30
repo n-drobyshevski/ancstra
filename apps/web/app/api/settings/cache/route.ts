@@ -3,9 +3,9 @@ import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
 import { researchItems } from '@ancstra/db';
 import { eq, sql } from 'drizzle-orm';
 
-export async function DELETE() {
+export async function DELETE(request: Request) {
   try {
-    const { familyDb } = await withAuth('settings:manage');
+    const { familyDb } = await withAuth('settings:manage', request);
 
     // Count dismissed items before deleting
     const [{ count }] = await familyDb

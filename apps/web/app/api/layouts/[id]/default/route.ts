@@ -5,11 +5,11 @@ import { eq } from 'drizzle-orm';
 import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
 
 export async function PUT(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { familyDb } = await withAuth('person:edit');
+    const { familyDb } = await withAuth('person:edit', request);
 
     const { id } = await params;
 

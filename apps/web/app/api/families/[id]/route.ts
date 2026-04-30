@@ -41,11 +41,11 @@ async function getPersonListItemsBatch(
 }
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { familyDb } = await withAuth('tree:view');
+    const { familyDb } = await withAuth('tree:view', request);
     const { id } = await params;
 
     const family = await familyDb
@@ -95,7 +95,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { familyDb } = await withAuth('family:edit');
+    const { familyDb } = await withAuth('family:edit', request);
 
     const { id } = await params;
     const body = await request.json();
@@ -148,11 +148,11 @@ export async function PUT(
 }
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { familyDb } = await withAuth('family:delete');
+    const { familyDb } = await withAuth('family:delete', request);
 
     const { id } = await params;
 

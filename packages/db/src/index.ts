@@ -247,6 +247,33 @@ export async function ensureFamilySchema(db: FamilyDatabase, dbKey?: string): Pr
   if (dbKey) _ensuredDbs.add(dbKey);
 }
 
+const _ensuredCentralDbs = new Set<string>();
+
+/**
+ * Ensure central-DB schema additions are present.
+ * Idempotent: safe to call on every request — uses ALTER ... IF NOT EXISTS-equivalent
+ * try/catch and CREATE INDEX IF NOT EXISTS. Process-cached per dbKey.
+ *
+ * Mirrors ensureFamilySchema() above. Used for additive schema changes that were
+ * introduced after initial deployments (which were initialized via drizzle-kit push).
+ */
+export async function ensureCentralSchema(db: CentralDatabase, dbKey?: string): Promise<void> {
+  if (dbKey && _ensuredCentralDbs.has(dbKey)) return;
+
+  // Sub-spec A 2026-04-30: JWT staleness counter on users table
+  try {
+    await db.run(sql`ALTER TABLE users ADD COLUMN memberships_version INTEGER NOT NULL DEFAULT 0`);
+  } catch { /* column already exists */ }
+
+  // Sub-spec A 2026-04-30: DB-enforce single owner per family
+  await db.run(sql`
+    CREATE UNIQUE INDEX IF NOT EXISTS uq_family_members_family_owner
+      ON family_members (family_id) WHERE role = 'owner'
+  `);
+
+  if (dbKey) _ensuredCentralDbs.add(dbKey);
+}
+
 export type CentralDatabase = ReturnType<typeof createCentralDb>;
 export type FamilyDatabase = ReturnType<typeof createFamilyDb>;
 

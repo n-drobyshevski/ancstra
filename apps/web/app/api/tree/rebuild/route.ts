@@ -3,9 +3,9 @@ import { revalidateTag } from 'next/cache';
 import { rebuildClosureTable, rebuildAllSummaries } from '@ancstra/db';
 import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
-    const { familyDb } = await withAuth('settings:manage');
+    const { familyDb } = await withAuth('settings:manage', request);
     await rebuildClosureTable(familyDb);
     await rebuildAllSummaries(familyDb);
     revalidateTag('tree-data', 'max');

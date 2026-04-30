@@ -8,11 +8,11 @@ import {
 } from '@ancstra/research';
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { familyDb } = await withAuth('ai:research');
+    const { familyDb } = await withAuth('ai:research', request);
     const { id } = await params;
     const item = await getResearchItem(familyDb, id);
 
@@ -33,7 +33,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { familyDb } = await withAuth('ai:research');
+    const { familyDb } = await withAuth('ai:research', request);
     const { id } = await params;
     const body = await request.json();
 
@@ -60,11 +60,11 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { familyDb } = await withAuth('ai:research');
+    const { familyDb } = await withAuth('ai:research', request);
     const { id } = await params;
 
     const existing = getResearchItem(familyDb, id);

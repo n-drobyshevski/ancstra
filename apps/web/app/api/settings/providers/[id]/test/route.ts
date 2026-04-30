@@ -23,11 +23,11 @@ function getProviderInstance(providerId: string) {
 }
 
 export async function POST(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { familyDb } = await withAuth('settings:manage');
+    const { familyDb } = await withAuth('settings:manage', request);
 
     const { id } = await params;
 

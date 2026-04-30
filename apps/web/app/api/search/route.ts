@@ -4,7 +4,7 @@ import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
 
 export async function GET(request: Request) {
   try {
-    const { familyDb } = await withAuth('tree:view');
+    const { familyDb } = await withAuth('tree:view', request);
 
     const { searchParams } = new URL(request.url);
     const q = searchParams.get('q');

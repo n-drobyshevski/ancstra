@@ -6,7 +6,7 @@ import { serializeGedcom, type GedcomVersion } from '@/lib/gedcom';
 
 export async function GET(request: Request) {
   try {
-    const { familyDb } = await withAuth('gedcom:export');
+    const { familyDb } = await withAuth('gedcom:export', request);
 
     const { searchParams } = new URL(request.url);
     const version = (searchParams.get('version') || '5.5.1') as GedcomVersion;

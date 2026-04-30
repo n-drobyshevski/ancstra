@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireAuthContext } from '@/lib/auth/context';
-import { requirePermission, ForbiddenError, logActivity, type Role, type ActivityAction } from '@ancstra/auth';
+import { requirePermission, ForbiddenError, logActivity, bumpMembershipsVersion, type Role, type ActivityAction } from '@ancstra/auth';
 import { createCentralDb, createFamilyDb, centralSchema, familyUserCache } from '@ancstra/db';
 import { revalidateTag } from 'next/cache';
 import { eq, and } from 'drizzle-orm';
@@ -16,7 +16,7 @@ const ASSIGNABLE_ROLES = ['admin', 'editor', 'viewer'] as const;
 export async function PATCH(request: Request, { params }: Params) {
   try {
     const { id: familyId, userId: targetUserId } = await params;
-    const ctx = await requireAuthContext();
+    const ctx = await requireAuthContext(request);
     requirePermission(ctx.role, 'members:manage');
 
     if (ctx.familyId !== familyId) {
@@ -84,6 +84,9 @@ export async function PATCH(request: Request, { params }: Params) {
       .where(eq(centralSchema.familyMembers.id, targetMember.id))
       .run();
 
+    // Invalidate the affected member's JWT so they pick up the new role immediately
+    await bumpMembershipsVersion(centralDb, targetUserId);
+
     // Fetch updated member with user details
     const updated = await centralDb
       .select({
@@ -127,10 +130,10 @@ export async function PATCH(request: Request, { params }: Params) {
  * DELETE /api/families/[id]/members/[userId]
  * Remove a member from the family. Requires members:manage permission.
  */
-export async function DELETE(_request: Request, { params }: Params) {
+export async function DELETE(request: Request, { params }: Params) {
   try {
     const { id: familyId, userId: targetUserId } = await params;
-    const ctx = await requireAuthContext();
+    const ctx = await requireAuthContext(request);
     requirePermission(ctx.role, 'members:manage');
 
     if (ctx.familyId !== familyId) {
@@ -186,6 +189,9 @@ export async function DELETE(_request: Request, { params }: Params) {
       .set({ isActive: 0 })
       .where(eq(centralSchema.familyMembers.id, targetMember.id))
       .run();
+
+    // Invalidate the removed member's JWT so they lose access immediately
+    await bumpMembershipsVersion(centralDb, targetUserId);
 
     // Remove from familyUserCache in the family DB
     try {

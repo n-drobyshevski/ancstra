@@ -3,13 +3,9 @@ import superjson from 'superjson';
 import { ZodError } from 'zod';
 import type { Session } from 'next-auth';
 import { auth } from '@/auth';
-import { createCentralDb, createFamilyDb, type CentralDatabase, type FamilyDatabase } from '@ancstra/db';
-import type { Role, Permission } from '@ancstra/auth';
-import { VALID_ROLES } from '@ancstra/auth';
-
-function parseRole(s: string): Role | null {
-  return (VALID_ROLES as readonly string[]).includes(s) ? (s as Role) : null;
-}
+import { createFamilyDb, type CentralDatabase, type FamilyDatabase } from '@ancstra/db';
+import { getCentralDb } from '@/lib/db-singleton';
+import { parseRole, type Role, type Permission } from '@ancstra/auth';
 
 export interface Meta {
   permission?: Permission;
@@ -28,7 +24,7 @@ export interface BaseContext {
 
 export async function createTRPCContext(opts: { headers: Headers }): Promise<BaseContext> {
   const session = await auth();
-  const centralDb = createCentralDb();
+  const centralDb = await getCentralDb();
 
   if (!session?.user?.id) {
     return {

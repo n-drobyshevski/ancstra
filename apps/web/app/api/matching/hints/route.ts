@@ -24,7 +24,7 @@ function buildRegistry(): ProviderRegistry {
 
 export async function GET(request: Request) {
   try {
-    const { familyDb } = await withAuth('relationship:validate');
+    const { familyDb } = await withAuth('relationship:validate', request);
 
     const { searchParams } = new URL(request.url);
     const personId = searchParams.get('personId');
@@ -57,7 +57,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const { familyDb } = await withAuth('relationship:validate');
+    const { familyDb } = await withAuth('relationship:validate', request);
 
     const body = await request.json();
     const { personId } = body;

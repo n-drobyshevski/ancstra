@@ -10,7 +10,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: familyId } = await params;
-  const ctx = await requireAuthContext();
+  const ctx = await requireAuthContext(request);
   requirePermission(ctx.role, 'activity:view');
 
   const centralDb = createCentralDb();

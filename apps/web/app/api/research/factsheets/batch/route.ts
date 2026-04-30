@@ -5,7 +5,7 @@ import { batchDismissFactsheets, batchLinkFactsheets } from '@ancstra/research';
 
 export async function POST(request: Request) {
   try {
-    const { familyDb } = await withAuth('ai:research');
+    const { familyDb } = await withAuth('ai:research', request);
     const body = await request.json();
     const { action, factsheetIds, relationshipType } = body as {
       action: 'dismiss' | 'link';

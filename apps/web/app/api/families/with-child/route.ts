@@ -12,7 +12,7 @@ const schema = z.object({
 
 export async function POST(request: Request) {
   try {
-    const { ctx, familyDb, centralDb } = await withAuth('family:create');
+    const { ctx, familyDb, centralDb } = await withAuth('family:create', request);
 
     const body = await request.json();
     const parsed = schema.safeParse(body);

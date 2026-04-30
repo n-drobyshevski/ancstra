@@ -9,7 +9,7 @@ import { queryPersonsList } from '@/lib/persons/query-persons-list';
 
 export async function POST(request: Request) {
   try {
-    const { ctx, familyDb, centralDb } = await withAuth('person:create');
+    const { ctx, familyDb, centralDb } = await withAuth('person:create', request);
 
     const body = await request.json();
     const parsed = createPersonSchema.safeParse(body);
@@ -111,7 +111,7 @@ export async function POST(request: Request) {
 
 export async function GET(request: Request) {
   try {
-    const { familyDb } = await withAuth('tree:view');
+    const { familyDb } = await withAuth('tree:view', request);
     const { searchParams } = new URL(request.url);
     const rawParams: Record<string, string | string[]> = {};
     searchParams.forEach((value, key) => {

@@ -4,9 +4,9 @@ import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
 import { centralSchema } from '@ancstra/db';
 import { checkBudget, getUsageStats } from '@ancstra/ai';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const { familyDb, centralDb, ctx } = await withAuth('tree:view');
+    const { familyDb, centralDb, ctx } = await withAuth('tree:view', request);
 
     const family = await centralDb
       .select()
@@ -26,7 +26,7 @@ export async function GET() {
 
 export async function PATCH(request: Request) {
   try {
-    const { centralDb, ctx } = await withAuth('settings:manage');
+    const { centralDb, ctx } = await withAuth('settings:manage', request);
     const { monthlyBudgetUsd } = await request.json();
 
     if (typeof monthlyBudgetUsd !== 'number' || monthlyBudgetUsd < 0 || monthlyBudgetUsd > 1000) {

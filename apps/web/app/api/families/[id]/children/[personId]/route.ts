@@ -5,11 +5,11 @@ import { and, eq } from 'drizzle-orm';
 import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string; personId: string }> }
 ) {
   try {
-    const { familyDb } = await withAuth('family:edit');
+    const { familyDb } = await withAuth('family:edit', request);
 
     const { id: familyId, personId } = await params;
 
