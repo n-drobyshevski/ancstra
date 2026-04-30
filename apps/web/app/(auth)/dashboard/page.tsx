@@ -7,6 +7,7 @@ import { PagePadding } from '@/components/page-padding';
 import { DashboardCount } from '@/components/dashboard/dashboard-count';
 import { DashboardBody } from '@/components/dashboard/dashboard-body';
 import { MobileAddButton } from '@/components/dashboard/mobile-add-button';
+import { InviteAcceptedToast } from '@/components/dashboard/invite-accepted-toast';
 
 import { DashboardCountSkeleton } from '@/components/skeletons/dashboard-count-skeleton';
 import { DashboardBodySkeleton } from '@/components/skeletons/dashboard-body-skeleton';
@@ -16,6 +17,7 @@ import { DashboardBodySkeleton } from '@/components/skeletons/dashboard-body-ske
 export default function DashboardPage() {
   return (
     <PagePadding>
+      <InviteAcceptedToast />
       <div className="space-y-4 md:space-y-6">
         <WelcomeCard />
 
