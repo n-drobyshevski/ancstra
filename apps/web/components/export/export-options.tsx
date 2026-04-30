@@ -12,6 +12,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { Download, FileText, Users, Shield } from 'lucide-react';
+import { RoleGate } from '@/components/auth/role-gate';
 
 interface ExportStats {
   total: number;
@@ -198,13 +199,15 @@ export function ExportOptions() {
                 ? `${exportedCount} persons will be exported`
                 : 'Loading tree data...'}
             </div>
-            <Button
-              onClick={handleExport}
-              disabled={exporting || !stats?.total}
-            >
-              <Download className="mr-2 h-4 w-4" />
-              {exporting ? 'Exporting...' : 'Download .ged'}
-            </Button>
+            <RoleGate permission="gedcom:export">
+              <Button
+                onClick={handleExport}
+                disabled={exporting || !stats?.total}
+              >
+                <Download className="mr-2 h-4 w-4" />
+                {exporting ? 'Exporting...' : 'Download .ged'}
+              </Button>
+            </RoleGate>
           </div>
         </CardContent>
       </Card>
