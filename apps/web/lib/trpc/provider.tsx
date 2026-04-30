@@ -6,6 +6,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { httpBatchLink } from '@trpc/client';
 import superjson from 'superjson';
 import { trpc } from './client';
+import { AppSessionProvider } from '@/lib/auth/session-provider';
 
 export function TRPCReactProvider({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -29,7 +30,9 @@ export function TRPCReactProvider({ children }: { children: React.ReactNode }) {
   return (
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
       <QueryClientProvider client={queryClient}>
-        {children}
+        <AppSessionProvider>
+          {children}
+        </AppSessionProvider>
         {process.env.NODE_ENV === 'development' ? <ReactQueryDevtools initialIsOpen={false} /> : null}
       </QueryClientProvider>
     </trpc.Provider>
