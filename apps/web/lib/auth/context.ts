@@ -1,8 +1,9 @@
 import { headers } from 'next/headers';
-import { createCentralDb } from '@ancstra/db';
-import { centralSchema } from '@ancstra/db';
+import { auth } from '@/auth';
+import { parseRole, type Role } from '@ancstra/auth';
 import { eq, and } from 'drizzle-orm';
-import type { Role } from '@ancstra/auth';
+import { centralSchema } from '@ancstra/db';
+import { getCentralDb } from '@/lib/db-singleton';
 
 export interface AuthContext {
   userId: string;
@@ -14,36 +15,55 @@ export interface AuthContext {
 /**
  * Get the authenticated user's context.
  *
- * Hot path: every value is set as a request header by the proxy from the
- * JWT-embedded memberships map — pure header read, no DB calls.
+ * Role is always derived from JWT memberships — never from the x-family-role
+ * header (sub-spec A D2). The header is untrusted; only the signed JWT is authoritative.
  *
  * Fallback path: if the JWT is stale (e.g. just-joined family not yet in the
- * token), the proxy passes only `x-family-id` and we look up role + dbFilename
- * from the central DB. Becomes a no-op once the user signs in again or
- * triggers a session refresh.
+ * token), we query the central DB. Becomes a no-op once the user signs in again
+ * or triggers a session refresh.
  *
  * Pass `request` from route handlers to avoid async headers() — prevents
  * HANGING_PROMISE_REJECTION warnings during Next.js prerendering.
  */
 export async function getAuthContext(request?: Request): Promise<AuthContext | null> {
-  const headersList = request ? request.headers : await headers();
-  const userId = headersList.get('x-user-id');
+  const headerStore = request?.headers ?? await headers();
+  const userId = headerStore.get('x-user-id');
   if (!userId) return null;
 
-  const familyId = headersList.get('x-family-id');
-  const role = headersList.get('x-family-role');
-  const dbFilename = headersList.get('x-family-db');
+  const familyIdHint = headerStore.get('x-family-id');
+  const dbFilenameHint = headerStore.get('x-family-db');
 
-  // Fast path: proxy populated everything from the JWT
-  if (familyId && role && dbFilename) {
-    return { userId, familyId, role: role as Role, dbFilename };
+  // Always derive role from JWT memberships — never from x-family-role header (sub-spec A D2)
+  const session = await auth();
+  const memberships = session?.user?.memberships ?? [];
+  const membership = familyIdHint
+    ? memberships.find((m) => m.familyId === familyIdHint)
+    : memberships[0];
+
+  if (membership) {
+    const role = parseRole(membership.role);
+    if (role) {
+      return {
+        userId,
+        familyId: membership.familyId,
+        role,
+        dbFilename: membership.dbFilename,
+      };
+    }
   }
 
-  // Fallback: stale token or first request post-membership-change.
-  // Resolve from the central DB using only the columns we need.
-  const centralDb = createCentralDb();
+  // Fallback: stale JWT (user just accepted invite, JWT not yet refreshed) — query DB
+  return dbFallback(userId, familyIdHint, dbFilenameHint);
+}
 
-  let resolvedFamilyId = familyId;
+async function dbFallback(
+  userId: string,
+  familyIdHint: string | null,
+  dbFilenameHint: string | null,
+): Promise<AuthContext | null> {
+  const centralDb = await getCentralDb();
+
+  let resolvedFamilyId = familyIdHint;
   if (!resolvedFamilyId) {
     const firstMembership = await centralDb
       .select({ familyId: centralSchema.familyMembers.familyId })
@@ -73,18 +93,25 @@ export async function getAuthContext(request?: Request): Promise<AuthContext | n
     .get();
   if (!membership) return null;
 
-  const family = await centralDb
-    .select({ dbFilename: centralSchema.familyRegistry.dbFilename })
-    .from(centralSchema.familyRegistry)
-    .where(eq(centralSchema.familyRegistry.id, resolvedFamilyId))
-    .get();
-  if (!family) return null;
+  const role = parseRole(membership.role);
+  if (!role) return null;
+
+  let resolvedDbFilename = dbFilenameHint;
+  if (!resolvedDbFilename) {
+    const family = await centralDb
+      .select({ dbFilename: centralSchema.familyRegistry.dbFilename })
+      .from(centralSchema.familyRegistry)
+      .where(eq(centralSchema.familyRegistry.id, resolvedFamilyId))
+      .get();
+    if (!family) return null;
+    resolvedDbFilename = family.dbFilename;
+  }
 
   return {
     userId,
     familyId: resolvedFamilyId,
-    role: membership.role as Role,
-    dbFilename: family.dbFilename,
+    role,
+    dbFilename: resolvedDbFilename,
   };
 }
 
