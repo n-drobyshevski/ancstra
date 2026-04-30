@@ -10,7 +10,6 @@ export const familyRouter = createTRPCRouter({
         name: input.name,
         ownerId: ctx.userId,
       });
-      // TODO(sub-spec-A): bump users.memberships_version once the column exists
       return { familyId };
     }),
 });

@@ -6,6 +6,7 @@ import {
 import { isWebMode } from '@ancstra/db';
 import type { CentralDatabase } from '@ancstra/db';
 import type { Role } from './types';
+import { bumpMembershipsVersion } from './memberships';
 
 export interface FamilyWithRole {
   familyId: string;
@@ -64,6 +65,8 @@ export async function createFamily(
     joinedAt: now,
     isActive: 1,
   }).run();
+
+  await bumpMembershipsVersion(centralDb, opts.ownerId);
 
   return { familyId, dbFilename };
 }

@@ -26,7 +26,6 @@ export async function createFamilyAction(
     name,
     ownerId: session.user.id,
   });
-  // TODO(sub-spec-A): bump users.memberships_version once the column exists
 
   redirect(`/dashboard?family=${familyId}`);
 }
