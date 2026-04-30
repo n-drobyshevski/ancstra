@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { trpc } from '@/lib/trpc/client';
 import type { GedcomPreview } from '@/lib/gedcom/types';
+import { RoleGate } from '@/components/auth/role-gate';
 
 /** Read a File as a base64 string (data URL prefix stripped). Works for any file size. */
 async function fileToBase64(file: File): Promise<string> {
@@ -242,19 +243,21 @@ export function GedcomImport() {
           >
             Cancel
           </Button>
-          <Button
-            onClick={handleImport}
-            disabled={step === 'importing'}
-          >
-            {step === 'importing' ? (
-              <span className="flex items-center gap-2">
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                Importing...
-              </span>
-            ) : (
-              `Import ${stats.persons} persons`
-            )}
-          </Button>
+          <RoleGate permission="gedcom:import">
+            <Button
+              onClick={handleImport}
+              disabled={step === 'importing'}
+            >
+              {step === 'importing' ? (
+                <span className="flex items-center gap-2">
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  Importing...
+                </span>
+              ) : (
+                `Import ${stats.persons} persons`
+              )}
+            </Button>
+          </RoleGate>
         </div>
       </CardContent>
     </Card>

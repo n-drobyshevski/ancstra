@@ -30,6 +30,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { RoleBadge } from '@/components/auth/role-badge';
+import { RoleGate } from '@/components/auth/role-gate';
 import { Loader2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -179,22 +180,24 @@ export function MemberList({ familyId, currentUserId, currentRole }: MemberListP
               <TableCell className="text-muted-foreground">{member.email}</TableCell>
               <TableCell>
                 {canEditRole(member) ? (
-                  <Select
-                    value={member.role}
-                    onValueChange={(value) => handleRoleChange(member.userId, value)}
-                    disabled={updatingRole === member.userId}
-                  >
-                    <SelectTrigger className="w-[120px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ASSIGNABLE_ROLES.map((role) => (
-                        <SelectItem key={role} value={role}>
-                          {role}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <RoleGate permission="members:manage" fallback={<RoleBadge role={member.role} />}>
+                    <Select
+                      value={member.role}
+                      onValueChange={(value) => handleRoleChange(member.userId, value)}
+                      disabled={updatingRole === member.userId}
+                    >
+                      <SelectTrigger className="w-[120px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ASSIGNABLE_ROLES.map((role) => (
+                          <SelectItem key={role} value={role}>
+                            {role}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </RoleGate>
                 ) : (
                   <RoleBadge role={member.role} />
                 )}
@@ -204,41 +207,43 @@ export function MemberList({ familyId, currentUserId, currentRole }: MemberListP
               </TableCell>
               <TableCell>
                 {canRemove(member) && (
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-destructive hover:text-destructive"
-                        disabled={removingMember === member.userId}
-                        aria-label="Remove member"
-                      >
-                        {removingMember === member.userId ? (
-                          <Loader2 className="size-4 animate-spin" />
-                        ) : (
-                          <Trash2 className="size-4" />
-                        )}
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Remove member</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Are you sure you want to remove{' '}
-                          <strong>{member.name ?? member.email}</strong> from this
-                          family? They will lose access immediately.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={() => handleRemove(member.userId, member.name)}
+                  <RoleGate permission="members:manage">
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive hover:text-destructive"
+                          disabled={removingMember === member.userId}
+                          aria-label="Remove member"
                         >
-                          Remove
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                          {removingMember === member.userId ? (
+                            <Loader2 className="size-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="size-4" />
+                          )}
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Remove member</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to remove{' '}
+                            <strong>{member.name ?? member.email}</strong> from this
+                            family? They will lose access immediately.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleRemove(member.userId, member.name)}
+                          >
+                            Remove
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </RoleGate>
                 )}
               </TableCell>
             </TableRow>

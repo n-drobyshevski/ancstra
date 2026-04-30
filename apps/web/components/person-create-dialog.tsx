@@ -27,6 +27,7 @@ import {
 
 import type { RelationType } from '@/components/person-link-dialog';
 import { personDetailCache } from '@/lib/tree/person-detail-cache';
+import { RoleGate } from '@/components/auth/role-gate';
 
 interface PersonCreateDialogProps {
   open: boolean;
@@ -305,23 +306,25 @@ export function PersonCreateDialog({
       >
         Cancel
       </Button>
-      <Button
-        size="sm"
-        onClick={handleSubmit}
-        disabled={saving || !givenName.trim() || !surname.trim()}
-      >
-        {saving ? (
-          <>
-            <Loader2 className="mr-1.5 size-3.5 animate-spin" />
-            Creating...
-          </>
-        ) : (
-          <>
-            <UserPlus className="mr-1.5 size-3.5" />
-            Create {label}
-          </>
-        )}
-      </Button>
+      <RoleGate permission="person:create">
+        <Button
+          size="sm"
+          onClick={handleSubmit}
+          disabled={saving || !givenName.trim() || !surname.trim()}
+        >
+          {saving ? (
+            <>
+              <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+              Creating...
+            </>
+          ) : (
+            <>
+              <UserPlus className="mr-1.5 size-3.5" />
+              Create {label}
+            </>
+          )}
+        </Button>
+      </RoleGate>
     </div>
   );
 

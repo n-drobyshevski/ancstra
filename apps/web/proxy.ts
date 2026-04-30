@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
-import { eq } from 'drizzle-orm';
+import { eq, and, desc, sql } from 'drizzle-orm';
 import { centralSchema } from '@ancstra/db';
+import { JWT_REFRESH_COOKIE_NAME } from '@ancstra/auth';
 import { auth } from './auth';
-import { getCentralDb } from './lib/db-singleton';
+import { getCentralDb, getCentralDbSync } from './lib/db-singleton';
+import { bumpLastSeenAt } from './lib/auth/last-seen-tracker';
 
 async function fetchMembershipsVersion(userId: string): Promise<number> {
   const db = await getCentralDb();
@@ -61,7 +63,7 @@ export const proxy = auth(async (request) => {
     // Cookie is non-httpOnly so client-side <JwtRefreshObserver> can read it.
     // Carries no secret — only a signal that the server detected staleness.
     // The actual JWT cookie remains correctly httpOnly.
-    response.cookies.set('force-jwt-refresh', '1', {
+    response.cookies.set(JWT_REFRESH_COOKIE_NAME, '1', {
       httpOnly: false,
       sameSite: 'lax',
       path: '/',
@@ -87,11 +89,58 @@ export const proxy = auth(async (request) => {
   }
 
   const list = memberships ?? [];
+
+  // Change B — URL-mismatch redirect: requested family not in memberships → strip param.
+  // Proxy is the single source of truth; client-side useActiveMembership never sees the bad case.
+  // Applies to both ?family= query param and stale active-family cookie.
+  if (requestedFamilyId && !list.find((m) => m.familyId === requestedFamilyId)) {
+    const cleanUrl = new URL(request.nextUrl);
+    cleanUrl.searchParams.delete('family');
+    const redirect = NextResponse.redirect(cleanUrl);
+    // Clear the active-family cookie on every URL-mismatch redirect.
+    // Without this, a stale cookie (e.g. user was removed from that family)
+    // causes an infinite redirect loop: the redirect strips the ?family= param
+    // but the cookie is still present on the follow-up request, so the proxy
+    // re-enters this block forever. Clearing always is safe because the
+    // default-family selection (lastSeenAt) will pick the right family on the
+    // next request without needing the cookie as a hint.
+    redirect.cookies.delete('active-family');
+    return redirect;
+  }
+
   let selected = requestedFamilyId
     ? list.find((m) => m.familyId === requestedFamilyId)
     : undefined;
+
+  // Change A — Default-family selection by lastSeenAt.
+  // When no requestedFamilyId was given, query DB for the most-recently-seen family
+  // rather than blindly picking list[0].
   if (!selected && list.length > 0) {
-    selected = list[0];
+    try {
+      const rows = await getCentralDbSync()
+        .select({ familyId: centralSchema.familyMembers.familyId })
+        .from(centralSchema.familyMembers)
+        .where(and(
+          eq(centralSchema.familyMembers.userId, session.user.id),
+          eq(centralSchema.familyMembers.isActive, 1),
+        ))
+        .orderBy(
+          sql`${centralSchema.familyMembers.lastSeenAt} DESC NULLS LAST`,
+          desc(centralSchema.familyMembers.joinedAt),
+        )
+        .limit(1)
+        .all();
+      const topFamilyId = rows[0]?.familyId;
+      if (topFamilyId) {
+        selected = list.find((m) => m.familyId === topFamilyId);
+      }
+    } catch (err) {
+      console.warn('[PROXY] default-family query failed, falling back to memberships[0]:', err);
+    }
+    // Safety fallback: if DB query failed or returned nothing, use list[0]
+    if (!selected) {
+      selected = list[0];
+    }
   }
 
   requestHeaders.set('x-user-id', session.user.id);
@@ -116,11 +165,13 @@ export const proxy = auth(async (request) => {
       path: '/',
       maxAge: 60 * 60 * 24 * 365,
     });
+    // Fire-and-forget: track when user last switched to this family.
+    void bumpLastSeenAt(getCentralDbSync(), session.user.id, familyParam);
   }
 
   if (staleJwtDetected) {
     // Non-httpOnly: read by client-side <JwtRefreshObserver> (sub-spec D1).
-    response.cookies.set('force-jwt-refresh', '1', {
+    response.cookies.set(JWT_REFRESH_COOKIE_NAME, '1', {
       httpOnly: false,
       sameSite: 'lax',
       path: '/',

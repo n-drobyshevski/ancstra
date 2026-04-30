@@ -22,6 +22,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { RoleGate } from '@/components/auth/role-gate';
 
 interface DataSettingsProps {
   onDataChanged: () => void;
@@ -139,52 +140,56 @@ export function DataSettings({ onDataChanged }: DataSettingsProps) {
       <div className="space-y-3">
         <h3 className="text-sm font-medium">Backup & Restore</h3>
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            className="flex-1"
-            onClick={handleBackup}
-            disabled={backupLoading}
-          >
-            <Download className="size-4" data-icon="inline-start" />
-            {backupLoading ? 'Creating backup...' : 'Download Backup'}
-          </Button>
+          <RoleGate permission="settings:manage">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={handleBackup}
+              disabled={backupLoading}
+            >
+              <Download className="size-4" data-icon="inline-start" />
+              {backupLoading ? 'Creating backup...' : 'Download Backup'}
+            </Button>
+          </RoleGate>
 
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="outline" className="flex-1">
-                <Upload className="size-4" data-icon="inline-start" />
-                Restore Backup
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Restore Database</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This will replace your entire database with the uploaded file.
-                  This action cannot be undone. Make sure you have a current
-                  backup before proceeding.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  variant="destructive"
-                  onClick={() => {
-                    const input = document.createElement('input');
-                    input.type = 'file';
-                    input.accept = '.db,.sqlite,.sqlite3';
-                    input.onchange = (e) => {
-                      const file = (e.target as HTMLInputElement).files?.[0];
-                      if (file) handleRestore(file);
-                    };
-                    input.click();
-                  }}
-                >
-                  Choose File & Restore
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          <RoleGate permission="settings:manage">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" className="flex-1">
+                  <Upload className="size-4" data-icon="inline-start" />
+                  Restore Backup
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Restore Database</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will replace your entire database with the uploaded file.
+                    This action cannot be undone. Make sure you have a current
+                    backup before proceeding.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    variant="destructive"
+                    onClick={() => {
+                      const input = document.createElement('input');
+                      input.type = 'file';
+                      input.accept = '.db,.sqlite,.sqlite3';
+                      input.onchange = (e) => {
+                        const file = (e.target as HTMLInputElement).files?.[0];
+                        if (file) handleRestore(file);
+                      };
+                      input.click();
+                    }}
+                  >
+                    Choose File & Restore
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </RoleGate>
         </div>
       </div>
 
@@ -194,15 +199,17 @@ export function DataSettings({ onDataChanged }: DataSettingsProps) {
         <p className="text-sm text-muted-foreground">
           Remove dismissed research items from the database.
         </p>
-        <Button
-          variant="outline"
-          className="w-full md:w-auto"
-          onClick={handleClearCache}
-          disabled={cacheLoading}
-        >
-          <Trash2 className="size-4" data-icon="inline-start" />
-          {cacheLoading ? 'Clearing...' : 'Clear Search Cache'}
-        </Button>
+        <RoleGate permission="settings:manage">
+          <Button
+            variant="outline"
+            className="w-full md:w-auto"
+            onClick={handleClearCache}
+            disabled={cacheLoading}
+          >
+            <Trash2 className="size-4" data-icon="inline-start" />
+            {cacheLoading ? 'Clearing...' : 'Clear Search Cache'}
+          </Button>
+        </RoleGate>
       </div>
 
       {/* Danger Zone */}
@@ -213,70 +220,74 @@ export function DataSettings({ onDataChanged }: DataSettingsProps) {
           undone.
         </p>
         <div className="flex gap-2">
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive" className="flex-1" disabled={archiveLoading}>
-                <Archive className="size-4" data-icon="inline-start" />
-                {archiveLoading ? 'Clearing...' : 'Clear Web Archives'}
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Clear Web Archives</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This will permanently delete all saved HTML archives and
-                  screenshots. Research items will be kept but their archive
-                  references will be removed.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  variant="destructive"
-                  onClick={handleClearArchives}
-                >
-                  Delete Archives
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          <RoleGate permission="settings:manage">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" className="flex-1" disabled={archiveLoading}>
+                  <Archive className="size-4" data-icon="inline-start" />
+                  {archiveLoading ? 'Clearing...' : 'Clear Web Archives'}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Clear Web Archives</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will permanently delete all saved HTML archives and
+                    screenshots. Research items will be kept but their archive
+                    references will be removed.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    variant="destructive"
+                    onClick={handleClearArchives}
+                  >
+                    Delete Archives
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </RoleGate>
 
-          <AlertDialog
-            onOpenChange={(open) => {
-              if (!open) setDeleteConfirmText('');
-            }}
-          >
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive" className="flex-1">
-                <AlertTriangle className="size-4" data-icon="inline-start" />
-                Delete All Data
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Delete All Data</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This will permanently delete all cached research items and web
-                  archives. Type <strong>DELETE</strong> below to confirm.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <Input
-                placeholder="Type DELETE to confirm"
-                value={deleteConfirmText}
-                onChange={(e) => setDeleteConfirmText(e.target.value)}
-              />
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  variant="destructive"
-                  disabled={deleteConfirmText !== 'DELETE'}
-                  onClick={handleDeleteAll}
-                >
-                  Delete Everything
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          <RoleGate permission="settings:manage">
+            <AlertDialog
+              onOpenChange={(open) => {
+                if (!open) setDeleteConfirmText('');
+              }}
+            >
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" className="flex-1">
+                  <AlertTriangle className="size-4" data-icon="inline-start" />
+                  Delete All Data
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete All Data</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will permanently delete all cached research items and web
+                    archives. Type <strong>DELETE</strong> below to confirm.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <Input
+                  placeholder="Type DELETE to confirm"
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                />
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    variant="destructive"
+                    disabled={deleteConfirmText !== 'DELETE'}
+                    onClick={handleDeleteAll}
+                  >
+                    Delete Everything
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </RoleGate>
         </div>
       </div>
     </div>

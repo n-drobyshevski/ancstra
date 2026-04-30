@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { BiographyOptions, type BiographyOptionsResult } from '@/components/biography/biography-options';
 import { BiographyViewer } from '@/components/biography/biography-viewer';
 import { HistoricalEvent } from '@/components/timeline/historical-event';
+import { RoleGate } from '@/components/auth/role-gate';
 
 interface ResearchBiographyTabProps {
   personId: string;
@@ -150,7 +151,9 @@ export function ResearchBiographyTab({ personId, personName }: ResearchBiography
           ) : (
             <div className="flex flex-col items-center py-8 text-muted-foreground">
               <p className="mb-3 text-sm">No biography generated yet.</p>
+              <RoleGate permission="ai:research">
               <Button onClick={() => setOptionsOpen(true)}>Generate Biography</Button>
+            </RoleGate>
               <p className="mt-2 text-xs">~$0.02 per generation</p>
             </div>
           )}
@@ -194,9 +197,11 @@ export function ResearchBiographyTab({ personId, personName }: ResearchBiography
                 <p className="mb-3 text-sm">
                   See world events during {personName}&apos;s lifetime.
                 </p>
-                <Button variant="outline" onClick={handleGenerateHistorical}>
-                  Generate Historical Context
-                </Button>
+                <RoleGate permission="ai:research">
+                  <Button variant="outline" onClick={handleGenerateHistorical}>
+                    Generate Historical Context
+                  </Button>
+                </RoleGate>
               </div>
             )}
           </CardContent>

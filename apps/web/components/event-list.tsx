@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EventForm } from '@/components/event-form';
 import type { Event } from '@ancstra/shared';
+import { RoleGate } from '@/components/auth/role-gate';
 
 interface EventListProps {
   events: Event[];
@@ -80,22 +81,26 @@ export function EventList({ events, personId, onUpdate }: EventListProps) {
 
             {!isProtected && (
               <div className="flex shrink-0 gap-1">
-                <button
-                  type="button"
-                  onClick={() => setEditingId(evt.id)}
-                  className="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-muted"
-                  title="Edit event"
-                >
-                  &#9998;
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleDelete(evt.id)}
-                  className="rounded p-1 text-muted-foreground hover:text-destructive hover:bg-muted"
-                  title="Delete event"
-                >
-                  &times;
-                </button>
+                <RoleGate permission="event:edit">
+                  <button
+                    type="button"
+                    onClick={() => setEditingId(evt.id)}
+                    className="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-muted"
+                    title="Edit event"
+                  >
+                    &#9998;
+                  </button>
+                </RoleGate>
+                <RoleGate permission="event:delete">
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(evt.id)}
+                    className="rounded p-1 text-muted-foreground hover:text-destructive hover:bg-muted"
+                    title="Delete event"
+                  >
+                    &times;
+                  </button>
+                </RoleGate>
               </div>
             )}
           </div>
@@ -109,13 +114,15 @@ export function EventList({ events, personId, onUpdate }: EventListProps) {
           onCancel={() => setShowAdd(false)}
         />
       ) : (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setShowAdd(true)}
-        >
-          + Add Event
-        </Button>
+        <RoleGate permission="event:create">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowAdd(true)}
+          >
+            + Add Event
+          </Button>
+        </RoleGate>
       )}
     </div>
   );

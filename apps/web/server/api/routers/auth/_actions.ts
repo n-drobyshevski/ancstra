@@ -18,5 +18,5 @@ export const acceptInviteAction = authedFormAction
       summary: 'Joined the family',
     });
     invalidateTags(['activity']);
-    redirect(`/dashboard?family=${result.familyId}`);
+    redirect(`/dashboard?family=${result.familyId}&invite=accepted`);
   });

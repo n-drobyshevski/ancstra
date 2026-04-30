@@ -1,30 +1,31 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import type { runRefresh as RunRefreshFn } from '@/lib/trpc/jwt-refresh-debounce';
 import { JwtRefreshObserver } from '@/lib/trpc/jwt-refresh-observer';
 
+const mockRunRefresh = vi.fn<typeof RunRefreshFn>(() => Promise.resolve());
+vi.mock('@/lib/trpc/jwt-refresh-debounce', () => ({
+  runRefresh: (...args: Parameters<typeof RunRefreshFn>) => mockRunRefresh(...args),
+}));
+
 const mockUpdate = vi.fn(async () => undefined);
-const mockUseSession = vi.fn(() => ({
-  data: null,
-  status: 'authenticated' as const,
-  update: mockUpdate,
-}));
-
 vi.mock('next-auth/react', () => ({
-  useSession: () => mockUseSession(),
+  useSession: () => ({ data: null, status: 'authenticated' as const, update: mockUpdate }),
 }));
 
-const mockUsePathname = vi.fn(() => '/dashboard');
 vi.mock('next/navigation', () => ({
-  usePathname: () => mockUsePathname(),
+  usePathname: () => '/dashboard',
 }));
 
-const mockToast = vi.fn();
-vi.mock('sonner', () => ({
-  toast: {
-    info: (msg: string) => mockToast(msg),
-  },
-}));
+function makeWrapper() {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  function Wrapper({ children }: { children: React.ReactNode }) {
+    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+  }
+  return { queryClient, Wrapper };
+}
 
 describe('<JwtRefreshObserver>', () => {
   beforeEach(() => {
@@ -46,29 +47,29 @@ describe('<JwtRefreshObserver>', () => {
 
   it('does nothing when force-jwt-refresh cookie is absent', () => {
     document.cookie = 'other=1';
-    render(<JwtRefreshObserver />);
-    expect(mockUpdate).not.toHaveBeenCalled();
+    const { Wrapper } = makeWrapper();
+    render(<JwtRefreshObserver />, { wrapper: Wrapper });
+    expect(mockRunRefresh).not.toHaveBeenCalled();
   });
 
-  it('calls update() when force-jwt-refresh cookie is present', async () => {
+  it('calls runRefresh when force-jwt-refresh cookie is present', async () => {
     document.cookie = 'force-jwt-refresh=1';
-    render(<JwtRefreshObserver />);
+    const { queryClient, Wrapper } = makeWrapper();
+    render(<JwtRefreshObserver />, { wrapper: Wrapper });
     await Promise.resolve();
-    expect(mockUpdate).toHaveBeenCalledTimes(1);
+    expect(mockRunRefresh).toHaveBeenCalledTimes(1);
+    expect(mockRunRefresh).toHaveBeenCalledWith(mockUpdate, queryClient, 'Access updated');
   });
 
-  it('clears the cookie after update()', async () => {
+  it('clears the cookie synchronously before calling runRefresh', () => {
     document.cookie = 'force-jwt-refresh=1';
-    render(<JwtRefreshObserver />);
-    // Allow the promise chain to settle (update + then clearCookie)
-    await new Promise((r) => setTimeout(r, 0));
-    expect(document.cookie).not.toContain('force-jwt-refresh=1');
-  });
-
-  it('emits toast.info when refresh fires', async () => {
-    document.cookie = 'force-jwt-refresh=1';
-    render(<JwtRefreshObserver />);
-    await new Promise((r) => setTimeout(r, 0));
-    expect(mockToast).toHaveBeenCalledWith(expect.stringContaining('updated'));
+    let cookieAtCallTime: string | undefined;
+    mockRunRefresh.mockImplementationOnce(() => {
+      cookieAtCallTime = document.cookie;
+      return Promise.resolve();
+    });
+    const { Wrapper } = makeWrapper();
+    render(<JwtRefreshObserver />, { wrapper: Wrapper });
+    expect(cookieAtCallTime).not.toContain('force-jwt-refresh=1');
   });
 });

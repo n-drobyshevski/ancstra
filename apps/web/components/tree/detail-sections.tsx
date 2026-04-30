@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { BookOpen, Link2, UserPlus, Pencil, Trash2 } from 'lucide-react';
 import { personDetailCache, type PersonDetailEntry } from '@/lib/tree/person-detail-cache';
 import type { RelationType } from '@/components/person-link-dialog';
+import { RoleGate } from '@/components/auth/role-gate';
 
 /* -------------------------------------------------------------------------- */
 /*  usePersonDetail                                                            */
@@ -317,20 +318,24 @@ export function DetailFamily({
     if (!editable) return null;
     return (
       <div className="flex flex-wrap items-center gap-1 ml-14">
-        <button
-          type="button"
-          onClick={() => onAddRelation!('link', relation)}
-          className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
-        >
-          <Link2 className="size-3" /> {linkLabel}
-        </button>
-        <button
-          type="button"
-          onClick={() => onAddRelation!('create', relation)}
-          className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
-        >
-          <UserPlus className="size-3" /> {newLabel}
-        </button>
+        <RoleGate permission="family:create">
+          <button
+            type="button"
+            onClick={() => onAddRelation!('link', relation)}
+            className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
+          >
+            <Link2 className="size-3" /> {linkLabel}
+          </button>
+        </RoleGate>
+        <RoleGate permission="family:create">
+          <button
+            type="button"
+            onClick={() => onAddRelation!('create', relation)}
+            className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
+          >
+            <UserPlus className="size-3" /> {newLabel}
+          </button>
+        </RoleGate>
       </div>
     );
   }
@@ -375,38 +380,46 @@ export function DetailFamily({
             <div className="flex flex-wrap items-center gap-1 ml-14">
               {!hasFather && (
                 <>
-                  <button
-                    type="button"
-                    onClick={() => onAddRelation!('link', 'father')}
-                    className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
-                  >
-                    <Link2 className="size-3" /> Link father
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onAddRelation!('create', 'father')}
-                    className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
-                  >
-                    <UserPlus className="size-3" /> Father
-                  </button>
+                  <RoleGate permission="family:create">
+                    <button
+                      type="button"
+                      onClick={() => onAddRelation!('link', 'father')}
+                      className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
+                    >
+                      <Link2 className="size-3" /> Link father
+                    </button>
+                  </RoleGate>
+                  <RoleGate permission="family:create">
+                    <button
+                      type="button"
+                      onClick={() => onAddRelation!('create', 'father')}
+                      className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
+                    >
+                      <UserPlus className="size-3" /> Father
+                    </button>
+                  </RoleGate>
                 </>
               )}
               {!hasMother && (
                 <>
-                  <button
-                    type="button"
-                    onClick={() => onAddRelation!('link', 'mother')}
-                    className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
-                  >
-                    <Link2 className="size-3" /> Link mother
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onAddRelation!('create', 'mother')}
-                    className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
-                  >
-                    <UserPlus className="size-3" /> Mother
-                  </button>
+                  <RoleGate permission="family:create">
+                    <button
+                      type="button"
+                      onClick={() => onAddRelation!('link', 'mother')}
+                      className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
+                    >
+                      <Link2 className="size-3" /> Link mother
+                    </button>
+                  </RoleGate>
+                  <RoleGate permission="family:create">
+                    <button
+                      type="button"
+                      onClick={() => onAddRelation!('create', 'mother')}
+                      className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
+                    >
+                      <UserPlus className="size-3" /> Mother
+                    </button>
+                  </RoleGate>
                 </>
               )}
             </div>
@@ -562,24 +575,28 @@ export function DetailTimeline({
                     Vital Information section. */}
                 {canEditRow && item.event && (
                   <div className="ml-auto flex items-center gap-0.5 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => onEditEvent!(item.event!)}
-                      className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
-                      title="Edit event"
-                      aria-label={`Edit ${item.type} event`}
-                    >
-                      <Pencil className="size-3" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => void handleDeleteEvent(item.event!)}
-                      className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                      title="Delete event"
-                      aria-label={`Delete ${item.type} event`}
-                    >
-                      <Trash2 className="size-3" />
-                    </button>
+                    <RoleGate permission="event:edit">
+                      <button
+                        type="button"
+                        onClick={() => onEditEvent!(item.event!)}
+                        className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+                        title="Edit event"
+                        aria-label={`Edit ${item.type} event`}
+                      >
+                        <Pencil className="size-3" />
+                      </button>
+                    </RoleGate>
+                    <RoleGate permission="event:delete">
+                      <button
+                        type="button"
+                        onClick={() => void handleDeleteEvent(item.event!)}
+                        className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                        title="Delete event"
+                        aria-label={`Delete ${item.type} event`}
+                      >
+                        <Trash2 className="size-3" />
+                      </button>
+                    </RoleGate>
                   </div>
                 )}
               </li>
@@ -600,13 +617,15 @@ export function DetailTimeline({
       )}
 
       {editable && (
-        <button
-          type="button"
-          onClick={onAddEvent}
-          className="mt-3 inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
-        >
-          <span aria-hidden>+</span> Add event
-        </button>
+        <RoleGate permission="event:create">
+          <button
+            type="button"
+            onClick={onAddEvent}
+            className="mt-3 inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
+          >
+            <span aria-hidden>+</span> Add event
+          </button>
+        </RoleGate>
       )}
     </div>
   );
