@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireAuthContext } from '@/lib/auth/context';
-import { requirePermission, ForbiddenError, logActivity, type Role, type ActivityAction } from '@ancstra/auth';
+import { requirePermission, ForbiddenError, logActivity, bumpMembershipsVersion, type Role, type ActivityAction } from '@ancstra/auth';
 import { createCentralDb, createFamilyDb, centralSchema, familyUserCache } from '@ancstra/db';
 import { revalidateTag } from 'next/cache';
 import { eq, and } from 'drizzle-orm';
@@ -83,6 +83,9 @@ export async function PATCH(request: Request, { params }: Params) {
       .set({ role: newRole as 'owner' | 'admin' | 'editor' | 'viewer' })
       .where(eq(centralSchema.familyMembers.id, targetMember.id))
       .run();
+
+    // Invalidate the affected member's JWT so they pick up the new role immediately
+    await bumpMembershipsVersion(centralDb, targetUserId);
 
     // Fetch updated member with user details
     const updated = await centralDb
@@ -186,6 +189,9 @@ export async function DELETE(request: Request, { params }: Params) {
       .set({ isActive: 0 })
       .where(eq(centralSchema.familyMembers.id, targetMember.id))
       .run();
+
+    // Invalidate the removed member's JWT so they lose access immediately
+    await bumpMembershipsVersion(centralDb, targetUserId);
 
     // Remove from familyUserCache in the family DB
     try {

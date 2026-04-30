@@ -5,12 +5,7 @@ import type { Session } from 'next-auth';
 import { auth } from '@/auth';
 import { createFamilyDb, type CentralDatabase, type FamilyDatabase } from '@ancstra/db';
 import { getCentralDb } from '@/lib/db-singleton';
-import type { Role, Permission } from '@ancstra/auth';
-import { VALID_ROLES } from '@ancstra/auth';
-
-function parseRole(s: string): Role | null {
-  return (VALID_ROLES as readonly string[]).includes(s) ? (s as Role) : null;
-}
+import { parseRole, type Role, type Permission } from '@ancstra/auth';
 
 export interface Meta {
   permission?: Permission;
