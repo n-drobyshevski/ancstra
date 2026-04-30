@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import { eq, and, isNull, count } from 'drizzle-orm';
 import * as centralSchema from '@ancstra/db/central-schema';
 import type { Role } from './types';
+import { bumpMembershipsVersion } from './memberships';
 
 // Accept any Drizzle DB instance (works with both better-sqlite3 and libsql drivers)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -193,6 +194,8 @@ export async function acceptInvite(
       joinedAt: now,
     })
     .run();
+
+  await bumpMembershipsVersion(centralDb, userId);
 
   // Mark invitation as accepted
   const updated = await centralDb
