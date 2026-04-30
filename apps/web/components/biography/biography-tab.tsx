@@ -8,6 +8,7 @@ import {
   type BiographyOptionsResult,
 } from '@/components/biography/biography-options';
 import { BiographyViewer } from '@/components/biography/biography-viewer';
+import { RoleGate } from '@/components/auth/role-gate';
 
 interface BiographyTabProps {
   personId: string;
@@ -130,9 +131,11 @@ export function BiographyTab({ personId }: BiographyTabProps) {
           <p className="mb-4 text-sm text-muted-foreground">
             No biography has been generated yet.
           </p>
-          <Button onClick={() => setOptionsOpen(true)}>
-            Generate Biography
-          </Button>
+          <RoleGate permission="ai:research">
+            <Button onClick={() => setOptionsOpen(true)}>
+              Generate Biography
+            </Button>
+          </RoleGate>
         </div>
         <BiographyOptions
           open={optionsOpen}

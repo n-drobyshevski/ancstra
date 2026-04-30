@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import type { Event } from '@ancstra/shared';
+import { RoleGate } from '@/components/auth/role-gate';
 
 const EVENT_TYPES = [
   'birth', 'death', 'marriage', 'divorce', 'residence', 'occupation',
@@ -26,6 +27,7 @@ interface EventFormProps {
 
 export function EventForm({ personId, event, onSave, onCancel }: EventFormProps) {
   const isEdit = !!event;
+  const submitPermission = isEdit ? 'event:edit' : 'event:create';
 
   const [eventType, setEventType] = useState(event?.eventType ?? 'other');
   const [dateOriginal, setDateOriginal] = useState(event?.dateOriginal ?? '');
@@ -142,9 +144,11 @@ export function EventForm({ personId, event, onSave, onCancel }: EventFormProps)
       {error && <p className="text-sm text-destructive">{error}</p>}
 
       <div className="flex gap-2">
-        <Button type="submit" size="sm" disabled={loading}>
-          {loading ? 'Saving...' : isEdit ? 'Update' : 'Add Event'}
-        </Button>
+        <RoleGate permission={submitPermission}>
+          <Button type="submit" size="sm" disabled={loading}>
+            {loading ? 'Saving...' : isEdit ? 'Update' : 'Add Event'}
+          </Button>
+        </RoleGate>
         {onCancel && (
           <Button type="button" variant="outline" size="sm" onClick={onCancel}>
             Cancel
