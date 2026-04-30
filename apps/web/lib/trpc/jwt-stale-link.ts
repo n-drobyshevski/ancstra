@@ -1,4 +1,4 @@
-import { TRPCClientError, type TRPCLink } from '@trpc/client';
+import { TRPCClientError, type TRPCClientRuntime, type TRPCLink } from '@trpc/client';
 import { observable } from '@trpc/server/observable';
 import type { AppRouter } from '@/server/api/routers/_app';
 
@@ -16,37 +16,36 @@ interface JwtStaleLinkOptions {
  * onError fires); refreshing happens as a side effect. The caller can
  * decide whether to retry the mutation.
  *
- * Implementation note: the function is cast as TRPCLink<AppRouter> for
- * use in the link chain, but it is implemented as an OperationLink
- * (skipping the unused TRPCClientRuntime wrapper layer) so that tests
- * can exercise it without wiring a full client runtime.
+ * Shape: TRPCLink<T> = (runtime: TRPCClientRuntime) => OperationLink<T>.
+ * The runtime wrapper layer is required by tRPC v11; the runtime arg is unused.
  */
 export function jwtStaleLink(opts: JwtStaleLinkOptions): TRPCLink<AppRouter> {
-  // Cast: OperationLink satisfies TRPCLink when the runtime wrapper is a no-op
-  return (({ next, op }: { next: (op: unknown) => ReturnType<typeof observable>; op: unknown }) => {
-    return observable((observer) => {
-      const subscription = next(op).subscribe({
-        next(value: unknown) {
-          observer.next(value as never);
-        },
-        error(err: unknown) {
-          if (err instanceof TRPCClientError) {
-            const code = (err.data as { code?: string } | undefined)?.code;
-            if (code === 'JWT_STALE') {
-              try {
-                opts.onJwtStale();
-              } catch {
-                // Don't let the callback's failure swallow the original error
+  return (_runtime: TRPCClientRuntime) => {
+    return ({ op, next }) => {
+      return observable((observer) => {
+        const subscription = next(op).subscribe({
+          next(value) {
+            observer.next(value);
+          },
+          error(err) {
+            if (err instanceof TRPCClientError) {
+              const code = (err.data as { code?: string } | undefined)?.code;
+              if (code === 'JWT_STALE') {
+                try {
+                  opts.onJwtStale();
+                } catch {
+                  // Don't let the callback's failure swallow the original error
+                }
               }
             }
-          }
-          observer.error(err as never);
-        },
-        complete() {
-          observer.complete();
-        },
+            observer.error(err);
+          },
+          complete() {
+            observer.complete();
+          },
+        });
+        return () => subscription.unsubscribe?.();
       });
-      return () => subscription.unsubscribe?.();
-    });
-  }) as unknown as TRPCLink<AppRouter>;
+    };
+  };
 }

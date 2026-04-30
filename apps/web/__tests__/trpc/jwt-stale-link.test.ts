@@ -20,7 +20,8 @@ describe('jwtStaleLink', () => {
     );
 
     const op = { id: 1, type: 'mutation' as const, path: 'test', input: {}, context: {} };
-    const subscription = link({ op, next, prev: vi.fn() } as never).subscribe({
+    const fakeRuntime = {} as never;
+    const subscription = link(fakeRuntime)({ op, next, prev: vi.fn() } as never).subscribe({
       error: () => undefined,
     });
 
@@ -44,7 +45,8 @@ describe('jwtStaleLink', () => {
     );
 
     const op = { id: 1, type: 'mutation' as const, path: 'test', input: {}, context: {} };
-    const subscription = link({ op, next, prev: vi.fn() } as never).subscribe({
+    const fakeRuntime = {} as never;
+    const subscription = link(fakeRuntime)({ op, next, prev: vi.fn() } as never).subscribe({
       error: () => undefined,
     });
 
@@ -65,7 +67,8 @@ describe('jwtStaleLink', () => {
     );
 
     const op = { id: 1, type: 'query' as const, path: 'test', input: {}, context: {} };
-    const subscription = link({ op, next, prev: vi.fn() } as never).subscribe({
+    const fakeRuntime = {} as never;
+    const subscription = link(fakeRuntime)({ op, next, prev: vi.fn() } as never).subscribe({
       next: result,
     });
 
