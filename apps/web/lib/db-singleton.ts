@@ -1,30 +1,29 @@
 import { createCentralDb, ensureCentralSchema } from '@ancstra/db';
 
 let _centralDb: ReturnType<typeof createCentralDb> | null = null;
-let _ensureSchemaPromise: Promise<void> | null = null;
+let _ensurePromise: Promise<void> | null = null;
 
-/**
- * Lazy-singleton accessor for the central DB.
- * On first call, also runs ensureCentralSchema (idempotent: safe to await every time).
- */
-export async function getCentralDb() {
+function init() {
   if (!_centralDb) {
     _centralDb = createCentralDb();
+    // Fire-and-forget: schema ensure runs in background. First sync caller
+    // sees _centralDb immediately; the first ALTER may race the first SELECT
+    // but both better-sqlite3 and libSQL serialize statements per-connection
+    // so this works. Async callers (getCentralDb) await the promise to be safe.
+    _ensurePromise = ensureCentralSchema(_centralDb, 'singleton');
+    _ensurePromise.catch((err) => {
+      console.error('[db-singleton] ensureCentralSchema failed:', err);
+    });
   }
-  if (!_ensureSchemaPromise) {
-    _ensureSchemaPromise = ensureCentralSchema(_centralDb, 'singleton');
-  }
-  await _ensureSchemaPromise;
   return _centralDb;
 }
 
-/**
- * Synchronous accessor for callers that can't await (rare; prefer getCentralDb).
- * Caller is responsible for ensureCentralSchema side effects elsewhere.
- */
 export function getCentralDbSync() {
-  if (!_centralDb) {
-    _centralDb = createCentralDb();
-  }
-  return _centralDb;
+  return init();
+}
+
+export async function getCentralDb() {
+  const db = init();
+  if (_ensurePromise) await _ensurePromise;
+  return db;
 }
