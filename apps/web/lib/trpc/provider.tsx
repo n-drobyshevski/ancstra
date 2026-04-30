@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
@@ -14,6 +14,9 @@ import { jwtStaleLink } from './jwt-stale-link';
 
 function TRPCInner({ children }: { children: React.ReactNode }) {
   const { update } = useSession();
+  const updateRef = useRef(update);
+  useEffect(() => { updateRef.current = update; }, [update]);
+
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -26,8 +29,12 @@ function TRPCInner({ children }: { children: React.ReactNode }) {
       links: [
         jwtStaleLink({
           onJwtStale: () => {
-            void update().then(() => {
-              toast.info('Access updated');
+            // Clear cookie BEFORE update so the cookie observer doesn't double-fire
+            if (typeof document !== 'undefined') {
+              document.cookie = 'force-jwt-refresh=; path=/; max-age=0; sameSite=Lax';
+            }
+            void updateRef.current().then(() => {
+              toast.info('Session refreshed — please retry');
             });
           },
         }),
