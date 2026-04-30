@@ -1,24 +1,52 @@
 import { NextResponse } from 'next/server';
+import { eq } from 'drizzle-orm';
+import { centralSchema } from '@ancstra/db';
 import { auth } from './auth';
+import { getCentralDb } from './lib/db-singleton';
 
-export const proxy = auth((request) => {
+async function fetchMembershipsVersion(userId: string): Promise<number> {
+  const db = await getCentralDb();
+  const row = await db
+    .select({ v: centralSchema.users.membershipsVersion })
+    .from(centralSchema.users)
+    .where(eq(centralSchema.users.id, userId))
+    .get();
+  return row?.v ?? 0;
+}
+
+export const proxy = auth(async (request) => {
   const session = request.auth;
 
   if (!session?.user?.id) {
-    // API routes get 401 JSON; browser pages get redirected to login
     if (request.nextUrl.pathname.startsWith('/api/')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  // Pass user info via request headers to downstream routes
+  // Defense in depth: strip inbound x-user-* / x-family-* headers before setting our own.
+  // Closes the gap if a request bypasses the proxy or tries header forgery.
   const requestHeaders = new Headers(request.headers);
-  requestHeaders.set('x-user-id', session.user.id);
+  for (const name of Array.from(requestHeaders.keys())) {
+    if (name.startsWith('x-user-') || name.startsWith('x-family-')) {
+      requestHeaders.delete(name);
+    }
+  }
 
-  // Resolve active family from cookie / URL param against memberships
-  // baked into the JWT. This lets getAuthContext() in server components
-  // read everything from headers without hitting the central DB.
+  // Lazy memberships_version check — detect stale JWT.
+  // Cost: one indexed SELECT per request. Acceptable; cache later if needed.
+  let staleJwtDetected = false;
+  try {
+    const dbVersion = await fetchMembershipsVersion(session.user.id);
+    const jwtVersion = session.user.membershipsVersion ?? 0;
+    if (dbVersion !== jwtVersion) {
+      staleJwtDetected = true;
+    }
+  } catch (err) {
+    // DB read failure shouldn't block the request; log and continue with current JWT
+    console.warn('[PROXY] memberships_version fetch failed, continuing with JWT', err);
+  }
+
   const memberships = session.user.memberships;
   const familyParam = request.nextUrl.searchParams.get('family');
   const familyCookie = request.cookies.get('active-family')?.value;
@@ -43,10 +71,11 @@ export const proxy = auth((request) => {
     selected = list[0];
   }
 
+  requestHeaders.set('x-user-id', session.user.id);
   if (selected) {
     requestHeaders.set('x-family-id', selected.familyId);
-    requestHeaders.set('x-family-role', selected.role);
     requestHeaders.set('x-family-db', selected.dbFilename);
+    // x-family-role intentionally NOT set — role re-derived from JWT downstream (sub-spec A)
   } else if (requestedFamilyId) {
     // Stale token / brand-new membership not yet in JWT — pass id only,
     // getAuthContext will fall back to a DB lookup.
@@ -57,13 +86,27 @@ export const proxy = auth((request) => {
     request: { headers: requestHeaders },
   });
 
-  // If family was set via URL param, save to cookie for future requests
   if (familyParam && familyParam !== familyCookie) {
     response.cookies.set('active-family', familyParam, {
       httpOnly: true,
       sameSite: 'lax',
       path: '/',
-      maxAge: 60 * 60 * 24 * 365, // 1 year
+      maxAge: 60 * 60 * 24 * 365,
+    });
+  }
+
+  if (staleJwtDetected) {
+    // Set a short-lived cookie that signals staleness. Auth.js v5 jwt() callbacks
+    // don't receive request cookies directly, so forcing an in-place JWT refresh
+    // from middleware is not supported. The deferred path: on the next request the
+    // proxy re-detects staleness, and a future Task will wire trigger='update' from
+    // a client component that reads a response header/cookie. For now, setting this
+    // cookie is the staleness signal; Task 9 verifies the detection logic end-to-end.
+    response.cookies.set('force-jwt-refresh', '1', {
+      httpOnly: true,
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60,
     });
   }
 
