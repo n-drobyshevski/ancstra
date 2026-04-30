@@ -6,7 +6,7 @@ import {
 import { isWebMode } from '@ancstra/db';
 import type { CentralDatabase } from '@ancstra/db';
 import type { Role } from './types';
-import { bumpMembershipsVersion } from './memberships';
+import { bumpMembershipsVersion, bumpMembershipsVersionMany } from './memberships';
 
 export interface FamilyWithRole {
   familyId: string;
@@ -169,6 +169,10 @@ export async function transferOwnership(
       ),
     )
     .run();
+
+  // Invalidate JWTs for both users: old owner loses tree:delete + settings:manage,
+  // new owner gains them. Both must re-fetch memberships on next request.
+  await bumpMembershipsVersionMany(centralDb, [opts.currentOwnerId, opts.newOwnerId]);
 
   await centralDb.update(familyRegistry)
     .set({ ownerId: opts.newOwnerId, updatedAt: new Date().toISOString() })
