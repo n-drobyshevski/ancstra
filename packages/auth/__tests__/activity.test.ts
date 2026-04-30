@@ -11,6 +11,7 @@ const CREATE_TABLES_SQL = `
     name TEXT NOT NULL,
     avatar_url TEXT,
     email_verified INTEGER NOT NULL DEFAULT 0,
+    memberships_version INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
   );
