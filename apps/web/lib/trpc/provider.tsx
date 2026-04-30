@@ -7,6 +7,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { httpBatchLink } from '@trpc/client';
 import { toast } from 'sonner';
 import superjson from 'superjson';
+import { JWT_REFRESH_COOKIE_NAME } from '@ancstra/auth';
 import { trpc } from './client';
 import { AppSessionProvider } from '@/lib/auth/session-provider';
 import { JwtRefreshObserver } from './jwt-refresh-observer';
@@ -31,7 +32,7 @@ function TRPCInner({ children }: { children: React.ReactNode }) {
           onJwtStale: () => {
             // Clear cookie BEFORE update so the cookie observer doesn't double-fire
             if (typeof document !== 'undefined') {
-              document.cookie = 'force-jwt-refresh=; path=/; max-age=0; sameSite=Lax';
+              document.cookie = `${JWT_REFRESH_COOKIE_NAME}=; path=/; max-age=0; sameSite=Lax`;
             }
             void updateRef.current().then(() => {
               toast.info('Session refreshed — please retry');

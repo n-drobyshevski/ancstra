@@ -4,8 +4,7 @@ import { useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { usePathname } from 'next/navigation';
 import { toast } from 'sonner';
-
-const COOKIE_NAME = 'force-jwt-refresh';
+import { JWT_REFRESH_COOKIE_NAME } from '@ancstra/auth';
 
 function readCookie(name: string): string | null {
   if (typeof document === 'undefined') return null;
@@ -30,10 +29,10 @@ export function JwtRefreshObserver() {
   const pathname = usePathname();
 
   useEffect(() => {
-    const value = readCookie(COOKIE_NAME);
+    const value = readCookie(JWT_REFRESH_COOKIE_NAME);
     if (value === '1') {
       void update().then(() => {
-        clearCookie(COOKIE_NAME);
+        clearCookie(JWT_REFRESH_COOKIE_NAME);
         toast.info('Access updated');
       });
     }

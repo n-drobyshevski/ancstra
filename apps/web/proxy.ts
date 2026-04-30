@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { centralSchema } from '@ancstra/db';
+import { JWT_REFRESH_COOKIE_NAME } from '@ancstra/auth';
 import { auth } from './auth';
 import { getCentralDb } from './lib/db-singleton';
 
@@ -61,7 +62,7 @@ export const proxy = auth(async (request) => {
     // Cookie is non-httpOnly so client-side <JwtRefreshObserver> can read it.
     // Carries no secret — only a signal that the server detected staleness.
     // The actual JWT cookie remains correctly httpOnly.
-    response.cookies.set('force-jwt-refresh', '1', {
+    response.cookies.set(JWT_REFRESH_COOKIE_NAME, '1', {
       httpOnly: false,
       sameSite: 'lax',
       path: '/',
@@ -120,7 +121,7 @@ export const proxy = auth(async (request) => {
 
   if (staleJwtDetected) {
     // Non-httpOnly: read by client-side <JwtRefreshObserver> (sub-spec D1).
-    response.cookies.set('force-jwt-refresh', '1', {
+    response.cookies.set(JWT_REFRESH_COOKIE_NAME, '1', {
       httpOnly: false,
       sameSite: 'lax',
       path: '/',
