@@ -3,7 +3,8 @@ import { eq } from 'drizzle-orm';
 import { centralSchema } from '@ancstra/db';
 import { JWT_REFRESH_COOKIE_NAME } from '@ancstra/auth';
 import { auth } from './auth';
-import { getCentralDb } from './lib/db-singleton';
+import { getCentralDb, getCentralDbSync } from './lib/db-singleton';
+import { bumpLastSeenAt } from './lib/auth/last-seen-tracker';
 
 async function fetchMembershipsVersion(userId: string): Promise<number> {
   const db = await getCentralDb();
@@ -117,6 +118,8 @@ export const proxy = auth(async (request) => {
       path: '/',
       maxAge: 60 * 60 * 24 * 365,
     });
+    // Fire-and-forget: track when user last switched to this family.
+    void bumpLastSeenAt(getCentralDbSync(), session.user.id, familyParam);
   }
 
   if (staleJwtDetected) {
