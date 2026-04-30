@@ -32,7 +32,7 @@ import {
 
 export async function POST(request: Request) {
   try {
-    const { ctx, familyDb } = await withAuth('ai:research');
+    const { ctx, familyDb } = await withAuth('ai:research', request);
 
     const { messages, focusPersonId } = await request.json();
 

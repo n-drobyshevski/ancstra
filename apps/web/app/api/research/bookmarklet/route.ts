@@ -92,7 +92,7 @@ function stripToPlainText(html: string): string {
 
 export async function POST(request: Request) {
   try {
-    const { ctx, familyDb } = await withAuth('ai:research');
+    const { ctx, familyDb } = await withAuth('ai:research', request);
 
     const formData = await request.formData();
     const url = formData.get('url') as string | null;

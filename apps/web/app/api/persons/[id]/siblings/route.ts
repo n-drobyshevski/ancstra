@@ -15,7 +15,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { ctx, familyDb, centralDb } = await withAuth('family:create');
+    const { ctx, familyDb, centralDb } = await withAuth('family:create', request);
 
     const { id: personId } = await params;
     const body = await request.json();

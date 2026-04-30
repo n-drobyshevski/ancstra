@@ -15,7 +15,7 @@ import {
 
 export async function GET(request: Request) {
   try {
-    const { familyDb } = await withAuth('ai:research');
+    const { familyDb } = await withAuth('ai:research', request);
     const url = new URL(request.url);
     const personId = url.searchParams.get('personId');
     const tone = (url.searchParams.get('tone') || 'conversational') as 'formal' | 'conversational' | 'storytelling';
@@ -48,7 +48,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const { ctx, familyDb, centralDb } = await withAuth('ai:research');
+    const { ctx, familyDb, centralDb } = await withAuth('ai:research', request);
 
     const body = await request.json();
     const { personId, tone = 'conversational', length = 'standard', focus = 'life_overview' } = body;

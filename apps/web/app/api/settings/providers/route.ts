@@ -78,9 +78,9 @@ const DEFAULT_PROVIDERS = [
   },
 ];
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const { familyDb } = await withAuth('tree:view');
+    const { familyDb } = await withAuth('tree:view', request);
 
     // Check if table has data
     const [{ count }] = await familyDb

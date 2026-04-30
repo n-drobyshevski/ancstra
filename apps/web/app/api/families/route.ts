@@ -7,7 +7,7 @@ import { withAuth, handleAuthError, logAndInvalidate } from '@/lib/auth/api-guar
 
 export async function POST(request: Request) {
   try {
-    const { ctx, familyDb, centralDb } = await withAuth('family:create');
+    const { ctx, familyDb, centralDb } = await withAuth('family:create', request);
 
     const body = await request.json();
     const parsed = createFamilySchema.safeParse(body);

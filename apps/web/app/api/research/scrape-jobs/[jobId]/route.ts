@@ -3,11 +3,11 @@ import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
 import { getScrapeJob } from '@ancstra/research';
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ jobId: string }> }
 ) {
   try {
-    const { familyDb } = await withAuth('ai:research');
+    const { familyDb } = await withAuth('ai:research', request);
     const { jobId } = await params;
     const job = await getScrapeJob(familyDb, jobId);
 

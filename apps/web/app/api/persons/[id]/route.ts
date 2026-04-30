@@ -8,11 +8,11 @@ import { parseDateToSort } from '@ancstra/shared';
 import { withAuth, withOptimisticLock, handleAuthError, logAndInvalidate } from '@/lib/auth/api-guard';
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { familyDb } = await withAuth('tree:view');
+    const { familyDb } = await withAuth('tree:view', request);
     const { id } = await params;
     const person = await assemblePersonDetail(familyDb, id);
     if (!person) return NextResponse.json({ error: 'Not found' }, { status: 404 });
@@ -27,7 +27,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { ctx, familyDb, centralDb } = await withAuth('person:edit');
+    const { ctx, familyDb, centralDb } = await withAuth('person:edit', request);
 
     const { id } = await params;
     const body = await request.json();
@@ -179,11 +179,11 @@ export async function PUT(
 }
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { ctx, familyDb, centralDb } = await withAuth('person:delete');
+    const { ctx, familyDb, centralDb } = await withAuth('person:delete', request);
 
     const { id } = await params;
 

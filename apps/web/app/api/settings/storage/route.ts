@@ -30,9 +30,9 @@ async function getDirSize(dirPath: string): Promise<number> {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const { ctx } = await withAuth('settings:manage');
+    const { ctx } = await withAuth('settings:manage', request);
 
     const dbPath = process.env.DATABASE_URL || join(process.cwd(), '..', '..', 'packages', 'db', 'data', ctx.dbFilename);
     const archivePath = process.env.ARCHIVE_PATH || join(process.cwd(), 'data', 'archives');

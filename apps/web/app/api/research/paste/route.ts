@@ -11,7 +11,7 @@ const requestSchema = z.object({
 
 export async function POST(request: Request) {
   try {
-    const { ctx, familyDb } = await withAuth('ai:research');
+    const { ctx, familyDb } = await withAuth('ai:research', request);
 
     const body = await request.json();
     const parsed = requestSchema.safeParse(body);

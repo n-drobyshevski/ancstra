@@ -2,9 +2,9 @@ import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
-    const { ctx } = await withAuth('settings:manage');
+    const { ctx } = await withAuth('settings:manage', request);
 
     const dbPath = process.env.DATABASE_URL || join(process.cwd(), '..', '..', 'packages', 'db', 'data', ctx.dbFilename);
 

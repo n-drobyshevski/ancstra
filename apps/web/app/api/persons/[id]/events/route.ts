@@ -4,11 +4,11 @@ import { eq, sql } from 'drizzle-orm';
 import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { familyDb } = await withAuth('tree:view');
+    const { familyDb } = await withAuth('tree:view', request);
     const { id } = await params;
 
     const personEvents = await familyDb

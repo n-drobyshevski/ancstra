@@ -11,7 +11,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { familyDb } = await withAuth('relationship:validate');
+    const { familyDb } = await withAuth('relationship:validate', request);
 
     const { id } = await params;
     const body = await request.json();
