@@ -15,6 +15,7 @@ declare module 'next-auth' {
       email?: string | null;
       image?: string | null;
       memberships?: FamilyMembership[];
+      membershipsVersion?: number;
     };
   }
 }
@@ -23,5 +24,6 @@ declare module 'next-auth/jwt' {
   interface JWT {
     userId?: string;
     memberships?: FamilyMembership[];
+    membershipsVersion?: number;
   }
 }
