@@ -9,6 +9,9 @@ export const users = sqliteTable('users', {
   avatarUrl: text('avatar_url'),
   emailVerified: integer('email_verified').notNull().default(0),
   membershipsVersion: integer('memberships_version').notNull().default(0),
+  // Cross-family super-admin flag. Independent of family-scoped roles.
+  // Granted via promote-platform-admin script or platformAdmin.toggle mutation.
+  isPlatformAdmin: integer('is_platform_admin').notNull().default(0),
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
   updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
 });
@@ -82,6 +85,24 @@ export const invitations = sqliteTable('invitations', {
 }, (table) => [
   index('idx_invitations_family').on(table.familyId),
   index('idx_invitations_token').on(table.token),
+]);
+
+// ==================== PLATFORM AUDIT LOG ====================
+// Cross-family audit trail for platform-admin actions. Separate from
+// activityFeed (which is family-scoped + FK NOT NULL on familyId) so we
+// don't pollute per-family feeds with system-level events.
+export const platformAuditLog = sqliteTable('platform_audit_log', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  actorUserId: text('actor_user_id').notNull().references(() => users.id),
+  action: text('action').notNull(),                   // e.g. 'platform_admin.toggle'
+  targetType: text('target_type').notNull(),          // 'user' | 'family'
+  targetId: text('target_id').notNull(),
+  summary: text('summary').notNull(),
+  metadata: text('metadata'),                          // JSON string
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+}, (table) => [
+  index('idx_platform_audit_actor_date').on(table.actorUserId, table.createdAt),
+  index('idx_platform_audit_target').on(table.targetType, table.targetId),
 ]);
 
 // ==================== ACTIVITY FEED ====================

@@ -14,8 +14,10 @@ import {
   LogOut,
   ExternalLink,
   FileStack,
+  ShieldCheck,
   type LucideIcon,
 } from 'lucide-react';
+import { PlatformAdminOnly } from '@/components/auth/platform-admin-only';
 import { signOut } from 'next-auth/react';
 import {
   Sidebar,
@@ -146,6 +148,16 @@ export function AppSidebar({ factsheetCount = 0 }: AppSidebarProps) {
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>
+          <PlatformAdminOnly>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild tooltip="Platform Admin">
+                <Link href="/admin" onClick={() => setOpenMobile(false)}>
+                  <ShieldCheck />
+                  <span>Platform</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </PlatformAdminOnly>
           <SidebarMenuItem>
             <SidebarMenuButton asChild tooltip="Settings">
               <Link href="/settings" onClick={() => setOpenMobile(false)}>

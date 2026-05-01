@@ -77,6 +77,24 @@ export const proxy = auth(async (request) => {
   const familyCookie = request.cookies.get('active-family')?.value;
   const requestedFamilyId = familyParam || familyCookie || '';
 
+  // Platform-admin v1: /admin/* paths are family-agnostic. Bypass the
+  // create-family redirect and family-scope header injection. The page-level
+  // requirePlatformAdmin() guard verifies the claim; non-admins get notFound().
+  // We still set x-user-id so server components can identify the user.
+  if (request.nextUrl.pathname.startsWith('/admin')) {
+    requestHeaders.set('x-user-id', session.user.id);
+    const adminResponse = NextResponse.next({ request: { headers: requestHeaders } });
+    if (staleJwtDetected) {
+      adminResponse.cookies.set(JWT_REFRESH_COOKIE_NAME, '1', {
+        httpOnly: false,
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 60,
+      });
+    }
+    return adminResponse;
+  }
+
   // Authenticated user with no family yet → redirect to /create-family.
   // `memberships === undefined` means the JWT predates this code (existing
   // session) — let getAuthContext fall back to DB rather than wrongly

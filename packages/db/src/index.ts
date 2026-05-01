@@ -271,6 +271,28 @@ export async function ensureCentralSchema(db: CentralDatabase, dbKey?: string): 
       ON family_members (family_id) WHERE role = 'owner'
   `);
 
+  // Platform-admin v1 2026-05-01: cross-family super-admin flag
+  try {
+    await db.run(sql`ALTER TABLE users ADD COLUMN is_platform_admin INTEGER NOT NULL DEFAULT 0`);
+  } catch { /* column already exists */ }
+
+  // Platform-admin v1 2026-05-01: audit trail for platform-level actions.
+  // Separate from activity_feed which requires NOT NULL family_id.
+  await db.run(sql`
+    CREATE TABLE IF NOT EXISTS platform_audit_log (
+      id TEXT PRIMARY KEY,
+      actor_user_id TEXT NOT NULL REFERENCES users(id),
+      action TEXT NOT NULL,
+      target_type TEXT NOT NULL,
+      target_id TEXT NOT NULL,
+      summary TEXT NOT NULL,
+      metadata TEXT,
+      created_at TEXT NOT NULL
+    )
+  `);
+  await db.run(sql`CREATE INDEX IF NOT EXISTS idx_platform_audit_actor_date ON platform_audit_log(actor_user_id, created_at)`);
+  await db.run(sql`CREATE INDEX IF NOT EXISTS idx_platform_audit_target ON platform_audit_log(target_type, target_id)`);
+
   if (dbKey) _ensuredCentralDbs.add(dbKey);
 }
 
