@@ -1,15 +1,21 @@
-import { headers } from 'next/headers';
+import { cacheLife, cacheTag } from 'next/cache';
 import { getCentralDb } from '@/lib/db-singleton';
 import { getPlatformCounts } from '@ancstra/auth/admin';
 import { DashboardCards } from '@/components/admin/dashboard-cards';
 
-export default async function AdminDashboardPage() {
-  // Touch request data so Next.js 16 marks this render as dynamic — the
-  // dashboard reads "now" for the signups-last-7d window. Without this, the
-  // cacheComponents analyzer rejects `new Date()` as ambient time access.
-  await headers();
+// Cache the 5 aggregate COUNT queries against Turso. With cacheLife('minutes')
+// the dashboard becomes near-instant on every hit after the first per minute.
+// Invalidated by `revalidateTag('platform-counts')` from togglePlatformAdmin.
+async function getCachedPlatformCounts() {
+  'use cache';
+  cacheLife('minutes');
+  cacheTag('platform-counts');
   const db = await getCentralDb();
-  const counts = await getPlatformCounts(db, new Date());
+  return getPlatformCounts(db, new Date());
+}
+
+export default async function AdminDashboardPage() {
+  const counts = await getCachedPlatformCounts();
 
   return (
     <div className="space-y-6">

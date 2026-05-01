@@ -1,3 +1,4 @@
+import { cacheLife, cacheTag } from 'next/cache';
 import { getCentralDb } from '@/lib/db-singleton';
 import { listAllFamilies } from '@ancstra/auth/admin';
 import { FamiliesTable } from '@/components/admin/families-table';
@@ -8,17 +9,24 @@ export const metadata = { title: 'Families — Admin' };
 
 const PAGE_SIZE = 50;
 
+async function getCachedFamiliesPage(q: string, offset: number) {
+  'use cache';
+  cacheLife('minutes');
+  cacheTag('platform-families');
+  const db = await getCentralDb();
+  return listAllFamilies(db, { q: q || undefined, offset, limit: PAGE_SIZE });
+}
+
 export default async function AdminFamiliesPage({
   searchParams,
 }: {
   searchParams: Promise<{ q?: string; offset?: string }>;
 }) {
   const sp = await searchParams;
-  const q = sp.q?.trim() || undefined;
+  const q = sp.q?.trim() ?? '';
   const offset = Math.max(0, parseInt(sp.offset ?? '0', 10) || 0);
 
-  const db = await getCentralDb();
-  const { rows, total } = await listAllFamilies(db, { q, offset, limit: PAGE_SIZE });
+  const { rows, total } = await getCachedFamiliesPage(q, offset);
 
   return (
     <div className="space-y-6">
@@ -30,14 +38,14 @@ export default async function AdminFamiliesPage({
       </div>
       <DataTableToolbar
         basePath="/admin/families"
-        q={q ?? ''}
+        q={q}
         total={total}
         placeholder="Search by family name…"
       />
       <FamiliesTable rows={rows} />
       <DataTablePagination
         basePath="/admin/families"
-        q={q}
+        q={q || undefined}
         offset={offset}
         limit={PAGE_SIZE}
         total={total}

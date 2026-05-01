@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { eq } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
+import { updateTag } from 'next/cache';
 import { centralSchema } from '@ancstra/db';
 import { bumpMembershipsVersion } from '@ancstra/auth';
 import {
@@ -75,6 +76,15 @@ export const platformAdminRouter = createTRPCRouter({
           : `Demoted ${target.name} (${target.email}) from platform admin`,
         metadata: { previous: target.isPlatformAdmin === 1, next: input.value },
       });
+
+      // Read-your-own-writes: the admin who toggled gets fresh data on their
+      // next render. updateTag is the Next 16 primitive for this (vs.
+      // revalidateTag which purges globally and now requires a profile arg).
+      // Affected: dashboard's platform-admin count, users list (badge column),
+      // that user's detail page.
+      updateTag('platform-counts');
+      updateTag('platform-users');
+      updateTag(`platform-user:${input.userId}`);
 
       return { ok: true, changed: true } as const;
     }),

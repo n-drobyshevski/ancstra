@@ -1,3 +1,4 @@
+import { cacheLife, cacheTag } from 'next/cache';
 import { getCentralDb } from '@/lib/db-singleton';
 import { listAllUsers } from '@ancstra/auth/admin';
 import { UsersTable } from '@/components/admin/users-table';
@@ -8,17 +9,26 @@ export const metadata = { title: 'Users — Admin' };
 
 const PAGE_SIZE = 50;
 
+// Cache key derives from (q, offset). Normalize q to '' at call site so
+// undefined and empty don't produce different cache entries.
+async function getCachedUsersPage(q: string, offset: number) {
+  'use cache';
+  cacheLife('minutes');
+  cacheTag('platform-users');
+  const db = await getCentralDb();
+  return listAllUsers(db, { q: q || undefined, offset, limit: PAGE_SIZE });
+}
+
 export default async function AdminUsersPage({
   searchParams,
 }: {
   searchParams: Promise<{ q?: string; offset?: string }>;
 }) {
   const sp = await searchParams;
-  const q = sp.q?.trim() || undefined;
+  const q = sp.q?.trim() ?? '';
   const offset = Math.max(0, parseInt(sp.offset ?? '0', 10) || 0);
 
-  const db = await getCentralDb();
-  const { rows, total } = await listAllUsers(db, { q, offset, limit: PAGE_SIZE });
+  const { rows, total } = await getCachedUsersPage(q, offset);
 
   return (
     <div className="space-y-6">
@@ -30,14 +40,14 @@ export default async function AdminUsersPage({
       </div>
       <DataTableToolbar
         basePath="/admin/users"
-        q={q ?? ''}
+        q={q}
         total={total}
         placeholder="Search by name or email…"
       />
       <UsersTable rows={rows} />
       <DataTablePagination
         basePath="/admin/users"
-        q={q}
+        q={q || undefined}
         offset={offset}
         limit={PAGE_SIZE}
         total={total}
