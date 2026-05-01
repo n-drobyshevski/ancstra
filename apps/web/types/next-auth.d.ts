@@ -16,6 +16,7 @@ declare module 'next-auth' {
       image?: string | null;
       memberships?: FamilyMembership[];
       membershipsVersion?: number;
+      isPlatformAdmin?: boolean;
     };
   }
 }
@@ -25,5 +26,6 @@ declare module 'next-auth/jwt' {
     userId?: string;
     memberships?: FamilyMembership[];
     membershipsVersion?: number;
+    isPlatformAdmin?: boolean;
   }
 }

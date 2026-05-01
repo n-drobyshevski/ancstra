@@ -103,12 +103,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           token.memberships = memberships as FamilyMembership[];
 
           // Sub-spec A: also fetch users.memberships_version for staleness detection
+          // Platform-admin v1: also fetch is_platform_admin so /admin guard can read claim
           const userRow = await db
-            .select({ v: centralSchema.users.membershipsVersion })
+            .select({
+              v: centralSchema.users.membershipsVersion,
+              isPlatformAdmin: centralSchema.users.isPlatformAdmin,
+            })
             .from(centralSchema.users)
             .where(eq(centralSchema.users.id, token.userId as string))
             .get();
           token.membershipsVersion = userRow?.v ?? 0;
+          token.isPlatformAdmin = userRow?.isPlatformAdmin === 1;
         } catch (error) {
           console.error('[AUTH] Error loading memberships into JWT:', error);
         }
@@ -124,6 +129,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
       if (typeof token.membershipsVersion === 'number') {
         session.user.membershipsVersion = token.membershipsVersion;
+      }
+      if (typeof token.isPlatformAdmin === 'boolean') {
+        session.user.isPlatformAdmin = token.isPlatformAdmin;
       }
       return session;
     },

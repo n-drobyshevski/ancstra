@@ -21,6 +21,10 @@
     "./types": {
       "types": "./src/types.ts",
       "default": "./src/types.ts"
+    },
+    "./admin": {
+      "types": "./src/admin-queries.ts",
+      "default": "./src/admin-queries.ts"
     }
   },
   "scripts": {
