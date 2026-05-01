@@ -1,17 +1,20 @@
+import { Suspense } from 'react';
 import { requirePlatformAdmin } from '@/lib/auth/platform-admin';
 import { AdminNav } from '@/components/admin/admin-nav';
 import { PagePadding } from '@/components/page-padding';
 import Link from 'next/link';
 import { ShieldCheck } from 'lucide-react';
 
-export default async function AdminLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  // Defense in depth — the proxy lets /admin through but doesn't gate it.
-  // requirePlatformAdmin() returns 404 (notFound) for non-admins so we don't
-  // leak existence of admin routes.
+/**
+ * Inner async component holds the auth await. The chrome only renders for
+ * platform admins — non-admins hit notFound() before any HTML escapes, so
+ * the "Platform Admin" branding doesn't leak existence of /admin routes.
+ *
+ * The DB-fallback path inside requirePlatformAdmin (for stale JWTs that
+ * predate the is_platform_admin claim) is uncached; Next 16 cacheComponents
+ * requires Suspense around uncached reads, hence the wrapper below.
+ */
+async function AdminLayoutGuarded({ children }: { children: React.ReactNode }) {
   await requirePlatformAdmin();
 
   return (
@@ -34,5 +37,17 @@ export default async function AdminLayout({
         </div>
       </PagePadding>
     </div>
+  );
+}
+
+export default function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <Suspense fallback={null}>
+      <AdminLayoutGuarded>{children}</AdminLayoutGuarded>
+    </Suspense>
   );
 }

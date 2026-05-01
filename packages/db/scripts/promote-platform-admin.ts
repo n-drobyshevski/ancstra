@@ -7,12 +7,24 @@
  * via /admin/users/[id].
  *
  * Usage:
- *   pnpm --filter @ancstra/db tsx scripts/promote-platform-admin.ts <email>
- *   pnpm --filter @ancstra/db tsx scripts/promote-platform-admin.ts <email> --revoke
+ *   pnpm exec tsx packages/db/scripts/promote-platform-admin.ts <email>
+ *   pnpm exec tsx packages/db/scripts/promote-platform-admin.ts <email> --revoke
  *
- * Reads CENTRAL_DATABASE_URL from env (defaults to ~/.ancstra/ancstra.sqlite).
+ * Resolves CENTRAL_DATABASE_URL by loading apps/web/.env.local (where Vercel
+ * pulls credentials to in dev). Falls back to ~/.ancstra/ancstra.sqlite if
+ * the env var is unset, but in practice you almost always want the Turso DB
+ * the running app actually connects to.
  */
-import 'dotenv/config';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { config } from 'dotenv';
+
+// Load env from apps/web/.env.local (project convention — single source of
+// truth populated by `vercel env pull`). dotenv won't override existing env
+// vars, so a shell-set CENTRAL_DATABASE_URL still wins.
+const here = path.dirname(fileURLToPath(import.meta.url));
+config({ path: path.resolve(here, '../../../apps/web/.env.local') });
+
 import { eq, sql } from 'drizzle-orm';
 import { createCentralDb, ensureCentralSchema } from '../src/index';
 import { users } from '../src/central-schema';

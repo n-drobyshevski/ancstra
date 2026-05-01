@@ -333,8 +333,17 @@ export interface PlatformCounts {
   platformAdminCount: number;
 }
 
-export async function getPlatformCounts(centralDb: CentralDb): Promise<PlatformCounts> {
-  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+/**
+ * Caller passes `now` so this function stays pure — Next.js 16 cacheComponents
+ * flags `Date.now()` inside server components unless request data was touched
+ * first. Keeping the clock at the call site lets each page decide its own
+ * dynamic-vs-cached boundary.
+ */
+export async function getPlatformCounts(
+  centralDb: CentralDb,
+  now: Date,
+): Promise<PlatformCounts> {
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
   const [users, families, memberships, recent, admins] = await Promise.all([
     centralDb.select({ n: count() }).from(centralSchema.users).get(),
