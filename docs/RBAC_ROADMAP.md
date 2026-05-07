@@ -1,6 +1,6 @@
 # RBAC Roadmap
 
-Permanent reference for the role-based access control work in Ancstra. The cross-cutting architecture started as five sub-specs (B → A → D → C → E); D was split into D1 (foundation) + D2 (UX) during the D brainstorm because its surface grew (carry-forwards from B/A + ~30-component RoleGate adoption). Four shipped, two pending. This doc is the entry point for everything RBAC.
+Permanent reference for the role-based access control work in Ancstra. The cross-cutting architecture started as five sub-specs (B → A → D → C → E); D was split into D1 (foundation) + D2 (UX) during the D brainstorm because its surface grew (carry-forwards from B/A + ~30-component RoleGate adoption). Five shipped, one pending. This doc is the entry point for everything RBAC.
 
 **Status:**
 
@@ -10,7 +10,7 @@ Permanent reference for the role-based access control work in Ancstra. The cross
 | **A** | Enforcement hardening (header trust, JWT staleness, owner-uniqueness) | ✅ Shipped 2026-04-30 | `sub-spec-a-complete` | [ADR-014](architecture/decisions/014-rbac-enforcement-hardening.md) |
 | **D1** | Client-side enforcement foundation (SessionProvider, useHasPermission, RoleGate, JWT refresh observer + 409 link) | ✅ Shipped 2026-04-30 | `sub-spec-d1-complete` | [ADR-015](architecture/decisions/015-rbac-client-foundation.md) |
 | **D2** | Family switcher UX + RoleGate adoption sweep + lastSeenAt + onboarding | ✅ Shipped 2026-04-30 | `sub-spec-d2-complete` | [ADR-016](architecture/decisions/016-rbac-d2-ux-layer.md) |
-| **C** | Share / invite UX (settings/members page) | ⏳ Pending | — | — |
+| **C** | Share / invite UX (settings/members page) | ✅ Shipped 2026-05-07 | `sub-spec-c-complete` | [ADR-017](architecture/decisions/017-rbac-share-invite-ux.md) |
 | **E** | Audit, tests, docs (test fixture consolidation, matrix tests) | ⏳ Pending | — | — |
 
 ---
@@ -31,14 +31,17 @@ docs/
 │   ├── d1-foundation/
 │   │   ├── design.md            ← spec
 │   │   └── plan.md              ← 13-task implementation plan
-│   └── d2-ux/                   ← TODO: promote from docs/superpowers/{specs,plans}/
-│       ├── design.md            ← spec (pending promotion)
-│       └── plan.md              ← implementation plan (pending promotion)
+│   ├── d2-ux/                   ← drafts not promoted (worktree cleanup;
+│   │                              ADR-016 carries the decisions)
+│   └── c-share-invite/
+│       ├── design.md            ← spec
+│       └── plan.md              ← 14-task implementation plan
 └── architecture/decisions/
     ├── 013-trpc-as-action-substrate.md
     ├── 014-rbac-enforcement-hardening.md
     ├── 015-rbac-client-foundation.md
-    └── 016-rbac-d2-ux-layer.md
+    ├── 016-rbac-d2-ux-layer.md
+    └── 017-rbac-share-invite-ux.md
 ```
 
 The per-sub-spec design + plan files in `docs/rbac/<name>/` are the historical artifacts as they were at execution time, committed alongside this roadmap. Working drafts for in-flight sub-specs live in `docs/superpowers/{specs,plans}/` (gitignored) and are promoted to `docs/rbac/` when the sub-spec ships.
@@ -58,7 +61,7 @@ The per-sub-spec design + plan files in `docs/rbac/<name>/` are the historical a
 
 ---
 
-## What shipped (sub-specs B + A + D1 + D2)
+## What shipped (sub-specs B + A + D1 + D2 + C)
 
 **Sub-spec B — tRPC migration** ([design](rbac/b-trpc-migration/design.md) · [plan](rbac/b-trpc-migration/plan.md))
 - Typed tRPC v11 layer at `apps/web/server/api/` (init, 3 middlewares, 4 procedure flavors, 5 routers, RSC caller, React Query client + provider)
@@ -99,22 +102,24 @@ The per-sub-spec design + plan files in `docs/rbac/<name>/` are the historical a
 - Welcome toast on dashboard after invite-accept
 - ADR-016; new tests: +30; total apps/web 459 (was 429)
 
+**Sub-spec C — Share / invite UX** ([design](rbac/c-share-invite/design.md) · [plan](rbac/c-share-invite/plan.md))
+- New permission `members:transfer-ownership` (owner-only) added to matrix
+- `transferOwnership` wrapped in explicit `BEGIN/COMMIT/ROLLBACK` transaction (raw SQL, driver-agnostic for both better-sqlite3 and libsql) — closes the non-atomic carry-forward from A
+- UQ partial-index violation surfaced as `ConcurrentTransferError` → HTTP 409 `{ code: 'CONCURRENT_TRANSFER' }`
+- New `POST /api/families/[id]/members/[userId]/transfer-ownership` endpoint (no body — caller transfers their own ownership)
+- `<TransferOwnershipDialog>` — type-to-confirm with family name (whitespace-trimmed match)
+- Per-row `<DropdownMenu>` in `<MemberList>` (Transfer ownership + Remove member); replaces the old standalone trash button
+- New "Last seen" column in members table; GET `/members` now returns `lastSeenAt`; rendered via `formatDistanceToNow`
+- `<InviteDialog>` hides "admin" role option for non-owner inviters (UX polish; server already enforced)
+- ADR-017; `sub-spec-c-complete` tag; 11 new tests in `@ancstra/auth` (107 → 118)
+
+**Open questions deferred from C** (revisit if user demand surfaces):
+- Bulk-invite (CSV)?
+- Email delivery provider?
+
 ---
 
 ## What's pending
-
-### Sub-spec C — Share / invite UX
-
-- `/settings/members` page expansion: list members (name, role badge, join date, last-seen), pending invites table
-- Per-row actions: change role, remove member, transfer ownership (admin can change non-owner roles; owner can change any)
-- Invite-by-email dialog with role picker (admin/editor/viewer only — owner hidden)
-- The REST routes at `/api/families/[id]/members/[userId]` already cover the mutations and now bump `memberships_version` (sub-spec A's C1 fix); C should surface them via the existing UI rather than duplicate as tRPC procedures
-- Invite flow already exists at `packages/auth/src/invitations.ts` — wire into UI
-
-**Open questions for C's brainstorm:**
-- Bulk-invite (CSV)?
-- Invite-via-link (no email)?
-- Email delivery provider?
 
 ### Sub-spec E — Audit, tests, docs
 
@@ -138,7 +143,7 @@ The per-sub-spec design + plan files in `docs/rbac/<name>/` are the historical a
 |---|---|---|
 | Migrate `@ancstra/ai` off the `zod/v3` shim | sub-spec B Task 1 review | E (or a dedicated minor cleanup PR) |
 | Vercel 4.5 MB body-limit guard for GEDCOM imports | sub-spec B Task 23 review | Separate PR — UX touches the import dialog |
-| `transferOwnership` non-atomic across role swap + version bumps + registry update | sub-spec A final review (I4) | Dedicated transaction-wrap PR (deferred from D1) |
+| ~~`transferOwnership` non-atomic across role swap + version bumps + registry update~~ | sub-spec A final review (I4) | ✅ Folded into C plan (Tasks 3-4) |
 | ~~`getCentralDbSync()` doesn't trigger `ensureCentralSchema`~~ | sub-spec A final review (I2) | ✅ Folded into D1 plan (Task 10) |
 | ~10 routes still call `createCentralDb()` directly (bypass singleton) | sub-spec A final review (M1) | E or minor cleanup (deferred from D1) |
 | ~~Naming asymmetry: `formAction` vs `authedFormAction`/`publicFormAction`~~ | sub-spec B final review | ✅ Folded into D1 plan (Task 11) |
@@ -167,13 +172,11 @@ The per-sub-spec design + plan files in `docs/rbac/<name>/` are the historical a
 
 ## Suggested execution order for what's next
 
-Updated post-D2: B → A → ~~D1~~ → ~~D2~~ → **C** → E.
+Updated post-C: B → A → ~~D1~~ → ~~D2~~ → ~~C~~ → **E**.
 
-**C is up next** — D2's RoleGate adoption is in place; C wires the share/invite UX (members list, role changes, invite dialog), which will benefit directly from `<RoleGate permission="members:manage">` wrapping its action buttons.
+**E is up next** — with C shipped, the integration-test grid can exercise the full RBAC matrix end-to-end (4 roles × ~58 endpoints), and the shared test fixture for central schema can finally be designed against the stable shape (closes the 22-files-hand-write-CREATE-TABLE maintenance hazard from sub-spec A).
 
-**E (audit, tests, docs)** is best done last — once C ships, the integration-test grid will exercise the full RBAC matrix end-to-end, and the shared test fixture for central schema can be designed against the final shape.
-
-**Standalone cleanup PRs** can land independently whenever convenient (createCentralDb singleton sweep, transferOwnership atomicity).
+**Standalone cleanup PRs** can land independently whenever convenient (createCentralDb singleton sweep, `@ancstra/ai` zod/v3 shim, GEDCOM body-limit guard).
 
 ---
 

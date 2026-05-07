@@ -1,4 +1,4 @@
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import {
   familyRegistry,
   familyMembers,
@@ -6,6 +6,7 @@ import {
 import { isWebMode } from '@ancstra/db';
 import type { CentralDatabase } from '@ancstra/db';
 import type { Role } from './types';
+import { ConcurrentTransferError } from './types';
 import { bumpMembershipsVersion, bumpMembershipsVersionMany } from './memberships';
 
 export interface FamilyWithRole {
@@ -125,7 +126,15 @@ export async function getFamilyMembership(
 
 /**
  * Transfer family ownership from current owner to new owner (must be admin).
- * Atomically swaps roles and updates family_registry.owner_id.
+ * Wrapped in a transaction so demote/promote/version-bump/registry-update
+ * either all commit or all roll back. The partial unique index
+ * `uq_family_members_family_owner` is the concurrency guard for parallel
+ * transfers — its violation is caught and surfaced as ConcurrentTransferError.
+ *
+ * Uses explicit BEGIN/COMMIT/ROLLBACK so the transaction works with both
+ * better-sqlite3 (sync driver, used in tests) and libsql (async driver,
+ * used in production). Drizzle's .transaction(async cb) only works with
+ * libsql; better-sqlite3 rejects async callbacks.
  */
 export async function transferOwnership(
   centralDb: CentralDatabase,
@@ -135,49 +144,72 @@ export async function transferOwnership(
     newOwnerId: string;
   },
 ): Promise<{ success: boolean; error?: string }> {
-  // Verify the new owner is currently an admin
   const newOwnerMembership = await getFamilyMembership(centralDb, opts.newOwnerId, opts.familyId);
 
   if (!newOwnerMembership) {
     return { success: false, error: 'Target user is not a member of this family' };
   }
-
   if (newOwnerMembership.role !== 'admin') {
     return { success: false, error: 'Target user must be an admin to receive ownership' };
   }
 
-  // Execute the three updates sequentially.
-  // SQLite is single-writer so these are effectively atomic when executed back-to-back.
-  // We avoid .transaction() here because better-sqlite3 rejects async callbacks
-  // while libsql requires them — this pattern works with both drivers.
-  await centralDb.update(familyMembers)
-    .set({ role: 'admin' })
-    .where(
-      and(
+  await centralDb.run(sql`BEGIN`);
+  try {
+    await centralDb.update(familyMembers)
+      .set({ role: 'admin' })
+      .where(and(
         eq(familyMembers.familyId, opts.familyId),
         eq(familyMembers.userId, opts.currentOwnerId),
-      ),
-    )
-    .run();
+      ))
+      .run();
 
-  await centralDb.update(familyMembers)
-    .set({ role: 'owner' })
-    .where(
-      and(
+    await centralDb.update(familyMembers)
+      .set({ role: 'owner' })
+      .where(and(
         eq(familyMembers.familyId, opts.familyId),
         eq(familyMembers.userId, opts.newOwnerId),
-      ),
-    )
-    .run();
+      ))
+      .run();
 
-  // Invalidate JWTs for both users: old owner loses tree:delete + settings:manage,
-  // new owner gains them. Both must re-fetch memberships on next request.
-  await bumpMembershipsVersionMany(centralDb, [opts.currentOwnerId, opts.newOwnerId]);
+    await bumpMembershipsVersionMany(centralDb, [opts.currentOwnerId, opts.newOwnerId]);
 
-  await centralDb.update(familyRegistry)
-    .set({ ownerId: opts.newOwnerId, updatedAt: new Date().toISOString() })
-    .where(eq(familyRegistry.id, opts.familyId))
-    .run();
+    await centralDb.update(familyRegistry)
+      .set({ ownerId: opts.newOwnerId, updatedAt: new Date().toISOString() })
+      .where(eq(familyRegistry.id, opts.familyId))
+      .run();
+
+    await centralDb.run(sql`COMMIT`);
+  } catch (err) {
+    await centralDb.run(sql`ROLLBACK`);
+    if (isOwnerUqViolation(err)) {
+      throw new ConcurrentTransferError();
+    }
+    throw err;
+  }
 
   return { success: true };
+}
+
+/**
+ * Detect violation of the partial UQ index on family_members(family_id) WHERE role='owner'.
+ *
+ * SQLite's UNIQUE-constraint error message for this partial index is
+ *   "UNIQUE constraint failed: family_members.family_id"
+ * (it does NOT include the index name). The composite UQ on
+ * (family_id, user_id) — see central-schema.ts — would instead emit
+ *   "UNIQUE constraint failed: family_members.family_id, family_members.user_id"
+ *
+ * We distinguish the two by requiring `family_id` to appear AND `user_id`
+ * to NOT appear. This is robust against either UQ being added inside a
+ * future revision of `transferOwnership` (e.g. a proactive INSERT into
+ * an ownership-history table would not match either pattern, so the raw
+ * error would propagate as 500 — desirable, since it'd be a bug to flag).
+ */
+function isOwnerUqViolation(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  const msg = err.message.toLowerCase();
+  if (!msg.includes('unique constraint')) return false;
+  if (!msg.includes('family_members.family_id')) return false;
+  if (msg.includes('family_members.user_id')) return false;
+  return true;
 }

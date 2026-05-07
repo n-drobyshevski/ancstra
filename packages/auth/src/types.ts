@@ -20,7 +20,7 @@ export type Permission =
   | 'gedcom:import' | 'gedcom:export'
   | 'ai:research'
   | 'relationship:validate'
-  | 'members:manage' | 'members:invite'
+  | 'members:manage' | 'members:invite' | 'members:transfer-ownership'
   | 'settings:manage'
   | 'contributions:review'
   | 'activity:view';
@@ -52,5 +52,12 @@ export class ForbiddenError extends Error {
     super(`Forbidden: missing permission '${permission}'`);
     this.name = 'ForbiddenError';
     this.permission = permission;
+  }
+}
+
+export class ConcurrentTransferError extends Error {
+  constructor(message = 'Concurrent transfer detected. Please retry.') {
+    super(message);
+    this.name = 'ConcurrentTransferError';
   }
 }

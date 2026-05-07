@@ -23,12 +23,14 @@ import { Label } from '@/components/ui/label';
 import { Check, Copy, Loader2, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { RoleGate } from '@/components/auth/role-gate';
+import type { Role } from '@ancstra/auth';
 
 interface InviteDialogProps {
   familyId: string;
+  currentRole: Role;
 }
 
-export function InviteDialog({ familyId }: InviteDialogProps) {
+export function InviteDialog({ familyId, currentRole }: InviteDialogProps) {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<'admin' | 'editor' | 'viewer'>('viewer');
@@ -165,7 +167,9 @@ export function InviteDialog({ familyId }: InviteDialogProps) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="admin">Admin</SelectItem>
+                  {currentRole === 'owner' && (
+                    <SelectItem value="admin">Admin</SelectItem>
+                  )}
                   <SelectItem value="editor">Editor</SelectItem>
                   <SelectItem value="viewer">Viewer</SelectItem>
                 </SelectContent>

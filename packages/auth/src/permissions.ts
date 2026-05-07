@@ -10,7 +10,7 @@ const ALL_PERMISSIONS: Permission[] = [
   'gedcom:import', 'gedcom:export',
   'ai:research',
   'relationship:validate',
-  'members:manage', 'members:invite',
+  'members:manage', 'members:invite', 'members:transfer-ownership',
   'settings:manage',
   'contributions:review',
   'activity:view',
@@ -18,7 +18,11 @@ const ALL_PERMISSIONS: Permission[] = [
 
 const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   owner: ALL_PERMISSIONS,
-  admin: ALL_PERMISSIONS.filter(p => p !== 'settings:manage' && p !== 'tree:delete'),
+  admin: ALL_PERMISSIONS.filter(p =>
+    p !== 'settings:manage' &&
+    p !== 'tree:delete' &&
+    p !== 'members:transfer-ownership'
+  ),
   editor: [
     'tree:view', 'tree:export',
     'person:create', 'person:edit',

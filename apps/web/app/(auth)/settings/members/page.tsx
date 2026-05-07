@@ -1,6 +1,8 @@
 import { requireAuthContext } from '@/lib/auth/context';
 import { hasPermission } from '@ancstra/auth';
 import { redirect } from 'next/navigation';
+import { createCentralDb, centralSchema } from '@ancstra/db';
+import { eq } from 'drizzle-orm';
 import { MemberList } from '@/components/members/member-list';
 import { InviteDialog } from '@/components/members/invite-dialog';
 import { PendingInvites } from '@/components/members/pending-invites';
@@ -11,6 +13,14 @@ export default async function MembersPage() {
     redirect('/dashboard');
   }
 
+  const centralDb = createCentralDb();
+  const family = await centralDb
+    .select({ name: centralSchema.familyRegistry.name })
+    .from(centralSchema.familyRegistry)
+    .where(eq(centralSchema.familyRegistry.id, ctx.familyId))
+    .get();
+  const familyName = family?.name ?? 'this family';
+
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -20,9 +30,14 @@ export default async function MembersPage() {
             Manage who has access to your family tree and their permissions.
           </p>
         </div>
-        <InviteDialog familyId={ctx.familyId} />
+        <InviteDialog familyId={ctx.familyId} currentRole={ctx.role} />
       </div>
-      <MemberList familyId={ctx.familyId} currentUserId={ctx.userId} currentRole={ctx.role} />
+      <MemberList
+        familyId={ctx.familyId}
+        familyName={familyName}
+        currentUserId={ctx.userId}
+        currentRole={ctx.role}
+      />
       <PendingInvites familyId={ctx.familyId} />
     </div>
   );

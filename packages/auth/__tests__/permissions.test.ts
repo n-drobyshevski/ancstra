@@ -9,11 +9,12 @@ describe('hasPermission', () => {
     expect(hasPermission('owner', 'person:delete')).toBe(true);
   });
 
-  it('admin has all except settings:manage and tree:delete', () => {
+  it('admin has all except settings:manage, tree:delete, and members:transfer-ownership', () => {
     expect(hasPermission('admin', 'person:delete')).toBe(true);
     expect(hasPermission('admin', 'members:manage')).toBe(true);
     expect(hasPermission('admin', 'settings:manage')).toBe(false);
     expect(hasPermission('admin', 'tree:delete')).toBe(false);
+    expect(hasPermission('admin', 'members:transfer-ownership')).toBe(false);
   });
 
   it('editor can create/edit but not delete or manage', () => {
@@ -53,5 +54,20 @@ describe('shouldModerate', () => {
   });
   it('returns false for admin even when moderation enabled', () => {
     expect(shouldModerate('admin', true)).toBe(false);
+  });
+});
+
+describe('members:transfer-ownership', () => {
+  it('owner has it', () => {
+    expect(hasPermission('owner', 'members:transfer-ownership')).toBe(true);
+  });
+  it('admin does not have it', () => {
+    expect(hasPermission('admin', 'members:transfer-ownership')).toBe(false);
+  });
+  it('editor does not have it', () => {
+    expect(hasPermission('editor', 'members:transfer-ownership')).toBe(false);
+  });
+  it('viewer does not have it', () => {
+    expect(hasPermission('viewer', 'members:transfer-ownership')).toBe(false);
   });
 });
