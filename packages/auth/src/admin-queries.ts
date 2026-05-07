@@ -231,6 +231,35 @@ export async function listAllFamilies(
 }
 
 // ====================================================================
+// Existence checks (uncached — used to gate cached detail readers so
+// transient nulls / not-found cases never get baked into the cache)
+// ====================================================================
+
+export async function familyExists(
+  centralDb: CentralDb,
+  familyId: string,
+): Promise<boolean> {
+  const row = await centralDb
+    .select({ id: centralSchema.familyRegistry.id })
+    .from(centralSchema.familyRegistry)
+    .where(eq(centralSchema.familyRegistry.id, familyId))
+    .get();
+  return !!row;
+}
+
+export async function userExists(
+  centralDb: CentralDb,
+  userId: string,
+): Promise<boolean> {
+  const row = await centralDb
+    .select({ id: centralSchema.users.id })
+    .from(centralSchema.users)
+    .where(eq(centralSchema.users.id, userId))
+    .get();
+  return !!row;
+}
+
+// ====================================================================
 // Family search (for admin pickers — cross-family member ops)
 // ====================================================================
 
