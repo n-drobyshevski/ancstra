@@ -20,7 +20,7 @@ export type Permission =
   | 'gedcom:import' | 'gedcom:export'
   | 'ai:research'
   | 'relationship:validate'
-  | 'members:manage' | 'members:invite'
+  | 'members:manage' | 'members:invite' | 'members:transfer-ownership'
   | 'settings:manage'
   | 'contributions:review'
   | 'activity:view';

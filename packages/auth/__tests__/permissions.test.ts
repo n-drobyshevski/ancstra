@@ -55,3 +55,18 @@ describe('shouldModerate', () => {
     expect(shouldModerate('admin', true)).toBe(false);
   });
 });
+
+describe('members:transfer-ownership', () => {
+  it('owner has it', () => {
+    expect(hasPermission('owner', 'members:transfer-ownership')).toBe(true);
+  });
+  it('admin does not have it', () => {
+    expect(hasPermission('admin', 'members:transfer-ownership')).toBe(false);
+  });
+  it('editor does not have it', () => {
+    expect(hasPermission('editor', 'members:transfer-ownership')).toBe(false);
+  });
+  it('viewer does not have it', () => {
+    expect(hasPermission('viewer', 'members:transfer-ownership')).toBe(false);
+  });
+});
