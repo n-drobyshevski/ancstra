@@ -33,6 +33,7 @@ export async function GET(
         userId: centralSchema.familyMembers.userId,
         role: centralSchema.familyMembers.role,
         joinedAt: centralSchema.familyMembers.joinedAt,
+        lastSeenAt: centralSchema.familyMembers.lastSeenAt,
         name: centralSchema.users.name,
         email: centralSchema.users.email,
       })
