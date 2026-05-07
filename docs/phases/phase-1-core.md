@@ -340,7 +340,9 @@ Manual form-based data entry is now the **primary data source**, not GEDCOM impo
 | **Must** | Monorepo scaffolding, Drizzle/SQLite schema (incl. closure table + person_summary), Person CRUD (forms + API), NextAuth.js v5, Tree visualization (React Flow canvas), Person detail panel, Basic search (FTS5), SQLite WAL + backup, Schema migration strategy |
 | **Should** | GEDCOM import (parser + UI), GEDCOM export, PWA foundation, CI/CD pipeline (GitHub Actions), Performance baselines, Accessibility (list tree view), Position persistence (tree_layouts) |
 | **Could** | Multiple saved layouts, Keyboard shortcuts in tree view, Recent persons history, pino analytics logging |
-| **Won't (this phase)** | Multi-user auth, FamilySearch API, AI features, Document upload |
+| **Won't (this phase)** | FamilySearch API, Document upload |
+
+> **Note:** Multi-user RBAC and AI features were originally listed as out-of-scope here but have since shipped as cross-cutting work. See [`docs/RBAC_ROADMAP.md`](../RBAC_ROADMAP.md) for the RBAC sub-specs (B/A/D1/D2/C/E, all complete).
 
 ---
 
