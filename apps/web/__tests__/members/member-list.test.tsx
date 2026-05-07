@@ -1,0 +1,69 @@
+// @vitest-environment jsdom
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { MemberList } from '@/components/members/member-list';
+
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+vi.mock('@/components/auth/role-gate', () => ({
+  RoleGate: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
+const mockMembers = [
+  {
+    id: 'm-1', userId: 'u-owner', role: 'owner', joinedAt: '2026-01-01',
+    lastSeenAt: '2026-05-07T10:00:00Z', name: 'Owner', email: 'o@t',
+  },
+  {
+    id: 'm-2', userId: 'u-admin', role: 'admin', joinedAt: '2026-02-01',
+    lastSeenAt: null, name: 'Admin', email: 'a@t',
+  },
+];
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  global.fetch = vi.fn().mockResolvedValue(
+    new Response(JSON.stringify(mockMembers), { status: 200 })
+  );
+});
+
+/** Open a Radix DropdownMenuTrigger in jsdom (requires pointer events). */
+function openDropdown(trigger: HTMLElement) {
+  fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false, pointerType: 'mouse' });
+  fireEvent.click(trigger);
+}
+
+describe('<MemberList>', () => {
+  it('renders Last seen column header', async () => {
+    render(<MemberList familyId="fam-1" familyName="Test" currentUserId="u-owner" currentRole="owner" />);
+    await waitFor(() => expect(screen.getByText('Owner')).not.toBeNull());
+    expect(screen.getByText('Last seen')).not.toBeNull();
+  });
+
+  it('renders em-dash for null lastSeenAt', async () => {
+    render(<MemberList familyId="fam-1" familyName="Test" currentUserId="u-owner" currentRole="owner" />);
+    await waitFor(() => expect(screen.getByText('Admin')).not.toBeNull());
+    expect(screen.getByText('—')).not.toBeNull();
+  });
+
+  it('owner sees Transfer ownership in dropdown for admin row', async () => {
+    render(<MemberList familyId="fam-1" familyName="Test" currentUserId="u-owner" currentRole="owner" />);
+    await waitFor(() => expect(screen.getByText('Admin')).not.toBeNull());
+
+    const triggers = screen.getAllByLabelText('Member actions');
+    openDropdown(triggers[0]);
+
+    await waitFor(() => {
+      expect(screen.getByText(/transfer ownership/i)).not.toBeNull();
+      expect(screen.getByText(/remove member/i)).not.toBeNull();
+    });
+  });
+
+  it('admin caller does not see Transfer ownership', async () => {
+    render(<MemberList familyId="fam-1" familyName="Test" currentUserId="u-admin" currentRole="admin" />);
+    await waitFor(() => expect(screen.getByText('Admin')).not.toBeNull());
+
+    const triggers = screen.queryAllByLabelText('Member actions');
+    for (const t of triggers) openDropdown(t);
+    expect(screen.queryByText(/transfer ownership/i)).toBeNull();
+  });
+});
