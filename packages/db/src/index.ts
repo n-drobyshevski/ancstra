@@ -287,7 +287,7 @@ export async function ensureCentralSchema(db: CentralDatabase, dbKey?: string): 
       target_id TEXT NOT NULL,
       summary TEXT NOT NULL,
       metadata TEXT,
-      created_at TEXT NOT NULL
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `);
   await db.run(sql`CREATE INDEX IF NOT EXISTS idx_platform_audit_actor_date ON platform_audit_log(actor_user_id, created_at)`);
