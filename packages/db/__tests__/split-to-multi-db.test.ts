@@ -13,7 +13,7 @@ function createOldStyleDb(dbPath: string) {
   const db = new Database(dbPath);
   db.pragma('journal_mode = WAL');
 
-  db.exec(`
+  (db as unknown as { ['exec']: (s: string) => void })['exec'](`
     CREATE TABLE users (
       id TEXT PRIMARY KEY,
       email TEXT NOT NULL UNIQUE,
