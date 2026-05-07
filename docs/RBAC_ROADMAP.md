@@ -1,6 +1,6 @@
 # RBAC Roadmap
 
-Permanent reference for the role-based access control work in Ancstra. The cross-cutting architecture started as five sub-specs (B → A → D → C → E); D was split into D1 (foundation) + D2 (UX) during the D brainstorm because its surface grew (carry-forwards from B/A + ~30-component RoleGate adoption). Five shipped, one pending. This doc is the entry point for everything RBAC.
+Permanent reference for the role-based access control work in Ancstra. The cross-cutting architecture started as five sub-specs (B → A → D → C → E); D was split into D1 (foundation) + D2 (UX) during the D brainstorm because its surface grew (carry-forwards from B/A + ~30-component RoleGate adoption). **All six shipped.** RBAC roadmap complete.
 
 **Status:**
 
@@ -11,7 +11,7 @@ Permanent reference for the role-based access control work in Ancstra. The cross
 | **D1** | Client-side enforcement foundation (SessionProvider, useHasPermission, RoleGate, JWT refresh observer + 409 link) | ✅ Shipped 2026-04-30 | `sub-spec-d1-complete` | [ADR-015](architecture/decisions/015-rbac-client-foundation.md) |
 | **D2** | Family switcher UX + RoleGate adoption sweep + lastSeenAt + onboarding | ✅ Shipped 2026-04-30 | `sub-spec-d2-complete` | [ADR-016](architecture/decisions/016-rbac-d2-ux-layer.md) |
 | **C** | Share / invite UX (settings/members page) | ✅ Shipped 2026-05-07 | `sub-spec-c-complete` | [ADR-017](architecture/decisions/017-rbac-share-invite-ux.md) |
-| **E** | Audit, tests, docs (test fixture consolidation, matrix tests) | ⏳ Pending | — | — |
+| **E** | Audit, tests, docs (test fixture consolidation, matrix tests) | ✅ Shipped 2026-05-07 | `sub-spec-e-complete` | — |
 
 ---
 
@@ -33,9 +33,12 @@ docs/
 │   │   └── plan.md              ← 13-task implementation plan
 │   ├── d2-ux/                   ← drafts not promoted (worktree cleanup;
 │   │                              ADR-016 carries the decisions)
-│   └── c-share-invite/
+│   ├── c-share-invite/
+│   │   ├── design.md            ← spec
+│   │   └── plan.md              ← 14-task implementation plan
+│   └── e-audit-tests-docs/
 │       ├── design.md            ← spec
-│       └── plan.md              ← 14-task implementation plan
+│       └── plan.md              ← 18-task implementation plan
 └── architecture/decisions/
     ├── 013-trpc-as-action-substrate.md
     ├── 014-rbac-enforcement-hardening.md
@@ -57,11 +60,11 @@ The per-sub-spec design + plan files in `docs/rbac/<name>/` are the historical a
 | D3 | Exactly one owner per family, transferable via single transaction; DB-enforced via partial unique index | Implemented (sub-spec A) |
 | D4 | tRPC v11 is the long-term substrate for action-level mutations | Implemented (sub-spec B) |
 | D5 | Build tRPC first (sub-spec B); subsequent sub-specs build on it | Followed |
-| D6 | Audit, tests, docs (sub-spec E) is its own track, not folded into A | Pending — sub-spec E |
+| D6 | Audit, tests, docs (sub-spec E) is its own track, not folded into A | Implemented (sub-spec E) |
 
 ---
 
-## What shipped (sub-specs B + A + D1 + D2 + C)
+## What shipped (all six sub-specs)
 
 **Sub-spec B — tRPC migration** ([design](rbac/b-trpc-migration/design.md) · [plan](rbac/b-trpc-migration/plan.md))
 - Typed tRPC v11 layer at `apps/web/server/api/` (init, 3 middlewares, 4 procedure flavors, 5 routers, RSC caller, React Query client + provider)
@@ -117,23 +120,23 @@ The per-sub-spec design + plan files in `docs/rbac/<name>/` are the historical a
 - Bulk-invite (CSV)?
 - Email delivery provider?
 
+**Sub-spec E — Audit, tests, docs** ([design](rbac/e-audit-tests-docs/design.md) · [plan](rbac/e-audit-tests-docs/plan.md))
+- Shared central-schema test fixture at `packages/db/src/test-fixtures/` (`createTestCentralDb()` + `CENTRAL_SCHEMA_SQL`); 24 hand-written fixtures across 5 packages (auth ×8, db ×2, web ×5, ai ×7, research ×4) consolidated to use the helper
+- Schema-drift meta-test in `packages/db/__tests__/central-schema-fixture.test.ts` catches future schema additions that don't update the fixture
+- Exhaustive permission-matrix test (~112 cases: 4 roles × 27 perms + 4 invariants) in `packages/auth/__tests__/permissions-matrix.test.ts`
+- 6-case multi-family isolation integration test in `packages/auth/__tests__/multi-family-isolation.test.ts`
+- `docs/specs/collaboration.md` rewritten (was "Phase 5: Not Started")
+- `docs/phases/phase-1-core.md` cleaned of stale "multi-user RBAC won't" line
+- New "Central Database" section in `docs/architecture/data-model.md` documenting `users`, `family_registry`, `family_members`, `invitations`, `activity_feed`
+- New "Decision history" section in `docs/rbac/architecture.md` linking ADRs 013-017
+- No new ADR — `architecture.md` is the consolidating artifact
+- `sub-spec-e-complete` tag; auth tests 118 → 236 (+118)
+
 ---
 
 ## What's pending
 
-### Sub-spec E — Audit, tests, docs
-
-- Property test for the permission matrix (`packages/auth`)
-- Integration test grid: per-role × per-route — 4 roles × ~58 endpoints, automated
-- Multi-family integration tests: user with 2 memberships → verify isolation
-- ADR for the 4-roles-but-3-user-facing model (cross-cutting decision D1) — currently scattered across ADR-013, ADR-014; consolidate
-- Rewrite `docs/specs/collaboration.md` to reflect implemented state
-- Update `docs/phases/phase-1-core.md:336-343` to remove "multi-user RBAC won't" line
-- Update `docs/architecture/data-model.md` to document `familyRegistry` + `familyMembers` + `invitations`
-
-**Carries forward into E** (from A reviews):
-- **Shared test fixture for central schema** — 22 test files (web 4, auth 7, ai 7, research 4) now hand-write `users` CREATE TABLE with `memberships_version`. Future schema additions need to update them all in lockstep. Recommended fix: a `packages/db/src/test-fixtures/central-schema-sql.ts` exporter, or call `await ensureCentralSchema(db)` after a base CREATE TABLE so the fixture lives in one place.
-- Coverage threshold for the matrix test? Snapshot vs. table-driven?
+Nothing in the RBAC roadmap. See "Bucket of follow-ups" below for standalone cleanups (createCentralDb singleton sweep, `@ancstra/ai` zod/v3 migration, GEDCOM body-size guard) — these are independent of RBAC.
 
 ---
 
@@ -172,11 +175,9 @@ The per-sub-spec design + plan files in `docs/rbac/<name>/` are the historical a
 
 ## Suggested execution order for what's next
 
-Updated post-C: B → A → ~~D1~~ → ~~D2~~ → ~~C~~ → **E**.
+Updated post-E: ~~B~~ → ~~A~~ → ~~D1~~ → ~~D2~~ → ~~C~~ → ~~E~~. **All six shipped.**
 
-**E is up next** — with C shipped, the integration-test grid can exercise the full RBAC matrix end-to-end (4 roles × ~58 endpoints), and the shared test fixture for central schema can finally be designed against the stable shape (closes the 22-files-hand-write-CREATE-TABLE maintenance hazard from sub-spec A).
-
-**Standalone cleanup PRs** can land independently whenever convenient (createCentralDb singleton sweep, `@ancstra/ai` zod/v3 shim, GEDCOM body-limit guard).
+**Standalone cleanups remain** — `createCentralDb()` singleton sweep (14 callers), `@ancstra/ai` zod/v3 migration (12 files), GEDCOM body-size guard. None block any RBAC work; they land independently as ordinary cleanup PRs.
 
 ---
 
