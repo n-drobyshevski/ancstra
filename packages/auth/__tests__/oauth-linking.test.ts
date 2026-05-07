@@ -1,39 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import Database from 'better-sqlite3';
-import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { eq } from 'drizzle-orm';
+import { createTestCentralDb, type TestCentralDb } from '@ancstra/db/test-fixtures';
 import * as centralSchema from '@ancstra/db/central-schema';
 import { linkOrCreateUser, isAppleRelay } from '../src/oauth-linking';
-
-function createTestDb() {
-  const sqlite = new Database(':memory:');
-  sqlite.exec(`
-    CREATE TABLE users (
-      id TEXT PRIMARY KEY,
-      email TEXT NOT NULL UNIQUE,
-      password_hash TEXT,
-      name TEXT NOT NULL,
-      avatar_url TEXT,
-      email_verified INTEGER NOT NULL DEFAULT 0,
-      memberships_version INTEGER NOT NULL DEFAULT 0,
-      is_platform_admin INTEGER NOT NULL DEFAULT 0,
-      created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL
-    );
-    CREATE TABLE oauth_accounts (
-      id TEXT PRIMARY KEY,
-      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      provider TEXT NOT NULL,
-      provider_account_id TEXT NOT NULL,
-      access_token TEXT,
-      refresh_token TEXT,
-      expires_at INTEGER,
-      UNIQUE(provider, provider_account_id)
-    );
-    CREATE INDEX idx_oauth_accounts_user ON oauth_accounts(user_id);
-  `);
-  return drizzle(sqlite, { schema: centralSchema });
-}
 
 describe('isAppleRelay', () => {
   it('returns true for @privaterelay.appleid.com addresses', () => {
@@ -47,10 +16,10 @@ describe('isAppleRelay', () => {
 });
 
 describe('linkOrCreateUser', () => {
-  let db: ReturnType<typeof createTestDb>;
+  let db: TestCentralDb;
 
   beforeEach(() => {
-    db = createTestDb();
+    db = createTestCentralDb();
   });
 
   it('when email matches existing user: links oauth account and returns existing user', async () => {

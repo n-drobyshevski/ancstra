@@ -1,55 +1,13 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import Database from 'better-sqlite3';
-import { drizzle } from 'drizzle-orm/better-sqlite3';
+import { createTestCentralDb, type TestCentralDb } from '@ancstra/db/test-fixtures';
 import { AncstraAdapter } from '../src/nextauth-adapter';
-import * as schema from '@ancstra/db/central-schema';
-
-function createTestDb() {
-  const sqlite = new Database(':memory:');
-
-  sqlite.exec(`
-    CREATE TABLE users (
-      id TEXT PRIMARY KEY,
-      email TEXT NOT NULL UNIQUE,
-      password_hash TEXT,
-      name TEXT NOT NULL,
-      avatar_url TEXT,
-      email_verified INTEGER NOT NULL DEFAULT 0,
-      memberships_version INTEGER NOT NULL DEFAULT 0,
-      is_platform_admin INTEGER NOT NULL DEFAULT 0,
-      created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL
-    );
-
-    CREATE TABLE oauth_accounts (
-      id TEXT PRIMARY KEY,
-      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      provider TEXT NOT NULL,
-      provider_account_id TEXT NOT NULL,
-      access_token TEXT,
-      refresh_token TEXT,
-      expires_at INTEGER,
-      UNIQUE(provider, provider_account_id)
-    );
-    CREATE INDEX idx_oauth_accounts_user ON oauth_accounts(user_id);
-
-    CREATE TABLE verification_tokens (
-      identifier TEXT NOT NULL,
-      token TEXT NOT NULL UNIQUE,
-      expires TEXT NOT NULL,
-      PRIMARY KEY (identifier, token)
-    );
-  `);
-
-  return drizzle(sqlite, { schema });
-}
 
 describe('AncstraAdapter', () => {
-  let db: ReturnType<typeof createTestDb>;
+  let db: TestCentralDb;
   let adapter: ReturnType<typeof AncstraAdapter>;
 
   beforeEach(() => {
-    db = createTestDb();
+    db = createTestCentralDb();
     adapter = AncstraAdapter(db);
   });
 

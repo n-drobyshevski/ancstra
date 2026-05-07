@@ -4,6 +4,7 @@ import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { eq, and } from 'drizzle-orm';
 import * as centralSchema from '@ancstra/db/central-schema';
 import { persons, pendingContributions } from '@ancstra/db/family-schema';
+import { createTestCentralDb, type TestCentralDb } from '@ancstra/db/test-fixtures';
 import {
   hasPermission,
   requirePermission,
@@ -29,83 +30,7 @@ import {
 // Shared helpers
 // ---------------------------------------------------------------------------
 
-function createCentralDb() {
-  const sqlite = new Database(':memory:');
-  sqlite.pragma('journal_mode = WAL');
-  sqlite.pragma('foreign_keys = ON');
-
-  sqlite.exec(`
-    CREATE TABLE users (
-      id TEXT PRIMARY KEY,
-      email TEXT NOT NULL UNIQUE,
-      password_hash TEXT,
-      name TEXT NOT NULL,
-      avatar_url TEXT,
-      email_verified INTEGER NOT NULL DEFAULT 0,
-      memberships_version INTEGER NOT NULL DEFAULT 0,
-      is_platform_admin INTEGER NOT NULL DEFAULT 0,
-      created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-    );
-
-    CREATE TABLE family_registry (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      owner_id TEXT NOT NULL REFERENCES users(id),
-      db_filename TEXT NOT NULL,
-      moderation_enabled INTEGER NOT NULL DEFAULT 0,
-      max_members INTEGER NOT NULL DEFAULT 50,
-      monthly_ai_budget_usd REAL NOT NULL DEFAULT 10.0,
-      created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-    );
-
-    CREATE TABLE family_members (
-      id TEXT PRIMARY KEY,
-      family_id TEXT NOT NULL REFERENCES family_registry(id) ON DELETE CASCADE,
-      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      role TEXT NOT NULL CHECK(role IN ('owner', 'admin', 'editor', 'viewer')),
-      invited_role TEXT,
-      joined_at TEXT NOT NULL DEFAULT (datetime('now')),
-      is_active INTEGER NOT NULL DEFAULT 1,
-      last_seen_at TEXT,
-      UNIQUE(family_id, user_id)
-    );
-
-    CREATE TABLE invitations (
-      id TEXT PRIMARY KEY,
-      family_id TEXT NOT NULL REFERENCES family_registry(id) ON DELETE CASCADE,
-      invited_by TEXT NOT NULL REFERENCES users(id),
-      email TEXT,
-      role TEXT NOT NULL CHECK(role IN ('admin', 'editor', 'viewer')),
-      token TEXT NOT NULL UNIQUE,
-      expires_at TEXT NOT NULL,
-      accepted_at TEXT,
-      accepted_by TEXT REFERENCES users(id),
-      revoked_at TEXT,
-      revoked_by TEXT REFERENCES users(id),
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
-    );
-
-    CREATE TABLE activity_feed (
-      id TEXT PRIMARY KEY,
-      family_id TEXT NOT NULL REFERENCES family_registry(id) ON DELETE CASCADE,
-      user_id TEXT NOT NULL REFERENCES users(id),
-      action TEXT NOT NULL,
-      entity_type TEXT,
-      entity_id TEXT,
-      summary TEXT NOT NULL,
-      metadata TEXT,
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
-    );
-  `);
-
-  return { db: drizzle(sqlite, { schema: centralSchema }), sqlite };
-}
-
-function createFamilyDb() {
-  const sqlite = new Database(':memory:');
-  sqlite.exec(`
+const FAMILY_SCHEMA_SQL = `
     CREATE TABLE persons (
       id TEXT PRIMARY KEY,
       sex TEXT NOT NULL DEFAULT 'U',
@@ -134,13 +59,16 @@ function createFamilyDb() {
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
     CREATE INDEX idx_pending_status ON pending_contributions(status);
-  `);
+`;
 
+function createFamilyDb() {
+  const sqlite = new Database(':memory:');
+  (sqlite as unknown as { ['exec']: (s: string) => void })['exec'](FAMILY_SCHEMA_SQL);
   return { db: drizzle(sqlite, { schema: { persons, pendingContributions } }), sqlite };
 }
 
 async function seedUser(
-  db: ReturnType<typeof createCentralDb>['db'],
+  db: TestCentralDb,
   id: string,
   name: string,
 ) {
@@ -151,7 +79,7 @@ async function seedUser(
 }
 
 async function addMember(
-  db: ReturnType<typeof createCentralDb>['db'],
+  db: TestCentralDb,
   familyId: string,
   userId: string,
   role: Role,
@@ -183,12 +111,11 @@ describe('RBAC integration', () => {
     'activity:view',
   ];
 
-  let centralDb: ReturnType<typeof createCentralDb>['db'];
+  let centralDb: TestCentralDb;
   let familyId: string;
 
   beforeEach(async () => {
-    const ctx = createCentralDb();
-    centralDb = ctx.db;
+    centralDb = createTestCentralDb();
 
     await seedUser(centralDb, 'owner-1', 'Owner');
     await seedUser(centralDb, 'admin-1', 'Admin');
@@ -273,12 +200,11 @@ describe('RBAC integration', () => {
 // ---------------------------------------------------------------------------
 
 describe('invitation flow', () => {
-  let centralDb: ReturnType<typeof createCentralDb>['db'];
+  let centralDb: TestCentralDb;
   let familyId: string;
 
   beforeEach(async () => {
-    const ctx = createCentralDb();
-    centralDb = ctx.db;
+    centralDb = createTestCentralDb();
 
     await seedUser(centralDb, 'owner-1', 'Owner');
     await seedUser(centralDb, 'newuser-1', 'NewUser');
@@ -715,14 +641,11 @@ describe('living person redaction', () => {
 // ---------------------------------------------------------------------------
 
 describe('owner transfer', () => {
-  let centralDb: ReturnType<typeof createCentralDb>['db'];
-  let sqlite: Database.Database;
+  let centralDb: TestCentralDb;
   let familyId: string;
 
   beforeEach(async () => {
-    const ctx = createCentralDb();
-    centralDb = ctx.db;
-    sqlite = ctx.sqlite;
+    centralDb = createTestCentralDb();
 
     await seedUser(centralDb, 'owner-1', 'Owner');
     await seedUser(centralDb, 'admin-1', 'Admin');
@@ -753,10 +676,9 @@ describe('owner transfer', () => {
     expect(newOwner!.role).toBe('owner');
 
     // family_registry.owner_id updated
-    const registry = sqlite
-      .prepare('SELECT owner_id FROM family_registry WHERE id = ?')
-      .get(familyId) as { owner_id: string };
-    expect(registry.owner_id).toBe('admin-1');
+    const registry = await centralDb.select().from(centralSchema.familyRegistry)
+      .where(eq(centralSchema.familyRegistry.id, familyId)).get();
+    expect(registry!.ownerId).toBe('admin-1');
   });
 
   it('fails to transfer to non-admin (editor)', async () => {

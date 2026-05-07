@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import Database from 'better-sqlite3';
-import { drizzle } from 'drizzle-orm/better-sqlite3';
+import { eq } from 'drizzle-orm';
+import { createTestCentralDb, type TestCentralDb } from '@ancstra/db/test-fixtures';
 import * as centralSchema from '@ancstra/db/central-schema';
 import {
   createFamily,
@@ -9,54 +9,7 @@ import {
   transferOwnership,
 } from '../src/families';
 
-function createTestCentralDb() {
-  const sqlite = new Database(':memory:');
-  sqlite.pragma('journal_mode = WAL');
-  sqlite.pragma('foreign_keys = ON');
-
-  sqlite.exec(`
-    CREATE TABLE users (
-      id TEXT PRIMARY KEY,
-      email TEXT NOT NULL UNIQUE,
-      password_hash TEXT,
-      name TEXT NOT NULL,
-      avatar_url TEXT,
-      email_verified INTEGER NOT NULL DEFAULT 0,
-      memberships_version INTEGER NOT NULL DEFAULT 0,
-      is_platform_admin INTEGER NOT NULL DEFAULT 0,
-      created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-    );
-
-    CREATE TABLE family_registry (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      owner_id TEXT NOT NULL REFERENCES users(id),
-      db_filename TEXT NOT NULL,
-      moderation_enabled INTEGER NOT NULL DEFAULT 0,
-      max_members INTEGER NOT NULL DEFAULT 50,
-      monthly_ai_budget_usd REAL NOT NULL DEFAULT 10.0,
-      created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-    );
-
-    CREATE TABLE family_members (
-      id TEXT PRIMARY KEY,
-      family_id TEXT NOT NULL REFERENCES family_registry(id) ON DELETE CASCADE,
-      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      role TEXT NOT NULL CHECK(role IN ('owner', 'admin', 'editor', 'viewer')),
-      invited_role TEXT,
-      joined_at TEXT NOT NULL DEFAULT (datetime('now')),
-      is_active INTEGER NOT NULL DEFAULT 1,
-      last_seen_at TEXT,
-      UNIQUE(family_id, user_id)
-    );
-  `);
-
-  return { db: drizzle(sqlite, { schema: centralSchema }), sqlite };
-}
-
-async function seedUser(db: ReturnType<typeof createTestCentralDb>['db'], id: string, name: string) {
+async function seedUser(db: TestCentralDb, id: string, name: string) {
   const now = new Date().toISOString();
   await db.insert(centralSchema.users).values({
     id,
@@ -68,13 +21,10 @@ async function seedUser(db: ReturnType<typeof createTestCentralDb>['db'], id: st
 }
 
 describe('createFamily', () => {
-  let db: ReturnType<typeof createTestCentralDb>['db'];
-  let sqlite: Database.Database;
+  let db: TestCentralDb;
 
   beforeEach(async () => {
-    const ctx = createTestCentralDb();
-    db = ctx.db;
-    sqlite = ctx.sqlite;
+    db = createTestCentralDb();
     await seedUser(db, 'user-1', 'Alice');
   });
 
@@ -85,19 +35,19 @@ describe('createFamily', () => {
     expect(result.dbFilename).toMatch(/\.sqlite$/);
 
     // Verify the registry row
-    const registry = sqlite.prepare('SELECT * FROM family_registry WHERE id = ?').get(result.familyId) as any;
+    const registry = await db.select().from(centralSchema.familyRegistry)
+      .where(eq(centralSchema.familyRegistry.id, result.familyId)).get();
     expect(registry).toBeDefined();
-    expect(registry.name).toBe('Smith Family');
-    expect(registry.owner_id).toBe('user-1');
-    expect(registry.db_filename).toBe(result.dbFilename);
+    expect(registry!.name).toBe('Smith Family');
+    expect(registry!.ownerId).toBe('user-1');
+    expect(registry!.dbFilename).toBe(result.dbFilename);
 
     // Verify the membership row
-    const membership = sqlite.prepare(
-      'SELECT * FROM family_members WHERE family_id = ? AND user_id = ?'
-    ).get(result.familyId, 'user-1') as any;
+    const membership = await db.select().from(centralSchema.familyMembers)
+      .where(eq(centralSchema.familyMembers.familyId, result.familyId)).get();
     expect(membership).toBeDefined();
-    expect(membership.role).toBe('owner');
-    expect(membership.is_active).toBe(1);
+    expect(membership!.role).toBe('owner');
+    expect(membership!.isActive).toBe(1);
   });
 
   it('generates a unique db_filename for each family', async () => {
@@ -108,11 +58,10 @@ describe('createFamily', () => {
 });
 
 describe('getFamiliesForUser', () => {
-  let db: ReturnType<typeof createTestCentralDb>['db'];
+  let db: TestCentralDb;
 
   beforeEach(async () => {
-    const ctx = createTestCentralDb();
-    db = ctx.db;
+    db = createTestCentralDb();
     await seedUser(db, 'user-1', 'Alice');
     await seedUser(db, 'user-2', 'Bob');
   });
@@ -151,11 +100,10 @@ describe('getFamiliesForUser', () => {
 });
 
 describe('getFamilyMembership', () => {
-  let db: ReturnType<typeof createTestCentralDb>['db'];
+  let db: TestCentralDb;
 
   beforeEach(async () => {
-    const ctx = createTestCentralDb();
-    db = ctx.db;
+    db = createTestCentralDb();
     await seedUser(db, 'user-1', 'Alice');
     await seedUser(db, 'user-2', 'Bob');
   });
@@ -178,13 +126,10 @@ describe('getFamilyMembership', () => {
 });
 
 describe('transferOwnership', () => {
-  let db: ReturnType<typeof createTestCentralDb>['db'];
-  let sqlite: Database.Database;
+  let db: TestCentralDb;
 
   beforeEach(async () => {
-    const ctx = createTestCentralDb();
-    db = ctx.db;
-    sqlite = ctx.sqlite;
+    db = createTestCentralDb();
     await seedUser(db, 'user-1', 'Alice');
     await seedUser(db, 'user-2', 'Bob');
     await seedUser(db, 'user-3', 'Charlie');
@@ -221,8 +166,9 @@ describe('transferOwnership', () => {
     expect(newOwner!.role).toBe('owner');
 
     // Registry updated
-    const registry = sqlite.prepare('SELECT owner_id FROM family_registry WHERE id = ?').get(f.familyId) as any;
-    expect(registry.owner_id).toBe('user-2');
+    const registry = await db.select().from(centralSchema.familyRegistry)
+      .where(eq(centralSchema.familyRegistry.id, f.familyId)).get();
+    expect(registry!.ownerId).toBe('user-2');
   });
 
   it('fails if the target user is not an admin', async () => {

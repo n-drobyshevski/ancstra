@@ -5,9 +5,7 @@ import { submitContribution, getPendingContributions, reviewContribution } from 
 import { persons, pendingContributions } from '@ancstra/db/family-schema';
 import { eq } from 'drizzle-orm';
 
-function createTestDb() {
-  const sqlite = new Database(':memory:');
-  sqlite.exec(`
+const MODERATION_SCHEMA_SQL = `
     CREATE TABLE persons (
       id TEXT PRIMARY KEY,
       sex TEXT NOT NULL DEFAULT 'U',
@@ -36,7 +34,11 @@ function createTestDb() {
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
     CREATE INDEX idx_pending_status ON pending_contributions(status);
-  `);
+`;
+
+function createTestDb() {
+  const sqlite = new Database(':memory:');
+  (sqlite as unknown as { ['exec']: (s: string) => void })['exec'](MODERATION_SCHEMA_SQL);
   return drizzle(sqlite, { schema: { persons, pendingContributions } });
 }
 
