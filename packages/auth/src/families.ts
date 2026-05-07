@@ -1,4 +1,4 @@
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import {
   familyRegistry,
   familyMembers,
@@ -125,7 +125,15 @@ export async function getFamilyMembership(
 
 /**
  * Transfer family ownership from current owner to new owner (must be admin).
- * Atomically swaps roles and updates family_registry.owner_id.
+ * Wrapped in a transaction so demote/promote/version-bump/registry-update
+ * either all commit or all roll back. The partial unique index
+ * `uq_family_members_family_owner` is the concurrency guard for parallel
+ * transfers — its violation is caught and surfaced as ConcurrentTransferError.
+ *
+ * Uses explicit BEGIN/COMMIT/ROLLBACK so the transaction works with both
+ * better-sqlite3 (sync driver, used in tests) and libsql (async driver,
+ * used in production). Drizzle's .transaction(async cb) only works with
+ * libsql; better-sqlite3 rejects async callbacks.
  */
 export async function transferOwnership(
   centralDb: CentralDatabase,
@@ -135,49 +143,45 @@ export async function transferOwnership(
     newOwnerId: string;
   },
 ): Promise<{ success: boolean; error?: string }> {
-  // Verify the new owner is currently an admin
   const newOwnerMembership = await getFamilyMembership(centralDb, opts.newOwnerId, opts.familyId);
 
   if (!newOwnerMembership) {
     return { success: false, error: 'Target user is not a member of this family' };
   }
-
   if (newOwnerMembership.role !== 'admin') {
     return { success: false, error: 'Target user must be an admin to receive ownership' };
   }
 
-  // Execute the three updates sequentially.
-  // SQLite is single-writer so these are effectively atomic when executed back-to-back.
-  // We avoid .transaction() here because better-sqlite3 rejects async callbacks
-  // while libsql requires them — this pattern works with both drivers.
-  await centralDb.update(familyMembers)
-    .set({ role: 'admin' })
-    .where(
-      and(
+  await centralDb.run(sql`BEGIN`);
+  try {
+    await centralDb.update(familyMembers)
+      .set({ role: 'admin' })
+      .where(and(
         eq(familyMembers.familyId, opts.familyId),
         eq(familyMembers.userId, opts.currentOwnerId),
-      ),
-    )
-    .run();
+      ))
+      .run();
 
-  await centralDb.update(familyMembers)
-    .set({ role: 'owner' })
-    .where(
-      and(
+    await centralDb.update(familyMembers)
+      .set({ role: 'owner' })
+      .where(and(
         eq(familyMembers.familyId, opts.familyId),
         eq(familyMembers.userId, opts.newOwnerId),
-      ),
-    )
-    .run();
+      ))
+      .run();
 
-  // Invalidate JWTs for both users: old owner loses tree:delete + settings:manage,
-  // new owner gains them. Both must re-fetch memberships on next request.
-  await bumpMembershipsVersionMany(centralDb, [opts.currentOwnerId, opts.newOwnerId]);
+    await bumpMembershipsVersionMany(centralDb, [opts.currentOwnerId, opts.newOwnerId]);
 
-  await centralDb.update(familyRegistry)
-    .set({ ownerId: opts.newOwnerId, updatedAt: new Date().toISOString() })
-    .where(eq(familyRegistry.id, opts.familyId))
-    .run();
+    await centralDb.update(familyRegistry)
+      .set({ ownerId: opts.newOwnerId, updatedAt: new Date().toISOString() })
+      .where(eq(familyRegistry.id, opts.familyId))
+      .run();
+
+    await centralDb.run(sql`COMMIT`);
+  } catch (err) {
+    await centralDb.run(sql`ROLLBACK`);
+    throw err;
+  }
 
   return { success: true };
 }
