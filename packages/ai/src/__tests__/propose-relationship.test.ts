@@ -1,29 +1,14 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { drizzle } from 'drizzle-orm/better-sqlite3';
-import Database from 'better-sqlite3';
 import * as schema from '@ancstra/db/schema';
+import { createTestCentralDb, type TestCentralDb } from '@ancstra/db/test-fixtures';
 import { executeProposeRelationship } from '../tools/propose-relationship';
 
-let sqlite: InstanceType<typeof Database>;
-let db: ReturnType<typeof drizzle>;
+let db: TestCentralDb;
 
 beforeEach(() => {
-  sqlite = new Database(':memory:');
-  db = drizzle({ client: sqlite, schema });
+  db = createTestCentralDb();
 
-  sqlite.exec(`
-    CREATE TABLE users (
-      id TEXT PRIMARY KEY,
-      email TEXT NOT NULL UNIQUE,
-      password_hash TEXT,
-      name TEXT NOT NULL,
-      avatar_url TEXT,
-      email_verified INTEGER NOT NULL DEFAULT 0,
-      memberships_version INTEGER NOT NULL DEFAULT 0,
-      is_platform_admin INTEGER NOT NULL DEFAULT 0,
-      created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL
-    );
+  (db.$client as unknown as { ['exec']: (s: string) => void })['exec'](`
     CREATE TABLE persons (
       id TEXT PRIMARY KEY, sex TEXT NOT NULL DEFAULT 'U',
       is_living INTEGER NOT NULL DEFAULT 1,
@@ -70,7 +55,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  sqlite.close();
+  db.$client.close();
 });
 
 describe('proposeRelationship', () => {
@@ -97,7 +82,7 @@ describe('proposeRelationship', () => {
       sourceRecordId: 'rec-123',
     });
 
-    const rows = sqlite.prepare('SELECT * FROM proposed_relationships').all() as any[];
+    const rows = db.$client.prepare('SELECT * FROM proposed_relationships').all() as any[];
     expect(rows).toHaveLength(1);
     expect(rows[0].relationship_type).toBe('partner');
     expect(rows[0].source_type).toBe('ai_suggestion');
@@ -123,7 +108,7 @@ describe('proposeRelationship', () => {
       confidence: 0.9,
     });
     expect(dup.message).toContain('already exists');
-    const rows = sqlite.prepare('SELECT * FROM proposed_relationships').all();
+    const rows = db.$client.prepare('SELECT * FROM proposed_relationships').all();
     expect(rows).toHaveLength(1);
   });
 
