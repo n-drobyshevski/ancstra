@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/table';
 import { ShieldCheck, Mail, Calendar, RefreshCw } from 'lucide-react';
 import { TogglePlatformAdmin } from './toggle-platform-admin';
+import { FamilyMemberActions } from '@/components/admin/family-member-actions';
 import type { UserDetail as UserDetailData } from '@ancstra/auth/admin';
 
 interface Props {
@@ -112,7 +113,8 @@ export function UserDetail({ data, viewerUserId }: Props) {
                     <TableHead>Role</TableHead>
                     <TableHead>Joined</TableHead>
                     <TableHead>Last seen</TableHead>
-                    <TableHead aria-label="Status"></TableHead>
+                    <TableHead aria-label="Status" />
+                    <TableHead className="w-[60px]" aria-label="Actions" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -142,6 +144,20 @@ export function UserDetail({ data, viewerUserId }: Props) {
                           <Badge variant="outline" className="text-muted-foreground">
                             inactive
                           </Badge>
+                        ) : null}
+                      </TableCell>
+                      <TableCell>
+                        {m.isActive ? (
+                          <FamilyMemberActions
+                            familyId={m.familyId}
+                            familyName={m.familyName}
+                            member={{
+                              userId: user.id,
+                              userName: user.name,
+                              userEmail: user.email,
+                              role: m.role as 'owner' | 'admin' | 'editor' | 'viewer',
+                            }}
+                          />
                         ) : null}
                       </TableCell>
                     </TableRow>

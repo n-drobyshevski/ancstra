@@ -1,4 +1,4 @@
-import { eq, and, or, like, sql, count, isNull, desc, gte, gt, lt, lte } from 'drizzle-orm';
+import { eq, ne, and, or, like, sql, count, isNull, desc, gte, gt, lt, lte } from 'drizzle-orm';
 import * as centralSchema from '@ancstra/db/central-schema';
 
 // Accept any Drizzle DB instance — same convention as invitations.ts/families.ts.
@@ -228,6 +228,69 @@ export async function listAllFamilies(
     })),
     total: totalRow?.n ?? 0,
   };
+}
+
+// ====================================================================
+// Family search (for admin pickers — cross-family member ops)
+// ====================================================================
+
+export interface SearchFamilyResult {
+  id: string;
+  name: string;
+  ownerId: string;
+  ownerEmail: string;
+  memberCount: number;
+  maxMembers: number;
+}
+
+/**
+ * Lightweight family search for autocomplete pickers (e.g. cross-family
+ * member add/move dialogs). Distinct from `listAllFamilies` which is the
+ * paginated admin index — this one returns just enough to display a
+ * picker row and warn about member-cap overflow.
+ */
+export async function searchFamilies(
+  centralDb: CentralDb,
+  opts: { q?: string; excludeFamilyId?: string; limit?: number } = {},
+): Promise<SearchFamilyResult[]> {
+  const { q, excludeFamilyId, limit = 10 } = opts;
+  const search = q?.trim();
+
+  const conditions: ReturnType<typeof eq>[] = [];
+  if (search) {
+    conditions.push(like(centralSchema.familyRegistry.name, `%${search}%`));
+  }
+  if (excludeFamilyId) {
+    conditions.push(ne(centralSchema.familyRegistry.id, excludeFamilyId));
+  }
+
+  const rows = await centralDb
+    .select({
+      id: centralSchema.familyRegistry.id,
+      name: centralSchema.familyRegistry.name,
+      ownerId: centralSchema.familyRegistry.ownerId,
+      ownerEmail: centralSchema.users.email,
+      maxMembers: centralSchema.familyRegistry.maxMembers,
+      memberCount: sql<number>`(
+        SELECT COUNT(*) FROM ${centralSchema.familyMembers}
+        WHERE ${centralSchema.familyMembers.familyId} = ${centralSchema.familyRegistry.id}
+          AND ${centralSchema.familyMembers.isActive} = 1
+      )`,
+    })
+    .from(centralSchema.familyRegistry)
+    .innerJoin(
+      centralSchema.users,
+      eq(centralSchema.users.id, centralSchema.familyRegistry.ownerId),
+    )
+    .where(conditions.length > 0 ? and(...conditions) : sql`1=1`)
+    .orderBy(centralSchema.familyRegistry.name)
+    .limit(limit)
+    .all();
+
+  return rows.map((r: typeof rows[number]) => ({
+    ...r,
+    memberCount: Number(r.memberCount),
+  }));
 }
 
 export interface FamilyDetail {

@@ -8,6 +8,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { FamiliesRowActions } from '@/components/admin/families-row-actions';
 import type { FamilyListRow } from '@ancstra/auth/admin';
 
 interface Props {
@@ -45,6 +46,7 @@ export function FamiliesTable({ rows }: Props) {
             <TableHead className="text-right">Members</TableHead>
             <TableHead className="text-right">Pending invites</TableHead>
             <TableHead>Created</TableHead>
+            <TableHead className="w-12" aria-label="Actions" />
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -78,6 +80,11 @@ export function FamiliesTable({ rows }: Props) {
                 )}
               </TableCell>
               <TableCell className="text-muted-foreground">{formatDate(f.createdAt)}</TableCell>
+              <TableCell className="text-right">
+                <FamiliesRowActions
+                  family={{ id: f.id, name: f.name, ownerEmail: f.ownerEmail }}
+                />
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>

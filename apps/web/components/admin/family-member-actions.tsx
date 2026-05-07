@@ -4,11 +4,13 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import {
+  ArrowLeftRight,
   Crown,
   Loader2,
   MoreHorizontal,
   ShieldOff,
   Trash2,
+  UserPlus,
 } from 'lucide-react';
 import { trpc } from '@/lib/trpc/client';
 import {
@@ -35,6 +37,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { MoveOrAddMemberDialog } from '@/components/admin/move-or-add-member-dialog';
 
 type Role = 'owner' | 'admin' | 'editor' | 'viewer';
 
@@ -44,6 +47,7 @@ interface Props {
   member: {
     userId: string;
     userName: string;
+    userEmail: string;
     role: Role;
   };
 }
@@ -54,6 +58,8 @@ export function FamilyMemberActions({ familyId, familyName, member }: Props) {
   const router = useRouter();
   const [removeOpen, setRemoveOpen] = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
+  const [addToFamilyOpen, setAddToFamilyOpen] = useState(false);
+  const [moveToFamilyOpen, setMoveToFamilyOpen] = useState(false);
   const [confirmName, setConfirmName] = useState('');
 
   const changeRole = trpc.platformAdmin.changeMemberRole.useMutation({
@@ -151,6 +157,16 @@ export function FamilyMemberActions({ familyId, familyName, member }: Props) {
           ) : null}
 
           <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => setAddToFamilyOpen(true)}>
+            <UserPlus className="size-4 mr-2" />
+            Add to another family…
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setMoveToFamilyOpen(true)}>
+            <ArrowLeftRight className="size-4 mr-2" />
+            Move to another family…
+          </DropdownMenuItem>
+
+          <DropdownMenuSeparator />
           <DropdownMenuItem
             className="text-destructive focus:text-destructive"
             onClick={() => setRemoveOpen(true)}
@@ -160,6 +176,32 @@ export function FamilyMemberActions({ familyId, familyName, member }: Props) {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      <MoveOrAddMemberDialog
+        mode="add"
+        open={addToFamilyOpen}
+        onOpenChange={setAddToFamilyOpen}
+        currentFamilyId={familyId}
+        currentFamilyName={familyName}
+        user={{
+          id: member.userId,
+          name: member.userName,
+          email: member.userEmail,
+        }}
+      />
+
+      <MoveOrAddMemberDialog
+        mode="move"
+        open={moveToFamilyOpen}
+        onOpenChange={setMoveToFamilyOpen}
+        currentFamilyId={familyId}
+        currentFamilyName={familyName}
+        user={{
+          id: member.userId,
+          name: member.userName,
+          email: member.userEmail,
+        }}
+      />
 
       <AlertDialog open={removeOpen} onOpenChange={setRemoveOpen}>
         <AlertDialogContent>

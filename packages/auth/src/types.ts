@@ -31,7 +31,7 @@ export type ActivityAction =
   | 'media_uploaded'
   | 'gedcom_imported'
   | 'invite_sent' | 'invite_accepted' | 'invite_revoked'
-  | 'role_changed' | 'member_removed'
+  | 'role_changed' | 'member_added' | 'member_removed'
   | 'contribution_submitted' | 'contribution_approved' | 'contribution_rejected'
   | 'owner_transferred'
   | 'family_settings_updated';

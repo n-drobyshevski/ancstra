@@ -1,6 +1,7 @@
 import { cacheLife, cacheTag } from 'next/cache';
 import { getCentralDb } from '@/lib/db-singleton';
 import { listAllUsers } from '@ancstra/auth/admin';
+import { requirePlatformAdmin } from '@/lib/auth/platform-admin';
 import { UsersTable } from '@/components/admin/users-table';
 import { DataTableToolbar } from '@/components/admin/data-table-toolbar';
 import { DataTablePagination } from '@/components/admin/data-table-pagination';
@@ -28,6 +29,7 @@ export default async function AdminUsersPage({
   const q = sp.q?.trim() ?? '';
   const offset = Math.max(0, parseInt(sp.offset ?? '0', 10) || 0);
 
+  const viewer = await requirePlatformAdmin();
   const { rows, total } = await getCachedUsersPage(q, offset);
 
   return (
@@ -44,7 +46,7 @@ export default async function AdminUsersPage({
         total={total}
         placeholder="Search by name or email…"
       />
-      <UsersTable rows={rows} />
+      <UsersTable rows={rows} currentUserId={viewer.userId} />
       <DataTablePagination
         basePath="/admin/users"
         q={q || undefined}

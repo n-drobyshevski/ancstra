@@ -10,10 +10,12 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ShieldCheck } from 'lucide-react';
+import { UsersRowActions } from '@/components/admin/users-row-actions';
 import type { UserListRow } from '@ancstra/auth/admin';
 
 interface Props {
   rows: UserListRow[];
+  currentUserId: string;
 }
 
 function formatDate(iso: string): string {
@@ -34,7 +36,7 @@ function initials(name: string, email: string): string {
   return (parts[0]?.[0] ?? '?').toUpperCase() + (parts[1]?.[0]?.toUpperCase() ?? '');
 }
 
-export function UsersTable({ rows }: Props) {
+export function UsersTable({ rows, currentUserId }: Props) {
   if (rows.length === 0) {
     return (
       <p className="py-8 text-center text-sm text-muted-foreground">
@@ -53,7 +55,8 @@ export function UsersTable({ rows }: Props) {
             <TableHead className="text-right">Families</TableHead>
             <TableHead className="text-right">Owned</TableHead>
             <TableHead>Joined</TableHead>
-            <TableHead aria-label="Platform admin"></TableHead>
+            <TableHead aria-label="Platform admin" />
+            <TableHead className="w-12" aria-label="Actions" />
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -87,6 +90,17 @@ export function UsersTable({ rows }: Props) {
                     Admin
                   </Badge>
                 ) : null}
+              </TableCell>
+              <TableCell className="text-right">
+                <UsersRowActions
+                  user={{
+                    id: u.id,
+                    name: u.name,
+                    email: u.email,
+                    isPlatformAdmin: u.isPlatformAdmin,
+                  }}
+                  currentUserId={currentUserId}
+                />
               </TableCell>
             </TableRow>
           ))}

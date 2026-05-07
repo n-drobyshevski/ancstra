@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
 import { updateTag } from 'next/cache';
 import { centralSchema } from '@ancstra/db';
@@ -17,6 +17,7 @@ import {
   listAuditLog,
   listAuditLogActions,
   logPlatformActivity,
+  searchFamilies,
 } from '@ancstra/auth/admin';
 import { createTRPCRouter, platformAdminProcedure } from '../trpc';
 
@@ -230,6 +231,7 @@ export const platformAdminRouter = createTRPCRouter({
 
       updateTag(`platform-family:${input.familyId}`);
       updateTag('platform-users');
+      updateTag(`platform-user:${input.userId}`);
       updateTag('platform-audit-log');
       return { changed: true } as const;
     }),
@@ -312,6 +314,7 @@ export const platformAdminRouter = createTRPCRouter({
 
       updateTag(`platform-family:${input.familyId}`);
       updateTag('platform-users');
+      updateTag(`platform-user:${input.userId}`);
       updateTag('platform-audit-log');
       return { ok: true } as const;
     }),
@@ -403,6 +406,8 @@ export const platformAdminRouter = createTRPCRouter({
       updateTag(`platform-family:${input.familyId}`);
       updateTag('platform-users');
       updateTag('platform-families');
+      updateTag(`platform-user:${previousOwnerId}`);
+      updateTag(`platform-user:${input.newOwnerUserId}`);
       updateTag('platform-audit-log');
       return { changed: true } as const;
     }),
@@ -594,5 +599,346 @@ export const platformAdminRouter = createTRPCRouter({
       updateTag('platform-audit-log');
 
       return { ok: true, changed: true } as const;
+    }),
+
+  // ----- Cross-family member ops (platform-admin override) ---------------
+  // Bypass the normal invitation flow to add or relocate members. Logged
+  // in BOTH platform_audit_log (cross-family record) AND each affected
+  // family's activity feed (so members see who acted).
+  // -----------------------------------------------------------------------
+
+  searchFamilies: platformAdminProcedure
+    .input(
+      z.object({
+        q: z.string().optional(),
+        excludeFamilyId: z.string().optional(),
+        limit: z.number().int().min(1).max(50).optional(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      return searchFamilies(ctx.centralDb, {
+        q: input.q,
+        excludeFamilyId: input.excludeFamilyId,
+        limit: input.limit,
+      });
+    }),
+
+  addMemberToFamily: platformAdminProcedure
+    .input(
+      z.object({
+        familyId: z.string().min(1),
+        userId: z.string().min(1),
+        role: z.enum(['admin', 'editor', 'viewer']),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const family = await ctx.centralDb
+        .select({ name: centralSchema.familyRegistry.name })
+        .from(centralSchema.familyRegistry)
+        .where(eq(centralSchema.familyRegistry.id, input.familyId))
+        .get();
+      if (!family) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Target family not found' });
+      }
+
+      const user = await ctx.centralDb
+        .select({
+          id: centralSchema.users.id,
+          name: centralSchema.users.name,
+          email: centralSchema.users.email,
+        })
+        .from(centralSchema.users)
+        .where(eq(centralSchema.users.id, input.userId))
+        .get();
+      if (!user) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
+      }
+
+      const existing = await ctx.centralDb
+        .select({
+          id: centralSchema.familyMembers.id,
+          role: centralSchema.familyMembers.role,
+          isActive: centralSchema.familyMembers.isActive,
+        })
+        .from(centralSchema.familyMembers)
+        .where(
+          and(
+            eq(centralSchema.familyMembers.familyId, input.familyId),
+            eq(centralSchema.familyMembers.userId, input.userId),
+          ),
+        )
+        .get();
+
+      const now = new Date().toISOString();
+
+      if (existing && existing.isActive === 1) {
+        // Already an active member — idempotent no-op. Don't audit.
+        return {
+          added: false,
+          alreadyMember: true,
+          previousRole: existing.role,
+        } as const;
+      }
+
+      const reactivated = !!existing;
+      if (existing) {
+        await ctx.centralDb
+          .update(centralSchema.familyMembers)
+          .set({
+            role: input.role,
+            isActive: 1,
+            joinedAt: now,
+          })
+          .where(eq(centralSchema.familyMembers.id, existing.id))
+          .run();
+      } else {
+        await ctx.centralDb
+          .insert(centralSchema.familyMembers)
+          .values({
+            familyId: input.familyId,
+            userId: input.userId,
+            role: input.role,
+            joinedAt: now,
+            isActive: 1,
+          })
+          .run();
+      }
+
+      await bumpMembershipsVersion(ctx.centralDb, input.userId);
+
+      const summary = `Platform admin added ${user.name} (${user.email}) as ${input.role} to ${family.name}`;
+      await logPlatformActivity(ctx.centralDb, {
+        actorUserId: ctx.platformAdmin.userId,
+        action: reactivated ? 'family.member.reactivate' : 'family.member.add',
+        targetType: 'family',
+        targetId: input.familyId,
+        summary,
+        metadata: {
+          targetUserId: input.userId,
+          targetUserName: user.name,
+          targetUserEmail: user.email,
+          role: input.role,
+          reactivated,
+        },
+      });
+      await logActivity(ctx.centralDb, {
+        familyId: input.familyId,
+        userId: ctx.platformAdmin.userId,
+        action: 'member_added',
+        summary,
+        metadata: {
+          targetUserId: input.userId,
+          role: input.role,
+          reactivated,
+          byPlatformAdmin: true,
+        },
+      });
+
+      updateTag(`platform-family:${input.familyId}`);
+      updateTag('platform-users');
+      updateTag(`platform-user:${input.userId}`);
+      updateTag('platform-counts');
+      updateTag('platform-audit-log');
+
+      return { added: true, alreadyMember: false, reactivated } as const;
+    }),
+
+  moveMemberToFamily: platformAdminProcedure
+    .input(
+      z.object({
+        fromFamilyId: z.string().min(1),
+        toFamilyId: z.string().min(1),
+        userId: z.string().min(1),
+        role: z.enum(['admin', 'editor', 'viewer']),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (input.fromFamilyId === input.toFamilyId) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Source and target family must differ',
+        });
+      }
+
+      const [fromFamily, toFamily, user] = await Promise.all([
+        ctx.centralDb
+          .select({ name: centralSchema.familyRegistry.name })
+          .from(centralSchema.familyRegistry)
+          .where(eq(centralSchema.familyRegistry.id, input.fromFamilyId))
+          .get(),
+        ctx.centralDb
+          .select({ name: centralSchema.familyRegistry.name })
+          .from(centralSchema.familyRegistry)
+          .where(eq(centralSchema.familyRegistry.id, input.toFamilyId))
+          .get(),
+        ctx.centralDb
+          .select({
+            id: centralSchema.users.id,
+            name: centralSchema.users.name,
+            email: centralSchema.users.email,
+          })
+          .from(centralSchema.users)
+          .where(eq(centralSchema.users.id, input.userId))
+          .get(),
+      ]);
+      if (!fromFamily) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Source family not found' });
+      }
+      if (!toFamily) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Target family not found' });
+      }
+      if (!user) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
+      }
+
+      const sourceMembership = await ctx.centralDb
+        .select({
+          id: centralSchema.familyMembers.id,
+          role: centralSchema.familyMembers.role,
+          isActive: centralSchema.familyMembers.isActive,
+        })
+        .from(centralSchema.familyMembers)
+        .where(
+          and(
+            eq(centralSchema.familyMembers.familyId, input.fromFamilyId),
+            eq(centralSchema.familyMembers.userId, input.userId),
+          ),
+        )
+        .get();
+      if (!sourceMembership || sourceMembership.isActive !== 1) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'User is not an active member of the source family',
+        });
+      }
+      if (sourceMembership.role === 'owner') {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message:
+            'Cannot move the family owner. Force-transfer ownership first.',
+        });
+      }
+
+      const targetMembership = await ctx.centralDb
+        .select({
+          id: centralSchema.familyMembers.id,
+          role: centralSchema.familyMembers.role,
+          isActive: centralSchema.familyMembers.isActive,
+        })
+        .from(centralSchema.familyMembers)
+        .where(
+          and(
+            eq(centralSchema.familyMembers.familyId, input.toFamilyId),
+            eq(centralSchema.familyMembers.userId, input.userId),
+          ),
+        )
+        .get();
+      if (targetMembership && targetMembership.isActive === 1) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message:
+            'User is already a member of the target family. Use Remove on the source family instead.',
+        });
+      }
+      const reactivatedAtTarget = !!targetMembership;
+
+      const now = new Date().toISOString();
+      const previousRole = sourceMembership.role;
+
+      // Atomic remove-from-source + add-to-target. Explicit BEGIN/COMMIT/
+      // ROLLBACK so this works on both better-sqlite3 (sync) and libsql
+      // (async) — same pattern transferOwnership uses.
+      await ctx.centralDb.run(sql`BEGIN`);
+      try {
+        await ctx.centralDb
+          .update(centralSchema.familyMembers)
+          .set({ isActive: 0 })
+          .where(eq(centralSchema.familyMembers.id, sourceMembership.id))
+          .run();
+
+        if (targetMembership) {
+          await ctx.centralDb
+            .update(centralSchema.familyMembers)
+            .set({
+              role: input.role,
+              isActive: 1,
+              joinedAt: now,
+            })
+            .where(eq(centralSchema.familyMembers.id, targetMembership.id))
+            .run();
+        } else {
+          await ctx.centralDb
+            .insert(centralSchema.familyMembers)
+            .values({
+              familyId: input.toFamilyId,
+              userId: input.userId,
+              role: input.role,
+              joinedAt: now,
+              isActive: 1,
+            })
+            .run();
+        }
+
+        await ctx.centralDb.run(sql`COMMIT`);
+      } catch (err) {
+        await ctx.centralDb.run(sql`ROLLBACK`);
+        throw err;
+      }
+
+      await bumpMembershipsVersion(ctx.centralDb, input.userId);
+
+      const summary = `Platform admin moved ${user.name} (${user.email}) from ${fromFamily.name} to ${toFamily.name} as ${input.role}`;
+
+      await logPlatformActivity(ctx.centralDb, {
+        actorUserId: ctx.platformAdmin.userId,
+        action: 'family.member.move',
+        targetType: 'user',
+        targetId: input.userId,
+        summary,
+        metadata: {
+          fromFamilyId: input.fromFamilyId,
+          fromFamilyName: fromFamily.name,
+          toFamilyId: input.toFamilyId,
+          toFamilyName: toFamily.name,
+          previousRole,
+          newRole: input.role,
+          reactivatedAtTarget,
+        },
+      });
+      // Family-scoped activity entries — both sides see the override.
+      await logActivity(ctx.centralDb, {
+        familyId: input.fromFamilyId,
+        userId: ctx.platformAdmin.userId,
+        action: 'member_removed',
+        summary: `Platform admin moved ${user.name} (${previousRole}) to ${toFamily.name}`,
+        metadata: {
+          targetUserId: input.userId,
+          role: previousRole,
+          movedToFamilyId: input.toFamilyId,
+          byPlatformAdmin: true,
+        },
+      });
+      await logActivity(ctx.centralDb, {
+        familyId: input.toFamilyId,
+        userId: ctx.platformAdmin.userId,
+        action: 'member_added',
+        summary: `Platform admin moved ${user.name} from ${fromFamily.name} as ${input.role}`,
+        metadata: {
+          targetUserId: input.userId,
+          role: input.role,
+          movedFromFamilyId: input.fromFamilyId,
+          reactivated: reactivatedAtTarget,
+          byPlatformAdmin: true,
+        },
+      });
+
+      updateTag(`platform-family:${input.fromFamilyId}`);
+      updateTag(`platform-family:${input.toFamilyId}`);
+      updateTag('platform-users');
+      updateTag(`platform-user:${input.userId}`);
+      updateTag('platform-counts');
+      updateTag('platform-audit-log');
+
+      return { ok: true, reactivatedAtTarget } as const;
     }),
 });

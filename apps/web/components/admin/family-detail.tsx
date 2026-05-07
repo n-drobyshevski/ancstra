@@ -181,6 +181,7 @@ export function FamilyDetail({ data }: Props) {
                             member={{
                               userId: m.userId,
                               userName: m.userName,
+                              userEmail: m.userEmail,
                               role: m.role as 'owner' | 'admin' | 'editor' | 'viewer',
                             }}
                           />
