@@ -68,6 +68,24 @@ the underlying function for atomicity and concurrent-transfer safety.
    the route would require an extra DB query — the activity feed UI can
    render full prose at read time using `metadata.newOwnerId`.
 
+   **Atomicity caveat:** the activity row is written *after* the
+   transaction commits (in the route handler, not inside `transferOwnership`).
+   If `logActivity` fails post-commit, the role swap is durable but the
+   audit row is missing and the caller sees a 500. We accept this trade-off
+   — the DB-level invariant (role + registry coherence + version bumps)
+   is what actually matters for security; the audit row is operational
+   history, best-effort. If audit-row atomicity becomes a hard requirement
+   later, move the `logActivity` call into `transferOwnership`'s
+   transaction body in `packages/auth/src/families.ts`.
+
+   **Display caveat:** `apps/web/lib/activity-config.ts:89` registers an
+   icon (`Crown`) and label (`"Ownership transferred"`) for the action,
+   but the activity-feed renderer uses the row's `summary` string for body
+   text — readers see the generic "Transferred ownership to a new owner"
+   line without the new owner's name. Acceptable for MVP since the actor
+   name is shown separately. A future enhancement could hydrate
+   `metadata.newOwnerId` to render personalized prose.
+
 ## Consequences
 
 - The `transferOwnership` non-atomic carry-forward from sub-spec A's I4

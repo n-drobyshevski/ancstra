@@ -8,6 +8,34 @@
 
 ---
 
+## Post-implementation drift (added 2026-05-07)
+
+This document captures the design as it was decided at brainstorm time. Two
+items deviated during implementation — the **canonical sources of truth** for
+the shipped behavior are [ADR-017](../../architecture/decisions/017-rbac-share-invite-ux.md)
+and [plan.md](./plan.md), not this design:
+
+1. **Transaction pattern.** Decision C5 below says Drizzle's
+   `centralDb.transaction(async (tx) => …)` API. In practice
+   `better-sqlite3` (the test driver) rejects async transaction callbacks
+   while `libsql` (production) requires them. The shipped code uses
+   explicit `BEGIN/COMMIT/ROLLBACK` via `centralDb.run(sql\`BEGIN\`)` —
+   the only pattern that works for both drivers. See ADR-017 §2.
+2. **Activity action name.** This document says `'ownership_transferred'`.
+   The `ActivityAction` union already had `'owner_transferred'`; the
+   shipped code uses the existing name. See plan.md §"Spec corrections".
+3. **Activity log placement.** This document says the activity entry is
+   written *inside* the transaction. The shipped route writes it *after*
+   `transferOwnership` returns, outside the transaction — atomicity is
+   for the role swap + registry update + version bumps; the audit row is
+   best-effort. See ADR-017 §9.
+4. **`ConcurrentTransferError` location.** This document says the class
+   lives in `packages/auth/src/errors.ts`. There is no such file; the
+   class lives in `packages/auth/src/types.ts` next to `ForbiddenError`
+   (matches existing pattern). See plan.md.
+
+---
+
 ## Context
 
 Sub-spec C is the share/invite UX layer of the cross-cutting RBAC roadmap

@@ -192,13 +192,24 @@ export async function transferOwnership(
 
 /**
  * Detect violation of the partial UQ index on family_members(family_id) WHERE role='owner'.
- * Both better-sqlite3 and libsql surface the index name in the error message.
+ *
+ * SQLite's UNIQUE-constraint error message for this partial index is
+ *   "UNIQUE constraint failed: family_members.family_id"
+ * (it does NOT include the index name). The composite UQ on
+ * (family_id, user_id) — see central-schema.ts — would instead emit
+ *   "UNIQUE constraint failed: family_members.family_id, family_members.user_id"
+ *
+ * We distinguish the two by requiring `family_id` to appear AND `user_id`
+ * to NOT appear. This is robust against either UQ being added inside a
+ * future revision of `transferOwnership` (e.g. a proactive INSERT into
+ * an ownership-history table would not match either pattern, so the raw
+ * error would propagate as 500 — desirable, since it'd be a bug to flag).
  */
 function isOwnerUqViolation(err: unknown): boolean {
   if (!(err instanceof Error)) return false;
   const msg = err.message.toLowerCase();
-  return (
-    msg.includes('uq_family_members_family_owner') ||
-    (msg.includes('unique constraint') && msg.includes('family_members'))
-  );
+  if (!msg.includes('unique constraint')) return false;
+  if (!msg.includes('family_members.family_id')) return false;
+  if (msg.includes('family_members.user_id')) return false;
+  return true;
 }
