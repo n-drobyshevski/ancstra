@@ -30,7 +30,7 @@ export default async function MembersPage() {
             Manage who has access to your family tree and their permissions.
           </p>
         </div>
-        <InviteDialog familyId={ctx.familyId} />
+        <InviteDialog familyId={ctx.familyId} currentRole={ctx.role} />
       </div>
       <MemberList
         familyId={ctx.familyId}
