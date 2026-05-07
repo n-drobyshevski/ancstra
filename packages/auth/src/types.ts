@@ -54,3 +54,10 @@ export class ForbiddenError extends Error {
     this.permission = permission;
   }
 }
+
+export class ConcurrentTransferError extends Error {
+  constructor(message = 'Concurrent transfer detected. Please retry.') {
+    super(message);
+    this.name = 'ConcurrentTransferError';
+  }
+}
