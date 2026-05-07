@@ -275,3 +275,19 @@ Deliberately listing these so a future reader sees the affected surface area:
 ## Next step
 
 After this spec is approved, the immediate next action is: **brainstorm sub-spec B (tRPC migration)**. That brainstorm will use Context7 to verify tRPC v11 + Next.js 16 + Auth.js v5 integration patterns, then produce its own spec → plan → execution.
+
+---
+
+## Decision history
+
+This `architecture.md` is the canonical decision record for the RBAC roadmap. Per-sub-spec ADRs are point-in-time snapshots tied to specific sub-specs; if they ever diverge from this doc, treat this as the source of truth.
+
+| ADR | Date | Sub-spec | Topic |
+|---|---|---|---|
+| [013](../architecture/decisions/013-trpc-as-action-substrate.md) | 2026-04-29 | B | tRPC v11 as action substrate |
+| [014](../architecture/decisions/014-rbac-enforcement-hardening.md) | 2026-04-30 | A | Header trust, JWT staleness, owner-uniqueness |
+| [015](../architecture/decisions/015-rbac-client-foundation.md) | 2026-04-30 | D1 | Client SessionProvider, RoleGate, JWT refresh |
+| [016](../architecture/decisions/016-rbac-d2-ux-layer.md) | 2026-04-30 | D2 | Family switcher, lastSeenAt, RoleGate adoption |
+| [017](../architecture/decisions/017-rbac-share-invite-ux.md) | 2026-05-07 | C | Transfer ownership, atomicity, share/invite UX |
+
+**E (audit, tests, docs)** does not add a new ADR — this Decision-history section is the consolidating artifact. The roadmap is now **6/6 sub-specs shipped**.
