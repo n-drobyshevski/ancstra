@@ -1,25 +1,11 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import Database from 'better-sqlite3';
-import { drizzle } from 'drizzle-orm/better-sqlite3';
-import * as schema from '@ancstra/db/schema';
+import { createTestCentralDb, type TestCentralDb } from '@ancstra/db/test-fixtures';
 import { sql } from 'drizzle-orm';
 import { calculateCost, checkBudget, recordUsage, getUsageStats } from '../context/cost-tracker';
 
-function createTestDb() {
-  const raw = new Database(':memory:');
-  raw.exec(`
-    CREATE TABLE users (
-      id TEXT PRIMARY KEY,
-      email TEXT NOT NULL UNIQUE,
-      password_hash TEXT,
-      name TEXT NOT NULL,
-      avatar_url TEXT,
-      email_verified INTEGER NOT NULL DEFAULT 0,
-      memberships_version INTEGER NOT NULL DEFAULT 0,
-      is_platform_admin INTEGER NOT NULL DEFAULT 0,
-      created_at TEXT NOT NULL DEFAULT '',
-      updated_at TEXT NOT NULL DEFAULT ''
-    );
+function createTestDb(): TestCentralDb {
+  const db = createTestCentralDb();
+  (db.$client as unknown as { ['exec']: (s: string) => void })['exec'](`
     INSERT INTO users (id, name, email, created_at, updated_at)
     VALUES ('user1', 'Test', 'test@test.com', '2025-01-01', '2025-01-01');
 
@@ -36,7 +22,7 @@ function createTestDb() {
     );
     CREATE INDEX idx_ai_usage_user_month ON ai_usage(user_id, created_at);
   `);
-  return drizzle({ client: raw, schema });
+  return db;
 }
 
 describe('calculateCost', () => {
@@ -64,7 +50,7 @@ describe('calculateCost', () => {
 });
 
 describe('checkBudget', () => {
-  let db: ReturnType<typeof createTestDb>;
+  let db: TestCentralDb;
 
   beforeEach(() => {
     db = createTestDb();
@@ -119,7 +105,7 @@ describe('checkBudget', () => {
 });
 
 describe('recordUsage', () => {
-  let db: ReturnType<typeof createTestDb>;
+  let db: TestCentralDb;
 
   beforeEach(() => {
     db = createTestDb();
@@ -144,7 +130,7 @@ describe('recordUsage', () => {
 });
 
 describe('getUsageStats', () => {
-  let db: ReturnType<typeof createTestDb>;
+  let db: TestCentralDb;
 
   beforeEach(() => {
     db = createTestDb();

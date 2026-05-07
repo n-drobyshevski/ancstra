@@ -1,5 +1,4 @@
-import Database from 'better-sqlite3';
-import { drizzle } from 'drizzle-orm/better-sqlite3';
+import { createTestCentralDb, type TestCentralDb } from '@ancstra/db/test-fixtures';
 import * as centralSchema from '@ancstra/db/central-schema';
 import { eq, and } from 'drizzle-orm';
 import { transferOwnership } from '../src/families';
@@ -7,69 +6,7 @@ import * as memberships from '../src/memberships';
 import { vi, beforeEach, describe, it, expect } from 'vitest';
 import { ConcurrentTransferError } from '../src/types';
 
-function createTestDb() {
-  const sqlite = new Database(':memory:');
-  sqlite.pragma('journal_mode = WAL');
-  sqlite.pragma('foreign_keys = ON');
-
-  sqlite.exec(`
-    CREATE TABLE users (
-      id TEXT PRIMARY KEY,
-      email TEXT NOT NULL UNIQUE,
-      password_hash TEXT,
-      name TEXT NOT NULL,
-      avatar_url TEXT,
-      email_verified INTEGER NOT NULL DEFAULT 0,
-      memberships_version INTEGER NOT NULL DEFAULT 0,
-      is_platform_admin INTEGER NOT NULL DEFAULT 0,
-      created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-    );
-
-    CREATE TABLE family_registry (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      owner_id TEXT NOT NULL REFERENCES users(id),
-      db_filename TEXT NOT NULL,
-      moderation_enabled INTEGER NOT NULL DEFAULT 0,
-      max_members INTEGER NOT NULL DEFAULT 50,
-      monthly_ai_budget_usd REAL NOT NULL DEFAULT 10.0,
-      created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-    );
-
-    CREATE TABLE family_members (
-      id TEXT PRIMARY KEY,
-      family_id TEXT NOT NULL REFERENCES family_registry(id) ON DELETE CASCADE,
-      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      role TEXT NOT NULL CHECK(role IN ('owner', 'admin', 'editor', 'viewer')),
-      invited_role TEXT,
-      joined_at TEXT NOT NULL DEFAULT (datetime('now')),
-      is_active INTEGER NOT NULL DEFAULT 1,
-      last_seen_at TEXT,
-      UNIQUE(family_id, user_id)
-    );
-
-    CREATE UNIQUE INDEX uq_family_members_family_owner
-      ON family_members (family_id) WHERE role = 'owner';
-
-    CREATE TABLE activity_feed (
-      id TEXT PRIMARY KEY,
-      family_id TEXT NOT NULL,
-      user_id TEXT NOT NULL,
-      action TEXT NOT NULL,
-      entity_type TEXT,
-      entity_id TEXT,
-      summary TEXT NOT NULL,
-      metadata TEXT,
-      created_at TEXT NOT NULL
-    );
-  `);
-
-  return drizzle(sqlite, { schema: centralSchema });
-}
-
-async function seed(db: ReturnType<typeof createTestDb>) {
+async function seed(db: TestCentralDb) {
   const now = new Date().toISOString();
   await db.insert(centralSchema.users).values([
     { id: 'u-owner', email: 'o@t', name: 'Owner', createdAt: now, updatedAt: now },
@@ -103,10 +40,10 @@ describe('ConcurrentTransferError', () => {
 });
 
 describe('transferOwnership atomicity', () => {
-  let db: ReturnType<typeof createTestDb>;
+  let db: TestCentralDb;
 
   beforeEach(async () => {
-    db = createTestDb();
+    db = createTestCentralDb();
     await seed(db);
     vi.restoreAllMocks();
   });

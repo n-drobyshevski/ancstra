@@ -1,89 +1,37 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import Database from 'better-sqlite3';
-import { drizzle } from 'drizzle-orm/better-sqlite3';
+import { createTestCentralDb, type TestCentralDb } from '@ancstra/db/test-fixtures';
+import * as centralSchema from '@ancstra/db/central-schema';
 import { logActivity, getActivityFeed, redactActivityForViewer, type ActivityEntry } from '../src/activity';
 
-const CREATE_TABLES_SQL = `
-  CREATE TABLE IF NOT EXISTS users (
-    id TEXT PRIMARY KEY,
-    email TEXT NOT NULL UNIQUE,
-    password_hash TEXT,
-    name TEXT NOT NULL,
-    avatar_url TEXT,
-    email_verified INTEGER NOT NULL DEFAULT 0,
-    memberships_version INTEGER NOT NULL DEFAULT 0,
-    is_platform_admin INTEGER NOT NULL DEFAULT 0,
-    created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL
-  );
-
-  CREATE TABLE IF NOT EXISTS family_registry (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    owner_id TEXT NOT NULL REFERENCES users(id),
-    db_filename TEXT NOT NULL,
-    moderation_enabled INTEGER NOT NULL DEFAULT 0,
-    max_members INTEGER NOT NULL DEFAULT 50,
-      monthly_ai_budget_usd REAL NOT NULL DEFAULT 10.0,
-    created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL
-  );
-
-  CREATE TABLE IF NOT EXISTS activity_feed (
-    id TEXT PRIMARY KEY,
-    family_id TEXT NOT NULL REFERENCES family_registry(id) ON DELETE CASCADE,
-    user_id TEXT NOT NULL REFERENCES users(id),
-    action TEXT NOT NULL,
-    entity_type TEXT,
-    entity_id TEXT,
-    summary TEXT NOT NULL,
-    metadata TEXT,
-    created_at TEXT NOT NULL
-  );
-
-  CREATE INDEX IF NOT EXISTS idx_activity_feed_family_date ON activity_feed(family_id, created_at);
-  CREATE INDEX IF NOT EXISTS idx_activity_feed_user ON activity_feed(user_id);
-`;
-
-function createTestDb() {
-  const sqlite = new Database(':memory:');
-  sqlite.exec(CREATE_TABLES_SQL);
-
-  const now = new Date().toISOString();
-  sqlite.prepare(`INSERT INTO users (id, email, name, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`)
-    .run('u1', 'a@b.com', 'Alice', now, now);
-  sqlite.prepare(`INSERT INTO users (id, email, name, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`)
-    .run('u2', 'b@c.com', 'Bob', now, now);
-  sqlite.prepare(`INSERT INTO family_registry (id, name, owner_id, db_filename, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`)
-    .run('f1', 'Test Family', 'u1', 'test.db', now, now);
-
-  return { db: drizzle(sqlite), sqlite };
-}
-
-function insertRawActivity(sqlite: Database.Database, id: string, opts: {
+async function insertRawActivity(db: TestCentralDb, id: string, opts: {
   familyId?: string; userId?: string; action?: string; summary?: string; createdAt: string;
   entityType?: string; entityId?: string;
 }) {
-  sqlite.prepare(`
-    INSERT INTO activity_feed (id, family_id, user_id, action, summary, created_at, entity_type, entity_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
+  await db.insert(centralSchema.activityFeed).values({
     id,
-    opts.familyId ?? 'f1',
-    opts.userId ?? 'u1',
-    opts.action ?? 'person_added',
-    opts.summary ?? `Activity ${id}`,
-    opts.createdAt,
-    opts.entityType ?? null,
-    opts.entityId ?? null,
-  );
+    familyId: opts.familyId ?? 'f1',
+    userId: opts.userId ?? 'u1',
+    action: opts.action ?? 'person_added',
+    summary: opts.summary ?? `Activity ${id}`,
+    createdAt: opts.createdAt,
+    entityType: opts.entityType ?? null,
+    entityId: opts.entityId ?? null,
+  }).run();
 }
 
 describe('logActivity', () => {
-  let db: ReturnType<typeof createTestDb>['db'];
+  let db: TestCentralDb;
 
-  beforeEach(() => {
-    ({ db } = createTestDb());
+  beforeEach(async () => {
+    db = createTestCentralDb();
+    const now = new Date().toISOString();
+    await db.insert(centralSchema.users).values([
+      { id: 'u1', email: 'a@b.com', name: 'Alice', createdAt: now, updatedAt: now },
+      { id: 'u2', email: 'b@c.com', name: 'Bob', createdAt: now, updatedAt: now },
+    ]).run();
+    await db.insert(centralSchema.familyRegistry).values({
+      id: 'f1', name: 'Test Family', ownerId: 'u1', dbFilename: 'test.db', createdAt: now, updatedAt: now,
+    }).run();
   });
 
   it('inserts a row into activity_feed', async () => {
@@ -123,17 +71,24 @@ describe('logActivity', () => {
 });
 
 describe('getActivityFeed', () => {
-  let db: ReturnType<typeof createTestDb>['db'];
-  let sqlite: Database.Database;
+  let db: TestCentralDb;
 
-  beforeEach(() => {
-    ({ db, sqlite } = createTestDb());
+  beforeEach(async () => {
+    db = createTestCentralDb();
+    const now = new Date().toISOString();
+    await db.insert(centralSchema.users).values([
+      { id: 'u1', email: 'a@b.com', name: 'Alice', createdAt: now, updatedAt: now },
+      { id: 'u2', email: 'b@c.com', name: 'Bob', createdAt: now, updatedAt: now },
+    ]).run();
+    await db.insert(centralSchema.familyRegistry).values({
+      id: 'f1', name: 'Test Family', ownerId: 'u1', dbFilename: 'test.db', createdAt: now, updatedAt: now,
+    }).run();
   });
 
   it('returns items ordered by created_at desc', async () => {
-    insertRawActivity(sqlite, 'a1', { summary: 'First', createdAt: '2026-01-01T00:00:00Z' });
-    insertRawActivity(sqlite, 'a2', { summary: 'Second', createdAt: '2026-01-02T00:00:00Z' });
-    insertRawActivity(sqlite, 'a3', { summary: 'Third', createdAt: '2026-01-03T00:00:00Z' });
+    await insertRawActivity(db, 'a1', { summary: 'First', createdAt: '2026-01-01T00:00:00Z' });
+    await insertRawActivity(db, 'a2', { summary: 'Second', createdAt: '2026-01-02T00:00:00Z' });
+    await insertRawActivity(db, 'a3', { summary: 'Third', createdAt: '2026-01-03T00:00:00Z' });
 
     const result = await getActivityFeed(db, { familyId: 'f1' });
     expect(result.items.map((i) => i.summary)).toEqual(['Third', 'Second', 'First']);
@@ -141,7 +96,7 @@ describe('getActivityFeed', () => {
 
   it('respects limit and returns nextCursor', async () => {
     for (let i = 0; i < 5; i++) {
-      insertRawActivity(sqlite, `item${i}`, {
+      await insertRawActivity(db, `item${i}`, {
         summary: `Activity ${i}`,
         createdAt: `2026-01-0${i + 1}T00:00:00Z`,
       });
@@ -166,9 +121,9 @@ describe('getActivityFeed', () => {
   });
 
   it('filters by action', async () => {
-    insertRawActivity(sqlite, 'x1', { action: 'person_added', summary: 'Added', createdAt: '2026-01-01T00:00:00Z' });
-    insertRawActivity(sqlite, 'x2', { action: 'media_uploaded', summary: 'Uploaded', createdAt: '2026-01-02T00:00:00Z' });
-    insertRawActivity(sqlite, 'x3', { action: 'person_added', summary: 'Added again', createdAt: '2026-01-03T00:00:00Z' });
+    await insertRawActivity(db, 'x1', { action: 'person_added', summary: 'Added', createdAt: '2026-01-01T00:00:00Z' });
+    await insertRawActivity(db, 'x2', { action: 'media_uploaded', summary: 'Uploaded', createdAt: '2026-01-02T00:00:00Z' });
+    await insertRawActivity(db, 'x3', { action: 'person_added', summary: 'Added again', createdAt: '2026-01-03T00:00:00Z' });
 
     const result = await getActivityFeed(db, { familyId: 'f1', action: 'person_added' });
     expect(result.items).toHaveLength(2);
@@ -176,9 +131,9 @@ describe('getActivityFeed', () => {
   });
 
   it('filters by userId', async () => {
-    insertRawActivity(sqlite, 'y1', { userId: 'u1', summary: 'By Alice', createdAt: '2026-01-01T00:00:00Z' });
-    insertRawActivity(sqlite, 'y2', { userId: 'u2', summary: 'By Bob', createdAt: '2026-01-02T00:00:00Z' });
-    insertRawActivity(sqlite, 'y3', { userId: 'u1', summary: 'By Alice again', createdAt: '2026-01-03T00:00:00Z' });
+    await insertRawActivity(db, 'y1', { userId: 'u1', summary: 'By Alice', createdAt: '2026-01-01T00:00:00Z' });
+    await insertRawActivity(db, 'y2', { userId: 'u2', summary: 'By Bob', createdAt: '2026-01-02T00:00:00Z' });
+    await insertRawActivity(db, 'y3', { userId: 'u1', summary: 'By Alice again', createdAt: '2026-01-03T00:00:00Z' });
 
     const result = await getActivityFeed(db, { familyId: 'f1', userId: 'u2' });
     expect(result.items).toHaveLength(1);
@@ -186,7 +141,7 @@ describe('getActivityFeed', () => {
   });
 
   it('returns null nextCursor when no more pages', async () => {
-    insertRawActivity(sqlite, 'z1', { summary: 'Only one', createdAt: '2026-01-01T00:00:00Z' });
+    await insertRawActivity(db, 'z1', { summary: 'Only one', createdAt: '2026-01-01T00:00:00Z' });
 
     const result = await getActivityFeed(db, { familyId: 'f1', limit: 10 });
     expect(result.items).toHaveLength(1);

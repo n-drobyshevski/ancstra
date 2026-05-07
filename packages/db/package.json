@@ -11,7 +11,11 @@
     "./central-schema": "./src/central-schema.ts",
     "./family-schema": "./src/family-schema.ts",
     "./schema": "./src/schema.ts",
-    "./completeness-sql": "./src/completeness-sql.ts"
+    "./completeness-sql": "./src/completeness-sql.ts",
+    "./test-fixtures": {
+      "types": "./src/test-fixtures/index.ts",
+      "default": "./src/test-fixtures/index.ts"
+    }
   },
   "scripts": {
     "db:generate": "drizzle-kit generate",

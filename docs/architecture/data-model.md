@@ -841,6 +841,129 @@ CREATE INDEX idx_research_facts_factsheet ON research_facts(factsheet_id);
 
 ---
 
+## Central Database
+
+Ancstra splits data across two tiers: a **central database** containing identity, membership, and audit data shared across all families; and **per-family databases** (one SQLite file per family) containing the genealogy data scoped to that family.
+
+```
+                    ┌────────────────────────────────────────────┐
+                    │           CENTRAL DATABASE                 │
+                    │  users · oauth_accounts · family_registry  │
+                    │  family_members · invitations              │
+                    │  activity_feed · platform_audit_log        │
+                    └────────────────────────────────────────────┘
+                                       │
+                ┌──────────────────────┼──────────────────────┐
+                ▼                      ▼                      ▼
+        ┌─────────────┐        ┌─────────────┐        ┌─────────────┐
+        │ family-A.db │        │ family-B.db │        │ family-C.db │
+        │   persons   │        │   persons   │        │   persons   │
+        │   events    │        │   events    │        │   events    │
+        │     ...     │        │     ...     │        │     ...     │
+        └─────────────┘        └─────────────┘        └─────────────┘
+```
+
+**Why this split.** A connection from `createFamilyDb('A.db')` cannot see family B's tables — physical isolation makes cross-family leakage at the family-DB layer essentially impossible. Central-DB queries still need explicit `WHERE family_id = ctx.familyId` filters because membership and audit data span families.
+
+### `users`
+
+Global user identity. One row per registered user.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | TEXT PK | UUID |
+| `email` | TEXT NOT NULL UNIQUE | login identifier |
+| `password_hash` | TEXT | bcrypt; nullable for OAuth-only users |
+| `name` | TEXT NOT NULL | display name |
+| `avatar_url` | TEXT | optional |
+| `email_verified` | INTEGER NOT NULL DEFAULT 0 | 0/1 |
+| `memberships_version` | INTEGER NOT NULL DEFAULT 0 | JWT staleness counter (ADR-014) |
+| `is_platform_admin` | INTEGER NOT NULL DEFAULT 0 | cross-family super-admin (platform-admin v1) |
+| `created_at` | TEXT NOT NULL | ISO 8601 |
+| `updated_at` | TEXT NOT NULL | ISO 8601 |
+
+### `family_registry`
+
+One row per family; owns the per-family DB filename and current owner.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | TEXT PK | UUID |
+| `name` | TEXT NOT NULL | family display name |
+| `owner_id` | TEXT NOT NULL FK→users.id | denormalized; mirrors family_members where role='owner' |
+| `db_filename` | TEXT NOT NULL | path to per-family SQLite file |
+| `moderation_enabled` | INTEGER NOT NULL DEFAULT 0 | flips editor mutations into `pending_contributions` |
+| `max_members` | INTEGER NOT NULL DEFAULT 50 | invite cap |
+| `monthly_ai_budget_usd` | REAL NOT NULL DEFAULT 10.0 | AI spend cap |
+| `created_at` | TEXT NOT NULL | |
+| `updated_at` | TEXT NOT NULL | |
+
+**Relationships.** `owner_id` → `users.id`. The "actual" owner is enforced via `family_members WHERE role='owner'` + the partial UQ index `uq_family_members_family_owner` (ADR-014). `family_registry.owner_id` is a denormalized copy maintained by `transferOwnership`.
+
+### `family_members`
+
+Many-to-many users ↔ families with per-family role.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | TEXT PK | UUID |
+| `family_id` | TEXT NOT NULL FK→family_registry.id | ON DELETE CASCADE |
+| `user_id` | TEXT NOT NULL FK→users.id | ON DELETE CASCADE |
+| `role` | TEXT NOT NULL CHECK | one of `owner`, `admin`, `editor`, `viewer` |
+| `invited_role` | TEXT | role at the time of invite acceptance (audit) |
+| `joined_at` | TEXT NOT NULL | ISO 8601 |
+| `is_active` | INTEGER NOT NULL DEFAULT 1 | soft-delete flag |
+| `last_seen_at` | TEXT | ISO 8601; updated on family-switch (ADR-016) |
+
+**Constraints.**
+- `UNIQUE(family_id, user_id)` — one membership row per (family, user).
+- Partial UQ index `uq_family_members_family_owner ON family_members (family_id) WHERE role='owner'` — DB-enforces exactly one owner per family (ADR-014).
+
+### `invitations`
+
+Link-based invite tokens with optional email gate.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | TEXT PK | UUID |
+| `family_id` | TEXT NOT NULL FK→family_registry.id | ON DELETE CASCADE |
+| `invited_by` | TEXT NOT NULL FK→users.id | inviter |
+| `email` | TEXT | optional gate; if set, only that email may accept |
+| `role` | TEXT NOT NULL CHECK | one of `admin`, `editor`, `viewer` (no owner via invite) |
+| `token` | TEXT NOT NULL UNIQUE | 64-char hex; URL parameter |
+| `expires_at` | TEXT NOT NULL | ISO 8601; default 7 days |
+| `accepted_at` | TEXT | set on accept |
+| `accepted_by` | TEXT FK→users.id | set on accept |
+| `revoked_at` | TEXT | set on revoke |
+| `revoked_by` | TEXT FK→users.id | set on revoke |
+| `created_at` | TEXT NOT NULL | |
+
+### `activity_feed`
+
+Per-family audit log. Family-scoped (FK NOT NULL on `family_id`).
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | TEXT PK | UUID |
+| `family_id` | TEXT NOT NULL FK→family_registry.id | scopes to one family |
+| `user_id` | TEXT NOT NULL FK→users.id | actor |
+| `action` | TEXT NOT NULL | typed in `packages/auth/src/types.ts` `ActivityAction` |
+| `entity_type` | TEXT | optional |
+| `entity_id` | TEXT | optional |
+| `summary` | TEXT NOT NULL | human-readable line |
+| `metadata` | TEXT | optional JSON string |
+| `created_at` | TEXT NOT NULL | |
+
+Cross-family/platform-level events (e.g., platform-admin actions) live in `platform_audit_log` instead — that table doesn't require `family_id` and isn't surfaced in family-scoped activity feeds.
+
+### Internal tables (not part of the application data model)
+
+- `oauth_accounts` — Auth.js OAuth provider account links.
+- `verification_tokens` — Auth.js email-verification + password-reset tokens.
+- `platform_audit_log` — cross-family audit trail for platform-admin actions; consumed by the platform-admin console.
+
+---
+
 ## Migration Strategy
 
 - **Tool:** Drizzle Kit (`drizzle-kit generate` for SQL migrations, `drizzle-kit push` for dev)

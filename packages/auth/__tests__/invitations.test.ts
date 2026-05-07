@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import Database from 'better-sqlite3';
-import { drizzle } from 'drizzle-orm/better-sqlite3';
+import { createTestCentralDb, type TestCentralDb } from '@ancstra/db/test-fixtures';
 import * as centralSchema from '@ancstra/db/central-schema';
 import {
   generateInviteToken,
@@ -10,73 +9,7 @@ import {
   revokeInvite,
 } from '../src/invitations';
 
-function createTestDb() {
-  const sqlite = new Database(':memory:');
-
-  // Enable WAL mode
-  sqlite.pragma('journal_mode = WAL');
-  sqlite.pragma('foreign_keys = ON');
-
-  // Create tables using raw SQL matching the schema
-  const createTablesSql = `
-    CREATE TABLE users (
-      id TEXT PRIMARY KEY,
-      email TEXT NOT NULL UNIQUE,
-      password_hash TEXT,
-      name TEXT NOT NULL,
-      avatar_url TEXT,
-      email_verified INTEGER NOT NULL DEFAULT 0,
-      memberships_version INTEGER NOT NULL DEFAULT 0,
-      is_platform_admin INTEGER NOT NULL DEFAULT 0,
-      created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL
-    );
-
-    CREATE TABLE family_registry (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      owner_id TEXT NOT NULL REFERENCES users(id),
-      db_filename TEXT NOT NULL,
-      moderation_enabled INTEGER NOT NULL DEFAULT 0,
-      max_members INTEGER NOT NULL DEFAULT 50,
-      monthly_ai_budget_usd REAL NOT NULL DEFAULT 10.0,
-      created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL
-    );
-
-    CREATE TABLE family_members (
-      id TEXT PRIMARY KEY,
-      family_id TEXT NOT NULL REFERENCES family_registry(id) ON DELETE CASCADE,
-      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      role TEXT NOT NULL CHECK(role IN ('owner', 'admin', 'editor', 'viewer')),
-      invited_role TEXT,
-      joined_at TEXT NOT NULL,
-      is_active INTEGER NOT NULL DEFAULT 1,
-      last_seen_at TEXT,
-      UNIQUE(family_id, user_id)
-    );
-
-    CREATE TABLE invitations (
-      id TEXT PRIMARY KEY,
-      family_id TEXT NOT NULL REFERENCES family_registry(id) ON DELETE CASCADE,
-      invited_by TEXT NOT NULL REFERENCES users(id),
-      email TEXT,
-      role TEXT NOT NULL CHECK(role IN ('admin', 'editor', 'viewer')),
-      token TEXT NOT NULL UNIQUE,
-      expires_at TEXT NOT NULL,
-      accepted_at TEXT,
-      accepted_by TEXT REFERENCES users(id),
-      revoked_at TEXT,
-      revoked_by TEXT REFERENCES users(id),
-      created_at TEXT NOT NULL
-    );
-  `;
-  sqlite.exec(createTablesSql);
-
-  return drizzle(sqlite, { schema: centralSchema });
-}
-
-function seedTestData(db: ReturnType<typeof createTestDb>) {
+function seedTestData(db: TestCentralDb) {
   const now = new Date().toISOString();
 
   // Create users
@@ -121,10 +54,10 @@ describe('generateInviteToken', () => {
 });
 
 describe('createInvitation', () => {
-  let db: ReturnType<typeof createTestDb>;
+  let db: TestCentralDb;
 
   beforeEach(() => {
-    db = createTestDb();
+    db = createTestCentralDb();
     seedTestData(db);
   });
 
@@ -210,10 +143,10 @@ describe('createInvitation', () => {
 });
 
 describe('validateInviteToken', () => {
-  let db: ReturnType<typeof createTestDb>;
+  let db: TestCentralDb;
 
   beforeEach(() => {
-    db = createTestDb();
+    db = createTestCentralDb();
     seedTestData(db);
   });
 
@@ -330,10 +263,10 @@ describe('validateInviteToken', () => {
 });
 
 describe('acceptInvite', () => {
-  let db: ReturnType<typeof createTestDb>;
+  let db: TestCentralDb;
 
   beforeEach(() => {
-    db = createTestDb();
+    db = createTestCentralDb();
     seedTestData(db);
   });
 
@@ -390,10 +323,10 @@ describe('acceptInvite', () => {
 });
 
 describe('revokeInvite', () => {
-  let db: ReturnType<typeof createTestDb>;
+  let db: TestCentralDb;
 
   beforeEach(() => {
-    db = createTestDb();
+    db = createTestCentralDb();
     seedTestData(db);
   });
 
