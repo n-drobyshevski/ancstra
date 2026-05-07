@@ -191,4 +191,36 @@ describe('transferOwnership atomicity', () => {
       .where(eq(centralSchema.familyRegistry.id, 'fam-1')).get();
     expect(fam?.ownerId).toBe('u-owner');
   });
+
+  it('throws ConcurrentTransferError when UQ partial-index fires', async () => {
+    const now = new Date().toISOString();
+    await db.insert(centralSchema.users).values({
+      id: 'u-admin2', email: 'a2@t', name: 'Admin2', createdAt: now, updatedAt: now,
+    }).run();
+    await db.insert(centralSchema.familyMembers).values({
+      id: 'm-4', familyId: 'fam-1', userId: 'u-admin2', role: 'admin', joinedAt: now,
+    }).run();
+
+    // Simulate a concurrent transfer winning: directly demote the original owner
+    // and promote u-admin out-of-band, leaving the partial UQ index occupied.
+    await db.update(centralSchema.familyMembers)
+      .set({ role: 'admin' })
+      .where(eq(centralSchema.familyMembers.userId, 'u-owner'))
+      .run();
+    await db.update(centralSchema.familyMembers)
+      .set({ role: 'owner' })
+      .where(eq(centralSchema.familyMembers.userId, 'u-admin'))
+      .run();
+
+    // Now attempt to transfer to u-admin2 — the promote step will violate
+    // the partial UQ index because u-admin already holds owner.
+    const { ConcurrentTransferError } = await import('../src/types');
+    await expect(
+      transferOwnership(db, {
+        familyId: 'fam-1',
+        currentOwnerId: 'u-owner',
+        newOwnerId: 'u-admin2',
+      })
+    ).rejects.toBeInstanceOf(ConcurrentTransferError);
+  });
 });

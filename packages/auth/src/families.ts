@@ -6,6 +6,7 @@ import {
 import { isWebMode } from '@ancstra/db';
 import type { CentralDatabase } from '@ancstra/db';
 import type { Role } from './types';
+import { ConcurrentTransferError } from './types';
 import { bumpMembershipsVersion, bumpMembershipsVersionMany } from './memberships';
 
 export interface FamilyWithRole {
@@ -180,8 +181,24 @@ export async function transferOwnership(
     await centralDb.run(sql`COMMIT`);
   } catch (err) {
     await centralDb.run(sql`ROLLBACK`);
+    if (isOwnerUqViolation(err)) {
+      throw new ConcurrentTransferError();
+    }
     throw err;
   }
 
   return { success: true };
+}
+
+/**
+ * Detect violation of the partial UQ index on family_members(family_id) WHERE role='owner'.
+ * Both better-sqlite3 and libsql surface the index name in the error message.
+ */
+function isOwnerUqViolation(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  const msg = err.message.toLowerCase();
+  return (
+    msg.includes('uq_family_members_family_owner') ||
+    (msg.includes('unique constraint') && msg.includes('family_members'))
+  );
 }
