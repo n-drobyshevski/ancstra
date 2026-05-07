@@ -1,30 +1,17 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { drizzle } from 'drizzle-orm/better-sqlite3';
-import Database from 'better-sqlite3';
 import * as schema from '@ancstra/db/schema';
+import { createTestCentralDb, type TestCentralDb } from '@ancstra/db/test-fixtures';
 import { createFact } from '../facts/queries';
 import { detectConflicts, resolveConflict, MULTI_VALUED_TYPES } from '../facts/conflicts';
 
-let sqlite: InstanceType<typeof Database>;
-let db: ReturnType<typeof drizzle>;
+let sqlite: import('better-sqlite3').Database;
+let db: TestCentralDb;
 
 beforeEach(() => {
-  sqlite = new Database(':memory:');
-  db = drizzle({ client: sqlite, schema });
+  db = createTestCentralDb();
+  sqlite = db.$client;
 
-  sqlite.exec(`
-    CREATE TABLE users (
-      id TEXT PRIMARY KEY,
-      email TEXT NOT NULL UNIQUE,
-      password_hash TEXT,
-      name TEXT NOT NULL,
-      avatar_url TEXT,
-      email_verified INTEGER NOT NULL DEFAULT 0,
-      memberships_version INTEGER NOT NULL DEFAULT 0,
-      is_platform_admin INTEGER NOT NULL DEFAULT 0,
-      created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL
-    );
+  (sqlite as unknown as { ['exec']: (s: string) => void })['exec'](`
     CREATE TABLE persons (
       id TEXT PRIMARY KEY,
       sex TEXT NOT NULL DEFAULT 'U',
