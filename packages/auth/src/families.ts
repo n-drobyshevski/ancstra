@@ -190,6 +190,169 @@ export async function transferOwnership(
   return { success: true };
 }
 
+// ====================================================================
+// Family settings update / delete (owner-only via permission gate)
+// ====================================================================
+
+export interface FamilySettingsPatch {
+  name?: string;
+  maxMembers?: number;
+  monthlyAiBudgetUsd?: number;
+  moderationEnabled?: boolean;
+}
+
+export interface FamilySettingsRow {
+  id: string;
+  name: string;
+  ownerId: string;
+  dbFilename: string;
+  moderationEnabled: boolean;
+  maxMembers: number;
+  monthlyAiBudgetUsd: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Apply a settings patch to a family. Returns the resulting row plus the keys
+ * that actually changed (used by callers for activity-feed summaries). No-op
+ * patches return changed=[]; the caller decides whether to log.
+ */
+export async function updateFamilySettings(
+  centralDb: CentralDatabase,
+  familyId: string,
+  patch: FamilySettingsPatch,
+): Promise<{ row: FamilySettingsRow; changed: (keyof FamilySettingsPatch)[] }> {
+  const before = await centralDb
+    .select()
+    .from(familyRegistry)
+    .where(eq(familyRegistry.id, familyId))
+    .get();
+
+  if (!before) {
+    throw new Error(`Family ${familyId} not found`);
+  }
+
+  const changed: (keyof FamilySettingsPatch)[] = [];
+  const setClause: Record<string, unknown> = {};
+
+  if (patch.name !== undefined && patch.name !== before.name) {
+    setClause.name = patch.name;
+    changed.push('name');
+  }
+  if (patch.maxMembers !== undefined && patch.maxMembers !== before.maxMembers) {
+    setClause.maxMembers = patch.maxMembers;
+    changed.push('maxMembers');
+  }
+  if (
+    patch.monthlyAiBudgetUsd !== undefined &&
+    patch.monthlyAiBudgetUsd !== before.monthlyAiBudgetUsd
+  ) {
+    setClause.monthlyAiBudgetUsd = patch.monthlyAiBudgetUsd;
+    changed.push('monthlyAiBudgetUsd');
+  }
+  if (patch.moderationEnabled !== undefined) {
+    const desired = patch.moderationEnabled ? 1 : 0;
+    if (desired !== before.moderationEnabled) {
+      setClause.moderationEnabled = desired;
+      changed.push('moderationEnabled');
+    }
+  }
+
+  if (changed.length === 0) {
+    return {
+      row: rowToFamilySettings(before),
+      changed: [],
+    };
+  }
+
+  setClause.updatedAt = new Date().toISOString();
+
+  await centralDb
+    .update(familyRegistry)
+    .set(setClause)
+    .where(eq(familyRegistry.id, familyId))
+    .run();
+
+  const after = await centralDb
+    .select()
+    .from(familyRegistry)
+    .where(eq(familyRegistry.id, familyId))
+    .get();
+
+  return {
+    row: rowToFamilySettings(after!),
+    changed,
+  };
+}
+
+/**
+ * Delete a family. Cascades through FK to family_members, invitations, and
+ * activity_feed (per onDelete: 'cascade' on those FKs). The per-family
+ * SQLite file (or Turso DB) is NOT touched here — orphaning the storage is
+ * acceptable for v1; cleanup is a separate operational concern.
+ *
+ * Caller must validate `confirmName` against the family's name BEFORE invoking
+ * this; we re-check here as a defense-in-depth guard against client tampering.
+ */
+export async function deleteFamily(
+  centralDb: CentralDatabase,
+  familyId: string,
+  confirmName: string,
+): Promise<{ deleted: boolean; dbFilename: string }> {
+  const row = await centralDb
+    .select({
+      id: familyRegistry.id,
+      name: familyRegistry.name,
+      ownerId: familyRegistry.ownerId,
+      dbFilename: familyRegistry.dbFilename,
+    })
+    .from(familyRegistry)
+    .where(eq(familyRegistry.id, familyId))
+    .get();
+
+  if (!row) {
+    throw new Error(`Family ${familyId} not found`);
+  }
+  if (confirmName.trim() !== row.name) {
+    throw new Error('Confirmation name does not match family name');
+  }
+
+  const memberRows = await centralDb
+    .select({ userId: familyMembers.userId })
+    .from(familyMembers)
+    .where(eq(familyMembers.familyId, familyId))
+    .all();
+
+  await centralDb
+    .delete(familyRegistry)
+    .where(eq(familyRegistry.id, familyId))
+    .run();
+
+  // Bump every former member's JWT version so their next request re-derives
+  // memberships and sees this family is gone.
+  const memberIds = memberRows.map((m: { userId: string }) => m.userId);
+  if (memberIds.length > 0) {
+    await bumpMembershipsVersionMany(centralDb, memberIds);
+  }
+
+  return { deleted: true, dbFilename: row.dbFilename };
+}
+
+function rowToFamilySettings(row: typeof familyRegistry.$inferSelect): FamilySettingsRow {
+  return {
+    id: row.id,
+    name: row.name,
+    ownerId: row.ownerId,
+    dbFilename: row.dbFilename,
+    moderationEnabled: row.moderationEnabled === 1,
+    maxMembers: row.maxMembers,
+    monthlyAiBudgetUsd: row.monthlyAiBudgetUsd,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
 /**
  * Detect violation of the partial UQ index on family_members(family_id) WHERE role='owner'.
  *

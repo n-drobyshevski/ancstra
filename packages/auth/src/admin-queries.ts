@@ -1,4 +1,4 @@
-import { eq, and, or, like, sql, count, isNull, desc, gte } from 'drizzle-orm';
+import { eq, and, or, like, sql, count, isNull, desc, gte, gt, lt, lte } from 'drizzle-orm';
 import * as centralSchema from '@ancstra/db/central-schema';
 
 // Accept any Drizzle DB instance — same convention as invitations.ts/families.ts.
@@ -331,6 +331,7 @@ export interface PlatformCounts {
   activeMembershipCount: number;
   signupsLast7d: number;
   platformAdminCount: number;
+  pendingInvitesTotal: number;
 }
 
 /**
@@ -345,7 +346,9 @@ export async function getPlatformCounts(
 ): Promise<PlatformCounts> {
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-  const [users, families, memberships, recent, admins] = await Promise.all([
+  const nowIso = now.toISOString();
+
+  const [users, families, memberships, recent, admins, pendingInvites] = await Promise.all([
     centralDb.select({ n: count() }).from(centralSchema.users).get(),
     centralDb.select({ n: count() }).from(centralSchema.familyRegistry).get(),
     centralDb
@@ -363,6 +366,17 @@ export async function getPlatformCounts(
       .from(centralSchema.users)
       .where(eq(centralSchema.users.isPlatformAdmin, 1))
       .get(),
+    centralDb
+      .select({ n: count() })
+      .from(centralSchema.invitations)
+      .where(
+        and(
+          isNull(centralSchema.invitations.acceptedAt),
+          isNull(centralSchema.invitations.revokedAt),
+          gt(centralSchema.invitations.expiresAt, nowIso),
+        ),
+      )
+      .get(),
   ]);
 
   return {
@@ -371,6 +385,7 @@ export async function getPlatformCounts(
     activeMembershipCount: memberships?.n ?? 0,
     signupsLast7d: recent?.n ?? 0,
     platformAdminCount: admins?.n ?? 0,
+    pendingInvitesTotal: pendingInvites?.n ?? 0,
   };
 }
 
@@ -402,6 +417,158 @@ export async function logPlatformActivity(
       metadata: opts.metadata ? JSON.stringify(opts.metadata) : null,
     })
     .run();
+}
+
+// --------------------------------------------------------------------
+// Audit log query (read API for /admin/audit)
+// --------------------------------------------------------------------
+
+export interface AuditLogEntry {
+  id: string;
+  actorUserId: string;
+  actorName: string;
+  actorEmail: string;
+  actorAvatarUrl: string | null;
+  action: string;
+  targetType: string;
+  targetId: string;
+  summary: string;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+}
+
+export interface ListAuditLogOpts {
+  cursor?: string; // opaque: the row id to seek past
+  limit?: number;
+  actorUserId?: string;
+  targetType?: 'user' | 'family';
+  targetId?: string;
+  action?: string;
+  since?: string; // ISO 8601 inclusive lower bound on createdAt
+  until?: string; // ISO 8601 inclusive upper bound on createdAt
+}
+
+export interface ListAuditLogResult {
+  items: AuditLogEntry[];
+  nextCursor: string | null;
+}
+
+/**
+ * Cursor-paginated platform audit log query. Mirrors getActivityFeed's
+ * composite-cursor pattern: cursor is the trailing row's id, looked up
+ * to recover its createdAt for a stable (createdAt DESC, id DESC) seek.
+ *
+ * Joins users to enrich actor display fields. Parses metadata JSON.
+ */
+export async function listAuditLog(
+  centralDb: CentralDb,
+  opts: ListAuditLogOpts = {},
+): Promise<ListAuditLogResult> {
+  const limit = Math.min(Math.max(opts.limit ?? 50, 1), 200);
+  const conditions = [] as ReturnType<typeof eq>[];
+
+  if (opts.actorUserId) {
+    conditions.push(eq(centralSchema.platformAuditLog.actorUserId, opts.actorUserId));
+  }
+  if (opts.targetType) {
+    conditions.push(eq(centralSchema.platformAuditLog.targetType, opts.targetType));
+  }
+  if (opts.targetId) {
+    conditions.push(eq(centralSchema.platformAuditLog.targetId, opts.targetId));
+  }
+  if (opts.action) {
+    conditions.push(eq(centralSchema.platformAuditLog.action, opts.action));
+  }
+  if (opts.since) {
+    conditions.push(gte(centralSchema.platformAuditLog.createdAt, opts.since));
+  }
+  if (opts.until) {
+    conditions.push(lte(centralSchema.platformAuditLog.createdAt, opts.until));
+  }
+
+  if (opts.cursor) {
+    const cursorRow = await centralDb
+      .select({
+        createdAt: centralSchema.platformAuditLog.createdAt,
+        id: centralSchema.platformAuditLog.id,
+      })
+      .from(centralSchema.platformAuditLog)
+      .where(eq(centralSchema.platformAuditLog.id, opts.cursor))
+      .get();
+
+    if (cursorRow) {
+      conditions.push(
+        or(
+          lt(centralSchema.platformAuditLog.createdAt, cursorRow.createdAt),
+          and(
+            eq(centralSchema.platformAuditLog.createdAt, cursorRow.createdAt),
+            lt(centralSchema.platformAuditLog.id, cursorRow.id),
+          ),
+        )!,
+      );
+    }
+  }
+
+  const rows = await centralDb
+    .select({
+      id: centralSchema.platformAuditLog.id,
+      actorUserId: centralSchema.platformAuditLog.actorUserId,
+      actorName: centralSchema.users.name,
+      actorEmail: centralSchema.users.email,
+      actorAvatarUrl: centralSchema.users.avatarUrl,
+      action: centralSchema.platformAuditLog.action,
+      targetType: centralSchema.platformAuditLog.targetType,
+      targetId: centralSchema.platformAuditLog.targetId,
+      summary: centralSchema.platformAuditLog.summary,
+      metadata: centralSchema.platformAuditLog.metadata,
+      createdAt: centralSchema.platformAuditLog.createdAt,
+    })
+    .from(centralSchema.platformAuditLog)
+    .innerJoin(
+      centralSchema.users,
+      eq(centralSchema.users.id, centralSchema.platformAuditLog.actorUserId),
+    )
+    .where(conditions.length > 0 ? and(...conditions) : sql`1=1`)
+    .orderBy(
+      desc(centralSchema.platformAuditLog.createdAt),
+      desc(centralSchema.platformAuditLog.id),
+    )
+    .limit(limit + 1)
+    .all();
+
+  const hasMore = rows.length > limit;
+  const items: AuditLogEntry[] = rows.slice(0, limit).map((r: typeof rows[number]) => ({
+    id: r.id,
+    actorUserId: r.actorUserId,
+    actorName: r.actorName,
+    actorEmail: r.actorEmail,
+    actorAvatarUrl: r.actorAvatarUrl,
+    action: r.action,
+    targetType: r.targetType,
+    targetId: r.targetId,
+    summary: r.summary,
+    metadata: r.metadata ? (JSON.parse(r.metadata) as Record<string, unknown>) : null,
+    createdAt: r.createdAt,
+  }));
+
+  return {
+    items,
+    nextCursor: hasMore ? items[items.length - 1].id : null,
+  };
+}
+
+/**
+ * Distinct action names actually present in the audit log. Used to populate
+ * the action filter dropdown on /admin/audit so it stays in sync with what
+ * has actually been logged (no stale UI keys from removed action types).
+ */
+export async function listAuditLogActions(centralDb: CentralDb): Promise<string[]> {
+  const rows = await centralDb
+    .selectDistinct({ action: centralSchema.platformAuditLog.action })
+    .from(centralSchema.platformAuditLog)
+    .orderBy(centralSchema.platformAuditLog.action)
+    .all();
+  return rows.map((r: { action: string }) => r.action);
 }
 
 /**

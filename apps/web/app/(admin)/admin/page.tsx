@@ -1,11 +1,12 @@
 import { cacheLife, cacheTag } from 'next/cache';
 import { getCentralDb } from '@/lib/db-singleton';
-import { getPlatformCounts } from '@ancstra/auth/admin';
+import { getPlatformCounts, listAuditLog } from '@ancstra/auth/admin';
 import { DashboardCards } from '@/components/admin/dashboard-cards';
+import { RecentActivityWidget } from '@/components/admin/recent-activity-widget';
 
-// Cache the 5 aggregate COUNT queries against Turso. With cacheLife('minutes')
+// Cache the aggregate COUNT queries against Turso. With cacheLife('minutes')
 // the dashboard becomes near-instant on every hit after the first per minute.
-// Invalidated by `revalidateTag('platform-counts')` from togglePlatformAdmin.
+// Invalidated by `revalidateTag('platform-counts')` from mutations.
 async function getCachedPlatformCounts() {
   'use cache';
   cacheLife('minutes');
@@ -14,8 +15,20 @@ async function getCachedPlatformCounts() {
   return getPlatformCounts(db, new Date());
 }
 
+async function getCachedRecentActivity() {
+  'use cache';
+  cacheLife('minutes');
+  cacheTag('platform-audit-log');
+  const db = await getCentralDb();
+  const result = await listAuditLog(db, { limit: 5 });
+  return result.items;
+}
+
 export default async function AdminDashboardPage() {
-  const counts = await getCachedPlatformCounts();
+  const [counts, recentActivity] = await Promise.all([
+    getCachedPlatformCounts(),
+    getCachedRecentActivity(),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -26,6 +39,7 @@ export default async function AdminDashboardPage() {
         </p>
       </div>
       <DashboardCards counts={counts} />
+      <RecentActivityWidget items={recentActivity} />
     </div>
   );
 }

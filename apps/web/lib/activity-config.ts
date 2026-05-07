@@ -7,7 +7,9 @@ import {
   ImagePlus,
   Link2,
   Mail,
+  MailX,
   Pencil,
+  Settings,
   Shield,
   Trash2,
   UserCheck,
@@ -91,6 +93,16 @@ export const ACTIVITY_ACTION_CONFIG: Record<
     color: 'text-amber-600',
     label: 'Ownership transferred',
   },
+  invite_revoked: {
+    icon: MailX,
+    color: 'text-orange-600',
+    label: 'Invite revoked',
+  },
+  family_settings_updated: {
+    icon: Settings,
+    color: 'text-muted-foreground',
+    label: 'Settings updated',
+  },
 };
 
 export type ActivityCategoryKey =
@@ -98,6 +110,7 @@ export type ActivityCategoryKey =
   | 'people'
   | 'media'
   | 'members'
+  | 'settings'
   | 'import'
   | 'contrib';
 
@@ -122,7 +135,12 @@ export const ACTIVITY_CATEGORIES: ActivityCategory[] = [
   {
     key: 'members',
     label: 'Members',
-    actions: ['invite_sent', 'invite_accepted', 'role_changed', 'member_removed', 'owner_transferred'],
+    actions: ['invite_sent', 'invite_accepted', 'invite_revoked', 'role_changed', 'member_removed', 'owner_transferred'],
+  },
+  {
+    key: 'settings',
+    label: 'Settings',
+    actions: ['family_settings_updated'],
   },
   {
     key: 'import',

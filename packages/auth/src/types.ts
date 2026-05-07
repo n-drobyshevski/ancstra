@@ -30,10 +30,11 @@ export type ActivityAction =
   | 'relationship_added'
   | 'media_uploaded'
   | 'gedcom_imported'
-  | 'invite_sent' | 'invite_accepted'
+  | 'invite_sent' | 'invite_accepted' | 'invite_revoked'
   | 'role_changed' | 'member_removed'
   | 'contribution_submitted' | 'contribution_approved' | 'contribution_rejected'
-  | 'owner_transferred';
+  | 'owner_transferred'
+  | 'family_settings_updated';
 
 export type ContributionOperation = 'create' | 'update' | 'delete';
 export type ContributionStatus = 'pending' | 'approved' | 'rejected' | 'revision_requested';

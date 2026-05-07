@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { eq, and, isNull, count } from 'drizzle-orm';
+import { eq, and, isNull, count, gt, desc } from 'drizzle-orm';
 import * as centralSchema from '@ancstra/db/central-schema';
 import type { Role } from './types';
 import { bumpMembershipsVersion } from './memberships';
@@ -209,6 +209,33 @@ export async function acceptInvite(
     .get();
 
   return updated as InvitationRow;
+}
+
+/**
+ * List invitations for a family. Filters via opts.status:
+ *   - 'pending' (default): not accepted, not revoked, not expired
+ *   - 'all': every row regardless of state
+ */
+export async function listFamilyInvitations(
+  centralDb: CentralDb,
+  familyId: string,
+  opts: { status?: 'pending' | 'all' } = {},
+): Promise<InvitationRow[]> {
+  const status = opts.status ?? 'pending';
+  const conditions = [eq(centralSchema.invitations.familyId, familyId)];
+  if (status === 'pending') {
+    const now = new Date().toISOString();
+    conditions.push(isNull(centralSchema.invitations.acceptedAt));
+    conditions.push(isNull(centralSchema.invitations.revokedAt));
+    conditions.push(gt(centralSchema.invitations.expiresAt, now));
+  }
+  const rows = await centralDb
+    .select()
+    .from(centralSchema.invitations)
+    .where(and(...conditions))
+    .orderBy(desc(centralSchema.invitations.createdAt))
+    .all();
+  return rows as InvitationRow[];
 }
 
 /**

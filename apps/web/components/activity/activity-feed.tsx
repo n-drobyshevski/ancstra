@@ -5,6 +5,13 @@ import { Activity, AlertTriangle } from 'lucide-react';
 import { ActivityEntry } from './activity-entry';
 import { ActivityEntrySkeleton } from './activity-entry-skeleton';
 import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ACTIVITY_CATEGORIES, type ActivityCategoryKey } from '@/lib/activity-config';
 import { groupItemsByDate } from '@/lib/format';
@@ -27,26 +34,36 @@ interface ActivityResponse {
   nextCursor: string | null;
 }
 
+export interface ActivityFeedMember {
+  userId: string;
+  name: string | null;
+  email: string;
+}
+
 interface ActivityFeedProps {
   familyId: string;
   initialItems?: ActivityItem[];
   initialCursor?: string | null;
+  /** Optional: family members for the actor filter dropdown. */
+  members?: ActivityFeedMember[];
 }
 
-export function ActivityFeed({ familyId, initialItems, initialCursor }: ActivityFeedProps) {
+export function ActivityFeed({ familyId, initialItems, initialCursor, members }: ActivityFeedProps) {
   const [items, setItems] = useState<ActivityItem[]>(initialItems ?? []);
   const [nextCursor, setNextCursor] = useState<string | null>(initialCursor ?? null);
   const [loading, setLoading] = useState(!initialItems);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<ActivityCategoryKey>('all');
+  const [userFilter, setUserFilter] = useState<string>('all');
   const sentinelRef = useRef<HTMLDivElement>(null);
 
   const fetchActivity = useCallback(
-    async (cursor?: string, actionFilter?: string) => {
+    async (cursor?: string, actionFilter?: string, userId?: string) => {
       const params = new URLSearchParams({ limit: '20' });
       if (cursor) params.set('cursor', cursor);
       if (actionFilter) params.set('action', actionFilter);
+      if (userId) params.set('userId', userId);
 
       const res = await fetch(
         `/api/families/${familyId}/activity?${params.toString()}`
@@ -57,54 +74,68 @@ export function ActivityFeed({ familyId, initialItems, initialCursor }: Activity
     [familyId]
   );
 
-  // Fetch on mount only if no initial data was provided
+  function categoryActionFilter(key: string): string | undefined {
+    const category = ACTIVITY_CATEGORIES.find((c) => c.key === key);
+    return category?.actions?.length === 1 ? category.actions[0] : undefined;
+  }
+  function categoryActionList(key: string): string[] | null {
+    const category = ACTIVITY_CATEGORIES.find((c) => c.key === key);
+    return category?.actions ?? null;
+  }
+
+  // Re-fetch first page whenever a filter changes (mount handled separately).
+  const refetchFromFilters = useCallback(
+    (categoryKey: ActivityCategoryKey, userId: string) => {
+      setLoading(true);
+      setError(null);
+      setItems([]);
+      setNextCursor(null);
+
+      const actionFilter = categoryActionFilter(categoryKey);
+      const userIdParam = userId === 'all' ? undefined : userId;
+
+      fetchActivity(undefined, actionFilter, userIdParam)
+        .then((data) => {
+          const allowed = categoryActionList(categoryKey);
+          const filtered = allowed
+            ? data.items.filter((item) => allowed.includes(item.action))
+            : data.items;
+          setItems(filtered);
+          setNextCursor(data.nextCursor);
+        })
+        .catch((err) => setError(err.message))
+        .finally(() => setLoading(false));
+    },
+    [fetchActivity],
+  );
+
+  // Mount fetch when no initial data was provided
   useEffect(() => {
     if (initialItems) return;
-    setLoading(true);
-    setError(null);
-    fetchActivity()
-      .then((data) => {
-        setItems(data.items);
-        setNextCursor(data.nextCursor);
-      })
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
-  }, [fetchActivity, initialItems]);
+    refetchFromFilters('all', 'all');
+  }, [initialItems, refetchFromFilters]);
 
-  // Filter by category
   function handleCategoryChange(key: string) {
-    const category = ACTIVITY_CATEGORIES.find((c) => c.key === key);
-    setActiveCategory(key as ActivityCategoryKey);
-    setLoading(true);
-    setError(null);
-    setItems([]);
-    setNextCursor(null);
+    const next = key as ActivityCategoryKey;
+    setActiveCategory(next);
+    refetchFromFilters(next, userFilter);
+  }
 
-    // If category has multiple actions, fetch all and filter client-side
-    // If single action, use API filter
-    const actionFilter = category?.actions?.length === 1 ? category.actions[0] : undefined;
-
-    fetchActivity(undefined, actionFilter)
-      .then((data) => {
-        const filtered = category?.actions
-          ? data.items.filter((item) => category.actions!.includes(item.action))
-          : data.items;
-        setItems(filtered);
-        setNextCursor(data.nextCursor);
-      })
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
+  function handleUserFilterChange(value: string) {
+    setUserFilter(value);
+    refetchFromFilters(activeCategory, value);
   }
 
   async function loadMore() {
     if (!nextCursor || loadingMore) return;
     setLoadingMore(true);
     try {
-      const category = ACTIVITY_CATEGORIES.find((c) => c.key === activeCategory);
-      const actionFilter = category?.actions?.length === 1 ? category.actions[0] : undefined;
-      const data = await fetchActivity(nextCursor, actionFilter);
-      const filtered = category?.actions
-        ? data.items.filter((item) => category.actions!.includes(item.action))
+      const actionFilter = categoryActionFilter(activeCategory);
+      const userIdParam = userFilter === 'all' ? undefined : userFilter;
+      const data = await fetchActivity(nextCursor, actionFilter, userIdParam);
+      const allowed = categoryActionList(activeCategory);
+      const filtered = allowed
+        ? data.items.filter((item) => allowed.includes(item.action))
         : data.items;
       setItems((prev) => [...prev, ...filtered]);
       setNextCursor(data.nextCursor);
@@ -150,6 +181,26 @@ export function ActivityFeed({ familyId, initialItems, initialCursor }: Activity
           </TabsList>
         </div>
       </Tabs>
+
+      {/* Secondary filters (only when we have a members list to populate from) */}
+      {members && members.length > 0 ? (
+        <div className="mt-3 flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">By:</span>
+          <Select value={userFilter} onValueChange={handleUserFilterChange}>
+            <SelectTrigger size="sm" className="h-8 w-[200px]">
+              <SelectValue placeholder="Anyone" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Anyone</SelectItem>
+              {members.map((m) => (
+                <SelectItem key={m.userId} value={m.userId}>
+                  {m.name ?? m.email}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      ) : null}
 
       {/* Content */}
       <div className="mt-4">

@@ -1,8 +1,33 @@
 import { z } from 'zod';
 import { eq, and, desc, sql } from 'drizzle-orm';
-import { createFamily } from '@ancstra/auth';
+import { TRPCError } from '@trpc/server';
+import { updateTag } from 'next/cache';
+import {
+  createFamily,
+  updateFamilySettings,
+  deleteFamily,
+  logActivity,
+} from '@ancstra/auth';
 import { centralSchema } from '@ancstra/db';
-import { createTRPCRouter, authenticatedProcedure } from '../trpc';
+import {
+  createTRPCRouter,
+  authenticatedProcedure,
+  protectedProcedure,
+} from '../trpc';
+
+const settingsPatchSchema = z.object({
+  name: z.string().trim().min(1, 'Family name is required').optional(),
+  maxMembers: z.number().int().min(1).max(10000).optional(),
+  monthlyAiBudgetUsd: z.number().min(0).max(100000).optional(),
+  moderationEnabled: z.boolean().optional(),
+});
+
+const SETTINGS_FIELD_LABELS: Record<string, string> = {
+  name: 'name',
+  maxMembers: 'member limit',
+  monthlyAiBudgetUsd: 'AI budget',
+  moderationEnabled: 'moderation',
+};
 
 export const familyRouter = createTRPCRouter({
   create: authenticatedProcedure
@@ -38,5 +63,101 @@ export const familyRouter = createTRPCRouter({
         )
         .all();
       return rows;
+    }),
+
+  // Read current family settings. Visible to anyone with members:manage so
+  // admins can review without being gated behind the owner-only edit form.
+  getSettings: protectedProcedure
+    .meta({ permission: 'members:manage' })
+    .query(async ({ ctx }) => {
+      const row = await ctx.centralDb
+        .select()
+        .from(centralSchema.familyRegistry)
+        .where(eq(centralSchema.familyRegistry.id, ctx.familyId))
+        .get();
+      if (!row) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Family not found' });
+      }
+      return {
+        id: row.id,
+        name: row.name,
+        ownerId: row.ownerId,
+        dbFilename: row.dbFilename,
+        moderationEnabled: row.moderationEnabled === 1,
+        maxMembers: row.maxMembers,
+        monthlyAiBudgetUsd: row.monthlyAiBudgetUsd,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+      };
+    }),
+
+  updateSettings: protectedProcedure
+    .meta({ permission: 'settings:manage' })
+    .input(settingsPatchSchema)
+    .mutation(async ({ ctx, input }) => {
+      const { row, changed } = await updateFamilySettings(
+        ctx.centralDb,
+        ctx.familyId,
+        input,
+      );
+
+      if (changed.length > 0) {
+        const labels = changed.map((k) => SETTINGS_FIELD_LABELS[k] ?? k);
+        const summary =
+          labels.length === 1
+            ? `Updated family ${labels[0]}`
+            : `Updated family ${labels.slice(0, -1).join(', ')} and ${labels[labels.length - 1]}`;
+
+        await logActivity(ctx.centralDb, {
+          familyId: ctx.familyId,
+          userId: ctx.userId!,
+          action: 'family_settings_updated',
+          summary,
+          metadata: { changed, after: row },
+        });
+
+        updateTag(`family:${ctx.familyId}`);
+        updateTag('platform-families');
+        updateTag(`platform-family:${ctx.familyId}`);
+      }
+
+      return { row, changed };
+    }),
+
+  delete: protectedProcedure
+    .meta({ permission: 'settings:manage' })
+    .input(z.object({ confirmName: z.string().trim().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      // Helper re-checks the name; we additionally verify ownerId matches the
+      // caller — the partial UQ on owner means there's exactly one owner per
+      // family, so this is a tighter guard against an admin somehow reaching
+      // this code path.
+      const f = await ctx.centralDb
+        .select({ ownerId: centralSchema.familyRegistry.ownerId })
+        .from(centralSchema.familyRegistry)
+        .where(eq(centralSchema.familyRegistry.id, ctx.familyId))
+        .get();
+      if (!f) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Family not found' });
+      }
+      if (f.ownerId !== ctx.userId) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Only the family owner can delete the family',
+        });
+      }
+
+      try {
+        const result = await deleteFamily(ctx.centralDb, ctx.familyId, input.confirmName);
+        updateTag('platform-families');
+        updateTag(`platform-family:${ctx.familyId}`);
+        updateTag('platform-counts');
+        return result;
+      } catch (err) {
+        if (err instanceof Error && /confirmation/i.test(err.message)) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: err.message });
+        }
+        throw err;
+      }
     }),
 });

@@ -12,6 +12,9 @@ import {
 } from '@/components/ui/table';
 import { Calendar, Database, Users as UsersIcon, Coins, Shield } from 'lucide-react';
 import type { FamilyDetail as FamilyDetailData } from '@ancstra/auth/admin';
+import { FamilySettingsEditButton } from '@/components/admin/family-settings-edit-button';
+import { FamilyMemberActions } from '@/components/admin/family-member-actions';
+import { FamilyPendingInvitations } from '@/components/admin/family-pending-invitations';
 
 interface Props {
   data: FamilyDetailData;
@@ -43,14 +46,25 @@ export function FamilyDetail({ data }: Props) {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <div className="flex flex-wrap items-center gap-2">
-            <CardTitle className="text-xl">{family.name}</CardTitle>
-            {family.moderationEnabled ? (
-              <Badge variant="outline" className="gap-1">
-                <Shield className="size-3" />
-                Moderation on
-              </Badge>
-            ) : null}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <CardTitle className="text-xl">{family.name}</CardTitle>
+              {family.moderationEnabled ? (
+                <Badge variant="outline" className="gap-1">
+                  <Shield className="size-3" />
+                  Moderation on
+                </Badge>
+              ) : null}
+            </div>
+            <FamilySettingsEditButton
+              familyId={family.id}
+              initial={{
+                name: family.name,
+                maxMembers: family.maxMembers,
+                monthlyAiBudgetUsd: family.monthlyAiBudgetUsd,
+                moderationEnabled: family.moderationEnabled,
+              }}
+            />
           </div>
         </CardHeader>
         <CardContent>
@@ -87,6 +101,8 @@ export function FamilyDetail({ data }: Props) {
         </CardContent>
       </Card>
 
+      <FamilyPendingInvitations familyId={family.id} />
+
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base">
@@ -111,6 +127,7 @@ export function FamilyDetail({ data }: Props) {
                     <TableHead>Joined</TableHead>
                     <TableHead>Last seen</TableHead>
                     <TableHead aria-label="Status"></TableHead>
+                    <TableHead className="w-[60px]" aria-label="Actions"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -154,6 +171,19 @@ export function FamilyDetail({ data }: Props) {
                           <Badge variant="outline" className="text-muted-foreground">
                             inactive
                           </Badge>
+                        ) : null}
+                      </TableCell>
+                      <TableCell>
+                        {m.isActive ? (
+                          <FamilyMemberActions
+                            familyId={family.id}
+                            familyName={family.name}
+                            member={{
+                              userId: m.userId,
+                              userName: m.userName,
+                              role: m.role as 'owner' | 'admin' | 'editor' | 'viewer',
+                            }}
+                          />
                         ) : null}
                       </TableCell>
                     </TableRow>

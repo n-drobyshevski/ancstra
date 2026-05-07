@@ -2,13 +2,14 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Users, Building2, ArrowLeft } from 'lucide-react';
+import { LayoutDashboard, Users, Building2, ArrowLeft, History } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { title: 'Dashboard', href: '/admin', icon: LayoutDashboard, exact: true },
   { title: 'Users', href: '/admin/users', icon: Users, exact: false },
   { title: 'Families', href: '/admin/families', icon: Building2, exact: false },
+  { title: 'Audit Log', href: '/admin/audit', icon: History, exact: false },
 ];
 
 export function AdminNav() {

@@ -4,10 +4,11 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
-import { navItems } from '@/components/settings/settings-nav';
+import { useVisibleSettingsNavItems } from '@/components/settings/settings-nav';
 
 export function SettingsMobileNav() {
   const router = useRouter();
+  const items = useVisibleSettingsNavItems();
 
   useEffect(() => {
     const mq = window.matchMedia('(min-width: 768px)');
@@ -25,7 +26,7 @@ export function SettingsMobileNav() {
     <div className="md:hidden">
       <h1 className="text-lg font-semibold mb-2">Settings</h1>
       <div className="divide-y divide-border rounded-lg border border-border overflow-hidden">
-        {navItems.map((item) => (
+        {items.map((item) => (
           <Link
             key={item.href}
             href={item.href}
