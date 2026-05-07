@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { Copy, Loader2, Mail, MoreHorizontal, RefreshCcw, Trash2 } from 'lucide-react';
 import { trpc } from '@/lib/trpc/client';
+import { useIsHydrated } from '@/hooks/use-is-hydrated';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -51,12 +52,19 @@ function formatExpiry(iso: string): { label: string; warn: boolean } {
 
 export function FamilyPendingInvitations({ familyId }: Props) {
   const router = useRouter();
+  const hydrated = useIsHydrated();
   const [revokeTarget, setRevokeTarget] = useState<{ id: string; label: string } | null>(null);
 
   const query = trpc.platformAdmin.listInvitations.useQuery({
     familyId,
     status: 'pending',
   });
+
+  // Gate fetch-status with `hydrated` so SSR and the first client paint
+  // produce identical attribute output (the SSR pass evaluates this
+  // differently from the post-hydration client and warns on `disabled`
+  // and the icon swap).
+  const showFetching = hydrated && query.isFetching;
 
   const revoke = trpc.platformAdmin.revokeInvite.useMutation({
     onSuccess: ({ revoked }) => {
@@ -97,10 +105,10 @@ export function FamilyPendingInvitations({ familyId }: Props) {
             variant="ghost"
             size="sm"
             onClick={() => query.refetch()}
-            disabled={query.isFetching}
+            disabled={showFetching}
             aria-label="Refresh"
           >
-            {query.isFetching ? (
+            {showFetching ? (
               <Loader2 className="size-4 animate-spin" />
             ) : (
               <RefreshCcw className="size-4" />

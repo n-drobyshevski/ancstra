@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
 import { Eye, Loader2, RefreshCcw, X } from 'lucide-react';
 import { trpc } from '@/lib/trpc/client';
+import { useIsHydrated } from '@/hooks/use-is-hydrated';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -67,6 +68,7 @@ function formatWhen(iso: string): string {
 }
 
 export function AuditLogTable() {
+  const hydrated = useIsHydrated();
   const [actionFilter, setActionFilter] = useState<string>('all');
   const [targetTypeFilter, setTargetTypeFilter] = useState<string>('all');
   const [actorFilter, setActorFilter] = useState<string>('');
@@ -109,7 +111,7 @@ export function AuditLogTable() {
           <Select
             value={actionFilter}
             onValueChange={setActionFilter}
-            disabled={actionsQuery.isLoading}
+            disabled={hydrated && actionsQuery.isLoading}
           >
             <SelectTrigger id="audit-action" className="w-[220px]">
               <SelectValue placeholder="All actions" />
@@ -179,10 +181,10 @@ export function AuditLogTable() {
             variant="ghost"
             size="sm"
             onClick={() => query.refetch()}
-            disabled={query.isFetching}
+            disabled={hydrated && query.isFetching}
             aria-label="Refresh"
           >
-            {query.isFetching && !query.isFetchingNextPage ? (
+            {hydrated && query.isFetching && !query.isFetchingNextPage ? (
               <Loader2 className="size-4 animate-spin" />
             ) : (
               <RefreshCcw className="size-4" />
