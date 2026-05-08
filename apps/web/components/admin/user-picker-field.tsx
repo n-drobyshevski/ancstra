@@ -95,6 +95,13 @@ export function UserPickerField({
     [excludeUserIds],
   );
 
+  // Client-side narrow on the cached set using the IMMEDIATE query string.
+  // Filters on BOTH name and email so the in-flight view matches the server
+  // scope (searchUsers' LIKE clause filters name OR email) — that way the
+  // post-debounce server response just confirms what the user already sees,
+  // never widens or contradicts it. excludeUserIds (plural) is also applied
+  // here so callers can exclude multiple users — the server-side
+  // excludeUserId only takes one.
   const visible = useMemo(() => {
     let result: ReadonlyArray<UserOption> = data;
     if (excludeSet) {
@@ -110,6 +117,10 @@ export function UserPickerField({
     return result;
   }, [data, lowerQuery, excludeSet]);
 
+  // No useIsHydrated gate (which family-picker-field uses): isFetching is
+  // only consumed for conditional element rendering (the in-input spinner
+  // and the "Searching…" branch in SearchResults), never as a DOM attribute
+  // value, so it can't cause a hydration-mismatch warning.
   const isFetching = search.isFetching;
   const isCold = search.isPending;
   const isRefetchingInBg = isFetching && !isCold;
