@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireAuthContext } from '@/lib/auth/context';
-import { requirePermission, ForbiddenError, logActivity, bumpMembershipsVersion, type Role, type ActivityAction } from '@ancstra/auth';
+import { requirePermission, ForbiddenError, logActivity, bumpMembershipsVersion, type ActivityAction } from '@ancstra/auth';
 import { createCentralDb, createFamilyDb, centralSchema, familyUserCache } from '@ancstra/db';
 import { revalidateTag } from 'next/cache';
 import { eq, and } from 'drizzle-orm';

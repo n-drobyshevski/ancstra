@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { createCentralDb, centralSchema } from '@ancstra/db';
-import { sql } from 'drizzle-orm';
 
 export async function GET() {
   if (process.env.NODE_ENV === 'production') {

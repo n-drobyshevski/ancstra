@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { selectionReducer, type SelectionState, type SelectionAction } from '../../components/persons/use-selection';
+import { selectionReducer, type SelectionState } from '../../components/persons/use-selection';
 
 const initial: SelectionState = { kind: 'none' };
 

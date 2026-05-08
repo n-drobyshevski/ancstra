@@ -11,7 +11,6 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const version = (searchParams.get('version') || '5.5.1') as GedcomVersion;
     const includeLiving = searchParams.get('includeLiving') !== 'false';
-    const includeSources = searchParams.get('includeSources') !== 'false';
 
     // Validate version parameter
     if (version !== '5.5.1' && version !== '7.0') {

@@ -229,7 +229,7 @@ function SearchResults({
     return (
       <div className="flex items-center gap-2 rounded-md border border-dashed border-border px-3 py-3 text-xs text-muted-foreground">
         <TriangleAlert className="size-3.5" />
-        No users match "{query}".
+        No users match &quot;{query}&quot;.
       </div>
     );
   }

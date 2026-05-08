@@ -45,7 +45,9 @@ function doFetch(id: string): Promise<PersonDetailEntry> {
   // we only write to the store if our promise is still the entry's in-flight
   // promise. If invalidate() or another prefetch() ran in the meantime, the
   // entry's promise will be different (or the entry will be gone), and we
-  // skip the write so stale data can't clobber fresh data.
+  // skip the write so stale data can't clobber fresh data. `let` is required
+  // so `inner` can close over the binding before assignment.
+  // eslint-disable-next-line prefer-const
   let myPromise!: Promise<PersonDetailEntry>;
 
   const inner = async (): Promise<PersonDetailEntry> => {

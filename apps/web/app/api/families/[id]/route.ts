@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
-import { persons, personNames, families, children, events, personSummary, refreshSummary, type FamilyDatabase } from '@ancstra/db';
+import { families, children, events, personSummary, refreshSummary, type FamilyDatabase } from '@ancstra/db';
 import { and, eq, isNull, inArray, sql } from 'drizzle-orm';
 import { updateFamilySchema } from '@/lib/validation';
 import { withAuth, handleAuthError } from '@/lib/auth/api-guard';

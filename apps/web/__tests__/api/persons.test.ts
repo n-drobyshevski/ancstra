@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { eq, and, isNull, inArray, sql } from 'drizzle-orm';
+import { eq, and, isNull, inArray } from 'drizzle-orm';
 import * as schema from '@ancstra/db/schema';
 import { centralSchema } from '@ancstra/db';
 import { createTestCentralDb, type TestCentralDb } from '@ancstra/db/test-fixtures';

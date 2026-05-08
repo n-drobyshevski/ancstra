@@ -3,9 +3,9 @@ import { eq, and, isNull } from 'drizzle-orm';
 import * as schema from '@ancstra/db/schema';
 import { centralSchema } from '@ancstra/db';
 import { createTestCentralDb, type TestCentralDb } from '@ancstra/db/test-fixtures';
-import { createFamilySchema, updateFamilySchema, addChildSchema } from '../../lib/validation';
+import { createFamilySchema, addChildSchema } from '../../lib/validation';
 
-const { persons, personNames, events, families, children } = schema;
+const { persons, personNames, families, children } = schema;
 const { users } = centralSchema;
 
 let db: TestCentralDb;

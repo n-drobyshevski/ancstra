@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 
 export default function ResearchItemError({
-  error,
   reset,
 }: {
   error: Error & { digest?: string };
