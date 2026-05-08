@@ -55,6 +55,29 @@ describe('createFamily', () => {
     const r2 = await createFamily(db, { name: 'Family B', ownerId: 'user-1' });
     expect(r1.dbFilename).not.toBe(r2.dbFilename);
   });
+
+  it('respects an explicit maxMembers override', async () => {
+    const result = await createFamily(db, {
+      name: 'Big Family',
+      ownerId: 'user-1',
+      maxMembers: 200,
+    });
+
+    const registry = await db.select().from(centralSchema.familyRegistry)
+      .where(eq(centralSchema.familyRegistry.id, result.familyId)).get();
+    expect(registry!.maxMembers).toBe(200);
+  });
+
+  it('falls through to the schema default when maxMembers is omitted', async () => {
+    const result = await createFamily(db, {
+      name: 'Default Family',
+      ownerId: 'user-1',
+    });
+
+    const registry = await db.select().from(centralSchema.familyRegistry)
+      .where(eq(centralSchema.familyRegistry.id, result.familyId)).get();
+    expect(registry!.maxMembers).toBe(50);
+  });
 });
 
 describe('getFamiliesForUser', () => {

@@ -32,7 +32,7 @@ export interface Membership {
  */
 export async function createFamily(
   centralDb: CentralDatabase,
-  opts: { name: string; ownerId: string },
+  opts: { name: string; ownerId: string; maxMembers?: number },
 ): Promise<{ familyId: string; dbFilename: string }> {
   const familyId = crypto.randomUUID();
   const now = new Date().toISOString();
@@ -54,6 +54,10 @@ export async function createFamily(
     name: opts.name,
     ownerId: opts.ownerId,
     dbFilename,
+    // Only include when explicitly overridden; otherwise let the schema
+    // default (50) take over so changing the default doesn't require a
+    // helper edit.
+    ...(opts.maxMembers !== undefined ? { maxMembers: opts.maxMembers } : {}),
     createdAt: now,
     updatedAt: now,
   }).run();
