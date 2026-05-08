@@ -4,6 +4,7 @@ import { listAllFamilies } from '@ancstra/auth/admin';
 import { FamiliesTable } from '@/components/admin/families-table';
 import { DataTableToolbar } from '@/components/admin/data-table-toolbar';
 import { DataTablePagination } from '@/components/admin/data-table-pagination';
+import { AddFamilyDialog } from '@/components/admin/add-family-dialog';
 
 export const metadata = { title: 'Families — Admin' };
 
@@ -30,11 +31,14 @@ export default async function AdminFamiliesPage({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Families</h1>
-        <p className="text-sm text-muted-foreground">
-          All family trees registered on the platform.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Families</h1>
+          <p className="text-sm text-muted-foreground">
+            All family trees registered on the platform.
+          </p>
+        </div>
+        <AddFamilyDialog />
       </div>
       <DataTableToolbar
         basePath="/admin/families"
