@@ -29,3 +29,6 @@ docs/superpowers/
 
 # Playwright/test outputs
 tests/test-results/
+
+# CI build logs (root-level captured stdout)
+/build*.log
