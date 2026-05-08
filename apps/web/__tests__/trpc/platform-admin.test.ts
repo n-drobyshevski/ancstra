@@ -619,3 +619,114 @@ describe('platformAdmin.searchUsers', () => {
     ).rejects.toMatchObject({ code: 'NOT_FOUND' });
   });
 });
+
+describe('platformAdmin.createFamily', () => {
+  let db: TestCentralDb;
+
+  async function seedRegularUser(id: string, name: string, email: string) {
+    const now = new Date().toISOString();
+    await db.insert(centralSchema.users).values({
+      id, email, name, createdAt: now, updatedAt: now,
+    }).run();
+  }
+
+  beforeEach(async () => {
+    db = createTestCentralDb();
+    await seedAdmin(db, 'admin1', 'Admin One');
+    await seedRegularUser('owner1', 'Olivia Owner', 'olivia@example.com');
+  });
+
+  it('creates a family with the picked owner and default cap', async () => {
+    const caller = createCaller(adminCtx(db));
+    const result = await caller.platformAdmin.createFamily({
+      name: 'Owner Family',
+      ownerId: 'owner1',
+    });
+
+    expect(result.familyId).toBeDefined();
+    expect(result.ownerName).toBe('Olivia Owner');
+    expect(result.ownerEmail).toBe('olivia@example.com');
+    expect(result.name).toBe('Owner Family');
+
+    // Registry row exists with default cap
+    const registry = await db.select().from(centralSchema.familyRegistry)
+      .where(eq(centralSchema.familyRegistry.id, result.familyId)).get();
+    expect(registry!.ownerId).toBe('owner1');
+    expect(registry!.maxMembers).toBe(50);
+
+    // Owner membership row exists with role='owner'
+    const member = await db.select().from(centralSchema.familyMembers)
+      .where(eq(centralSchema.familyMembers.familyId, result.familyId)).get();
+    expect(member!.userId).toBe('owner1');
+    expect(member!.role).toBe('owner');
+    expect(member!.isActive).toBe(1);
+
+    // platform_activity row exists with byPlatformAdmin
+    const audit = await db.select().from(centralSchema.platformAuditLog)
+      .where(eq(centralSchema.platformAuditLog.action, 'family.create')).get();
+    expect(audit).toBeDefined();
+    expect(audit!.targetId).toBe(result.familyId);
+    expect(audit!.actorUserId).toBe('admin1');
+    const meta = JSON.parse(audit!.metadata!);
+    expect(meta.byPlatformAdmin).toBe(true);
+    expect(meta.ownerUserId).toBe('owner1');
+  });
+
+  it('respects an explicit maxMembers override', async () => {
+    const caller = createCaller(adminCtx(db));
+    const result = await caller.platformAdmin.createFamily({
+      name: 'Big Family',
+      ownerId: 'owner1',
+      maxMembers: 200,
+    });
+
+    const registry = await db.select().from(centralSchema.familyRegistry)
+      .where(eq(centralSchema.familyRegistry.id, result.familyId)).get();
+    expect(registry!.maxMembers).toBe(200);
+  });
+
+  it('throws NOT_FOUND when ownerId references a non-existent user', async () => {
+    const caller = createCaller(adminCtx(db));
+    await expect(
+      caller.platformAdmin.createFamily({
+        name: 'Ghost Family',
+        ownerId: 'no-such-user',
+      }),
+    ).rejects.toThrow(/owner|not found/i);
+
+    // No registry row was created
+    const all = await db.select().from(centralSchema.familyRegistry).all();
+    expect(all).toHaveLength(0);
+  });
+
+  it('rejects a non-platform-admin caller', async () => {
+    const caller = createCaller(nonAdminCtx(db, 'owner1'));
+    await expect(
+      caller.platformAdmin.createFamily({
+        name: 'Disallowed',
+        ownerId: 'owner1',
+      }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+  });
+
+  it('bumps the expected cache tags on success', async () => {
+    const { updateTag } = await import('next/cache');
+    const updateTagMock = vi.mocked(updateTag);
+    updateTagMock.mockClear();
+
+    const caller = createCaller(adminCtx(db));
+    const result = await caller.platformAdmin.createFamily({
+      name: 'Tagged Family',
+      ownerId: 'owner1',
+    });
+
+    const calls = updateTagMock.mock.calls.map(c => c[0]);
+    expect(calls).toContain('platform-families');
+    expect(calls).toContain('platform-counts');
+    expect(calls).toContain('platform-users');
+    expect(calls).toContain(`platform-user:owner1`);
+    expect(calls).toContain('platform-audit-log');
+    // Sanity: familyId is a uuid, not part of the tag set (no detail page yet)
+    expect(calls).not.toContain(`platform-family:${result.familyId}`);
+  });
+});

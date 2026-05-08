@@ -34,7 +34,8 @@ export type ActivityAction =
   | 'role_changed' | 'member_added' | 'member_removed'
   | 'contribution_submitted' | 'contribution_approved' | 'contribution_rejected'
   | 'owner_transferred'
-  | 'family_settings_updated';
+  | 'family_settings_updated'
+  | 'family_created';
 
 export type ContributionOperation = 'create' | 'update' | 'delete';
 export type ContributionStatus = 'pending' | 'approved' | 'rejected' | 'revision_requested';

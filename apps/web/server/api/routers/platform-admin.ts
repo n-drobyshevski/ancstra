@@ -12,6 +12,7 @@ import {
   logActivity,
   listFamilyInvitations,
   revokeInvite,
+  createFamily as createFamilyHelper,
 } from '@ancstra/auth';
 import {
   countOtherPlatformAdmins,
@@ -640,6 +641,93 @@ export const platformAdminRouter = createTRPCRouter({
         excludeUserId: input.excludeUserId,
         limit: input.limit,
       });
+    }),
+
+  /**
+   * Provision a new family on behalf of an existing user. Distinct from
+   * the user-facing `family.create` (which uses ctx.userId as owner) —
+   * this admin path takes an explicit ownerId and records byPlatformAdmin
+   * metadata in the audit log.
+   *
+   * Side effects (handled by the createFamily helper):
+   *   1. Create a Turso DB (web mode) or local sqlite file (test/dev)
+   *   2. INSERT family_registry with the chosen ownerId and maxMembers
+   *   3. INSERT family_members with role='owner'
+   *   4. bumpMembershipsVersion(ownerId) so the new owner's session sees it
+   */
+  createFamily: platformAdminProcedure
+    .input(
+      z.object({
+        name: z.string().trim().min(1, 'Family name is required'),
+        ownerId: z.string().min(1),
+        maxMembers: z.number().int().min(1).max(10000).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const owner = await ctx.centralDb
+        .select({
+          id: centralSchema.users.id,
+          name: centralSchema.users.name,
+          email: centralSchema.users.email,
+        })
+        .from(centralSchema.users)
+        .where(eq(centralSchema.users.id, input.ownerId))
+        .get();
+      if (!owner) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Owner user not found',
+        });
+      }
+
+      const { familyId } = await createFamilyHelper(ctx.centralDb, {
+        name: input.name,
+        ownerId: input.ownerId,
+        maxMembers: input.maxMembers,
+      });
+
+      const summary = `Platform admin created family "${input.name}" with ${owner.name} (${owner.email}) as owner`;
+
+      await logPlatformActivity(ctx.centralDb, {
+        actorUserId: ctx.platformAdmin.userId,
+        action: 'family.create',
+        targetType: 'family',
+        targetId: familyId,
+        summary,
+        metadata: {
+          familyName: input.name,
+          ownerUserId: owner.id,
+          ownerName: owner.name,
+          ownerEmail: owner.email,
+          maxMembers: input.maxMembers ?? null,
+          byPlatformAdmin: true,
+        },
+      });
+
+      await logActivity(ctx.centralDb, {
+        familyId,
+        userId: ctx.platformAdmin.userId,
+        action: 'family_created',
+        summary,
+        metadata: {
+          ownerUserId: owner.id,
+          maxMembers: input.maxMembers ?? null,
+          byPlatformAdmin: true,
+        },
+      });
+
+      updateTag('platform-families');
+      updateTag('platform-counts');
+      updateTag('platform-users');
+      updateTag(`platform-user:${owner.id}`);
+      updateTag('platform-audit-log');
+
+      return {
+        familyId,
+        name: input.name,
+        ownerName: owner.name,
+        ownerEmail: owner.email,
+      } as const;
     }),
 
   // Lightweight memberships lookup for the user-row "Add/Move to another
