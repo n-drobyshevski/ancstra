@@ -9,7 +9,7 @@ import type { BaseContext } from '@/server/api/init';
 vi.mock('@/auth', () => ({ auth: vi.fn(async () => null) }));
 
 vi.mock('next/cache', () => ({
-  updateTag: vi.fn(),
+  revalidateTag: vi.fn(),
   cacheLife: vi.fn(),
   cacheTag: vi.fn(),
 }));
@@ -710,9 +710,9 @@ describe('platformAdmin.createFamily', () => {
   });
 
   it('bumps the expected cache tags on success', async () => {
-    const { updateTag } = await import('next/cache');
-    const updateTagMock = vi.mocked(updateTag);
-    updateTagMock.mockClear();
+    const { revalidateTag } = await import('next/cache');
+    const revalidateTagMock = vi.mocked(revalidateTag);
+    revalidateTagMock.mockClear();
 
     const caller = createCaller(adminCtx(db));
     const result = await caller.platformAdmin.createFamily({
@@ -720,7 +720,7 @@ describe('platformAdmin.createFamily', () => {
       ownerId: 'owner1',
     });
 
-    const calls = updateTagMock.mock.calls.map(c => c[0]);
+    const calls = revalidateTagMock.mock.calls.map(c => c[0]);
     expect(calls).toContain('platform-families');
     expect(calls).toContain('platform-counts');
     expect(calls).toContain('platform-users');

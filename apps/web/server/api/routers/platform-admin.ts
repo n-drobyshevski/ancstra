@@ -2,7 +2,6 @@ import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import { eq, and, sql } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
-import { updateTag } from 'next/cache';
 import { centralSchema } from '@ancstra/db';
 import {
   bumpMembershipsVersion,
@@ -23,6 +22,7 @@ import {
   searchUsers,
 } from '@ancstra/auth/admin';
 import { createTRPCRouter, platformAdminProcedure } from '../trpc';
+import { invalidateTags } from '../cache';
 
 const SETTINGS_FIELD_LABELS: Record<string, string> = {
   name: 'name',
@@ -127,9 +127,11 @@ export const platformAdminRouter = createTRPCRouter({
           },
         });
 
-        updateTag('platform-families');
-        updateTag(`platform-family:${input.familyId}`);
-        updateTag('platform-audit-log');
+        invalidateTags([
+          'platform-families',
+          `platform-family:${input.familyId}`,
+          'platform-audit-log',
+        ]);
       }
 
       return { row, changed };
@@ -232,10 +234,12 @@ export const platformAdminRouter = createTRPCRouter({
         metadata: { targetUserId: input.userId, oldRole, newRole: input.role, byPlatformAdmin: true },
       });
 
-      updateTag(`platform-family:${input.familyId}`);
-      updateTag('platform-users');
-      updateTag(`platform-user:${input.userId}`);
-      updateTag('platform-audit-log');
+      invalidateTags([
+        `platform-family:${input.familyId}`,
+        'platform-users',
+        `platform-user:${input.userId}`,
+        'platform-audit-log',
+      ]);
       return { changed: true } as const;
     }),
 
@@ -315,10 +319,12 @@ export const platformAdminRouter = createTRPCRouter({
         metadata: { targetUserId: input.userId, role: member.role, byPlatformAdmin: true },
       });
 
-      updateTag(`platform-family:${input.familyId}`);
-      updateTag('platform-users');
-      updateTag(`platform-user:${input.userId}`);
-      updateTag('platform-audit-log');
+      invalidateTags([
+        `platform-family:${input.familyId}`,
+        'platform-users',
+        `platform-user:${input.userId}`,
+        'platform-audit-log',
+      ]);
       return { ok: true } as const;
     }),
 
@@ -406,12 +412,14 @@ export const platformAdminRouter = createTRPCRouter({
         metadata: { previousOwnerId, newOwnerId: input.newOwnerUserId, byPlatformAdmin: true },
       });
 
-      updateTag(`platform-family:${input.familyId}`);
-      updateTag('platform-users');
-      updateTag('platform-families');
-      updateTag(`platform-user:${previousOwnerId}`);
-      updateTag(`platform-user:${input.newOwnerUserId}`);
-      updateTag('platform-audit-log');
+      invalidateTags([
+        `platform-family:${input.familyId}`,
+        'platform-users',
+        'platform-families',
+        `platform-user:${previousOwnerId}`,
+        `platform-user:${input.newOwnerUserId}`,
+        'platform-audit-log',
+      ]);
       return { changed: true } as const;
     }),
 
@@ -519,9 +527,11 @@ export const platformAdminRouter = createTRPCRouter({
         metadata: { invitationId: input.invitationId, byPlatformAdmin: true },
       });
 
-      updateTag(`platform-family:${input.familyId}`);
-      updateTag('platform-counts');
-      updateTag('platform-audit-log');
+      invalidateTags([
+        `platform-family:${input.familyId}`,
+        'platform-counts',
+        'platform-audit-log',
+      ]);
       return { revoked: true } as const;
     }),
 
@@ -591,15 +601,20 @@ export const platformAdminRouter = createTRPCRouter({
         metadata: { previous: target.isPlatformAdmin === 1, next: input.value },
       });
 
-      // Read-your-own-writes: the admin who toggled gets fresh data on their
-      // next render. updateTag is the Next 16 primitive for this (vs.
-      // revalidateTag which purges globally and now requires a profile arg).
+      // Invalidate caches affected by the platform-admin toggle. tRPC
+      // mutations run inside the /api/trpc Route Handler where Next 16's
+      // updateTag is not permitted, so we use the project's invalidateTags
+      // helper (revalidateTag(tag, 'max') under the hood — stale-while-
+      // revalidate semantics; the admin may briefly see cached data on the
+      // next render before fresh data streams in).
       // Affected: dashboard's platform-admin count, users list (badge column),
       // that user's detail page.
-      updateTag('platform-counts');
-      updateTag('platform-users');
-      updateTag(`platform-user:${input.userId}`);
-      updateTag('platform-audit-log');
+      invalidateTags([
+        'platform-counts',
+        'platform-users',
+        `platform-user:${input.userId}`,
+        'platform-audit-log',
+      ]);
 
       return { ok: true, changed: true } as const;
     }),
@@ -710,11 +725,13 @@ export const platformAdminRouter = createTRPCRouter({
         },
       });
 
-      updateTag('platform-families');
-      updateTag('platform-counts');
-      updateTag('platform-users');
-      updateTag(`platform-user:${owner.id}`);
-      updateTag('platform-audit-log');
+      invalidateTags([
+        'platform-families',
+        'platform-counts',
+        'platform-users',
+        `platform-user:${owner.id}`,
+        'platform-audit-log',
+      ]);
 
       return {
         familyId,
@@ -868,11 +885,13 @@ export const platformAdminRouter = createTRPCRouter({
         },
       });
 
-      updateTag(`platform-family:${input.familyId}`);
-      updateTag('platform-users');
-      updateTag(`platform-user:${input.userId}`);
-      updateTag('platform-counts');
-      updateTag('platform-audit-log');
+      invalidateTags([
+        `platform-family:${input.familyId}`,
+        'platform-users',
+        `platform-user:${input.userId}`,
+        'platform-counts',
+        'platform-audit-log',
+      ]);
 
       return { added: true, alreadyMember: false, reactivated } as const;
     }),
@@ -1066,12 +1085,14 @@ export const platformAdminRouter = createTRPCRouter({
         },
       });
 
-      updateTag(`platform-family:${input.fromFamilyId}`);
-      updateTag(`platform-family:${input.toFamilyId}`);
-      updateTag('platform-users');
-      updateTag(`platform-user:${input.userId}`);
-      updateTag('platform-counts');
-      updateTag('platform-audit-log');
+      invalidateTags([
+        `platform-family:${input.fromFamilyId}`,
+        `platform-family:${input.toFamilyId}`,
+        'platform-users',
+        `platform-user:${input.userId}`,
+        'platform-counts',
+        'platform-audit-log',
+      ]);
 
       return { ok: true, reactivatedAtTarget } as const;
     }),
@@ -1220,13 +1241,17 @@ export const platformAdminRouter = createTRPCRouter({
         });
       }
 
-      updateTag('platform-users');
-      updateTag('platform-counts');
-      updateTag(`platform-user:${newUserId}`);
-      updateTag('platform-audit-log');
+      invalidateTags([
+        'platform-users',
+        'platform-counts',
+        `platform-user:${newUserId}`,
+        'platform-audit-log',
+      ]);
       if (input.family) {
-        updateTag(`platform-family:${input.family.familyId}`);
-        updateTag('platform-families');
+        invalidateTags([
+          `platform-family:${input.family.familyId}`,
+          'platform-families',
+        ]);
       }
 
       return {
