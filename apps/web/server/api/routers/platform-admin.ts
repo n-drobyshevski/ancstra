@@ -648,12 +648,6 @@ export const platformAdminRouter = createTRPCRouter({
    * the user-facing `family.create` (which uses ctx.userId as owner) —
    * this admin path takes an explicit ownerId and records byPlatformAdmin
    * metadata in the audit log.
-   *
-   * Side effects (handled by the createFamily helper):
-   *   1. Create a Turso DB (web mode) or local sqlite file (test/dev)
-   *   2. INSERT family_registry with the chosen ownerId and maxMembers
-   *   3. INSERT family_members with role='owner'
-   *   4. bumpMembershipsVersion(ownerId) so the new owner's session sees it
    */
   createFamily: platformAdminProcedure
     .input(
