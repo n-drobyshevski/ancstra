@@ -616,6 +616,6 @@ describe('platformAdmin.searchUsers', () => {
     const caller = createCaller(nonAdminCtx(db, 'u1'));
     await expect(
       caller.platformAdmin.searchUsers({ q: '', limit: 8 }),
-    ).rejects.toThrow();
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
   });
 });

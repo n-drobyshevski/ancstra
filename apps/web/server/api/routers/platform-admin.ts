@@ -625,6 +625,7 @@ export const platformAdminRouter = createTRPCRouter({
       });
     }),
 
+  // limit defaults to 8 because the UserPickerField shows ~8 rows.
   searchUsers: platformAdminProcedure
     .input(
       z.object({
