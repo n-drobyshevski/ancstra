@@ -587,3 +587,35 @@ describe('platformAdmin.listAuditLogActions', () => {
     });
   });
 });
+
+describe('platformAdmin.searchUsers', () => {
+  let db: TestCentralDb;
+
+  async function seedUserRow(id: string, name: string, email: string) {
+    const now = new Date().toISOString();
+    await db.insert(centralSchema.users).values({
+      id, email, name, createdAt: now, updatedAt: now,
+    }).run();
+  }
+
+  beforeEach(async () => {
+    db = createTestCentralDb();
+    await seedAdmin(db, 'admin1', 'Admin One');
+    await seedUserRow('u1', 'Alice', 'alice@example.com');
+    await seedUserRow('u2', 'Bob',   'bob@example.com');
+  });
+
+  it('returns matching users for a platform admin', async () => {
+    const caller = createCaller(adminCtx(db));
+    const rows = await caller.platformAdmin.searchUsers({ q: 'ali', limit: 8 });
+    expect(rows.map(r => r.id)).toEqual(['u1']);
+    expect(rows[0].ownedFamiliesCount).toBe(0);
+  });
+
+  it('rejects a non-platform-admin caller', async () => {
+    const caller = createCaller(nonAdminCtx(db, 'u1'));
+    await expect(
+      caller.platformAdmin.searchUsers({ q: '', limit: 8 }),
+    ).rejects.toThrow();
+  });
+});

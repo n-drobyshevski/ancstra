@@ -19,6 +19,7 @@ import {
   listAuditLogActions,
   logPlatformActivity,
   searchFamilies,
+  searchUsers,
 } from '@ancstra/auth/admin';
 import { createTRPCRouter, platformAdminProcedure } from '../trpc';
 
@@ -620,6 +621,22 @@ export const platformAdminRouter = createTRPCRouter({
       return searchFamilies(ctx.centralDb, {
         q: input.q,
         excludeFamilyId: input.excludeFamilyId,
+        limit: input.limit,
+      });
+    }),
+
+  searchUsers: platformAdminProcedure
+    .input(
+      z.object({
+        q: z.string().optional(),
+        excludeUserId: z.string().optional(),
+        limit: z.number().int().min(1).max(50).default(8),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      return searchUsers(ctx.centralDb, {
+        q: input.q,
+        excludeUserId: input.excludeUserId,
         limit: input.limit,
       });
     }),
