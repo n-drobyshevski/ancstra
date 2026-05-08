@@ -126,8 +126,12 @@ export function FamilyDetail({ data }: Props) {
                     <TableHead>Role</TableHead>
                     <TableHead>Joined</TableHead>
                     <TableHead>Last seen</TableHead>
-                    <TableHead aria-label="Status"></TableHead>
-                    <TableHead className="w-[60px]" aria-label="Actions"></TableHead>
+                    <TableHead>
+                      <span className="sr-only">Status</span>
+                    </TableHead>
+                    <TableHead className="w-[60px]">
+                      <span className="sr-only">Actions</span>
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

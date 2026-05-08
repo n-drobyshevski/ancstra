@@ -5,6 +5,7 @@ import { requirePlatformAdmin } from '@/lib/auth/platform-admin';
 import { UsersTable } from '@/components/admin/users-table';
 import { DataTableToolbar } from '@/components/admin/data-table-toolbar';
 import { DataTablePagination } from '@/components/admin/data-table-pagination';
+import { AddUserDialog } from '@/components/admin/add-user-dialog';
 
 export const metadata = { title: 'Users — Admin' };
 
@@ -34,11 +35,14 @@ export default async function AdminUsersPage({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Users</h1>
-        <p className="text-sm text-muted-foreground">
-          Every account in the central registry.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Users</h1>
+          <p className="text-sm text-muted-foreground">
+            Every account in the central registry.
+          </p>
+        </div>
+        <AddUserDialog />
       </div>
       <DataTableToolbar
         basePath="/admin/users"

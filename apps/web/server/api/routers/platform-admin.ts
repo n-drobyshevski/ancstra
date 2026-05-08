@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import bcrypt from 'bcryptjs';
 import { eq, and, sql } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
 import { updateTag } from 'next/cache';
@@ -623,6 +624,39 @@ export const platformAdminRouter = createTRPCRouter({
       });
     }),
 
+  // Lightweight memberships lookup for the user-row "Add/Move to another
+  // family" flow on /admin/users. Returns only active memberships so the
+  // caller can build a source-family picker and exclude existing
+  // memberships from the target picker. Owner role is included in the
+  // result; the client filters it out for the source picker because the
+  // backend's moveMemberToFamily rejects owner moves.
+  getUserMemberships: platformAdminProcedure
+    .input(z.object({ userId: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      return ctx.centralDb
+        .select({
+          familyId: centralSchema.familyMembers.familyId,
+          familyName: centralSchema.familyRegistry.name,
+          role: centralSchema.familyMembers.role,
+        })
+        .from(centralSchema.familyMembers)
+        .innerJoin(
+          centralSchema.familyRegistry,
+          eq(
+            centralSchema.familyRegistry.id,
+            centralSchema.familyMembers.familyId,
+          ),
+        )
+        .where(
+          and(
+            eq(centralSchema.familyMembers.userId, input.userId),
+            eq(centralSchema.familyMembers.isActive, 1),
+          ),
+        )
+        .orderBy(centralSchema.familyRegistry.name)
+        .all();
+    }),
+
   addMemberToFamily: platformAdminProcedure
     .input(
       z.object({
@@ -940,5 +974,168 @@ export const platformAdminRouter = createTRPCRouter({
       updateTag('platform-audit-log');
 
       return { ok: true, reactivatedAtTarget } as const;
+    }),
+
+  // Provision a brand-new user account from the admin surface. Password is
+  // required and bcrypt-hashed (cost 10) to match account.signUp. The admin
+  // is vouching for the email so emailVerified is set. Optional family
+  // membership lets a fresh account land directly in a family without going
+  // through the invitation flow.
+  createUser: platformAdminProcedure
+    .input(
+      z.object({
+        name: z.string().trim().min(1, 'Name is required'),
+        email: z
+          .string()
+          .trim()
+          .toLowerCase()
+          .email('Invalid email address'),
+        password: z.string().min(8, 'Password must be at least 8 characters'),
+        family: z
+          .object({
+            familyId: z.string().min(1),
+            role: z.enum(['admin', 'editor', 'viewer']),
+          })
+          .optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const existing = await ctx.centralDb
+        .select({ id: centralSchema.users.id })
+        .from(centralSchema.users)
+        .where(eq(centralSchema.users.email, input.email))
+        .get();
+      if (existing) {
+        throw new TRPCError({
+          code: 'CONFLICT',
+          message: 'An account with this email already exists',
+        });
+      }
+
+      let family: { id: string; name: string; memberCount: number; maxMembers: number } | null = null;
+      if (input.family) {
+        const f = await ctx.centralDb
+          .select({
+            id: centralSchema.familyRegistry.id,
+            name: centralSchema.familyRegistry.name,
+            maxMembers: centralSchema.familyRegistry.maxMembers,
+          })
+          .from(centralSchema.familyRegistry)
+          .where(eq(centralSchema.familyRegistry.id, input.family.familyId))
+          .get();
+        if (!f) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Target family not found' });
+        }
+        const countRow = await ctx.centralDb
+          .select({ n: sql<number>`COUNT(*)` })
+          .from(centralSchema.familyMembers)
+          .where(
+            and(
+              eq(centralSchema.familyMembers.familyId, input.family.familyId),
+              eq(centralSchema.familyMembers.isActive, 1),
+            ),
+          )
+          .get();
+        family = {
+          id: f.id,
+          name: f.name,
+          maxMembers: f.maxMembers,
+          memberCount: Number(countRow?.n ?? 0),
+        };
+      }
+
+      const passwordHash = await bcrypt.hash(input.password, 10);
+      const newUserId = crypto.randomUUID();
+      const now = new Date().toISOString();
+
+      // Explicit BEGIN/COMMIT/ROLLBACK — Drizzle's db.transaction(async ...)
+      // rejects on better-sqlite3, per the project rule.
+      await ctx.centralDb.run(sql`BEGIN`);
+      try {
+        await ctx.centralDb
+          .insert(centralSchema.users)
+          .values({
+            id: newUserId,
+            name: input.name,
+            email: input.email,
+            passwordHash,
+            emailVerified: 1,
+          })
+          .run();
+
+        if (input.family) {
+          await ctx.centralDb
+            .insert(centralSchema.familyMembers)
+            .values({
+              familyId: input.family.familyId,
+              userId: newUserId,
+              role: input.family.role,
+              joinedAt: now,
+              isActive: 1,
+            })
+            .run();
+        }
+
+        await ctx.centralDb.run(sql`COMMIT`);
+      } catch (err) {
+        await ctx.centralDb.run(sql`ROLLBACK`);
+        throw err;
+      }
+
+      if (input.family) {
+        await bumpMembershipsVersion(ctx.centralDb, newUserId);
+      }
+
+      const summary = family
+        ? `Platform admin created user ${input.name} (${input.email}) and added as ${input.family!.role} to ${family.name}`
+        : `Platform admin created user ${input.name} (${input.email})`;
+
+      await logPlatformActivity(ctx.centralDb, {
+        actorUserId: ctx.platformAdmin.userId,
+        action: 'user.create',
+        targetType: 'user',
+        targetId: newUserId,
+        summary,
+        metadata: {
+          targetUserName: input.name,
+          targetUserEmail: input.email,
+          family: family
+            ? { id: family.id, name: family.name, role: input.family!.role }
+            : null,
+        },
+      });
+
+      if (input.family && family) {
+        await logActivity(ctx.centralDb, {
+          familyId: input.family.familyId,
+          userId: ctx.platformAdmin.userId,
+          action: 'member_added',
+          summary,
+          metadata: {
+            targetUserId: newUserId,
+            role: input.family.role,
+            byPlatformAdmin: true,
+            createdNewUser: true,
+          },
+        });
+      }
+
+      updateTag('platform-users');
+      updateTag('platform-counts');
+      updateTag(`platform-user:${newUserId}`);
+      updateTag('platform-audit-log');
+      if (input.family) {
+        updateTag(`platform-family:${input.family.familyId}`);
+        updateTag('platform-families');
+      }
+
+      return {
+        userId: newUserId,
+        email: input.email,
+        addedToFamily: family ? { id: family.id, name: family.name } : null,
+        capExceeded: family
+          ? family.memberCount + 1 > family.maxMembers
+          : false,
+      } as const;
     }),
 });

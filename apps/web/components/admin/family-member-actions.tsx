@@ -91,13 +91,7 @@ export function FamilyMemberActions({ familyId, familyName, member }: Props) {
 
   const isPending = changeRole.isPending || remove.isPending || transfer.isPending;
 
-  // Owner row: only "transfer FROM" is meaningful, but that's done via the
-  // target admin's row. So owner gets no action menu here.
-  if (member.role === 'owner') {
-    return (
-      <span className="text-xs text-muted-foreground italic">owner</span>
-    );
-  }
+  const isOwner = member.role === 'owner';
 
   return (
     <>
@@ -118,61 +112,75 @@ export function FamilyMemberActions({ familyId, familyName, member }: Props) {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
           <DropdownMenuLabel className="text-xs">
-            Platform-admin override
+            {isOwner ? 'Owner — limited actions' : 'Platform-admin override'}
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
 
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger>
-              <ShieldOff className="size-4 mr-2" />
-              Change role
-            </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent>
-              {ASSIGNABLE.map((r) => (
-                <DropdownMenuItem
-                  key={r}
-                  disabled={r === member.role || changeRole.isPending}
-                  onClick={() =>
-                    changeRole.mutate({
-                      familyId,
-                      userId: member.userId,
-                      role: r,
-                    })
-                  }
-                >
-                  <span className="capitalize">{r}</span>
-                  {r === member.role ? (
-                    <span className="ml-auto text-xs text-muted-foreground">current</span>
-                  ) : null}
+          {!isOwner ? (
+            <>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <ShieldOff className="size-4 mr-2" />
+                  Change role
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  {ASSIGNABLE.map((r) => (
+                    <DropdownMenuItem
+                      key={r}
+                      disabled={r === member.role || changeRole.isPending}
+                      onClick={() =>
+                        changeRole.mutate({
+                          familyId,
+                          userId: member.userId,
+                          role: r,
+                        })
+                      }
+                    >
+                      <span className="capitalize">{r}</span>
+                      {r === member.role ? (
+                        <span className="ml-auto text-xs text-muted-foreground">current</span>
+                      ) : null}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+
+              {member.role === 'admin' ? (
+                <DropdownMenuItem onClick={() => setTransferOpen(true)}>
+                  <Crown className="size-4 mr-2" />
+                  Force transfer ownership
                 </DropdownMenuItem>
-              ))}
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
+              ) : null}
 
-          {member.role === 'admin' ? (
-            <DropdownMenuItem onClick={() => setTransferOpen(true)}>
-              <Crown className="size-4 mr-2" />
-              Force transfer ownership
-            </DropdownMenuItem>
+              <DropdownMenuSeparator />
+            </>
           ) : null}
-
-          <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => setAddToFamilyOpen(true)}>
             <UserPlus className="size-4 mr-2" />
             Add to another family…
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setMoveToFamilyOpen(true)}>
+          <DropdownMenuItem
+            disabled={isOwner}
+            onClick={() => setMoveToFamilyOpen(true)}
+          >
             <ArrowLeftRight className="size-4 mr-2" />
             Move to another family…
+            {isOwner ? (
+              <span className="ml-auto text-xs text-muted-foreground">owner</span>
+            ) : null}
           </DropdownMenuItem>
 
           <DropdownMenuSeparator />
           <DropdownMenuItem
+            disabled={isOwner}
             className="text-destructive focus:text-destructive"
             onClick={() => setRemoveOpen(true)}
           >
             <Trash2 className="size-4 mr-2" />
             Remove member
+            {isOwner ? (
+              <span className="ml-auto text-xs text-muted-foreground">owner</span>
+            ) : null}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

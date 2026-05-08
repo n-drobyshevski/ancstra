@@ -37,6 +37,14 @@ export const familyRouter = createTRPCRouter({
         name: input.name,
         ownerId: ctx.userId,
       });
+      // Admin surfaces (users list, families list, dashboard counts) all
+      // derive aggregates from family_registry / family_members. Without
+      // these, a fresh family doesn't show up until cacheLife('minutes')
+      // expires — which is why /admin/users showed 0 owned for everyone.
+      updateTag('platform-users');
+      updateTag('platform-families');
+      updateTag('platform-counts');
+      updateTag(`platform-user:${ctx.userId}`);
       return { familyId };
     }),
 
@@ -149,9 +157,15 @@ export const familyRouter = createTRPCRouter({
 
       try {
         const result = await deleteFamily(ctx.centralDb, ctx.familyId, input.confirmName);
+        // family_members FKs cascade-delete, so every member's active-
+        // membership count drops by one. platform-users covers the list
+        // page; the owner's user-detail also needs invalidation since
+        // they're guaranteed to have lost a membership.
+        updateTag('platform-users');
         updateTag('platform-families');
         updateTag(`platform-family:${ctx.familyId}`);
         updateTag('platform-counts');
+        updateTag(`platform-user:${ctx.userId}`);
         return result;
       } catch (err) {
         if (err instanceof Error && /confirmation/i.test(err.message)) {

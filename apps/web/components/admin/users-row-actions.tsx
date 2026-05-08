@@ -5,12 +5,14 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import {
+  ArrowLeftRight,
   Copy,
   ExternalLink,
   Loader2,
   MoreHorizontal,
   ShieldCheck,
   ShieldOff,
+  UserPlus,
 } from 'lucide-react';
 import { trpc } from '@/lib/trpc/client';
 import {
@@ -31,6 +33,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { UserFamilyTransferDialog } from '@/components/admin/user-family-transfer-dialog';
 
 interface Props {
   user: {
@@ -45,6 +48,7 @@ interface Props {
 export function UsersRowActions({ user, currentUserId }: Props) {
   const router = useRouter();
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [transferMode, setTransferMode] = useState<'add' | 'move' | null>(null);
   const isSelf = user.id === currentUserId;
   const promoting = !user.isPlatformAdmin;
 
@@ -103,6 +107,15 @@ export function UsersRowActions({ user, currentUserId }: Props) {
             {toggleLabel}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => setTransferMode('add')}>
+            <UserPlus className="size-4" />
+            Add to another family…
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setTransferMode('move')}>
+            <ArrowLeftRight className="size-4" />
+            Move to another family…
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => copy(user.id, 'User ID')}>
             <Copy className="size-4" />
             Copy user ID
@@ -113,6 +126,15 @@ export function UsersRowActions({ user, currentUserId }: Props) {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      <UserFamilyTransferDialog
+        mode={transferMode ?? 'add'}
+        open={transferMode !== null}
+        onOpenChange={(o) => {
+          if (!o) setTransferMode(null);
+        }}
+        user={{ id: user.id, name: user.name, email: user.email }}
+      />
 
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>
