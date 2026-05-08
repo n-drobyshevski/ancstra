@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 const navItems = [
   { title: 'Dashboard', href: '/admin', icon: LayoutDashboard, exact: true },
   { title: 'Users', href: '/admin/users', icon: Users, exact: false },
-  { title: 'Families', href: '/admin/families', icon: Building2, exact: false },
+  { title: 'Family trees', href: '/admin/families', icon: Building2, exact: false },
   { title: 'Audit Log', href: '/admin/audit', icon: History, exact: false },
 ];
 

@@ -6,7 +6,7 @@ import { DataTableToolbar } from '@/components/admin/data-table-toolbar';
 import { DataTablePagination } from '@/components/admin/data-table-pagination';
 import { AddFamilyDialog } from '@/components/admin/add-family-dialog';
 
-export const metadata = { title: 'Families — Admin' };
+export const metadata = { title: 'Family trees — Admin' };
 
 const PAGE_SIZE = 50;
 
@@ -33,7 +33,7 @@ export default async function AdminFamiliesPage({
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Families</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Family trees</h1>
           <p className="text-sm text-muted-foreground">
             All family trees registered on the platform.
           </p>

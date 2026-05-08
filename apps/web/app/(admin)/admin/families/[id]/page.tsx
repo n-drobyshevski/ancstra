@@ -27,10 +27,10 @@ export async function generateMetadata({
   const { id } = await params;
   const db = await getCentralDb();
   if (!(await familyExists(db, id))) {
-    return { title: 'Family not found' };
+    return { title: 'Family tree not found' };
   }
   const data = await getCachedFamilyDetail(id);
-  return { title: data ? `${data.family.name} — Admin` : 'Family not found' };
+  return { title: data ? `${data.family.name} — Admin` : 'Family tree not found' };
 }
 
 export default async function AdminFamilyDetailPage({
@@ -49,7 +49,7 @@ export default async function AdminFamilyDetailPage({
       <Button asChild variant="ghost" size="sm">
         <Link href="/admin/families">
           <ChevronLeft className="size-4" />
-          Back to families
+          Back to family trees
         </Link>
       </Button>
       <FamilyDetail data={data} />

@@ -53,7 +53,7 @@ export function UsersTable({ rows, currentUserId }: Props) {
           <TableRow>
             <TableHead>User</TableHead>
             <TableHead>Email</TableHead>
-            <TableHead className="text-right">Families</TableHead>
+            <TableHead className="text-right">Family trees</TableHead>
             <TableHead className="text-right">Owned</TableHead>
             <TableHead>Joined</TableHead>
             <TableHead aria-label="Platform admin" />
@@ -93,8 +93,8 @@ export function UsersTable({ rows, currentUserId }: Props) {
                 <CountWithNamesTooltip
                   count={u.ownedFamilyCount}
                   names={u.ownedFamilyNames}
-                  hint="Owned families"
-                  ariaNoun="owned families"
+                  hint="Owned family trees"
+                  ariaNoun="owned family trees"
                 />
               </TableCell>
               <TableCell className="text-muted-foreground">{formatDate(u.createdAt)}</TableCell>

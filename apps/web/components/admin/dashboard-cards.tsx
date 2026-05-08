@@ -9,7 +9,7 @@ interface Props {
 export function DashboardCards({ counts }: Props) {
   const items = [
     { label: 'Users', value: counts.userCount, icon: Users },
-    { label: 'Families', value: counts.familyCount, icon: Building2 },
+    { label: 'Family trees', value: counts.familyCount, icon: Building2 },
     { label: 'Active memberships', value: counts.activeMembershipCount, icon: Network },
     { label: 'Signups (last 7 days)', value: counts.signupsLast7d, icon: Sparkles },
     { label: 'Platform admins', value: counts.platformAdminCount, icon: ShieldCheck },
