@@ -3,6 +3,7 @@ import { revalidateTag } from 'next/cache';
 import { children, removeChildFromFamily, refreshRelatedSummaries } from '@ancstra/db';
 import { and, eq } from 'drizzle-orm';
 import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
+import { softDeleteFamilyIfEmpty } from '@/lib/queries';
 
 export async function DELETE(
   request: Request,
@@ -30,6 +31,10 @@ export async function DELETE(
     // Update closure table and person summaries
     await removeChildFromFamily(familyDb, familyId, personId);
     await refreshRelatedSummaries(familyDb, personId);
+
+    // If the family is now an empty single-parent container, soft-delete it
+    // so the dashboard count reflects only meaningful family records.
+    await softDeleteFamilyIfEmpty(familyDb, familyId);
 
     revalidateTag('tree-data', 'max');
     revalidateTag('persons', 'max');

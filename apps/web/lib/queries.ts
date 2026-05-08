@@ -298,6 +298,164 @@ export async function findOrCreateFamilyForChild(
 }
 
 // ---------------------------------------------------------------------------
+// Exported: find or create a family record where `parentId` is a partner.
+// Returns the existing family if one already lists `parentId` as partner1 or
+// partner2 (regardless of the other slot). Otherwise creates a new
+// single-parent family with `parentId` in partner1.
+//
+// Used by parent-child write paths to prevent each "add child" call from
+// minting a new families row for the same parent.
+// ---------------------------------------------------------------------------
+export async function findOrCreateFamilyForParent(
+  db: Database,
+  parentId: string,
+): Promise<string> {
+  const existing = await findFamiliesAsPartner(db, parentId);
+  if (existing.length > 0) return existing[0];
+
+  const familyId = crypto.randomUUID();
+  await db.insert(families)
+    .values({ id: familyId, partner1Id: parentId })
+    .run();
+  return familyId;
+}
+
+// ---------------------------------------------------------------------------
+// Exported: find or create a family from a partner specification, with full
+// dedup. Both-partner inserts dedup on the unordered pair (either direction).
+// Single-partner inserts dedup on any active family where the named partner
+// already appears as partner1 or partner2 — this is what prevents a "create
+// single-parent family" UI flow from minting a fresh row each time the user
+// re-opens the dialog.
+// ---------------------------------------------------------------------------
+export interface FamilyPartnerSpec {
+  partner1Id?: string | null;
+  partner2Id?: string | null;
+  relationshipType?: 'married' | 'civil_union' | 'domestic_partner' | 'unmarried' | 'unknown';
+}
+
+export async function findOrCreateFamilyByPartners(
+  db: Database,
+  spec: FamilyPartnerSpec,
+): Promise<{ familyId: string; created: boolean }> {
+  const p1 = spec.partner1Id ?? null;
+  const p2 = spec.partner2Id ?? null;
+
+  if (p1 && p2) {
+    const [existing] = await db
+      .select({ id: families.id })
+      .from(families)
+      .where(
+        and(
+          isNull(families.deletedAt),
+          or(
+            and(eq(families.partner1Id, p1), eq(families.partner2Id, p2)),
+            and(eq(families.partner1Id, p2), eq(families.partner2Id, p1)),
+          ),
+        ),
+      )
+      .all();
+    if (existing) return { familyId: existing.id, created: false };
+  } else {
+    const onePartner = p1 ?? p2;
+    if (onePartner) {
+      const partnerFams = await findFamiliesAsPartner(db, onePartner);
+      if (partnerFams.length > 0) {
+        return { familyId: partnerFams[0], created: false };
+      }
+    }
+  }
+
+  const familyId = crypto.randomUUID();
+  await db.insert(families)
+    .values({
+      id: familyId,
+      partner1Id: p1,
+      partner2Id: p2,
+      relationshipType: spec.relationshipType ?? 'unknown',
+      validationStatus: 'confirmed',
+    })
+    .run();
+  return { familyId, created: true };
+}
+
+// ---------------------------------------------------------------------------
+// Exported: soft-delete a family record if it is now an empty container
+// (zero or one partners AND no remaining children). Two-partner families
+// without children are kept — they may legitimately represent a marriage
+// record where no children have been entered yet.
+//
+// Returns true when a soft-delete actually happened, false otherwise.
+// Use after removing a child link or soft-deleting a partner person to keep
+// the families table from accumulating dangling stubs.
+// ---------------------------------------------------------------------------
+export async function softDeleteFamilyIfEmpty(
+  db: Database,
+  familyId: string,
+): Promise<boolean> {
+  const [fam] = await db
+    .select({
+      id: families.id,
+      partner1Id: families.partner1Id,
+      partner2Id: families.partner2Id,
+      deletedAt: families.deletedAt,
+    })
+    .from(families)
+    .where(eq(families.id, familyId))
+    .all();
+
+  if (!fam || fam.deletedAt) return false;
+
+  // Both partners present → keep, even childless (marriage-only record).
+  if (fam.partner1Id && fam.partner2Id) return false;
+
+  const [{ kids }] = await db
+    .select({ kids: sql<number>`count(*)` })
+    .from(children)
+    .where(eq(children.familyId, familyId))
+    .all();
+
+  if (kids > 0) return false;
+
+  const now = new Date().toISOString();
+  await db.update(families)
+    .set({ deletedAt: now, updatedAt: now })
+    .where(eq(families.id, familyId))
+    .run();
+  return true;
+}
+
+// ---------------------------------------------------------------------------
+// Exported: link a child to a parent's family, reusing an existing one if the
+// parent already has a family record. Idempotent: calling twice with the same
+// (parent, child) is a no-op for the second call.
+//
+// Returns `childLinked: true` only when the children row was actually
+// inserted, so the caller can run closure-table updates conditionally.
+// ---------------------------------------------------------------------------
+export async function linkChildToParent(
+  db: Database,
+  parentId: string,
+  childId: string,
+): Promise<{ familyId: string; childLinked: boolean }> {
+  const familyId = await findOrCreateFamilyForParent(db, parentId);
+
+  const [existing] = await db
+    .select({ id: children.id })
+    .from(children)
+    .where(and(eq(children.familyId, familyId), eq(children.personId, childId)))
+    .all();
+
+  if (existing) return { familyId, childLinked: false };
+
+  await db.insert(children)
+    .values({ familyId, personId: childId })
+    .run();
+
+  return { familyId, childLinked: true };
+}
+
+// ---------------------------------------------------------------------------
 // Exported: link two persons as siblings via a shared parent family
 //
 // If `personId` already has a parent family, `siblingId` is added as a child

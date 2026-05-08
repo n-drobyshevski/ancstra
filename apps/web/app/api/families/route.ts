@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
 import { persons, families, refreshSummary } from '@ancstra/db';
-import { and, eq, or, isNull } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { createFamilySchema } from '@/lib/validation';
 import { withAuth, handleAuthError, logAndInvalidate } from '@/lib/auth/api-guard';
+import { findOrCreateFamilyByPartners } from '@/lib/queries';
 
 export async function POST(request: Request) {
   try {
@@ -43,68 +44,35 @@ export async function POST(request: Request) {
       }
     }
 
-    // Check no duplicate non-deleted family for this pair (both directions)
-    if (data.partner1Id && data.partner2Id) {
-      const [existing] = await familyDb
-        .select({ id: families.id })
-        .from(families)
-        .where(
-          and(
-            isNull(families.deletedAt),
-            or(
-              and(
-                eq(families.partner1Id, data.partner1Id),
-                eq(families.partner2Id, data.partner2Id)
-              ),
-              and(
-                eq(families.partner1Id, data.partner2Id),
-                eq(families.partner2Id, data.partner1Id)
-              )
-            )
-          )
-        )
-        .all();
-      if (existing) {
-        return NextResponse.json(
-          { error: 'Family already exists for this pair' },
-          { status: 409 }
-        );
-      }
-    }
+    // Idempotent dedup: returns existing family for an already-known pair, or
+    // any family already listing the named partner for single-parent inserts.
+    // Prevents the "create family" UI flow from minting a fresh row each call.
+    const { familyId, created } = await findOrCreateFamilyByPartners(familyDb, {
+      partner1Id: data.partner1Id ?? null,
+      partner2Id: data.partner2Id ?? null,
+      relationshipType: data.relationshipType ?? 'unknown',
+    });
 
-    const now = new Date().toISOString();
-    const familyId = crypto.randomUUID();
-
-    await familyDb.insert(families)
-      .values({
-        id: familyId,
-        partner1Id: data.partner1Id ?? null,
-        partner2Id: data.partner2Id ?? null,
-        relationshipType: data.relationshipType ?? 'unknown',
-        validationStatus: 'confirmed',
-        createdAt: now,
-        updatedAt: now,
-      })
-      .run();
-
-    const [created] = await familyDb
+    const [familyRow] = await familyDb
       .select()
       .from(families)
       .where(eq(families.id, familyId))
       .all();
 
-    if (data.partner1Id) await refreshSummary(familyDb, data.partner1Id);
-    if (data.partner2Id) await refreshSummary(familyDb, data.partner2Id);
-    revalidateTag('tree-data', 'max');
-    revalidateTag('persons', 'max');
-    await logAndInvalidate(centralDb, ctx, {
-      action: 'relationship_added',
-      entityType: 'family',
-      entityId: familyId,
-      summary: 'Added a family relationship',
-      metadata: { relationshipType: data.relationshipType },
-    });
-    return NextResponse.json(created, { status: 201 });
+    if (created) {
+      if (data.partner1Id) await refreshSummary(familyDb, data.partner1Id);
+      if (data.partner2Id) await refreshSummary(familyDb, data.partner2Id);
+      revalidateTag('tree-data', 'max');
+      revalidateTag('persons', 'max');
+      await logAndInvalidate(centralDb, ctx, {
+        action: 'relationship_added',
+        entityType: 'family',
+        entityId: familyId,
+        summary: 'Added a family relationship',
+        metadata: { relationshipType: data.relationshipType },
+      });
+    }
+    return NextResponse.json(familyRow, { status: created ? 201 : 200 });
   } catch (error) {
     return handleAuthError(error);
   }

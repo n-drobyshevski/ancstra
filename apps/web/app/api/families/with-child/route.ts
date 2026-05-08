@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
-import { persons, families, children, addChildToFamily, refreshRelatedSummaries, refreshSummary } from '@ancstra/db';
+import { persons, addChildToFamily, refreshRelatedSummaries, refreshSummary } from '@ancstra/db';
 import { and, eq, isNull } from 'drizzle-orm';
 import { withAuth, handleAuthError, logAndInvalidate } from '@/lib/auth/api-guard';
+import { linkChildToParent } from '@/lib/queries';
 import { z } from 'zod/v3';
 
 const schema = z.object({
@@ -44,42 +45,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Child not found' }, { status: 404 });
     }
 
-    const now = new Date().toISOString();
-    const familyId = crypto.randomUUID();
-    const childLinkId = crypto.randomUUID();
+    // Reuse an existing family for this parent if one already exists; only
+    // mint a new families row when the parent has no prior family. Idempotent
+    // on (parent, child) — re-dragging the same edge is a no-op.
+    const { familyId, childLinked } = await linkChildToParent(familyDb, parentId, childId);
 
-    // Atomic: create family + link child in a single transaction
-    await familyDb.transaction(async (tx) => {
-      await tx.insert(families)
-        .values({
-          id: familyId,
-          partner1Id: parentId,
-          partner2Id: null,
-          relationshipType: 'unknown',
-          validationStatus: 'confirmed',
-          createdAt: now,
-          updatedAt: now,
-        })
-        .run();
-
-      await tx.insert(children)
-        .values({
-          id: childLinkId,
-          familyId,
-          personId: childId,
-          childOrder: null,
-          relationshipToParent1: 'biological',
-          relationshipToParent2: 'biological',
-          validationStatus: 'confirmed',
-          createdAt: now,
-        })
-        .run();
-    });
-
-    // Post-transaction: update closure table and summaries
-    await addChildToFamily(familyDb, familyId, childId);
-    await refreshSummary(familyDb, parentId);
-    await refreshRelatedSummaries(familyDb, childId);
+    if (childLinked) {
+      // Post-transaction: update closure table and summaries
+      await addChildToFamily(familyDb, familyId, childId);
+      await refreshSummary(familyDb, parentId);
+      await refreshRelatedSummaries(familyDb, childId);
+    }
 
     revalidateTag('tree-data', 'max');
     revalidateTag('persons', 'max');
