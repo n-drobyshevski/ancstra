@@ -265,6 +265,9 @@ describe('Research Facts CRUD queries', () => {
       confidence: 'low',
     });
 
+    // ms-resolution updatedAt collides on fast CI; force a tick gap.
+    await new Promise((resolve) => setTimeout(resolve, 5));
+
     const updated = await updateFact(db as any, created.id, {
       confidence: 'high',
       factValue: 'Boston, Massachusetts',

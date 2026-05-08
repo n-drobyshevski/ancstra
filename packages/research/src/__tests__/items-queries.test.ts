@@ -202,6 +202,8 @@ describe('Research Items CRUD queries', () => {
       discoveryMethod: 'search',
       createdBy: 'test-user-1',
     });
+    // ms-resolution createdAt collides on fast CI; force a tick gap.
+    await new Promise((resolve) => setTimeout(resolve, 5));
     await createResearchItem(db as any, {
       title: 'Second',
       discoveryMethod: 'search',
