@@ -55,7 +55,7 @@ export async function createFamily(
     ownerId: opts.ownerId,
     dbFilename,
     // Only include when explicitly overridden; otherwise let the schema
-    // default (50) take over so changing the default doesn't require a
+    // default take over so changing the default doesn't require a
     // helper edit.
     ...(opts.maxMembers !== undefined ? { maxMembers: opts.maxMembers } : {}),
     createdAt: now,
