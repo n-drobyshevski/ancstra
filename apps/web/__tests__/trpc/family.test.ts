@@ -7,6 +7,12 @@ const createFamilyMock = vi.fn();
 
 vi.mock('@/auth', () => ({ auth: vi.fn(async () => null) }));
 
+vi.mock('next/cache', () => ({
+  revalidateTag: vi.fn(),
+  cacheLife: vi.fn(),
+  cacheTag: vi.fn(),
+}));
+
 vi.mock('@ancstra/auth', async (importOriginal) => {
   const original = await importOriginal<typeof import('@ancstra/auth')>();
   return {
