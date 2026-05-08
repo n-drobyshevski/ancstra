@@ -433,6 +433,68 @@ export async function searchFamilies(
   }));
 }
 
+// ====================================================================
+// User search (for admin owner-picker — /admin/families AddFamilyDialog)
+// ====================================================================
+
+export interface UserSearchRow {
+  id: string;
+  name: string;
+  email: string;
+  ownedFamiliesCount: number;
+}
+
+/**
+ * Lightweight user search for the owner picker on /admin/families.
+ * Symmetrical with searchFamilies. Filters by name OR email substring,
+ * orders alphabetically by name, and reports how many families each user
+ * already owns (informational — surfaced as "owns N families" subtext on
+ * each picker row so a platform admin can see ownership context).
+ */
+export async function searchUsers(
+  centralDb: CentralDb,
+  opts: { q?: string; excludeUserId?: string; limit?: number } = {},
+): Promise<UserSearchRow[]> {
+  const { q, excludeUserId, limit = 10 } = opts;
+  const search = q?.trim();
+
+  const conditions: ReturnType<typeof eq>[] = [];
+  if (search) {
+    conditions.push(
+      or(
+        like(centralSchema.users.name, `%${search}%`),
+        like(centralSchema.users.email, `%${search}%`),
+      )!,
+    );
+  }
+  if (excludeUserId) {
+    conditions.push(ne(centralSchema.users.id, excludeUserId));
+  }
+
+  const rows = await centralDb
+    .select({
+      id: centralSchema.users.id,
+      name: centralSchema.users.name,
+      email: centralSchema.users.email,
+      // Outer table column referenced as raw identifier so the correlated
+      // subquery resolves it correctly — same pattern as searchFamilies.
+      ownedFamiliesCount: sql<number>`(
+        SELECT COUNT(*) FROM ${centralSchema.familyRegistry}
+        WHERE ${centralSchema.familyRegistry.ownerId} = users.id
+      )`,
+    })
+    .from(centralSchema.users)
+    .where(conditions.length > 0 ? and(...conditions) : sql`1=1`)
+    .orderBy(centralSchema.users.name)
+    .limit(limit)
+    .all();
+
+  return rows.map((r: typeof rows[number]) => ({
+    ...r,
+    ownedFamiliesCount: Number(r.ownedFamiliesCount),
+  }));
+}
+
 export interface FamilyDetail {
   family: {
     id: string;

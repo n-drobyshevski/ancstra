@@ -6,6 +6,7 @@ import {
   listAuditLogActions,
   logPlatformActivity,
   getPlatformCounts,
+  searchUsers,
 } from '../src/admin-queries';
 
 async function seedActor(db: TestCentralDb, id: string, name: string) {
@@ -247,5 +248,69 @@ describe('logPlatformActivity → listAuditLog round trip', () => {
     expect(items[0].summary).toBe('Promoted Bob');
     expect(items[0].metadata).toEqual({ previous: false, next: true, by: 'admin1' });
     expect(items[0].actorName).toBe('Admin One');
+  });
+});
+
+describe('searchUsers', () => {
+  let db: TestCentralDb;
+
+  async function seedUserRow(id: string, name: string, email: string) {
+    const now = new Date().toISOString();
+    await db.insert(centralSchema.users).values({
+      id, email, name, createdAt: now, updatedAt: now,
+    }).run();
+  }
+
+  async function seedFamilyOwnedBy(familyId: string, ownerId: string, name = 'F') {
+    const now = new Date().toISOString();
+    await db.insert(centralSchema.familyRegistry).values({
+      id: familyId, name, ownerId,
+      dbFilename: `${familyId}.sqlite`,
+      createdAt: now, updatedAt: now,
+    }).run();
+  }
+
+  beforeEach(async () => {
+    db = createTestCentralDb();
+    await seedUserRow('u1', 'Alice Anderson',  'alice@example.com');
+    await seedUserRow('u2', 'Bob Brown',       'bob@example.com');
+    await seedUserRow('u3', 'Charlie Carter',  'charlie@example.com');
+  });
+
+  it('returns all users alphabetically when q is empty', async () => {
+    const rows = await searchUsers(db, {});
+    expect(rows.map(r => r.id)).toEqual(['u1', 'u2', 'u3']);
+  });
+
+  it('filters by name (case-insensitive substring)', async () => {
+    const rows = await searchUsers(db, { q: 'bob' });
+    expect(rows.map(r => r.id)).toEqual(['u2']);
+  });
+
+  it('filters by email (case-insensitive substring)', async () => {
+    const rows = await searchUsers(db, { q: 'CHARLIE@' });
+    expect(rows.map(r => r.id)).toEqual(['u3']);
+  });
+
+  it('respects excludeUserId', async () => {
+    const rows = await searchUsers(db, { excludeUserId: 'u2' });
+    expect(rows.map(r => r.id)).toEqual(['u1', 'u3']);
+  });
+
+  it('caps results at limit', async () => {
+    const rows = await searchUsers(db, { limit: 2 });
+    expect(rows).toHaveLength(2);
+  });
+
+  it('reports ownedFamiliesCount per user', async () => {
+    await seedFamilyOwnedBy('fam-a', 'u1');
+    await seedFamilyOwnedBy('fam-b', 'u1');
+    await seedFamilyOwnedBy('fam-c', 'u2');
+
+    const rows = await searchUsers(db, {});
+    const byId = Object.fromEntries(rows.map(r => [r.id, r]));
+    expect(byId['u1'].ownedFamiliesCount).toBe(2);
+    expect(byId['u2'].ownedFamiliesCount).toBe(1);
+    expect(byId['u3'].ownedFamiliesCount).toBe(0);
   });
 });
