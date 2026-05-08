@@ -1,5 +1,7 @@
 # RBAC Cross-Cutting Architecture — Ancstra
 
+> **Looking for a narrative overview?** See [`docs/architecture/rbac-and-family-spaces.md`](../architecture/rbac-and-family-spaces.md). This document is the original design spec + decision log; it assumes the reader is reviewing past decisions.
+
 **Status:** Cross-cutting design spec. NOT an implementation plan.
 **Date:** 2026-04-29
 **Author:** brainstorm session w/ Claude

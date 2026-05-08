@@ -5,6 +5,7 @@
 - [Architecture Overview](architecture/overview.md)
 - [Data Model](architecture/data-model.md)
 - [AI Strategy](architecture/ai-strategy.md)
+- [RBAC & Family Spaces](architecture/rbac-and-family-spaces.md) — narrative guide to roles, family-space isolation, and enforcement layers
 - [Information Architecture](design/information-architecture.md)
 - [RBAC Roadmap](RBAC_ROADMAP.md) — cross-cutting RBAC work, sub-specs B + A shipped, D/C/E pending
 

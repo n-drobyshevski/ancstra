@@ -1,5 +1,7 @@
 # RBAC Roadmap
 
+> **New here?** Start with [`docs/architecture/rbac-and-family-spaces.md`](architecture/rbac-and-family-spaces.md) — narrative guide to roles, family-space isolation, and enforcement layers. This roadmap is the shipping log + sub-spec status tracker.
+
 Permanent reference for the role-based access control work in Ancstra. The cross-cutting architecture started as five sub-specs (B → A → D → C → E); D was split into D1 (foundation) + D2 (UX) during the D brainstorm because its surface grew (carry-forwards from B/A + ~30-component RoleGate adoption). **All six shipped.** RBAC roadmap complete.
 
 **Status:**
