@@ -60,14 +60,19 @@ export async function listAllUsers(
       isPlatformAdmin: centralSchema.users.isPlatformAdmin,
       emailVerified: centralSchema.users.emailVerified,
       createdAt: centralSchema.users.createdAt,
+      // NOTE: outer table column is referenced as a raw identifier
+      // (`users.id`) instead of `${centralSchema.users.id}`. Drizzle's `sql`
+      // tag interpolates Column refs as bare unqualified names, so inside a
+      // correlated subquery `WHERE "user_id" = "id"` resolves to the inner
+      // table's own `id` and the count silently returns 0 for every row.
       familyCount: sql<number>`(
         SELECT COUNT(*) FROM ${centralSchema.familyMembers}
-        WHERE ${centralSchema.familyMembers.userId} = ${centralSchema.users.id}
+        WHERE ${centralSchema.familyMembers.userId} = users.id
           AND ${centralSchema.familyMembers.isActive} = 1
       )`,
       ownedFamilyCount: sql<number>`(
         SELECT COUNT(*) FROM ${centralSchema.familyRegistry}
-        WHERE ${centralSchema.familyRegistry.ownerId} = ${centralSchema.users.id}
+        WHERE ${centralSchema.familyRegistry.ownerId} = users.id
       )`,
     })
     .from(centralSchema.users)
@@ -197,14 +202,16 @@ export async function listAllFamilies(
       ownerName: centralSchema.users.name,
       ownerEmail: centralSchema.users.email,
       createdAt: centralSchema.familyRegistry.createdAt,
+      // See note in listAllUsers: outer table column referenced as raw
+      // identifier so the correlated subquery resolves it correctly.
       memberCount: sql<number>`(
         SELECT COUNT(*) FROM ${centralSchema.familyMembers}
-        WHERE ${centralSchema.familyMembers.familyId} = ${centralSchema.familyRegistry.id}
+        WHERE ${centralSchema.familyMembers.familyId} = family_registry.id
           AND ${centralSchema.familyMembers.isActive} = 1
       )`,
       pendingInviteCount: sql<number>`(
         SELECT COUNT(*) FROM ${centralSchema.invitations}
-        WHERE ${centralSchema.invitations.familyId} = ${centralSchema.familyRegistry.id}
+        WHERE ${centralSchema.invitations.familyId} = family_registry.id
           AND ${centralSchema.invitations.acceptedAt} IS NULL
           AND ${centralSchema.invitations.revokedAt} IS NULL
       )`,
@@ -300,9 +307,11 @@ export async function searchFamilies(
       ownerId: centralSchema.familyRegistry.ownerId,
       ownerEmail: centralSchema.users.email,
       maxMembers: centralSchema.familyRegistry.maxMembers,
+      // See note in listAllUsers: outer table column referenced as raw
+      // identifier so the correlated subquery resolves it correctly.
       memberCount: sql<number>`(
         SELECT COUNT(*) FROM ${centralSchema.familyMembers}
-        WHERE ${centralSchema.familyMembers.familyId} = ${centralSchema.familyRegistry.id}
+        WHERE ${centralSchema.familyMembers.familyId} = family_registry.id
           AND ${centralSchema.familyMembers.isActive} = 1
       )`,
     })
