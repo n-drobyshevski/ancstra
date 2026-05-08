@@ -1,3 +1,4 @@
+import { connection } from 'next/server';
 import { cacheLife, cacheTag } from 'next/cache';
 import { getCentralDb } from '@/lib/db-singleton';
 import { getPlatformCounts, listAuditLog } from '@ancstra/auth/admin';
@@ -25,6 +26,12 @@ async function getCachedRecentActivity() {
 }
 
 export default async function AdminDashboardPage() {
+  // Skip build-time prerender: this page is admin-only and its `'use cache'`
+  // aggregations need a real Turso/SQLite connection. CI has no DB at build,
+  // so prerender would fail and bake empty data into the cache for first hit.
+  // Cached values still populate on first authenticated request and are
+  // invalidated by `revalidateTag('platform-counts' | 'platform-audit-log')`.
+  await connection();
   const [counts, recentActivity] = await Promise.all([
     getCachedPlatformCounts(),
     getCachedRecentActivity(),
