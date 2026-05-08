@@ -9,3 +9,4 @@ export * from './oauth-linking';
 export * from './families';
 export { AncstraAdapter } from './nextauth-adapter';
 export * from './memberships';
+export * from './lens';

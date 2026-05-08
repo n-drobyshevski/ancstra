@@ -52,7 +52,7 @@ vi.mock('@/lib/cache/person', () => ({
 const createCaller = createCallerFactory(appRouter);
 
 function makeCtx(overrides: Partial<BaseContext> = {}): BaseContext {
-  return {
+  const base = {
     session: null,
     userId: null,
     familyId: null,
@@ -62,6 +62,8 @@ function makeCtx(overrides: Partial<BaseContext> = {}): BaseContext {
     centralDb: {} as never,
     ...overrides,
   };
+  // Tests don't exercise the lens; mirror effective role into actualRole.
+  return { ...base, actualRole: base.role };
 }
 
 describe('person.fetchDetail', () => {

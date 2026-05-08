@@ -89,6 +89,7 @@ function ctxWithRole(role: 'viewer' | 'editor' | 'admin' | 'owner'): BaseContext
     userId: 'u1',
     familyId: 'f1',
     role,
+    actualRole: role,
     dbFilename: 'fake.db',
     // Provide a minimal stub that satisfies db.select().from(events).all()
     // and db.transaction() for commitImport.

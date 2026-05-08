@@ -18,6 +18,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { PlatformAdminOnly } from '@/components/auth/platform-admin-only';
+import { LensSelector } from '@/components/sidebar/lens-selector';
 import { signOut } from 'next-auth/react';
 import {
   Sidebar,
@@ -158,6 +159,7 @@ export function AppSidebar({ factsheetCount = 0 }: AppSidebarProps) {
               </SidebarMenuButton>
             </SidebarMenuItem>
           </PlatformAdminOnly>
+          <LensSelector />
           <SidebarMenuItem>
             <SidebarMenuButton asChild tooltip="Settings">
               <Link href="/settings" onClick={() => setOpenMobile(false)}>

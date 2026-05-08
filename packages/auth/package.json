@@ -25,6 +25,10 @@
     "./admin": {
       "types": "./src/admin-queries.ts",
       "default": "./src/admin-queries.ts"
+    },
+    "./lens": {
+      "types": "./src/lens.ts",
+      "default": "./src/lens.ts"
     }
   },
   "scripts": {

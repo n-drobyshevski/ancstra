@@ -7,6 +7,7 @@ import { AppSidebarSkeleton } from '@/components/skeletons/app-sidebar-skeleton'
 import { AppHeader } from '@/components/app-header';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { HeaderProvider } from '@/lib/header-context';
+import { LensProvider } from '@/lib/lens/provider';
 
 // Auth/membership enforcement lives in proxy.ts — by the time this layout
 // renders, the user is authenticated AND has at least one family membership
@@ -26,23 +27,25 @@ export default function AuthLayout({
   return (
     <TooltipProvider>
       <HeaderProvider>
-        <SidebarProvider defaultOpen={false}>
-          <Suspense fallback={<AppSidebarSkeleton />}>
-            <AppSidebarServer />
-          </Suspense>
-          <SidebarInset>
-            <AppHeader />
-            <div className="min-w-0 flex-1">
-              {/* Suspense boundary for sub-page children. The previous layout
-                  implicitly provided one via <Suspense><AuthGate>{children}</AuthGate>.
-                  Now that AuthGate is gone, sub-pages with top-level awaits
-                  (e.g. /settings/members) need this boundary so cacheComponents
-                  doesn't flag uncached-data-outside-Suspense. Per-segment
-                  loading.tsx fallbacks (where present) still take precedence. */}
-              <Suspense>{children}</Suspense>
-            </div>
-          </SidebarInset>
-        </SidebarProvider>
+        <LensProvider>
+          <SidebarProvider defaultOpen={false}>
+            <Suspense fallback={<AppSidebarSkeleton />}>
+              <AppSidebarServer />
+            </Suspense>
+            <SidebarInset>
+              <AppHeader />
+              <div className="min-w-0 flex-1">
+                {/* Suspense boundary for sub-page children. The previous layout
+                    implicitly provided one via <Suspense><AuthGate>{children}</AuthGate>.
+                    Now that AuthGate is gone, sub-pages with top-level awaits
+                    (e.g. /settings/members) need this boundary so cacheComponents
+                    doesn't flag uncached-data-outside-Suspense. Per-segment
+                    loading.tsx fallbacks (where present) still take precedence. */}
+                <Suspense>{children}</Suspense>
+              </div>
+            </SidebarInset>
+          </SidebarProvider>
+        </LensProvider>
       </HeaderProvider>
     </TooltipProvider>
   );

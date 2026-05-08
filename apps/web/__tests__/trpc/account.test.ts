@@ -30,6 +30,7 @@ function publicCtx(): BaseContext {
     userId: null,
     familyId: null,
     role: null,
+    actualRole: null,
     dbFilename: null,
     familyDb: null,
     centralDb: fakeCentralDb,

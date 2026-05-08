@@ -30,7 +30,7 @@ function makeCtx(
   db: TestCentralDb,
   overrides: Partial<BaseContext> = {},
 ): BaseContext {
-  return {
+  const base = {
     session: { user: { id: overrides.userId ?? 'u-owner' } } as never,
     userId: overrides.userId ?? 'u-owner',
     familyId: 'f1',
@@ -40,6 +40,8 @@ function makeCtx(
     centralDb: db as never,
     ...overrides,
   };
+  // Tests don't exercise the lens; mirror effective role into actualRole.
+  return { ...base, actualRole: base.role };
 }
 
 async function seedFamily(db: TestCentralDb) {
