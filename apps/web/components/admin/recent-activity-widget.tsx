@@ -1,11 +1,11 @@
 import Link from 'next/link';
 import { ArrowRight, History } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
 import type { AuditLogEntry } from '@ancstra/auth/admin';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { RelativeTime } from '@/components/admin/relative-time';
 
 interface Props {
   items: AuditLogEntry[];
@@ -15,14 +15,6 @@ function initials(name: string, email: string): string {
   const source = name?.trim() || email;
   const parts = source.split(/\s+/).filter(Boolean);
   return (parts[0]?.[0] ?? '?').toUpperCase() + (parts[1]?.[0]?.toUpperCase() ?? '');
-}
-
-function formatWhen(iso: string): string {
-  try {
-    return formatDistanceToNow(new Date(iso), { addSuffix: true });
-  } catch {
-    return iso;
-  }
 }
 
 export function RecentActivityWidget({ items }: Props) {
@@ -64,7 +56,7 @@ export function RecentActivityWidget({ items }: Props) {
                     <Badge variant="outline" className="capitalize text-xs h-5">
                       {entry.targetType}
                     </Badge>
-                    <span title={entry.createdAt}>{formatWhen(entry.createdAt)}</span>
+                    <RelativeTime iso={entry.createdAt} />
                   </div>
                 </div>
               </li>
