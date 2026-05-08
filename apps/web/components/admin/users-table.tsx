@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ShieldCheck } from 'lucide-react';
 import { UsersRowActions } from '@/components/admin/users-row-actions';
+import { CountWithNamesTooltip } from '@/components/admin/count-with-names-tooltip';
 import type { UserListRow } from '@ancstra/auth/admin';
 
 interface Props {
@@ -80,8 +81,22 @@ export function UsersTable({ rows, currentUserId }: Props) {
                   <Badge variant="outline" className="ml-2 text-xs">unverified</Badge>
                 ) : null}
               </TableCell>
-              <TableCell className="text-right tabular-nums">{u.familyCount}</TableCell>
-              <TableCell className="text-right tabular-nums">{u.ownedFamilyCount}</TableCell>
+              <TableCell className="text-right">
+                <CountWithNamesTooltip
+                  count={u.familyCount}
+                  names={u.familyNames}
+                  hint="Active memberships"
+                  ariaNoun="family memberships"
+                />
+              </TableCell>
+              <TableCell className="text-right">
+                <CountWithNamesTooltip
+                  count={u.ownedFamilyCount}
+                  names={u.ownedFamilyNames}
+                  hint="Owned families"
+                  ariaNoun="owned families"
+                />
+              </TableCell>
               <TableCell className="text-muted-foreground">{formatDate(u.createdAt)}</TableCell>
               <TableCell>
                 {u.isPlatformAdmin ? (

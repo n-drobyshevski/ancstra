@@ -1,4 +1,4 @@
-import { eq, ne, and, or, like, sql, count, isNull, desc, gte, gt, lt, lte } from 'drizzle-orm';
+import { eq, ne, and, or, like, sql, count, isNull, desc, gte, gt, lt, lte, inArray } from 'drizzle-orm';
 import * as centralSchema from '@ancstra/db/central-schema';
 
 // Accept any Drizzle DB instance — same convention as invitations.ts/families.ts.
@@ -18,8 +18,15 @@ export interface UserListRow {
   emailVerified: boolean;
   familyCount: number;
   ownedFamilyCount: number;
+  /** Up to first {@link TOOLTIP_NAME_LIMIT} family names where user is an active member, newest joinedAt first. */
+  familyNames: string[];
+  /** Up to first {@link TOOLTIP_NAME_LIMIT} family names this user owns, newest createdAt first. */
+  ownedFamilyNames: string[];
   createdAt: string;
 }
+
+/** How many names we surface in admin-table hover tooltips before collapsing the rest into "and N more". */
+const TOOLTIP_NAME_LIMIT = 10;
 
 export interface ListAllUsersOpts {
   q?: string;
@@ -82,6 +89,63 @@ export async function listAllUsers(
     .offset(offset)
     .all();
 
+  // Secondary fetch for hover-tooltip content. We can't reliably take a
+  // per-user LIMIT inside the main correlated subqueries, so pull names for
+  // just this page's user IDs and slice in JS — bounded by PAGE_SIZE *
+  // (avg memberships + avg owned families), well under any practical row cap.
+  const userIds = rows.map((r: typeof rows[number]) => r.id as string);
+  const familyNamesByUser = new Map<string, string[]>();
+  const ownedNamesByUser = new Map<string, string[]>();
+
+  if (userIds.length > 0) {
+    const memberships = await centralDb
+      .select({
+        userId: centralSchema.familyMembers.userId,
+        familyName: centralSchema.familyRegistry.name,
+      })
+      .from(centralSchema.familyMembers)
+      .innerJoin(
+        centralSchema.familyRegistry,
+        eq(centralSchema.familyRegistry.id, centralSchema.familyMembers.familyId),
+      )
+      .where(
+        and(
+          inArray(centralSchema.familyMembers.userId, userIds),
+          eq(centralSchema.familyMembers.isActive, 1),
+        ),
+      )
+      .orderBy(
+        centralSchema.familyMembers.userId,
+        desc(centralSchema.familyMembers.joinedAt),
+      )
+      .all();
+
+    for (const m of memberships as Array<{ userId: string; familyName: string }>) {
+      const arr = familyNamesByUser.get(m.userId) ?? [];
+      if (arr.length < TOOLTIP_NAME_LIMIT) arr.push(m.familyName);
+      familyNamesByUser.set(m.userId, arr);
+    }
+
+    const owned = await centralDb
+      .select({
+        ownerId: centralSchema.familyRegistry.ownerId,
+        familyName: centralSchema.familyRegistry.name,
+      })
+      .from(centralSchema.familyRegistry)
+      .where(inArray(centralSchema.familyRegistry.ownerId, userIds))
+      .orderBy(
+        centralSchema.familyRegistry.ownerId,
+        desc(centralSchema.familyRegistry.createdAt),
+      )
+      .all();
+
+    for (const o of owned as Array<{ ownerId: string; familyName: string }>) {
+      const arr = ownedNamesByUser.get(o.ownerId) ?? [];
+      if (arr.length < TOOLTIP_NAME_LIMIT) arr.push(o.familyName);
+      ownedNamesByUser.set(o.ownerId, arr);
+    }
+  }
+
   return {
     rows: rows.map((r: typeof rows[number]) => ({
       ...r,
@@ -89,6 +153,8 @@ export async function listAllUsers(
       emailVerified: r.emailVerified === 1,
       familyCount: Number(r.familyCount),
       ownedFamilyCount: Number(r.ownedFamilyCount),
+      familyNames: familyNamesByUser.get(r.id) ?? [],
+      ownedFamilyNames: ownedNamesByUser.get(r.id) ?? [],
     })),
     total: totalRow?.n ?? 0,
   };
@@ -174,6 +240,8 @@ export interface FamilyListRow {
   ownerEmail: string;
   memberCount: number;
   pendingInviteCount: number;
+  /** Up to first {@link TOOLTIP_NAME_LIMIT} active member display names, newest joinedAt first. */
+  memberNames: string[];
   createdAt: string;
 }
 
@@ -227,11 +295,45 @@ export async function listAllFamilies(
     .offset(offset)
     .all();
 
+  const familyIds = rows.map((r: typeof rows[number]) => r.id as string);
+  const memberNamesByFamily = new Map<string, string[]>();
+
+  if (familyIds.length > 0) {
+    const members = await centralDb
+      .select({
+        familyId: centralSchema.familyMembers.familyId,
+        userName: centralSchema.users.name,
+      })
+      .from(centralSchema.familyMembers)
+      .innerJoin(
+        centralSchema.users,
+        eq(centralSchema.users.id, centralSchema.familyMembers.userId),
+      )
+      .where(
+        and(
+          inArray(centralSchema.familyMembers.familyId, familyIds),
+          eq(centralSchema.familyMembers.isActive, 1),
+        ),
+      )
+      .orderBy(
+        centralSchema.familyMembers.familyId,
+        desc(centralSchema.familyMembers.joinedAt),
+      )
+      .all();
+
+    for (const m of members as Array<{ familyId: string; userName: string }>) {
+      const arr = memberNamesByFamily.get(m.familyId) ?? [];
+      if (arr.length < TOOLTIP_NAME_LIMIT) arr.push(m.userName);
+      memberNamesByFamily.set(m.familyId, arr);
+    }
+  }
+
   return {
     rows: rows.map((r: typeof rows[number]) => ({
       ...r,
       memberCount: Number(r.memberCount),
       pendingInviteCount: Number(r.pendingInviteCount),
+      memberNames: memberNamesByFamily.get(r.id) ?? [],
     })),
     total: totalRow?.n ?? 0,
   };

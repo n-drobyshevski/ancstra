@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { FamiliesRowActions } from '@/components/admin/families-row-actions';
+import { CountWithNamesTooltip } from '@/components/admin/count-with-names-tooltip';
 import type { FamilyListRow } from '@ancstra/auth/admin';
 
 interface Props {
@@ -71,7 +72,14 @@ export function FamiliesTable({ rows }: Props) {
                   </span>
                 </Link>
               </TableCell>
-              <TableCell className="text-right tabular-nums">{f.memberCount}</TableCell>
+              <TableCell className="text-right">
+                <CountWithNamesTooltip
+                  count={f.memberCount}
+                  names={f.memberNames}
+                  hint="Active members"
+                  ariaNoun="active members"
+                />
+              </TableCell>
               <TableCell className="text-right tabular-nums">
                 {f.pendingInviteCount > 0 ? (
                   <Badge variant="outline">{f.pendingInviteCount}</Badge>
