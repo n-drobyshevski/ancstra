@@ -119,6 +119,7 @@ function AddFamilyForm({ onClose }: { onClose: () => void }) {
         <div className="border-t border-border pt-2">
           <button
             type="button"
+            aria-expanded={showAdvanced}
             onClick={() => setShowAdvanced((v) => !v)}
             disabled={createFamily.isPending}
             className="flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
@@ -152,6 +153,11 @@ function AddFamilyForm({ onClose }: { onClose: () => void }) {
                 Default is {DEFAULT_MAX_MEMBERS}. Increase for large extended
                 families. Range 1–10000.
               </p>
+              {!capValid ? (
+                <p className="text-xs text-destructive">
+                  Enter a whole number between 1 and 10000.
+                </p>
+              ) : null}
             </div>
           </div>
         ) : null}
