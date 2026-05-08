@@ -10,6 +10,7 @@ import { PersonsSidebarClient } from '@/components/persons/persons-sidebar-clien
 import { PersonsTableClient } from '@/components/persons/persons-table-client';
 import { PersonsSidebarSkeleton } from '@/components/skeletons/persons-sidebar-skeleton';
 import { PersonsTableSkeleton } from '@/components/skeletons/persons-table-skeleton';
+import { RoleGate } from '@/components/auth/role-gate';
 
 // Static shell — no top-level awaits. Heading paints instantly; sidebar and
 // table stream independently behind their own Suspense boundaries.
@@ -23,9 +24,11 @@ export default function PersonsPage({
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-semibold">People</h1>
-          <Button asChild>
-            <Link href="/persons/new">Add New Person</Link>
-          </Button>
+          <RoleGate permission="person:create">
+            <Button asChild>
+              <Link href="/persons/new">Add New Person</Link>
+            </Button>
+          </RoleGate>
         </div>
         <div className="grid gap-6 md:grid-cols-[16rem_1fr]">
           <Suspense fallback={<PersonsSidebarSkeleton />}>

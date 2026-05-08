@@ -8,6 +8,8 @@ import { AppHeader } from '@/components/app-header';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { HeaderProvider } from '@/lib/header-context';
 import { LensProvider } from '@/lib/lens/provider';
+import { AccessDeniedToast } from '@/components/auth/access-denied-toast';
+import { LensActiveBanner } from '@/components/lens/lens-active-banner';
 
 // Auth/membership enforcement lives in proxy.ts — by the time this layout
 // renders, the user is authenticated AND has at least one family membership
@@ -33,6 +35,17 @@ export default function AuthLayout({
               <AppSidebarServer />
             </Suspense>
             <SidebarInset>
+              {/* Surfaces a one-shot toast when a server page guard redirected
+                  the user away with ?denied=<permission>; lives at the layout
+                  level so every (auth) route benefits without per-page wiring.
+                  Wrapped in Suspense because useSearchParams() bails out of
+                  prerendering with cacheComponents otherwise. */}
+              <Suspense fallback={null}>
+                <AccessDeniedToast />
+              </Suspense>
+              {/* Sticky banner above the header — visible across every route in
+                  this group whenever a lens is active, hidden otherwise. */}
+              <LensActiveBanner />
               <AppHeader />
               <div className="min-w-0 flex-1">
                 {/* Suspense boundary for sub-page children. The previous layout

@@ -51,6 +51,10 @@ CREATE TABLE IF NOT EXISTS family_registry (
   moderation_enabled INTEGER NOT NULL DEFAULT 0,
   max_members INTEGER NOT NULL DEFAULT 50,
   monthly_ai_budget_usd REAL NOT NULL DEFAULT 10.0,
+  default_privacy_level TEXT NOT NULL DEFAULT 'private' CHECK(default_privacy_level IN ('public', 'private', 'restricted')),
+  default_gedcom_export_mode TEXT NOT NULL DEFAULT 'shareable' CHECK(default_gedcom_export_mode IN ('full', 'shareable')),
+  default_citation_style TEXT NOT NULL DEFAULT 'evidence-explained' CHECK(default_citation_style IN ('evidence-explained', 'chicago', 'apa')),
+  living_threshold_years INTEGER NOT NULL DEFAULT 100,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -106,6 +110,16 @@ CREATE INDEX IF NOT EXISTS idx_platform_audit_actor_date
   ON platform_audit_log (actor_user_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_platform_audit_target
   ON platform_audit_log (target_type, target_id);
+
+CREATE TABLE IF NOT EXISTS user_preferences (
+  user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  locale TEXT NOT NULL DEFAULT 'en-US',
+  timezone TEXT NOT NULL DEFAULT 'UTC',
+  density TEXT NOT NULL DEFAULT 'comfortable' CHECK(density IN ('comfortable', 'compact')),
+  notify_email INTEGER NOT NULL DEFAULT 1,
+  notify_activity INTEGER NOT NULL DEFAULT 1,
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
 
 CREATE TABLE IF NOT EXISTS activity_feed (
   id TEXT PRIMARY KEY,

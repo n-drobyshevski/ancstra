@@ -35,6 +35,7 @@ export type ActivityAction =
   | 'contribution_submitted' | 'contribution_approved' | 'contribution_rejected'
   | 'owner_transferred'
   | 'family_settings_updated'
+  | 'family_editor_defaults_updated'
   | 'family_created';
 
 export type ContributionOperation = 'create' | 'update' | 'delete';

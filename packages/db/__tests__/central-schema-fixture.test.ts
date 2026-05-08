@@ -11,6 +11,7 @@ const EXPECTED_TABLES = [
   'invitations',
   'platform_audit_log',
   'activity_feed',
+  'user_preferences',
 ];
 
 const EXPECTED_INDEXES = [

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { GitBranch, UserPlus, Upload } from 'lucide-react';
+import { RoleGate } from '@/components/auth/role-gate';
 
 export function EmptyDashboard() {
   return (
@@ -11,18 +12,22 @@ export function EmptyDashboard() {
         Get started by adding your first family member or importing an existing GEDCOM file.
       </p>
       <div className="mt-6 flex flex-col gap-2 sm:flex-row">
-        <Button asChild>
-          <Link href="/persons/new">
-            <UserPlus className="mr-2 size-4" />
-            Add First Person
-          </Link>
-        </Button>
-        <Button variant="outline" asChild>
-          <Link href="/data">
-            <Upload className="mr-2 size-4" />
-            Import GEDCOM
-          </Link>
-        </Button>
+        <RoleGate permission="person:create">
+          <Button asChild>
+            <Link href="/persons/new">
+              <UserPlus className="mr-2 size-4" />
+              Add First Person
+            </Link>
+          </Button>
+        </RoleGate>
+        <RoleGate permission="gedcom:import">
+          <Button variant="outline" asChild>
+            <Link href="/data">
+              <Upload className="mr-2 size-4" />
+              Import GEDCOM
+            </Link>
+          </Button>
+        </RoleGate>
       </div>
     </div>
   );

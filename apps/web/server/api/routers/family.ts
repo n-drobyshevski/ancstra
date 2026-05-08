@@ -20,6 +20,16 @@ const settingsPatchSchema = z.object({
   maxMembers: z.number().int().min(1).max(10000).optional(),
   monthlyAiBudgetUsd: z.number().min(0).max(100000).optional(),
   moderationEnabled: z.boolean().optional(),
+  // Phase 4 (2026-05-08): per-family redaction threshold. Range 50-150
+  // mirrors the `/settings/privacy` UI; outside this band the privacy model
+  // breaks down (anything <50 redacts most living adults; >150 is moot).
+  livingThresholdYears: z.number().int().min(50).max(150).optional(),
+});
+
+const editorDefaultsPatchSchema = z.object({
+  defaultPrivacyLevel: z.enum(['public', 'private', 'restricted']).optional(),
+  defaultGedcomExportMode: z.enum(['full', 'shareable']).optional(),
+  defaultCitationStyle: z.enum(['evidence-explained', 'chicago', 'apa']).optional(),
 });
 
 const SETTINGS_FIELD_LABELS: Record<string, string> = {
@@ -27,6 +37,13 @@ const SETTINGS_FIELD_LABELS: Record<string, string> = {
   maxMembers: 'member limit',
   monthlyAiBudgetUsd: 'AI budget',
   moderationEnabled: 'moderation',
+  livingThresholdYears: 'living-person threshold',
+};
+
+const EDITOR_DEFAULTS_FIELD_LABELS: Record<string, string> = {
+  defaultPrivacyLevel: 'default privacy',
+  defaultGedcomExportMode: 'default GEDCOM export mode',
+  defaultCitationStyle: 'default citation style',
 };
 
 export const familyRouter = createTRPCRouter({
@@ -96,6 +113,10 @@ export const familyRouter = createTRPCRouter({
         moderationEnabled: row.moderationEnabled === 1,
         maxMembers: row.maxMembers,
         monthlyAiBudgetUsd: row.monthlyAiBudgetUsd,
+        defaultPrivacyLevel: row.defaultPrivacyLevel,
+        defaultGedcomExportMode: row.defaultGedcomExportMode,
+        defaultCitationStyle: row.defaultCitationStyle,
+        livingThresholdYears: row.livingThresholdYears,
         createdAt: row.createdAt,
         updatedAt: row.updatedAt,
       };
@@ -134,6 +155,94 @@ export const familyRouter = createTRPCRouter({
       }
 
       return { row, changed };
+    }),
+
+  /**
+   * Editor defaults are workspace-scoped settings that anyone able to create
+   * persons (`person:create`) can adjust — editor / admin / owner. Lower bar
+   * than full `settings:manage` because editors live in this surface daily and
+   * the changes only affect default values for new records, not the family's
+   * fundamental config.
+   */
+  updateEditorDefaults: protectedProcedure
+    .meta({ permission: 'person:create' })
+    .input(editorDefaultsPatchSchema)
+    .mutation(async ({ ctx, input }) => {
+      const keys = Object.keys(input).filter(
+        (k) => input[k as keyof typeof input] !== undefined,
+      );
+      if (keys.length === 0) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'No fields to update' });
+      }
+
+      const before = await ctx.centralDb
+        .select()
+        .from(centralSchema.familyRegistry)
+        .where(eq(centralSchema.familyRegistry.id, ctx.familyId))
+        .get();
+      if (!before) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Family not found' });
+      }
+
+      const changed: string[] = [];
+      const set: Record<string, string> = { updatedAt: new Date().toISOString() };
+      for (const k of keys) {
+        const next = input[k as keyof typeof input];
+        const prev = (before as Record<string, unknown>)[k];
+        if (next !== undefined && next !== prev) {
+          set[k] = next as string;
+          changed.push(k);
+        }
+      }
+
+      if (changed.length === 0) {
+        return {
+          row: {
+            defaultPrivacyLevel: before.defaultPrivacyLevel,
+            defaultGedcomExportMode: before.defaultGedcomExportMode,
+            defaultCitationStyle: before.defaultCitationStyle,
+          },
+          changed,
+        };
+      }
+
+      await ctx.centralDb
+        .update(centralSchema.familyRegistry)
+        .set(set)
+        .where(eq(centralSchema.familyRegistry.id, ctx.familyId))
+        .run();
+
+      const after = await ctx.centralDb
+        .select({
+          defaultPrivacyLevel: centralSchema.familyRegistry.defaultPrivacyLevel,
+          defaultGedcomExportMode: centralSchema.familyRegistry.defaultGedcomExportMode,
+          defaultCitationStyle: centralSchema.familyRegistry.defaultCitationStyle,
+        })
+        .from(centralSchema.familyRegistry)
+        .where(eq(centralSchema.familyRegistry.id, ctx.familyId))
+        .get();
+
+      const labels = changed.map((k) => EDITOR_DEFAULTS_FIELD_LABELS[k] ?? k);
+      const summary =
+        labels.length === 1
+          ? `Updated ${labels[0]}`
+          : `Updated ${labels.slice(0, -1).join(', ')} and ${labels[labels.length - 1]}`;
+
+      await logActivity(ctx.centralDb, {
+        familyId: ctx.familyId,
+        userId: ctx.userId!,
+        action: 'family_editor_defaults_updated',
+        summary,
+        metadata: { changed, after },
+      });
+
+      invalidateTags([
+        `family:${ctx.familyId}`,
+        'platform-families',
+        `platform-family:${ctx.familyId}`,
+      ]);
+
+      return { row: after!, changed };
     }),
 
   delete: protectedProcedure

@@ -1,8 +1,10 @@
 import { notFound } from 'next/navigation';
+import { cookies } from 'next/headers';
 import { eq } from 'drizzle-orm';
 import { centralSchema } from '@ancstra/db';
 import { auth } from '@/auth';
 import { getCentralDb } from '@/lib/db-singleton';
+import { LENS_COOKIE_NAME, parseLensCookie } from '@/lib/lens/cookie';
 
 export interface PlatformAdmin {
   userId: string;
@@ -15,8 +17,24 @@ export interface PlatformAdmin {
  *
  * Mirrors the dbFallback pattern in lib/auth/context.ts (sub-spec A) — the JWT
  * is the fast path, the DB is the source of truth.
+ *
+ * Lens-aware: if ANY family-scoped lens cookie is active, this returns null
+ * even for real platform admins. Rationale — the lens promise is "show me
+ * what a lower-role user would see", and lower-role users get a 404 from
+ * /admin/*. Returning null here makes `requirePlatformAdmin` notFound()
+ * uniformly. The matching client-side check lives in
+ * `<PlatformAdminOnly>` (`components/auth/platform-admin-only.tsx`).
+ *
+ * The check uses `parseLensCookie` only — it does NOT validate the cookie's
+ * familyId against memberships, because /admin/* is family-agnostic. The
+ * mere presence of a parseable lens cookie signals user intent to view as
+ * lower role; a lensed user can exit via the sidebar banner or selector.
  */
 export async function getPlatformAdmin(): Promise<PlatformAdmin | null> {
+  const cookieStore = await cookies();
+  const lensRaw = cookieStore.get(LENS_COOKIE_NAME)?.value ?? null;
+  if (parseLensCookie(lensRaw)) return null;
+
   const session = await auth();
   if (!session?.user?.id) return null;
   const email = session.user.email ?? '';

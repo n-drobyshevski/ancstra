@@ -40,7 +40,7 @@ function getGedcomTag(eventType: string): string {
  * @returns GEDCOM 7.0 string
  */
 export function serializeGedcom70(data: GedcomExportData, mode: ExportMode): string {
-  const { persons, families, childLinks, events } = data;
+  const { persons, families, childLinks, events, presumedLivingIds } = data;
   const lines: string[] = [];
 
   // Build UUID → XREF maps
@@ -104,7 +104,9 @@ export function serializeGedcom70(data: GedcomExportData, mode: ExportMode): str
   // --- INDI records ---
   for (const person of persons) {
     const xref = personXref.get(person.id)!;
-    const isRedacted = mode === 'shareable' && person.isLiving;
+    const isRedacted =
+      mode === 'shareable' &&
+      (presumedLivingIds?.has(person.id) ?? person.isLiving);
 
     lines.push(`0 ${xref} INDI`);
 

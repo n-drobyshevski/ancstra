@@ -13,6 +13,11 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => mockSearchParams(),
 }));
 
+const mockUseLens = vi.fn();
+vi.mock('@/lib/lens/provider', () => ({
+  useLens: () => mockUseLens(),
+}));
+
 function makeSession(role: 'owner' | 'admin' | 'editor' | 'viewer') {
   return {
     data: {
@@ -31,6 +36,13 @@ function makeSession(role: 'owner' | 'admin' | 'editor' | 'viewer') {
 describe('<RoleGate>', () => {
   beforeEach(() => {
     mockSearchParams.mockReturnValue(new URLSearchParams());
+    // Default: no active lens. Individual tests opt in.
+    mockUseLens.mockReturnValue({
+      actualRole: null,
+      lens: null,
+      setLens: vi.fn(),
+      familyId: null,
+    });
   });
 
   it('renders children when role has permission', () => {
@@ -85,5 +97,37 @@ describe('<RoleGate>', () => {
       </RoleGate>,
     );
     expect(screen.getByText('tree')).toBeDefined();
+  });
+
+  it('hides admin-only children when an admin applies a viewer lens', () => {
+    mockUseSession.mockReturnValue(makeSession('admin'));
+    mockUseLens.mockReturnValue({
+      actualRole: 'admin',
+      lens: 'viewer',
+      setLens: vi.fn(),
+      familyId: 'f1',
+    });
+    const { container } = render(
+      <RoleGate permission="person:edit">
+        <button>Edit</button>
+      </RoleGate>,
+    );
+    expect(container.textContent).toBe('');
+  });
+
+  it('lens for a different family does not hide same-family children', () => {
+    mockUseSession.mockReturnValue(makeSession('admin'));
+    mockUseLens.mockReturnValue({
+      actualRole: 'admin',
+      lens: 'viewer',
+      setLens: vi.fn(),
+      familyId: 'f-OTHER',
+    });
+    render(
+      <RoleGate permission="person:edit">
+        <button>Edit</button>
+      </RoleGate>,
+    );
+    expect(screen.getByText('Edit')).toBeDefined();
   });
 });

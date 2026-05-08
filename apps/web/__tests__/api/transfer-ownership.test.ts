@@ -32,6 +32,7 @@ function ownerCtx() {
     userId: 'u-owner',
     familyId: 'fam-1',
     role: 'owner' as const,
+    actualRole: 'owner' as const,
     dbFilename: 'fam.db',
   };
 }

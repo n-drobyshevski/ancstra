@@ -293,6 +293,34 @@ export async function ensureCentralSchema(db: CentralDatabase, dbKey?: string): 
   await db.run(sql`CREATE INDEX IF NOT EXISTS idx_platform_audit_actor_date ON platform_audit_log(actor_user_id, created_at)`);
   await db.run(sql`CREATE INDEX IF NOT EXISTS idx_platform_audit_target ON platform_audit_log(target_type, target_id)`);
 
+  // Per-user preferences (Phase 1 of role-specific settings, 2026-05-08).
+  // Every authenticated user owns their own row; no role gating applied.
+  await db.run(sql`
+    CREATE TABLE IF NOT EXISTS user_preferences (
+      user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      locale TEXT NOT NULL DEFAULT 'en-US',
+      timezone TEXT NOT NULL DEFAULT 'UTC',
+      density TEXT NOT NULL DEFAULT 'comfortable' CHECK(density IN ('comfortable', 'compact')),
+      notify_email INTEGER NOT NULL DEFAULT 1,
+      notify_activity INTEGER NOT NULL DEFAULT 1,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
+
+  // Editor defaults (Phase 3 of role-specific settings, 2026-05-08). ALTER for
+  // existing DBs; new DBs pick these up via the schema default in their initial
+  // CREATE TABLE elsewhere.
+  for (const col of [
+    "default_privacy_level TEXT NOT NULL DEFAULT 'private'",
+    "default_gedcom_export_mode TEXT NOT NULL DEFAULT 'shareable'",
+    "default_citation_style TEXT NOT NULL DEFAULT 'evidence-explained'",
+    'living_threshold_years INTEGER NOT NULL DEFAULT 100',
+  ]) {
+    try {
+      await db.run(sql.raw(`ALTER TABLE family_registry ADD COLUMN ${col}`));
+    } catch { /* column already exists */ }
+  }
+
   if (dbKey) _ensuredCentralDbs.add(dbKey);
 }
 

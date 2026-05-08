@@ -9,7 +9,7 @@ import {
 } from '@/lib/cache/tree';
 import { getCachedTreeTableRows } from '@/lib/cache/tree-table';
 import { getCachedTreeYearBounds } from '@/lib/cache/person';
-import { getAuthContext } from '@/lib/auth/context';
+import { requirePagePermission } from '@/lib/auth/page-guard';
 import { treeTableCache } from '@/lib/tree/search-params';
 import { TreeCanvasSkeleton } from '@/components/skeletons/tree-canvas-skeleton';
 import { TreeTableSkeleton } from '@/components/skeletons/tree-table-skeleton';
@@ -55,8 +55,10 @@ async function TreePageContent({
   const view = sp.view === 'table' ? 'table' : 'canvas';
   const focus = typeof sp.focus === 'string' ? sp.focus : undefined;
 
-  const authContext = await getAuthContext();
-  if (!authContext) return null;
+  // Lens-aware: a user lensed below tree:view (currently impossible since all
+  // roles hold it, but defensive against future permission changes) gets
+  // redirected with a toast instead of a blank page.
+  const authContext = await requirePagePermission('tree:view');
 
   if (view === 'table') {
     const filters = await treeTableCache.parse(searchParams);

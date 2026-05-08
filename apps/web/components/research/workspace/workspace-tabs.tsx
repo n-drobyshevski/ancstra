@@ -1,7 +1,7 @@
 'use client';
 
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
-import { useCallback, useRef, useState, useEffect } from 'react';
+import { useCallback, useMemo, useRef, useState, useEffect } from 'react';
 import {
   LayoutGrid,
   Table2,
@@ -17,6 +17,8 @@ import {
   Check,
   type LucideIcon,
 } from 'lucide-react';
+import { hasPermission } from '@ancstra/auth/permissions';
+import type { Permission } from '@ancstra/auth';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
@@ -27,6 +29,7 @@ import {
   SheetTitle,
   SheetDescription,
 } from '@/components/ui/sheet';
+import { useEffectiveMembership } from '@/lib/auth/use-has-permission';
 
 export type WorkspaceView =
   | 'record'
@@ -45,6 +48,8 @@ interface TabDef {
   label: string;
   icon: LucideIcon;
   description: string;
+  /** Required permission to see this tab. Omitted = visible to anyone with a membership. */
+  permission?: Permission;
 }
 
 interface TabGroup {
@@ -56,6 +61,9 @@ const TAB_GROUPS: TabGroup[] = [
   {
     label: 'Core',
     tabs: [
+      // Record/Timeline/Conflicts are read-only views available to anyone who
+      // can see the person — viewer included. Edit affordances inside the
+      // Record tab are gated separately by their own server checks.
       { value: 'record',    label: 'Record',    icon: UserPen,         description: 'Vital information & family' },
       { value: 'timeline',  label: 'Timeline',  icon: Clock,           description: 'Chronological events' },
       { value: 'conflicts', label: 'Conflicts', icon: GitCompareArrows, description: 'Contradicting facts' },
@@ -63,24 +71,51 @@ const TAB_GROUPS: TabGroup[] = [
   },
   {
     label: 'Research',
+    // Entire group requires ai:research — viewer / editor-without-AI / lensed
+    // viewer all see no Research-group tabs at all.
     tabs: [
-      { value: 'board',      label: 'Board',      icon: LayoutGrid, description: 'Sources & fact extraction' },
-      { value: 'matrix',     label: 'Matrix',     icon: Table2,     description: 'Fact-by-source comparison' },
-      { value: 'factsheets', label: 'Factsheets', icon: Layers,     description: 'Organized fact collections' },
-      { value: 'hints',      label: 'Hints',      icon: BookOpen,   description: 'AI-matched candidates' },
-      { value: 'canvas',     label: 'Canvas',     icon: PenTool,    description: 'Visual evidence map' },
+      { value: 'board',      label: 'Board',      icon: LayoutGrid, description: 'Sources & fact extraction', permission: 'ai:research' },
+      { value: 'matrix',     label: 'Matrix',     icon: Table2,     description: 'Fact-by-source comparison',  permission: 'ai:research' },
+      { value: 'factsheets', label: 'Factsheets', icon: Layers,     description: 'Organized fact collections', permission: 'ai:research' },
+      { value: 'hints',      label: 'Hints',      icon: BookOpen,   description: 'AI-matched candidates',      permission: 'ai:research' },
+      { value: 'canvas',     label: 'Canvas',     icon: PenTool,    description: 'Visual evidence map',        permission: 'ai:research' },
     ],
   },
   {
     label: 'Output',
     tabs: [
-      { value: 'proof',      label: 'Proof',      icon: FileText,   description: 'Proof statement builder' },
-      { value: 'biography',  label: 'Biography',  icon: BookMarked, description: 'AI-generated narrative' },
+      { value: 'proof',      label: 'Proof',      icon: FileText,   description: 'Proof statement builder', permission: 'ai:research' },
+      { value: 'biography',  label: 'Biography',  icon: BookMarked, description: 'AI-generated narrative',   permission: 'ai:research' },
     ],
   },
 ];
 
-const ALL_TABS: TabDef[] = TAB_GROUPS.flatMap((g) => g.tabs);
+/**
+ * Visible tab list for the current effective (lens-aware) role. Tabs without
+ * a `permission` are always visible. Empty group labels are dropped so the
+ * UI doesn't render orphan headers when every research tab is hidden.
+ */
+export function useVisibleWorkspaceTabs(): {
+  groups: TabGroup[];
+  allTabs: TabDef[];
+  isVisible: (view: WorkspaceView) => boolean;
+} {
+  const membership = useEffectiveMembership();
+  const role = membership?.role ?? null;
+  return useMemo(() => {
+    const groups = TAB_GROUPS.map((g) => ({
+      ...g,
+      tabs: g.tabs.filter((t) => !t.permission || (role !== null && hasPermission(role, t.permission))),
+    })).filter((g) => g.tabs.length > 0);
+    const allTabs = groups.flatMap((g) => g.tabs);
+    const visibleSet = new Set(allTabs.map((t) => t.value));
+    return {
+      groups,
+      allTabs,
+      isVisible: (view: WorkspaceView) => visibleSet.has(view),
+    };
+  }, [role]);
+}
 
 /** The 4 tabs shown inline on mobile */
 const PRIMARY_TAB_VALUES: Set<WorkspaceView> = new Set([
@@ -139,13 +174,18 @@ export function WorkspaceTabs({
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
+  const { groups: visibleGroups, allTabs: visibleAllTabs, isVisible } = useVisibleWorkspaceTabs();
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const tabRefsMap = useRef<Map<WorkspaceView, HTMLButtonElement>>(new Map());
   const [indicator, setIndicator] = useState<IndicatorState>({ left: 0, width: 0 });
   const [sheetOpen, setSheetOpen] = useState(false);
 
-  const activeView = (searchParams.get('view') as WorkspaceView) || 'record';
+  // If a deep-linked view is hidden under the user's effective role (e.g. an
+  // admin lensed-down to viewer hits /persons/[id]?view=hints), fall back to
+  // record so the URL and UI stay coherent. Server enforces too.
+  const requestedView = (searchParams.get('view') as WorkspaceView) || 'record';
+  const activeView: WorkspaceView = isVisible(requestedView) ? requestedView : 'record';
 
   const setView = useCallback(
     (view: WorkspaceView) => {
@@ -200,20 +240,20 @@ export function WorkspaceTabs({
   // Arrow key navigation
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      const currentIndex = ALL_TABS.findIndex((t) => t.value === activeView);
-      if (e.key === 'ArrowRight' && currentIndex < ALL_TABS.length - 1) {
+      const currentIndex = visibleAllTabs.findIndex((t) => t.value === activeView);
+      if (e.key === 'ArrowRight' && currentIndex < visibleAllTabs.length - 1) {
         e.preventDefault();
-        setView(ALL_TABS[currentIndex + 1].value);
+        setView(visibleAllTabs[currentIndex + 1].value);
       } else if (e.key === 'ArrowLeft' && currentIndex > 0) {
         e.preventDefault();
-        setView(ALL_TABS[currentIndex - 1].value);
+        setView(visibleAllTabs[currentIndex - 1].value);
       }
     },
-    [activeView, setView],
+    [activeView, setView, visibleAllTabs],
   );
 
-  // Mobile inline tabs: primary 4 + active tab if not in primary set
-  const mobileTabs = ALL_TABS.filter(
+  // Mobile inline tabs: primary 4 (intersected with visible) + active tab if not in primary set
+  const mobileTabs = visibleAllTabs.filter(
     (t) => PRIMARY_TAB_VALUES.has(t.value) || t.value === activeView,
   );
 
@@ -228,7 +268,7 @@ export function WorkspaceTabs({
           onKeyDown={handleKeyDown}
           className="relative flex gap-0.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
-          {TAB_GROUPS.map((group, groupIndex) => (
+          {visibleGroups.map((group, groupIndex) => (
             <div key={group.label} className="contents">
               {/* Divider between groups */}
               {groupIndex > 0 && (
@@ -240,7 +280,7 @@ export function WorkspaceTabs({
               {group.tabs.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeView === tab.value;
-                const tabIndex = ALL_TABS.findIndex((t) => t.value === tab.value);
+                const tabIndex = visibleAllTabs.findIndex((t) => t.value === tab.value);
                 const shortcut = tabIndex < 9 ? `Ctrl+${tabIndex + 1}` : undefined;
 
                 return (
@@ -350,7 +390,7 @@ export function WorkspaceTabs({
           </SheetHeader>
 
           <div className="overflow-y-auto pb-4">
-            {TAB_GROUPS.map((group) => (
+            {visibleGroups.map((group) => (
               <div key={group.label}>
                 <p className="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                   {group.label}

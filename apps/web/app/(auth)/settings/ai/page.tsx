@@ -1,7 +1,10 @@
 import { AiBudgetSettings } from '@/components/settings/ai-budget-settings';
 import { SettingsMobileHeader } from '@/components/settings/settings-mobile-header';
+import { requirePagePermission } from '@/lib/auth/page-guard';
 
-export default function AiSettingsPage() {
+export default async function AiSettingsPage() {
+  // Owner-only: AI budget configuration is part of family settings.
+  await requirePagePermission('settings:manage');
   return (
     <div className="space-y-6">
       <SettingsMobileHeader title="AI" />

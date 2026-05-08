@@ -1,12 +1,12 @@
 import { z } from 'zod';
-import { events, persons, personNames, families, children } from '@ancstra/db';
-import { isNull, sql } from 'drizzle-orm';
+import { events, persons, personNames, families, children, centralSchema } from '@ancstra/db';
+import { eq, isNull, sql } from 'drizzle-orm';
 import { createTRPCRouter, protectedProcedure } from '../trpc';
 import { getTreeData } from '@/lib/queries';
 import { serializeToGedcom, type ExportMode } from '@/lib/gedcom/serialize';
 import { parseGedcomFile } from '@/lib/gedcom/parse';
 import { mapGedcomToImport } from '@/lib/gedcom/mapper';
-import { logActivity, type ActivityAction } from '@ancstra/auth';
+import { logActivity, isPresumablyLiving, type ActivityAction } from '@ancstra/auth';
 import { invalidateTags } from '../cache';
 
 const base64GedcomInput = z.object({
@@ -24,13 +24,62 @@ export const gedcomRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const db = ctx.familyDb!;
-      const mode: ExportMode = input?.mode ?? 'full';
+
+      // Read family-scoped defaults: mode fallback + living-person threshold.
+      // The router owns this logic so the serialize helpers stay decoupled
+      // from auth — they receive a precomputed `presumedLivingIds` set.
+      const family = await ctx.centralDb
+        .select({
+          defaultGedcomExportMode: centralSchema.familyRegistry.defaultGedcomExportMode,
+          livingThresholdYears: centralSchema.familyRegistry.livingThresholdYears,
+        })
+        .from(centralSchema.familyRegistry)
+        .where(eq(centralSchema.familyRegistry.id, ctx.familyId!))
+        .get();
+
+      const mode: ExportMode =
+        input?.mode ?? family?.defaultGedcomExportMode ?? 'full';
+      const thresholdYears = family?.livingThresholdYears ?? 100;
 
       const { persons, families, childLinks } = await getTreeData(db);
       const allEvents = await db.select().from(events).all();
 
+      // In shareable mode, build the redact set once using family-scoped
+      // threshold and the events table (which has dateSort numbers required
+      // by `isPresumablyLiving`). In full mode, leave undefined — serializer
+      // emits everything.
+      let presumedLivingIds: ReadonlySet<string> | undefined;
+      if (mode === 'shareable') {
+        const set = new Set<string>();
+        const birthByPerson = new Map<string, number | undefined>();
+        const deathByPerson = new Map<string, number | undefined>();
+        for (const evt of allEvents) {
+          if (!evt.personId) continue;
+          if (evt.eventType === 'birth' && evt.dateSort) {
+            birthByPerson.set(evt.personId, evt.dateSort);
+          } else if (evt.eventType === 'death' && evt.dateSort) {
+            deathByPerson.set(evt.personId, evt.dateSort);
+          }
+        }
+        for (const person of persons) {
+          if (
+            isPresumablyLiving(
+              {
+                isLiving: person.isLiving,
+                birthDateSort: birthByPerson.get(person.id),
+                deathDateSort: deathByPerson.get(person.id),
+              },
+              thresholdYears,
+            )
+          ) {
+            set.add(person.id);
+          }
+        }
+        presumedLivingIds = set;
+      }
+
       const gedcomText = serializeToGedcom(
-        { persons, families, childLinks, events: allEvents },
+        { persons, families, childLinks, events: allEvents, presumedLivingIds },
         mode,
       );
 
@@ -73,6 +122,16 @@ export const gedcomRouter = createTRPCRouter({
       const db = ctx.familyDb!;
       const now = new Date().toISOString();
 
+      // Imported persons inherit the family's configured default privacy level
+      // (Phase 3 wiring). Falls back to 'private' if the family row is missing,
+      // matching the historical schema default.
+      const family = await ctx.centralDb
+        .select({ defaultPrivacyLevel: centralSchema.familyRegistry.defaultPrivacyLevel })
+        .from(centralSchema.familyRegistry)
+        .where(eq(centralSchema.familyRegistry.id, ctx.familyId!))
+        .get();
+      const importedPrivacyLevel = family?.defaultPrivacyLevel ?? 'private';
+
       const CHUNK = 500;
 
       await db.transaction(async (tx) => {
@@ -81,6 +140,7 @@ export const gedcomRouter = createTRPCRouter({
           id: p.id,
           sex: p.sex,
           isLiving: p.isLiving,
+          privacyLevel: importedPrivacyLevel,
           notes: p.notes,
           createdBy: ctx.userId,
           createdAt: now,

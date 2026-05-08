@@ -4,7 +4,8 @@ import { useEffect, useId, useMemo, useState } from 'react';
 import { keepPreviousData } from '@tanstack/react-query';
 import { Loader2, Search, TriangleAlert, X } from 'lucide-react';
 import { trpc } from '@/lib/trpc/client';
-import { useIsHydrated } from '@/hooks/use-is-hydrated';
+// DEBUG: hypothesis A test — useIsHydrated import temporarily removed.
+// import { useIsHydrated } from '@/hooks/use-is-hydrated';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -75,7 +76,9 @@ export function FamilyPickerField({
 
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
-  const isHydrated = useIsHydrated();
+  // DEBUG: temporarily bypass useIsHydrated gate to test hypothesis A.
+  // Restore via `const isHydrated = useIsHydrated();` if this isn't the cause.
+  const isHydrated = true;
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQuery(query.trim()), debounceMs);

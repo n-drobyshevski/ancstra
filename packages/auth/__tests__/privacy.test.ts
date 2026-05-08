@@ -18,6 +18,30 @@ describe('isPresumablyLiving', () => {
   it('returns false if born more than 100 years ago with no death', () => {
     expect(isPresumablyLiving({ isLiving: true, birthDateSort: 19000101 })).toBe(false);
   });
+
+  describe('configurable threshold', () => {
+    it('60-year threshold: a 70-year-old is no longer presumed living', () => {
+      const seventyYearsAgo = (new Date().getFullYear() - 70) * 10000 + 101;
+      expect(isPresumablyLiving({ isLiving: true, birthDateSort: seventyYearsAgo })).toBe(true);
+      expect(isPresumablyLiving({ isLiving: true, birthDateSort: seventyYearsAgo }, 60)).toBe(false);
+    });
+    it('150-year threshold: someone born 120 years ago is still presumed living', () => {
+      const oneTwentyYearsAgo = (new Date().getFullYear() - 120) * 10000 + 101;
+      expect(isPresumablyLiving({ isLiving: true, birthDateSort: oneTwentyYearsAgo })).toBe(false);
+      expect(isPresumablyLiving({ isLiving: true, birthDateSort: oneTwentyYearsAgo }, 150)).toBe(true);
+    });
+    it('explicit threshold of 100 matches default behaviour', () => {
+      const ninetyYearsAgo = (new Date().getFullYear() - 90) * 10000 + 101;
+      expect(isPresumablyLiving({ isLiving: true, birthDateSort: ninetyYearsAgo })).toBe(
+        isPresumablyLiving({ isLiving: true, birthDateSort: ninetyYearsAgo }, 100),
+      );
+    });
+    it('death date short-circuits regardless of threshold', () => {
+      expect(
+        isPresumablyLiving({ isLiving: true, deathDateSort: 20200101 }, 200),
+      ).toBe(false);
+    });
+  });
 });
 
 describe('redactForViewer', () => {
@@ -46,5 +70,17 @@ describe('redactForViewer', () => {
     const r = redactForViewer(deceasedPerson);
     expect(r.givenName).toBe('Jane');
     expect(r.surname).toBe('Doe');
+  });
+
+  it('respects a custom threshold passed by the caller', () => {
+    // Born 70 years ago: redacted under default 100, NOT redacted under 60.
+    const seventy = {
+      ...livingPerson,
+      birthDateSort: (new Date().getFullYear() - 70) * 10000 + 101,
+    };
+    const defaultRedacted = redactForViewer(seventy);
+    const lowThresholdRedacted = redactForViewer(seventy, 60);
+    expect(defaultRedacted.givenName).toBe('Living');
+    expect(lowThresholdRedacted.givenName).toBe('John');
   });
 });

@@ -12,7 +12,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { WorkspaceTabs, type WorkspaceView } from './workspace-tabs';
+import { WorkspaceTabs, useVisibleWorkspaceTabs, type WorkspaceView } from './workspace-tabs';
 import { ResearchBreadcrumb } from '../breadcrumb';
 import { useBadgeCounts } from '@/lib/research/badge-counts-client';
 import { setLastWorkspace } from '@/lib/research/activity';
@@ -26,6 +26,7 @@ import { CanvasTab } from '../canvas/canvas-tab';
 import { ProofTab } from '../proof/proof-tab';
 import { FactsheetsTab } from '../factsheets/factsheets-tab';
 import { ResearchBiographyTab } from '../biography/biography-tab';
+import { RoleGate } from '@/components/auth/role-gate';
 
 interface WorkspaceShellProps {
   person: PersonDetail;
@@ -45,15 +46,16 @@ function formatDates(birthDate: string | null | undefined, deathDate: string | n
   return death ? `${birth} – ${death}` : `b. ${birth}`;
 }
 
-const TAB_ORDER: WorkspaceView[] = [
-  'record', 'timeline', 'conflicts', 'board', 'matrix', 'factsheets', 'hints', 'canvas', 'proof', 'biography',
-];
-
 function ShellInner({ person, children }: WorkspaceShellProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
-  const activeView = (searchParams.get('view') as WorkspaceView) || 'record';
+  // Lens-aware: when a tab gets hidden under the user's effective role, fall
+  // back to record so we never render a tab the user can't see. The visible
+  // list is also the source of Ctrl+1..9 keyboard shortcuts.
+  const { allTabs: visibleTabs, isVisible } = useVisibleWorkspaceTabs();
+  const requestedView = (searchParams.get('view') as WorkspaceView) || 'record';
+  const activeView: WorkspaceView = isVisible(requestedView) ? requestedView : 'record';
   const { conflictCount, hintCount, factsheetCount } = useBadgeCounts(person.id);
   const dates = formatDates(person.birthDate, person.deathDate);
   const birthPlace = person.birthPlace;
@@ -80,9 +82,11 @@ function ShellInner({ person, children }: WorkspaceShellProps) {
       if (!mod) return;
 
       const num = parseInt(e.key, 10);
-      if (num >= 1 && num <= 9 && num <= TAB_ORDER.length) {
+      // Index against the VISIBLE tabs list — under a viewer lens this drops
+      // the AI-research tabs so Ctrl+4 picks "Board" only when Board exists.
+      if (num >= 1 && num <= 9 && num <= visibleTabs.length) {
         e.preventDefault();
-        setView(TAB_ORDER[num - 1]);
+        setView(visibleTabs[num - 1].value);
       }
       if (e.key === 'e' || e.key === 'E') {
         e.preventDefault();
@@ -92,7 +96,7 @@ function ShellInner({ person, children }: WorkspaceShellProps) {
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [setView]);
+  }, [setView, visibleTabs]);
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -135,19 +139,25 @@ function ShellInner({ person, children }: WorkspaceShellProps) {
             {/* Desktop: inline action buttons — ghost, outline, primary (left to right) */}
             <div className="hidden md:flex items-center gap-2">
               {activeView !== 'record' && (
-                <Button variant="ghost" size="sm" onClick={() => setView('record')}>
-                  <Pencil className="mr-1.5" />
-                  Edit
-                </Button>
+                <RoleGate permission="person:edit">
+                  <Button variant="ghost" size="sm" onClick={() => setView('record')}>
+                    <Pencil className="mr-1.5" />
+                    Edit
+                  </Button>
+                </RoleGate>
               )}
-              <Button variant="outline" size="sm">
-                <Search className="mr-1.5" />
-                Search Sources
-              </Button>
-              <Button variant="default" size="sm">
-                <Sparkles className="mr-1.5" />
-                Ask AI
-              </Button>
+              <RoleGate permission="ai:research">
+                <Button variant="outline" size="sm">
+                  <Search className="mr-1.5" />
+                  Search Sources
+                </Button>
+              </RoleGate>
+              <RoleGate permission="ai:research">
+                <Button variant="default" size="sm">
+                  <Sparkles className="mr-1.5" />
+                  Ask AI
+                </Button>
+              </RoleGate>
             </div>
 
             {/* Mobile: overflow menu */}
@@ -161,19 +171,25 @@ function ShellInner({ person, children }: WorkspaceShellProps) {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   {activeView !== 'record' && (
-                    <DropdownMenuItem onClick={() => setView('record')}>
-                      <Pencil className="mr-2 size-4" />
-                      Edit
-                    </DropdownMenuItem>
+                    <RoleGate permission="person:edit">
+                      <DropdownMenuItem onClick={() => setView('record')}>
+                        <Pencil className="mr-2 size-4" />
+                        Edit
+                      </DropdownMenuItem>
+                    </RoleGate>
                   )}
-                  <DropdownMenuItem>
-                    <Search className="mr-2 size-4" />
-                    Search Sources
-                  </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <Sparkles className="mr-2 size-4" />
-                    Ask AI
-                  </DropdownMenuItem>
+                  <RoleGate permission="ai:research">
+                    <DropdownMenuItem>
+                      <Search className="mr-2 size-4" />
+                      Search Sources
+                    </DropdownMenuItem>
+                  </RoleGate>
+                  <RoleGate permission="ai:research">
+                    <DropdownMenuItem>
+                      <Sparkles className="mr-2 size-4" />
+                      Ask AI
+                    </DropdownMenuItem>
+                  </RoleGate>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>

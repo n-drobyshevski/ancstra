@@ -8,6 +8,7 @@ import { DashboardCount } from '@/components/dashboard/dashboard-count';
 import { DashboardBody } from '@/components/dashboard/dashboard-body';
 import { MobileAddButton } from '@/components/dashboard/mobile-add-button';
 import { InviteAcceptedToast } from '@/components/dashboard/invite-accepted-toast';
+import { RoleGate } from '@/components/auth/role-gate';
 
 import { DashboardCountSkeleton } from '@/components/skeletons/dashboard-count-skeleton';
 import { DashboardBodySkeleton } from '@/components/skeletons/dashboard-body-skeleton';
@@ -28,9 +29,11 @@ export default function DashboardPage() {
               <DashboardCount />
             </Suspense>
           </div>
-          <Button asChild className="hidden sm:inline-flex">
-            <Link href="/persons/new">Add New Person</Link>
-          </Button>
+          <RoleGate permission="person:create">
+            <Button asChild className="hidden sm:inline-flex">
+              <Link href="/persons/new">Add New Person</Link>
+            </Button>
+          </RoleGate>
         </div>
 
         <Suspense fallback={<DashboardBodySkeleton />}>

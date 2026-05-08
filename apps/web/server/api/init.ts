@@ -5,12 +5,8 @@ import type { Session } from 'next-auth';
 import { auth } from '@/auth';
 import { createFamilyDb, type CentralDatabase, type FamilyDatabase } from '@ancstra/db';
 import { getCentralDb } from '@/lib/db-singleton';
-import { parseRole, effectiveRole, type Role, type Permission } from '@ancstra/auth';
-import {
-  LENS_COOKIE_NAME,
-  parseLensCookie,
-  readCookieValue,
-} from '@/lib/lens/cookie';
+import { parseRole, type Role, type Permission } from '@ancstra/auth';
+import { resolveEffectiveRole } from '@/lib/auth/effective-role-from-cookie';
 
 export interface Meta {
   permission?: Permission;
@@ -92,13 +88,13 @@ export async function createTRPCContext(opts: { headers: Headers }): Promise<Bas
   // Lens system: read the cookie (untrusted) and apply ONLY if it requests a
   // strict downgrade for the current family. Source of truth is JWT membership;
   // see security note from cross-cutting D2 — we never accept role escalation
-  // from the client.
-  const cookieHeader = opts.headers.get('cookie');
-  const lensRaw = cookieHeader ? readCookieValue(cookieHeader, LENS_COOKIE_NAME) : null;
-  const parsed = parseLensCookie(lensRaw);
-  const lensRequest =
-    parsed && parsed.familyId === membership.familyId ? parsed.role : null;
-  const role = effectiveRole(actualRole, lensRequest);
+  // from the client. Shared helper is used by RSC getAuthContext too so both
+  // surfaces see the same effective role.
+  const role = resolveEffectiveRole(
+    actualRole,
+    membership.familyId,
+    opts.headers.get('cookie'),
+  );
 
   const familyDb = createFamilyDb(membership.dbFilename);
   return {

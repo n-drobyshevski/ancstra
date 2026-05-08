@@ -4,11 +4,23 @@ import { parseRole, type Role } from '@ancstra/auth';
 import { eq, and } from 'drizzle-orm';
 import { centralSchema } from '@ancstra/db';
 import { getCentralDb } from '@/lib/db-singleton';
+import { resolveEffectiveRole } from '@/lib/auth/effective-role-from-cookie';
 
 export interface AuthContext {
   userId: string;
   familyId: string;
+  /**
+   * Effective role for permission decisions. Equal to `actualRole` unless the
+   * user has activated a lens cookie that legitimately downgrades their role
+   * for the current family. Mirrors the tRPC `BaseContext.role` semantics.
+   */
   role: Role;
+  /**
+   * Real role from the JWT membership (or DB fallback), untouched by any lens.
+   * Use only for UI affordances that need the user's true role (e.g. the lens
+   * selector itself). Never use for permission decisions.
+   */
+  actualRole: Role;
   dbFilename: string;
 }
 
@@ -32,6 +44,9 @@ export async function getAuthContext(request?: Request): Promise<AuthContext | n
 
   const familyIdHint = headerStore.get('x-family-id');
   const dbFilenameHint = headerStore.get('x-family-db');
+  // Cookie is read once and threaded through both code paths so the lens
+  // applies whether we resolved via JWT or via the DB fallback.
+  const cookieHeader = headerStore.get('cookie');
 
   // Always derive role from JWT memberships — never from x-family-role header (sub-spec A D2)
   const session = await auth();
@@ -54,12 +69,13 @@ export async function getAuthContext(request?: Request): Promise<AuthContext | n
   }
 
   if (membership) {
-    const role = parseRole(membership.role);
-    if (role) {
+    const actualRole = parseRole(membership.role);
+    if (actualRole) {
       return {
         userId,
         familyId: membership.familyId,
-        role,
+        role: resolveEffectiveRole(actualRole, membership.familyId, cookieHeader),
+        actualRole,
         dbFilename: membership.dbFilename,
       };
     }
@@ -73,13 +89,14 @@ export async function getAuthContext(request?: Request): Promise<AuthContext | n
   }
 
   // Fallback: stale JWT (user just accepted invite, JWT not yet refreshed) — query DB
-  return dbFallback(userId, familyIdHint, dbFilenameHint);
+  return dbFallback(userId, familyIdHint, dbFilenameHint, cookieHeader);
 }
 
 async function dbFallback(
   userId: string,
   familyIdHint: string | null,
   dbFilenameHint: string | null,
+  cookieHeader: string | null,
 ): Promise<AuthContext | null> {
   const centralDb = await getCentralDb();
 
@@ -113,8 +130,8 @@ async function dbFallback(
     .get();
   if (!membership) return null;
 
-  const role = parseRole(membership.role);
-  if (!role) return null;
+  const actualRole = parseRole(membership.role);
+  if (!actualRole) return null;
 
   let resolvedDbFilename = dbFilenameHint;
   if (!resolvedDbFilename) {
@@ -130,7 +147,8 @@ async function dbFallback(
   return {
     userId,
     familyId: resolvedFamilyId,
-    role,
+    role: resolveEffectiveRole(actualRole, resolvedFamilyId, cookieHeader),
+    actualRole,
     dbFilename: resolvedDbFilename,
   };
 }

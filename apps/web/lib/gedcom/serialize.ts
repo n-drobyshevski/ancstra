@@ -17,6 +17,14 @@ export interface GedcomExportData {
   families: FamilyRecord[];
   childLinks: ChildLink[];
   events: GedcomExportEvent[];
+  /**
+   * Optional override for the redact-set used in `shareable` mode. When the
+   * caller supplies it (typically computed by the tRPC router using the
+   * family's `livingThresholdYears`), shareable exports redact persons in
+   * this set. When undefined, falls back to the literal `person.isLiving`
+   * flag — preserves behaviour for any direct caller that hasn't migrated.
+   */
+  presumedLivingIds?: ReadonlySet<string>;
 }
 
 export type ExportMode = 'full' | 'shareable';
@@ -56,7 +64,7 @@ function getGedcomTag(eventType: string): string {
  * @returns GEDCOM string with UTF-8 BOM prefix
  */
 export function serializeToGedcom(data: GedcomExportData, mode: ExportMode): string {
-  const { persons, families, childLinks, events } = data;
+  const { persons, families, childLinks, events, presumedLivingIds } = data;
   const lines: string[] = [];
 
   // Build UUID → XREF maps
@@ -120,7 +128,9 @@ export function serializeToGedcom(data: GedcomExportData, mode: ExportMode): str
   // --- INDI records ---
   for (const person of persons) {
     const xref = personXref.get(person.id)!;
-    const isRedacted = mode === 'shareable' && person.isLiving;
+    const isRedacted =
+      mode === 'shareable' &&
+      (presumedLivingIds?.has(person.id) ?? person.isLiving);
 
     lines.push(`0 ${xref} INDI`);
 

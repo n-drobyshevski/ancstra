@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { X } from 'lucide-react';
+import { RoleGate } from '@/components/auth/role-gate';
 
 const DISMISSED_KEY = 'ancstra-welcome-dismissed';
 
@@ -37,15 +38,21 @@ export function WelcomeCard() {
       <CardContent className="space-y-2">
         <p className="text-sm text-muted-foreground">Here&apos;s how to get started:</p>
         <div className="flex flex-wrap gap-2">
-          <Button asChild size="sm">
-            <Link href="/data">Import a GEDCOM file</Link>
-          </Button>
-          <Button asChild size="sm" variant="outline">
-            <Link href="/persons/new">Add a person</Link>
-          </Button>
-          <Button asChild size="sm" variant="outline">
-            <Link href="/research">AI Research</Link>
-          </Button>
+          <RoleGate permission="gedcom:import">
+            <Button asChild size="sm">
+              <Link href="/data">Import a GEDCOM file</Link>
+            </Button>
+          </RoleGate>
+          <RoleGate permission="person:create">
+            <Button asChild size="sm" variant="outline">
+              <Link href="/persons/new">Add a person</Link>
+            </Button>
+          </RoleGate>
+          <RoleGate permission="ai:research">
+            <Button asChild size="sm" variant="outline">
+              <Link href="/research">AI Research</Link>
+            </Button>
+          </RoleGate>
         </div>
       </CardContent>
     </Card>

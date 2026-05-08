@@ -1,8 +1,11 @@
 import { UserPlus } from 'lucide-react';
 import { PersonForm } from '@/components/person-form';
 import { PagePadding } from '@/components/page-padding';
+import { requirePagePermission } from '@/lib/auth/page-guard';
 
-export default function NewPersonPage() {
+export default async function NewPersonPage() {
+  // Editors+ can create persons; viewer/admin-without-create get redirected.
+  await requirePagePermission('person:create');
   return (
     <PagePadding>
     <div className="mx-auto max-w-2xl pb-20 py-6 md:pb-0 md:py-8">

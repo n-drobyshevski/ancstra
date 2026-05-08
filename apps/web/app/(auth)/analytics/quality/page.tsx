@@ -3,25 +3,25 @@ import { CompletenessChart } from '@/components/quality/completeness-chart';
 import { MissingDataChart } from '@/components/quality/missing-data-chart';
 import { PriorityTable } from '@/components/quality/priority-table';
 import { getQualitySummary } from '@ancstra/db';
-import { requireAuthContext } from '@/lib/auth/context';
+import { requirePagePermission } from '@/lib/auth/page-guard';
 import { getFamilyDb } from '@/lib/db';
 import { PagePadding } from '@/components/page-padding';
 
 export default async function QualityPage() {
-  let generationData: { generation: number; avgScore: number }[] = [];
+  // Quality metrics are read-only; viewer holds activity:view, so they see them too.
+  // Lensed-down users below activity:view (none today) would get redirected.
+  const ctx = await requirePagePermission('activity:view');
   let metrics: { label: string; value: number; total: number; count: number }[] = [];
+  // Generation data would come from a future query; for now pass empty so
+  // the chart component renders gracefully.
+  const generationData: { generation: number; avgScore: number }[] = [];
 
   try {
-    const ctx = await requireAuthContext();
     const familyDb = await getFamilyDb(ctx.dbFilename);
     const summary = await getQualitySummary(familyDb);
     metrics = summary.metrics;
-
-    // Generation data would come from a future query; for now pass empty
-    // This placeholder ensures the chart component renders gracefully
-    generationData = [];
   } catch {
-    // Auth errors will be handled by the layout middleware
+    // Quality summary failures are non-fatal — render empty charts.
   }
 
   return (

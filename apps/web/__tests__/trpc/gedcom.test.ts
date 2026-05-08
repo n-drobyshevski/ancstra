@@ -104,7 +104,18 @@ function ctxWithRole(role: 'viewer' | 'editor' | 'admin' | 'owner'): BaseContext
       })),
       transaction: makeTransactionStub(),
     } as never,
-    centralDb: {} as never,
+    // gedcom.export now reads family defaults from centralDb. Stub returns
+    // undefined → router falls back to ('full', 100yr) — same behaviour as
+    // before the wiring landed.
+    centralDb: {
+      select: vi.fn(() => ({
+        from: vi.fn(() => ({
+          where: vi.fn(() => ({
+            get: vi.fn(async () => undefined),
+          })),
+        })),
+      })),
+    } as never,
   };
 }
 

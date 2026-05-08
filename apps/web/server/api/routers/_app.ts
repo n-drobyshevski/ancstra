@@ -5,6 +5,7 @@ import { accountRouter } from './account';
 import { gedcomRouter } from './gedcom';
 import { personRouter } from './person';
 import { platformAdminRouter } from './platform-admin';
+import { userPreferencesRouter } from './user-preferences';
 
 export const appRouter = createTRPCRouter({
   auth: authRouter,
@@ -13,6 +14,7 @@ export const appRouter = createTRPCRouter({
   gedcom: gedcomRouter,
   person: personRouter,
   platformAdmin: platformAdminRouter,
+  userPreferences: userPreferencesRouter,
 });
 
 export type AppRouter = typeof appRouter;

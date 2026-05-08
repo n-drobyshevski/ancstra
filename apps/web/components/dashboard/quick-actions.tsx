@@ -1,17 +1,40 @@
+'use client';
+
 import Link from 'next/link';
-import { UserPlus, Upload, Sparkles, GitBranch } from 'lucide-react';
+import { UserPlus, Upload, Sparkles, GitBranch, type LucideIcon } from 'lucide-react';
+import { hasPermission } from '@ancstra/auth/permissions';
+import type { Permission } from '@ancstra/auth';
+import { useEffectiveMembership } from '@/lib/auth/use-has-permission';
 
-const actions = [
-  { label: 'Add Person', icon: UserPlus, href: '/persons/new' },
-  { label: 'Import Data', icon: Upload, href: '/data' },
-  { label: 'AI Research', icon: Sparkles, href: '/research' },
-  { label: 'View Tree', icon: GitBranch, href: '/tree' },
-] as const;
+interface Action {
+  label: string;
+  icon: LucideIcon;
+  href: string;
+  permission: Permission;
+}
 
+const actions: Action[] = [
+  { label: 'Add Person', icon: UserPlus, href: '/persons/new', permission: 'person:create' },
+  { label: 'Import Data', icon: Upload, href: '/data', permission: 'gedcom:import' },
+  { label: 'AI Research', icon: Sparkles, href: '/research', permission: 'ai:research' },
+  { label: 'View Tree', icon: GitBranch, href: '/tree', permission: 'tree:view' },
+];
+
+/**
+ * Resolves visibility off the effective (lens-aware) membership in a single
+ * hook call, then filters synchronously. Hides the whole grid when no action
+ * is available to keep the dashboard layout clean under a viewer lens.
+ */
 export function QuickActions() {
+  const membership = useEffectiveMembership();
+  const visible = membership
+    ? actions.filter((a) => hasPermission(membership.role, a.permission))
+    : [];
+  if (visible.length === 0) return null;
+
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-      {actions.map(({ label, icon: Icon, href }) => (
+      {visible.map(({ label, icon: Icon, href }) => (
         <Link
           key={href}
           href={href}

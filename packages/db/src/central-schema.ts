@@ -48,6 +48,16 @@ export const familyRegistry = sqliteTable('family_registry', {
   moderationEnabled: integer('moderation_enabled').notNull().default(0),
   maxMembers: integer('max_members').notNull().default(50),
   monthlyAiBudgetUsd: real('monthly_ai_budget_usd').notNull().default(10.0),
+  // Editor defaults (Phase 3 of role-specific settings, 2026-05-08).
+  // Editors+ can update these via family.updateEditorDefaults; they seed
+  // privacy/export/citation choices for new records.
+  defaultPrivacyLevel: text('default_privacy_level', { enum: ['public', 'private', 'restricted'] }).notNull().default('private'),
+  defaultGedcomExportMode: text('default_gedcom_export_mode', { enum: ['full', 'shareable'] }).notNull().default('shareable'),
+  defaultCitationStyle: text('default_citation_style', { enum: ['evidence-explained', 'chicago', 'apa'] }).notNull().default('evidence-explained'),
+  // Living-person redaction threshold (Phase 4 of role-specific settings,
+  // 2026-05-08). Person born within last N years with no death is presumed
+  // living. Owner-configurable via family.updateSettings; range 50-150.
+  livingThresholdYears: integer('living_threshold_years').notNull().default(100),
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
   updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
 });
@@ -104,6 +114,19 @@ export const platformAuditLog = sqliteTable('platform_audit_log', {
   index('idx_platform_audit_actor_date').on(table.actorUserId, table.createdAt),
   index('idx_platform_audit_target').on(table.targetType, table.targetId),
 ]);
+
+// ==================== USER PREFERENCES ====================
+// Per-user, platform-wide settings owned by the user themselves. No role
+// gating — every authenticated user controls their own row.
+export const userPreferences = sqliteTable('user_preferences', {
+  userId: text('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
+  locale: text('locale').notNull().default('en-US'),
+  timezone: text('timezone').notNull().default('UTC'),
+  density: text('density', { enum: ['comfortable', 'compact'] }).notNull().default('comfortable'),
+  notifyEmail: integer('notify_email').notNull().default(1),
+  notifyActivity: integer('notify_activity').notNull().default(1),
+  updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
+});
 
 // ==================== ACTIVITY FEED ====================
 export const activityFeed = sqliteTable('activity_feed', {

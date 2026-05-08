@@ -59,7 +59,17 @@ function makeCtx(overrides: Partial<BaseContext> = {}): BaseContext {
     role: null,
     dbFilename: null,
     familyDb: null,
-    centralDb: {} as never,
+    // person.createRelated reads family.defaultPrivacyLevel via centralDb;
+    // stub returns undefined so the procedure falls back to 'private'.
+    centralDb: {
+      select: vi.fn(() => ({
+        from: vi.fn(() => ({
+          where: vi.fn(() => ({
+            get: vi.fn(async () => undefined),
+          })),
+        })),
+      })),
+    } as never,
     ...overrides,
   };
   // Tests don't exercise the lens; mirror effective role into actualRole.

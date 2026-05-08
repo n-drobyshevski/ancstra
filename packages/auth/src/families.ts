@@ -203,6 +203,7 @@ export interface FamilySettingsPatch {
   maxMembers?: number;
   monthlyAiBudgetUsd?: number;
   moderationEnabled?: boolean;
+  livingThresholdYears?: number;
 }
 
 export interface FamilySettingsRow {
@@ -213,6 +214,7 @@ export interface FamilySettingsRow {
   moderationEnabled: boolean;
   maxMembers: number;
   monthlyAiBudgetUsd: number;
+  livingThresholdYears: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -261,6 +263,13 @@ export async function updateFamilySettings(
       setClause.moderationEnabled = desired;
       changed.push('moderationEnabled');
     }
+  }
+  if (
+    patch.livingThresholdYears !== undefined &&
+    patch.livingThresholdYears !== before.livingThresholdYears
+  ) {
+    setClause.livingThresholdYears = patch.livingThresholdYears;
+    changed.push('livingThresholdYears');
   }
 
   if (changed.length === 0) {
@@ -352,6 +361,7 @@ function rowToFamilySettings(row: typeof familyRegistry.$inferSelect): FamilySet
     moderationEnabled: row.moderationEnabled === 1,
     maxMembers: row.maxMembers,
     monthlyAiBudgetUsd: row.monthlyAiBudgetUsd,
+    livingThresholdYears: row.livingThresholdYears,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };

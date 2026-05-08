@@ -161,6 +161,71 @@ describe('family.updateSettings', () => {
       caller.family.updateSettings({ name: '   ' }),
     ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
   });
+
+  describe('livingThresholdYears', () => {
+    it('owner updates threshold and gets it back via getSettings', async () => {
+      const caller = createCaller(makeCtx(db, { userId: 'u-owner', role: 'owner' }));
+      const result = await caller.family.updateSettings({ livingThresholdYears: 75 });
+      expect(result.changed).toEqual(['livingThresholdYears']);
+
+      const settings = await caller.family.getSettings();
+      expect(settings.livingThresholdYears).toBe(75);
+    });
+    it('admin cannot update threshold (FORBIDDEN)', async () => {
+      const caller = createCaller(makeCtx(db, { userId: 'u-admin', role: 'admin' }));
+      await expect(
+        caller.family.updateSettings({ livingThresholdYears: 75 }),
+      ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    });
+    it('rejects threshold below 50', async () => {
+      const caller = createCaller(makeCtx(db, { userId: 'u-owner', role: 'owner' }));
+      await expect(
+        caller.family.updateSettings({ livingThresholdYears: 49 }),
+      ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
+    });
+    it('rejects threshold above 150', async () => {
+      const caller = createCaller(makeCtx(db, { userId: 'u-owner', role: 'owner' }));
+      await expect(
+        caller.family.updateSettings({ livingThresholdYears: 151 }),
+      ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
+    });
+    it('accepts boundaries 50 and 150', async () => {
+      const caller = createCaller(makeCtx(db, { userId: 'u-owner', role: 'owner' }));
+      await caller.family.updateSettings({ livingThresholdYears: 50 });
+      const a = await caller.family.getSettings();
+      expect(a.livingThresholdYears).toBe(50);
+      await caller.family.updateSettings({ livingThresholdYears: 150 });
+      const b = await caller.family.getSettings();
+      expect(b.livingThresholdYears).toBe(150);
+    });
+    it('cross-family isolation: f1 threshold change does not leak to other families', async () => {
+      const now = new Date().toISOString();
+      // Add a second family + owner.
+      await db.insert(centralSchema.users).values({
+        id: 'u-owner-2', email: 'o2@x.com', name: 'Owner 2', createdAt: now, updatedAt: now,
+      }).run();
+      await db.insert(centralSchema.familyRegistry).values({
+        id: 'f2', name: 'Other Family', ownerId: 'u-owner-2', dbFilename: 'f2.db',
+        createdAt: now, updatedAt: now,
+      }).run();
+      await db.insert(centralSchema.familyMembers).values({
+        id: 'm-o2', familyId: 'f2', userId: 'u-owner-2', role: 'owner', joinedAt: now, isActive: 1,
+      }).run();
+
+      // Update threshold on f1 only.
+      const f1Caller = createCaller(makeCtx(db, { userId: 'u-owner', role: 'owner', familyId: 'f1' }));
+      await f1Caller.family.updateSettings({ livingThresholdYears: 75 });
+
+      // f2's threshold remains the default.
+      const f2Caller = createCaller(makeCtx(db, { userId: 'u-owner-2', role: 'owner', familyId: 'f2' }));
+      const f2Settings = await f2Caller.family.getSettings();
+      expect(f2Settings.livingThresholdYears).toBe(100);
+
+      // f1 reflects the new value.
+      const f1Settings = await f1Caller.family.getSettings();
+      expect(f1Settings.livingThresholdYears).toBe(75);
+    });
+  });
 });
 
 describe('family.delete', () => {

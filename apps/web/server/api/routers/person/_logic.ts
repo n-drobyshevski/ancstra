@@ -12,11 +12,16 @@ export interface RelationContext {
 
 // The 6-insert sequence has strict ordering requirements: persons must exist before
 // personNames/events reference it, and families must exist before children link to them.
+//
+// `privacyLevel` defaults to 'private' so any caller that hasn't migrated to
+// reading `family.defaultPrivacyLevel` still produces the same row shape as
+// before Phase 3. Callers should pass the family's configured default.
 export async function insertRelatedPerson(
   db: FamilyDatabase,
   input: z.infer<typeof createPersonSchema>,
   ctx: RelationContext,
   createdBy: string | null,
+  privacyLevel: 'public' | 'private' | 'restricted' = 'private',
 ): Promise<string> {
   const personId = crypto.randomUUID();
 
@@ -27,6 +32,7 @@ export async function insertRelatedPerson(
         id: personId,
         sex: input.sex,
         isLiving: input.isLiving,
+        privacyLevel,
         notes: input.notes ?? null,
         createdBy,
       })

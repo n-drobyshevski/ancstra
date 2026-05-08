@@ -17,8 +17,12 @@ import {
   ShieldCheck,
   type LucideIcon,
 } from 'lucide-react';
+import type { Permission } from '@ancstra/auth/types';
+import { hasPermission } from '@ancstra/auth/permissions';
 import { PlatformAdminOnly } from '@/components/auth/platform-admin-only';
 import { LensSelector } from '@/components/sidebar/lens-selector';
+import { useEffectiveMembership } from '@/lib/auth/use-has-permission';
+import { useIsHydrated } from '@/hooks/use-is-hydrated';
 import { signOut } from 'next-auth/react';
 import {
   Sidebar,
@@ -40,27 +44,75 @@ interface NavItem {
   href: string;
   icon: LucideIcon;
   badge?: number;
+  /**
+   * Required permission to see this item. Single = AND. Array = OR (item is
+   * visible if the user holds at least one of the listed permissions). Items
+   * with no permission are universally visible.
+   *
+   * Server-side enforcement (tRPC `protectedProcedure`, RSC `requirePagePermission`)
+   * is the source of truth; this filter is affordance hiding only.
+   */
+  permission?: Permission | Permission[];
 }
 
 const coreItems: NavItem[] = [
   { title: 'Dashboard', href: '/dashboard', icon: Home },
   { title: 'People', href: '/persons', icon: Users },
-  { title: 'Tree', href: '/tree', icon: GitBranch },
+  { title: 'Tree', href: '/tree', icon: GitBranch, permission: 'tree:view' },
 ];
 
 const researchItems: NavItem[] = [
-  { title: 'Research', href: '/research', icon: Microscope },
-  { title: 'Factsheets', href: '/research/factsheets', icon: FileStack },
+  { title: 'Research', href: '/research', icon: Microscope, permission: 'ai:research' },
+  {
+    title: 'Factsheets',
+    href: '/research/factsheets',
+    icon: FileStack,
+    permission: 'ai:research',
+  },
 ];
 
 const dataItems: NavItem[] = [
-  { title: 'Import / Export', href: '/data', icon: ArrowLeftRight },
-  { title: 'Activity', href: '/activity', icon: Activity },
+  {
+    title: 'Import / Export',
+    href: '/data',
+    icon: ArrowLeftRight,
+    // Visible if the user can do EITHER side — page itself routes to the
+    // correct tab based on which permission they hold.
+    permission: ['gedcom:import', 'gedcom:export'],
+  },
+  { title: 'Activity', href: '/activity', icon: Activity, permission: 'activity:view' },
 ];
 
 const analyticsItems: NavItem[] = [
-  { title: 'Data Quality', href: '/analytics/quality', icon: BarChart3 },
+  {
+    title: 'Data Quality',
+    href: '/analytics/quality',
+    icon: BarChart3,
+    permission: 'activity:view',
+  },
 ];
+
+/**
+ * Filter nav items by the user's effective (lens-aware) permissions.
+ * Same semantics as `useVisibleSettingsNavItems` in components/settings/settings-nav.tsx.
+ *
+ * Gated by `useIsHydrated` because `useEffectiveMembership` ultimately reads
+ * `useSession()`, which returns different data on the SSR pass vs. the first
+ * client render once the SessionProvider hydrates. Until hydration completes
+ * we render only items that are universally visible — server HTML and first
+ * client render then match, and permissioned items pop in post-hydration.
+ */
+function useVisibleNavItems(items: NavItem[]): NavItem[] {
+  const isHydrated = useIsHydrated();
+  const membership = useEffectiveMembership();
+  return items.filter((item) => {
+    if (!item.permission) return true;
+    if (!isHydrated) return false;
+    if (!membership) return false;
+    const required = Array.isArray(item.permission) ? item.permission : [item.permission];
+    return required.some((p) => hasPermission(membership.role, p));
+  });
+}
 
 function NavGroup({
   label,
@@ -72,13 +124,18 @@ function NavGroup({
   pathname: string;
 }) {
   const { setOpenMobile } = useSidebar();
+  const visible = useVisibleNavItems(items);
+
+  // Collapse the entire group when nothing is visible. Avoids a stranded
+  // section header (e.g. "Research") when a viewer lens hides every child.
+  if (visible.length === 0) return null;
 
   return (
     <SidebarGroup>
       {label && <SidebarGroupLabel>{label}</SidebarGroupLabel>}
       <SidebarMenu>
-        {items.map((item) => {
-          const hasMoreSpecificMatch = items.some(
+        {visible.map((item) => {
+          const hasMoreSpecificMatch = visible.some(
             (other) =>
               other.href !== item.href &&
               other.href.startsWith(item.href) &&
