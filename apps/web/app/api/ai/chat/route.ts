@@ -1,7 +1,7 @@
 import { streamText, stepCountIs, type ToolSet } from 'ai';
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
-import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
+import { withAuthAndExperimental, handleAuthError } from '@/lib/auth/api-guard';
 import { createCentralDb, centralSchema } from '@ancstra/db';
 import {
   ProviderRegistry,
@@ -32,7 +32,7 @@ import {
 
 export async function POST(request: Request) {
   try {
-    const { ctx, familyDb } = await withAuth('ai:research', request);
+    const { ctx, familyDb } = await withAuthAndExperimental('ai:research', 'researchChat', request);
 
     const { messages, focusPersonId } = await request.json();
 

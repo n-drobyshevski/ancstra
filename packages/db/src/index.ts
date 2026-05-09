@@ -321,6 +321,28 @@ export async function ensureCentralSchema(db: CentralDatabase, dbKey?: string): 
     } catch { /* column already exists */ }
   }
 
+  // Experimental features gating (2026-05-09). Per-user opt-in columns plus
+  // platform-wide policy singleton. See packages/auth/src/experimental.ts.
+  for (const col of [
+    'experimental_enabled INTEGER NOT NULL DEFAULT 0',
+    "experimental_features TEXT NOT NULL DEFAULT '{}'",
+  ]) {
+    try {
+      await db.run(sql.raw(`ALTER TABLE user_preferences ADD COLUMN ${col}`));
+    } catch { /* column already exists */ }
+  }
+
+  await db.run(sql`
+    CREATE TABLE IF NOT EXISTS platform_settings (
+      id TEXT PRIMARY KEY DEFAULT 'global',
+      experimental_features_allow_users INTEGER NOT NULL DEFAULT 0,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_by TEXT REFERENCES users(id)
+    )
+  `);
+  // Seed the singleton row. INSERT OR IGNORE so it's safe on every cold start.
+  await db.run(sql`INSERT OR IGNORE INTO platform_settings (id) VALUES ('global')`);
+
   if (dbKey) _ensuredCentralDbs.add(dbKey);
 }
 

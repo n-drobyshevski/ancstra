@@ -8,17 +8,20 @@ interface MobileBottomBarProps {
   onScrapeUrl: () => void;
   onOpenAi: () => void;
   bookmarkCount: number;
+  /** When false, the AI button is hidden — used by the experimental gate. */
+  aiEnabled?: boolean;
 }
 
 const items = [
-  { key: 'paste', icon: ClipboardPaste, label: 'Paste', action: 'onPasteText' as const },
-  { key: 'scrape', icon: Link, label: 'Scrape', action: 'onScrapeUrl' as const },
-  { key: 'ai', icon: Sparkles, label: 'AI', action: 'onOpenAi' as const },
+  { key: 'paste', icon: ClipboardPaste, label: 'Paste', action: 'onPasteText' as const, gated: false },
+  { key: 'scrape', icon: Link, label: 'Scrape', action: 'onScrapeUrl' as const, gated: false },
+  { key: 'ai', icon: Sparkles, label: 'AI', action: 'onOpenAi' as const, gated: true },
 ] as const;
 
-export function MobileBottomBar({ onPasteText, onScrapeUrl, onOpenAi, bookmarkCount }: MobileBottomBarProps) {
+export function MobileBottomBar({ onPasteText, onScrapeUrl, onOpenAi, bookmarkCount, aiEnabled = true }: MobileBottomBarProps) {
   const router = useRouter();
   const handlers = { onPasteText, onScrapeUrl, onOpenAi };
+  const visibleItems = items.filter((item) => !item.gated || aiEnabled);
 
   return (
     <div
@@ -26,7 +29,7 @@ export function MobileBottomBar({ onPasteText, onScrapeUrl, onOpenAi, bookmarkCo
       aria-label="Research actions"
       className="fixed inset-x-0 bottom-0 z-30 flex items-center justify-around border-t border-border bg-background px-2 pb-[env(safe-area-inset-bottom)] pt-2"
     >
-      {items.map((item) => {
+      {visibleItems.map((item) => {
         const Icon = item.icon;
         return (
           <button

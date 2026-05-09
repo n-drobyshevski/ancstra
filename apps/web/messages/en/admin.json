@@ -15,7 +15,25 @@
   },
   "page": {
     "heading": "Dashboard",
-    "tagline": "Cross-family snapshot of the Ancstra platform."
+    "tagline": "Cross-family snapshot of the Ancstra platform.",
+    "policiesHeading": "Platform policies"
+  },
+  "experimentalPolicy": {
+    "cardTitle": "Experimental features",
+    "cardDescription": "Allow users to opt into experimental AI features on the Labs page.",
+    "toggleLabel": "Allow user opt-in",
+    "stateOn": "Allowed",
+    "stateOff": "Disallowed",
+    "lastChangedBy": "Changed by {name}",
+    "neverChanged": "Default — never been changed.",
+    "confirmEnableTitle": "Allow experimental features?",
+    "confirmEnableBody": "Users will be able to opt into experimental AI features from their Labs page. Existing user opt-ins (if any) take effect immediately.",
+    "confirmDisableTitle": "Disable experimental features platform-wide?",
+    "confirmDisableBody": "All users will lose access to experimental AI features immediately. Their per-user toggles are preserved and will reactivate if you re-enable the policy later.",
+    "confirmEnableAction": "Allow",
+    "confirmDisableAction": "Disable",
+    "updated": "Experimental features policy updated.",
+    "updateFailed": "Failed to update experimental features policy."
   },
   "dashboardCards": {
     "users": "Users",
@@ -42,6 +60,7 @@
       "allTargets": "All targets",
       "user": "User",
       "family": "Family",
+      "platform": "Platform",
       "actorIdLabel": "Actor user ID",
       "actorIdPlaceholder": "Filter by actor user ID…",
       "clear": "Clear"

@@ -79,5 +79,9 @@
     "light": "Light",
     "dark": "Dark",
     "system": "System"
+  },
+  "experimentalBadge": {
+    "label": "Experimental",
+    "tooltip": "This is an experimental feature — it may change or break."
   }
 }

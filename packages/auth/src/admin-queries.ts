@@ -661,7 +661,10 @@ export async function getPlatformCounts(
 export interface LogPlatformActivityOpts {
   actorUserId: string;
   action: string;                 // e.g. 'platform_admin.toggle'
-  targetType: 'user' | 'family';
+  // 'platform' is for actions on the singleton platform_settings row (no
+  // specific user or family target). The DB column is plain TEXT — the union
+  // is purely an application-layer contract for callers.
+  targetType: 'user' | 'family' | 'platform';
   targetId: string;
   summary: string;
   metadata?: Record<string, unknown>;
@@ -706,7 +709,7 @@ export interface ListAuditLogOpts {
   cursor?: string; // opaque: the row id to seek past
   limit?: number;
   actorUserId?: string;
-  targetType?: 'user' | 'family';
+  targetType?: 'user' | 'family' | 'platform';
   targetId?: string;
   action?: string;
   since?: string; // ISO 8601 inclusive lower bound on createdAt

@@ -29,6 +29,10 @@
     "./lens": {
       "types": "./src/lens.ts",
       "default": "./src/lens.ts"
+    },
+    "./experimental": {
+      "types": "./src/experimental.ts",
+      "default": "./src/experimental.ts"
     }
   },
   "scripts": {

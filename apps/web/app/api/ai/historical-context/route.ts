@@ -1,7 +1,7 @@
 import { generateText } from 'ai';
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
-import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
+import { withAuthAndExperimental, handleAuthError } from '@/lib/auth/api-guard';
 import { centralSchema, historicalContext, persons, personNames, events } from '@ancstra/db';
 import {
   buildHistoricalContextPrompt,
@@ -13,7 +13,7 @@ import {
 
 export async function GET(request: Request) {
   try {
-    const { familyDb } = await withAuth('ai:research', request);
+    const { familyDb } = await withAuthAndExperimental('ai:research', 'historicalContext', request);
     const url = new URL(request.url);
     const personId = url.searchParams.get('personId');
 
@@ -41,7 +41,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const { ctx, familyDb, centralDb } = await withAuth('ai:research', request);
+    const { ctx, familyDb, centralDb } = await withAuthAndExperimental('ai:research', 'historicalContext', request);
 
     const body = await request.json();
     const { personId } = body;

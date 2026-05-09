@@ -9,6 +9,7 @@ import {
   Activity,
   User,
   Sliders,
+  FlaskConical,
   type LucideIcon,
 } from 'lucide-react';
 import type { Permission, Role } from '@ancstra/auth/types';
@@ -25,6 +26,7 @@ export type NavItemKey =
   | 'profile'
   | 'appearance'
   | 'activity'
+  | 'labs'
   | 'family'
   | 'members'
   | 'dataStorage'
@@ -62,6 +64,9 @@ const SECTIONS: NavSection[] = [
         icon: Activity,
         permission: 'activity:view',
       },
+      // Always visible — even when the platform policy is off, the page
+      // explains the disabled state. Less surprising than a vanishing entry.
+      { key: 'labs', href: '/settings/labs', icon: FlaskConical },
     ],
   },
   {

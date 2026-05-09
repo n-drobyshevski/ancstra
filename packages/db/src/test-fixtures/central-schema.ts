@@ -118,8 +118,18 @@ CREATE TABLE IF NOT EXISTS user_preferences (
   density TEXT NOT NULL DEFAULT 'comfortable' CHECK(density IN ('comfortable', 'compact')),
   notify_email INTEGER NOT NULL DEFAULT 1,
   notify_activity INTEGER NOT NULL DEFAULT 1,
+  experimental_enabled INTEGER NOT NULL DEFAULT 0,
+  experimental_features TEXT NOT NULL DEFAULT '{}',
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+CREATE TABLE IF NOT EXISTS platform_settings (
+  id TEXT PRIMARY KEY DEFAULT 'global',
+  experimental_features_allow_users INTEGER NOT NULL DEFAULT 0,
+  updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_by TEXT REFERENCES users(id)
+);
+INSERT OR IGNORE INTO platform_settings (id) VALUES ('global');
 
 CREATE TABLE IF NOT EXISTS activity_feed (
   id TEXT PRIMARY KEY,

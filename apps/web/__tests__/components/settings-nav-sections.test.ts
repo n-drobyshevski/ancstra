@@ -8,16 +8,18 @@ describe('getVisibleSettingsSections', () => {
       expect(sections.map((s) => s.tier)).toEqual(['profile']);
       const profile = sections[0];
       // Activity has activity:view; pre-hydration is treated as "no role", so
-      // Activity is filtered out — only Profile + Appearance survive.
+      // Activity is filtered out — only Profile + Appearance + Labs survive.
+      // Labs has no permission gate (server-side enforces) so it's universal.
       expect(profile.items.map((i) => i.href)).toEqual([
         '/settings/profile',
         '/settings/appearance',
+        '/settings/labs',
       ]);
     });
   });
 
   describe('viewer', () => {
-    it('returns only My profile (Profile, Appearance, Activity)', () => {
+    it('returns only My profile (Profile, Appearance, Activity, Labs)', () => {
       const sections = getVisibleSettingsSections('viewer', true);
       expect(sections.map((s) => s.tier)).toEqual(['profile']);
       const profile = sections[0];
@@ -25,6 +27,7 @@ describe('getVisibleSettingsSections', () => {
         '/settings/profile',
         '/settings/appearance',
         '/activity',
+        '/settings/labs',
       ]);
     });
   });

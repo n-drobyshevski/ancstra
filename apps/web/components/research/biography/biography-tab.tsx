@@ -11,6 +11,8 @@ import { BiographyOptions, type BiographyOptionsResult } from '@/components/biog
 import { BiographyViewer } from '@/components/biography/biography-viewer';
 import { HistoricalEvent } from '@/components/timeline/historical-event';
 import { RoleGate } from '@/components/auth/role-gate';
+import { ExperimentalBadge } from '@/components/ui/experimental-badge';
+import { useExperimentalFeatures } from '@/hooks/use-experimental-features';
 
 interface ResearchBiographyTabProps {
   personId: string;
@@ -25,6 +27,9 @@ interface HistoricalEventData {
 }
 
 export function ResearchBiographyTab({ personId, personName }: ResearchBiographyTabProps) {
+  const { isEnabled } = useExperimentalFeatures();
+  const historicalContextEnabled = isEnabled('historicalContext');
+
   // --- Biography state ---
   const [biographyText, setBiographyText] = useState<string | null>(null);
   const [bioLoading, setBioLoading] = useState(true);
@@ -133,11 +138,12 @@ export function ResearchBiographyTab({ personId, personName }: ResearchBiography
   }, [personId]);
 
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
+    <div className={historicalContextEnabled ? 'grid gap-6 lg:grid-cols-2' : ''}>
       {/* Left: Biography */}
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Biography</CardTitle>
+          <ExperimentalBadge />
         </CardHeader>
         <CardContent>
           {bioLoading ? (
@@ -166,47 +172,52 @@ export function ResearchBiographyTab({ personId, personName }: ResearchBiography
         </CardContent>
       </Card>
 
-      {/* Right: Historical Context */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Historical Context</CardTitle>
-          <div className="flex items-center gap-2">
-            <Switch
-              id="historical-toggle"
-              checked={showHistorical}
-              onCheckedChange={handleHistoricalToggle}
-            />
-            <Label htmlFor="historical-toggle" className="text-sm">
-              Show
-            </Label>
-          </div>
-        </CardHeader>
-        {showHistorical && (
-          <CardContent>
-            {historicalLoading ? (
-              <p className="text-sm text-muted-foreground">Loading...</p>
-            ) : historicalEvents.length > 0 ? (
-              <div className="space-y-4">
-                {historicalEvents.map((event, i) => (
-                  <HistoricalEvent key={i} {...event} />
-                ))}
-              </div>
-            ) : (
-              <div className="flex flex-col items-center py-6 text-muted-foreground">
-                <Globe className="mb-2 size-8" />
-                <p className="mb-3 text-sm">
-                  See world events during {personName}&apos;s lifetime.
-                </p>
-                <RoleGate permission="ai:research">
-                  <Button variant="outline" onClick={handleGenerateHistorical}>
-                    Generate Historical Context
-                  </Button>
-                </RoleGate>
-              </div>
-            )}
-          </CardContent>
-        )}
-      </Card>
+      {/* Right: Historical Context — gated by experimental flag */}
+      {historicalContextEnabled && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              Historical Context
+              <ExperimentalBadge />
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              <Switch
+                id="historical-toggle"
+                checked={showHistorical}
+                onCheckedChange={handleHistoricalToggle}
+              />
+              <Label htmlFor="historical-toggle" className="text-sm">
+                Show
+              </Label>
+            </div>
+          </CardHeader>
+          {showHistorical && (
+            <CardContent>
+              {historicalLoading ? (
+                <p className="text-sm text-muted-foreground">Loading...</p>
+              ) : historicalEvents.length > 0 ? (
+                <div className="space-y-4">
+                  {historicalEvents.map((event, i) => (
+                    <HistoricalEvent key={i} {...event} />
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center py-6 text-muted-foreground">
+                  <Globe className="mb-2 size-8" />
+                  <p className="mb-3 text-sm">
+                    See world events during {personName}&apos;s lifetime.
+                  </p>
+                  <RoleGate permission="ai:research">
+                    <Button variant="outline" onClick={handleGenerateHistorical}>
+                      Generate Historical Context
+                    </Button>
+                  </RoleGate>
+                </div>
+              )}
+            </CardContent>
+          )}
+        </Card>
+      )}
     </div>
   );
 }

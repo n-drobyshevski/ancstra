@@ -33,6 +33,7 @@
       "profile": "Profile",
       "appearance": "Appearance",
       "activity": "Activity",
+      "labs": "Labs",
       "family": "Family",
       "members": "Members",
       "dataStorage": "Data & Storage",
@@ -45,6 +46,7 @@
       "profile": "Display name, language, notifications",
       "appearance": "Theme and display",
       "activity": "Recent changes in your family",
+      "labs": "Experimental AI features",
       "family": "Name, limits, moderation",
       "members": "Invites and roles",
       "dataStorage": "Backups, cache, archives",
@@ -94,7 +96,40 @@
     "ai": {
       "title": "AI",
       "description": "Monthly AI budget and usage."
+    },
+    "labs": {
+      "title": "Labs",
+      "description": "Try experimental AI features early."
     }
+  },
+  "labs": {
+    "heading": "Experimental features",
+    "tagline": "Try features still in development. Available only when your platform allows it.",
+    "policyOff": {
+      "title": "Experimental features are disabled platform-wide",
+      "body": "An admin has turned off opt-in experimental features. Check back later."
+    },
+    "master": {
+      "label": "Enable experimental features",
+      "hint": "Lets you opt into individual AI tools below."
+    },
+    "features": {
+      "heading": "Available features",
+      "biography": {
+        "title": "AI biography generation",
+        "hint": "Generates a narrative life story for any person."
+      },
+      "researchChat": {
+        "title": "Research AI chat",
+        "hint": "Ask questions about your tree and search records."
+      },
+      "historicalContext": {
+        "title": "Historical context",
+        "hint": "World events during a person's lifetime."
+      }
+    },
+    "saveFailed": "Failed to update experimental features.",
+    "saved": "Updated."
   },
   "profile": {
     "page": {
@@ -163,6 +198,11 @@
     "page": {
       "heading": "AI",
       "tagline": "Manage your monthly AI budget and monitor usage."
+    },
+    "notice": {
+      "title": "You haven't enabled any AI features",
+      "body": "The settings here govern AI usage for everyone in this family. Visit Labs to opt in for yourself.",
+      "linkLabel": "Open Labs"
     },
     "budget": {
       "monthlyTitle": "Monthly Budget",

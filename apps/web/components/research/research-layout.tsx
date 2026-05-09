@@ -12,6 +12,8 @@ import { MobileAiSheet } from './mobile-ai-sheet';
 import { TextPasteModal } from './text-paste-modal';
 import { useResearchItems } from '@/lib/research/search-client';
 import { useMediaQuery } from '@/lib/hooks/use-media-query';
+import { useExperimentalFeatures } from '@/hooks/use-experimental-features';
+import { ExperimentalBadge } from '@/components/ui/experimental-badge';
 
 interface SearchContext {
   query: string;
@@ -30,6 +32,8 @@ function ResearchLayoutInner() {
   const isDesktop = useMediaQuery('(min-width: 1024px)');
   const { data: itemsData } = useResearchItems();
   const bookmarkCount = itemsData?.items?.length ?? 0;
+  const { isEnabled } = useExperimentalFeatures();
+  const chatEnabled = isEnabled('researchChat');
 
   const handleAskAi = useCallback((prompt: string) => {
     setPendingAiPrompt(prompt);
@@ -62,8 +66,9 @@ function ResearchLayoutInner() {
       const target = e.target as HTMLElement;
       const inInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
 
-      // Ctrl+Shift+A — toggle AI panel
+      // Ctrl+Shift+A — toggle AI panel (no-op when chat is gated off)
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'A') {
+        if (!chatEnabled) return;
         e.preventDefault();
         if (isDesktop) {
           setAiPanelOpen((prev) => !prev);
@@ -95,7 +100,7 @@ function ResearchLayoutInner() {
     }
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [aiPanelOpen, isDesktop]);
+  }, [aiPanelOpen, isDesktop, chatEnabled]);
 
   // Read ?askAi= param on mount (from item detail "Ask AI" button)
   useEffect(() => {
@@ -128,26 +133,29 @@ function ResearchLayoutInner() {
       <div className="hidden items-center gap-3 border-b border-border px-4 py-3 lg:flex">
         <h1 className="text-lg font-bold whitespace-nowrap">Research</h1>
         <div className="flex-1" />
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              onClick={handleOpenAiPanel}
-              className={cn(
-                'flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                aiPanelOpen
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-accent text-accent-foreground border border-border hover:bg-accent/80'
-              )}
-            >
-              <Sparkles className="size-4" />
-              AI Chat
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">
-            Toggle AI Chat <kbd className="ml-1.5 rounded bg-muted px-1 py-0.5 text-[10px] font-mono text-muted-foreground">Ctrl+Shift+A</kbd>
-          </TooltipContent>
-        </Tooltip>
+        {chatEnabled && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={handleOpenAiPanel}
+                className={cn(
+                  'flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                  aiPanelOpen
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-accent text-accent-foreground border border-border hover:bg-accent/80'
+                )}
+              >
+                <Sparkles className="size-4" />
+                AI Chat
+                <ExperimentalBadge className="ml-1" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              Toggle AI Chat <kbd className="ml-1.5 rounded bg-muted px-1 py-0.5 text-[10px] font-mono text-muted-foreground">Ctrl+Shift+A</kbd>
+            </TooltipContent>
+          </Tooltip>
+        )}
       </div>
 
       {/* Main content area */}
@@ -168,13 +176,15 @@ function ResearchLayoutInner() {
       </div>
 
       {/* Desktop AI slide-over panel */}
-      <AiSlidePanel
-        open={aiPanelOpen && !!isDesktop}
-        onClose={handleCloseAiPanel}
-        initialPrompt={pendingAiPrompt}
-        onPromptConsumed={handlePromptConsumed}
-        searchContext={searchContext}
-      />
+      {chatEnabled && (
+        <AiSlidePanel
+          open={aiPanelOpen && !!isDesktop}
+          onClose={handleCloseAiPanel}
+          initialPrompt={pendingAiPrompt}
+          onPromptConsumed={handlePromptConsumed}
+          searchContext={searchContext}
+        />
+      )}
 
       {/* Mobile bottom bar */}
       <div className="lg:hidden">
@@ -187,18 +197,21 @@ function ResearchLayoutInner() {
             }, 300);
           }}
           onOpenAi={() => setMobileAiOpen(true)}
+          aiEnabled={chatEnabled}
           bookmarkCount={bookmarkCount}
         />
       </div>
 
       {/* Mobile AI half-sheet */}
-      <MobileAiSheet
-        open={mobileAiOpen}
-        onOpenChange={setMobileAiOpen}
-        initialPrompt={pendingAiPrompt}
-        onPromptConsumed={handlePromptConsumed}
-        searchContext={searchContext}
-      />
+      {chatEnabled && (
+        <MobileAiSheet
+          open={mobileAiOpen}
+          onOpenChange={setMobileAiOpen}
+          initialPrompt={pendingAiPrompt}
+          onPromptConsumed={handlePromptConsumed}
+          searchContext={searchContext}
+        />
+      )}
 
       {/* Mobile text paste modal (triggered from bottom bar) */}
       <TextPasteModal

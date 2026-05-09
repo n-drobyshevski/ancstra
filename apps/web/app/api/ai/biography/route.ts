@@ -1,7 +1,7 @@
 import { streamText } from 'ai';
 import { eq, and } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
-import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
+import { withAuthAndExperimental, handleAuthError } from '@/lib/auth/api-guard';
 import { centralSchema, biographies, persons, personNames, events, families, children, sources, sourceCitations } from '@ancstra/db';
 import {
   buildBiographyPrompt,
@@ -15,7 +15,7 @@ import {
 
 export async function GET(request: Request) {
   try {
-    const { familyDb } = await withAuth('ai:research', request);
+    const { familyDb } = await withAuthAndExperimental('ai:research', 'biography', request);
     const url = new URL(request.url);
     const personId = url.searchParams.get('personId');
     const tone = (url.searchParams.get('tone') || 'conversational') as 'formal' | 'conversational' | 'storytelling';
@@ -48,7 +48,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const { ctx, familyDb, centralDb } = await withAuth('ai:research', request);
+    const { ctx, familyDb, centralDb } = await withAuthAndExperimental('ai:research', 'biography', request);
 
     const body = await request.json();
     const { personId, tone = 'conversational', length = 'standard', focus = 'life_overview' } = body;

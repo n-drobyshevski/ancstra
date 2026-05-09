@@ -125,7 +125,33 @@ export const userPreferences = sqliteTable('user_preferences', {
   density: text('density', { enum: ['comfortable', 'compact'] }).notNull().default('comfortable'),
   notifyEmail: integer('notify_email').notNull().default(1),
   notifyActivity: integer('notify_activity').notNull().default(1),
+  // Experimental-features opt-in (added 2026-05-09).
+  // Master switch + per-feature override JSON. Both gates AND with the
+  // platform-level `platform_settings.experimentalFeaturesAllowUsers` policy
+  // before a feature is considered enabled. See packages/auth/src/experimental.ts.
+  experimentalEnabled: integer('experimental_enabled').notNull().default(0),
+  // JSON: Partial<Record<ExperimentalFeatureKey, boolean>>. Defaults to '{}'
+  // meaning "respect master switch with all features on by default" — only an
+  // explicit `false` value disables a single feature.
+  experimentalFeatures: text('experimental_features').notNull().default('{}'),
   updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
+});
+
+// ==================== PLATFORM SETTINGS ====================
+// Singleton row (id='global') holding platform-wide policies. Created and
+// mutated only by platform admins via `/admin`. Read by every server entry
+// point that needs to know whether a global feature gate is open.
+//
+// CHECK on `id='global'` is enforced at the application layer rather than in
+// SQLite — keeps the migration trivially additive.
+export const platformSettings = sqliteTable('platform_settings', {
+  id: text('id').primaryKey().default('global'),
+  // Whether users may opt into experimental AI features. Default OFF — a
+  // fresh install must take an explicit admin action to expose experimental
+  // features to users.
+  experimentalFeaturesAllowUsers: integer('experimental_features_allow_users').notNull().default(0),
+  updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
+  updatedBy: text('updated_by').references(() => users.id),
 });
 
 // ==================== ACTIVITY FEED ====================

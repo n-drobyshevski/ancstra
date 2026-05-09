@@ -38,7 +38,7 @@ export const platformAdminRouter = createTRPCRouter({
         cursor: z.string().nullish(),
         limit: z.number().int().min(1).max(200).optional(),
         actorUserId: z.string().optional(),
-        targetType: z.enum(['user', 'family']).optional(),
+        targetType: z.enum(['user', 'family', 'platform']).optional(),
         targetId: z.string().optional(),
         action: z.string().optional(),
         since: z.string().datetime().optional(),
@@ -613,6 +613,100 @@ export const platformAdminRouter = createTRPCRouter({
         'platform-counts',
         'platform-users',
         `platform-user:${input.userId}`,
+        'platform-audit-log',
+      ]);
+
+      return { ok: true, changed: true } as const;
+    }),
+
+  // ----- Platform policies (singleton platform_settings row) -------------
+  // Cross-cutting policies stored on the platform_settings 'global' row. The
+  // row is seeded by ensureCentralSchema(); these procedures only update it.
+  // -----------------------------------------------------------------------
+
+  getExperimentalPolicy: platformAdminProcedure.query(async ({ ctx }) => {
+    const row = await ctx.centralDb
+      .select({
+        allowUsers: centralSchema.platformSettings.experimentalFeaturesAllowUsers,
+        updatedAt: centralSchema.platformSettings.updatedAt,
+        updatedBy: centralSchema.platformSettings.updatedBy,
+      })
+      .from(centralSchema.platformSettings)
+      .where(eq(centralSchema.platformSettings.id, 'global'))
+      .get();
+
+    if (!row) {
+      // Singleton not yet seeded — treat as off. ensureCentralSchema seeds on
+      // next request; this is the "fresh DB before first request" path.
+      return { allowUsers: false, updatedAt: null, updatedBy: null } as const;
+    }
+
+    let updatedBy: { id: string; name: string } | null = null;
+    if (row.updatedBy) {
+      const user = await ctx.centralDb
+        .select({ id: centralSchema.users.id, name: centralSchema.users.name })
+        .from(centralSchema.users)
+        .where(eq(centralSchema.users.id, row.updatedBy))
+        .get();
+      if (user) updatedBy = user;
+    }
+
+    return {
+      allowUsers: row.allowUsers === 1,
+      updatedAt: row.updatedAt,
+      updatedBy,
+    } as const;
+  }),
+
+  updateExperimentalPolicy: platformAdminProcedure
+    .input(z.object({ allowUsers: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      const current = await ctx.centralDb
+        .select({ allowUsers: centralSchema.platformSettings.experimentalFeaturesAllowUsers })
+        .from(centralSchema.platformSettings)
+        .where(eq(centralSchema.platformSettings.id, 'global'))
+        .get();
+
+      const previousValue = current?.allowUsers === 1;
+      if (current && previousValue === input.allowUsers) {
+        // No-op — don't audit-log when nothing actually changed.
+        return { ok: true, changed: false } as const;
+      }
+
+      const now = new Date().toISOString();
+      // Upsert so a freshly-cloned DB without the seeded row still works.
+      await ctx.centralDb
+        .insert(centralSchema.platformSettings)
+        .values({
+          id: 'global',
+          experimentalFeaturesAllowUsers: input.allowUsers ? 1 : 0,
+          updatedAt: now,
+          updatedBy: ctx.platformAdmin.userId,
+        })
+        .onConflictDoUpdate({
+          target: centralSchema.platformSettings.id,
+          set: {
+            experimentalFeaturesAllowUsers: input.allowUsers ? 1 : 0,
+            updatedAt: now,
+            updatedBy: ctx.platformAdmin.userId,
+          },
+        })
+        .run();
+
+      await logPlatformActivity(ctx.centralDb, {
+        actorUserId: ctx.platformAdmin.userId,
+        action: 'platform.experimental.policy.update',
+        targetType: 'platform',
+        targetId: 'global',
+        summary: input.allowUsers
+          ? 'Allowed users to opt into experimental features'
+          : 'Disallowed users from opting into experimental features',
+        metadata: { previous: previousValue, next: input.allowUsers },
+      });
+
+      invalidateTags([
+        'platform-experimental-policy',
+        'platform-counts',
         'platform-audit-log',
       ]);
 

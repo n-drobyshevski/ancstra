@@ -19,6 +19,8 @@ import {
 } from 'lucide-react';
 import { hasPermission } from '@ancstra/auth/permissions';
 import type { Permission } from '@ancstra/auth';
+import type { ExperimentalFeatureKey } from '@ancstra/auth/experimental';
+import { useExperimentalFeatures } from '@/hooks/use-experimental-features';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
@@ -50,6 +52,12 @@ interface TabDef {
   description: string;
   /** Required permission to see this tab. Omitted = visible to anyone with a membership. */
   permission?: Permission;
+  /**
+   * Required experimental feature flag. When set, the tab is hidden unless the
+   * platform policy + user's master switch + per-feature override all allow.
+   * AND'd with the permission check.
+   */
+  experimentalFeature?: ExperimentalFeatureKey;
 }
 
 interface TabGroup {
@@ -85,7 +93,7 @@ const TAB_GROUPS: TabGroup[] = [
     label: 'Output',
     tabs: [
       { value: 'proof',      label: 'Proof',      icon: FileText,   description: 'Proof statement builder', permission: 'ai:research' },
-      { value: 'biography',  label: 'Biography',  icon: BookMarked, description: 'AI-generated narrative',   permission: 'ai:research' },
+      { value: 'biography',  label: 'Biography',  icon: BookMarked, description: 'AI-generated narrative',   permission: 'ai:research', experimentalFeature: 'biography' },
     ],
   },
 ];
@@ -102,10 +110,15 @@ export function useVisibleWorkspaceTabs(): {
 } {
   const membership = useEffectiveMembership();
   const role = membership?.role ?? null;
+  const { isEnabled: isExperimentalEnabled } = useExperimentalFeatures();
   return useMemo(() => {
     const groups = TAB_GROUPS.map((g) => ({
       ...g,
-      tabs: g.tabs.filter((t) => !t.permission || (role !== null && hasPermission(role, t.permission))),
+      tabs: g.tabs.filter((t) => {
+        if (t.permission && (role === null || !hasPermission(role, t.permission))) return false;
+        if (t.experimentalFeature && !isExperimentalEnabled(t.experimentalFeature)) return false;
+        return true;
+      }),
     })).filter((g) => g.tabs.length > 0);
     const allTabs = groups.flatMap((g) => g.tabs);
     const visibleSet = new Set(allTabs.map((t) => t.value));
@@ -114,7 +127,7 @@ export function useVisibleWorkspaceTabs(): {
       allTabs,
       isVisible: (view: WorkspaceView) => visibleSet.has(view),
     };
-  }, [role]);
+  }, [role, isExperimentalEnabled]);
 }
 
 /** The 4 tabs shown inline on mobile */

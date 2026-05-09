@@ -4,12 +4,14 @@ import * as Sentry from '@sentry/nextjs';
 import { requireAuthContext, type AuthContext } from './context';
 import {
   requirePermission,
+  requireExperimentalFeature,
   shouldModerate,
   submitContribution,
   logActivity,
   ForbiddenError,
   type Permission,
   type ActivityAction,
+  type ExperimentalFeatureKey,
 } from '@ancstra/auth';
 import { createFamilyDb, createCentralDb, ensureFamilySchema } from '@ancstra/db';
 import { eq, and } from 'drizzle-orm';
@@ -26,6 +28,24 @@ export async function withAuth(permission: Permission, request?: Request) {
   await ensureFamilySchema(familyDb, ctx.dbFilename);
   const centralDb = createCentralDb();
   return { ctx, familyDb, centralDb };
+}
+
+/**
+ * Like withAuth, but also enforces an experimental-feature gate. Use on AI
+ * route handlers so a user with the role-permission still gets 403 when
+ * either the platform policy is off or they haven't opted in.
+ *
+ * Throws ExperimentalFeatureDisabledError (extends ForbiddenError) which
+ * handleAuthError already maps to a 403 response.
+ */
+export async function withAuthAndExperimental(
+  permission: Permission,
+  feature: ExperimentalFeatureKey,
+  request?: Request,
+) {
+  const result = await withAuth(permission, request);
+  await requireExperimentalFeature(result.centralDb, result.ctx.userId, feature);
+  return result;
 }
 
 /**
