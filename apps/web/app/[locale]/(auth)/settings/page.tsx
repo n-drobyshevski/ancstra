@@ -7,6 +7,7 @@ import { requireAuthContext } from '@/lib/auth/context';
 import { cn } from '@/lib/utils';
 import type { Locale } from '@/i18n/routing';
 import { getDashboardCards } from '@/components/settings/settings-dashboard-cards';
+import { ExperimentalBadge } from '@/components/ui/experimental-badge';
 import { SettingsMobileNav } from './settings-mobile-nav';
 
 interface SettingsPageProps {
@@ -59,7 +60,11 @@ async function SettingsDashboardSection({ params }: SettingsPageProps) {
                   <div
                     className={cn(
                       'flex size-10 items-center justify-center rounded-lg',
-                      card.primary ? 'bg-primary/15 text-primary' : 'bg-muted text-foreground/80',
+                      card.experimental
+                        ? 'bg-status-warning-bg text-status-warning-text'
+                        : card.primary
+                          ? 'bg-primary/15 text-primary'
+                          : 'bg-muted text-foreground/80',
                     )}
                   >
                     <Icon className="size-5" />
@@ -72,7 +77,10 @@ async function SettingsDashboardSection({ params }: SettingsPageProps) {
                   />
                 </div>
                 <div className="space-y-1">
-                  <div className="font-semibold leading-tight">{tCards(`${card.key}.title`)}</div>
+                  <div className="font-semibold leading-tight flex items-center gap-2 flex-wrap">
+                    <span>{tCards(`${card.key}.title`)}</span>
+                    {card.experimental && <ExperimentalBadge withoutTooltip />}
+                  </div>
                   <p className="text-sm text-muted-foreground leading-snug">
                     {tCards(`${card.key}.description`)}
                   </p>

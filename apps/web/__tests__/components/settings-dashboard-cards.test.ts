@@ -3,12 +3,13 @@ import { getDashboardCards } from '@/components/settings/settings-dashboard-card
 import welcomeMessages from '@/messages/en/settings.json';
 
 describe('getDashboardCards', () => {
-  it('viewer sees only personal cards', () => {
+  it('viewer sees only personal cards (incl. Labs as opt-in entry point)', () => {
     const cards = getDashboardCards('viewer');
     expect(cards.map((c) => c.href)).toEqual([
       '/settings/profile',
       '/settings/appearance',
       '/activity',
+      '/settings/labs',
     ]);
   });
 
@@ -54,6 +55,17 @@ describe('getDashboardCards', () => {
       expect(entry).toBeDefined();
       expect(entry.title.length).toBeGreaterThan(0);
       expect(entry.description.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('every role sees Labs as the last card in their array', () => {
+    for (const role of ['viewer', 'editor', 'admin', 'owner'] as const) {
+      const cards = getDashboardCards(role);
+      const last = cards[cards.length - 1];
+      expect(last.key).toBe('labs');
+      expect(last.href).toBe('/settings/labs');
+      expect(last.experimental).toBe(true);
+      expect(last.primary).not.toBe(true);
     }
   });
 
