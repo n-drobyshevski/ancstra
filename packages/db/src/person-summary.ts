@@ -98,6 +98,12 @@ export async function refreshSummary(db: FamilyDatabase, personId: string): Prom
 /**
  * Full rebuild: delete all person_summary rows, then re-populate from
  * persons + names + events in a single INSERT...SELECT.
+ *
+ * `INSERT OR REPLACE` is used as defense in depth: the primary guard
+ * against concurrent rebuilds is the promise-coalescing cache in
+ * `ensureFamilySchema`, but if a future caller invokes this directly
+ * outside that path we'd rather overwrite a stale row than 500 on a
+ * UNIQUE(person_id) violation.
  */
 export async function rebuildAllSummaries(db: FamilyDatabase): Promise<void> {
   const now = new Date().toISOString();
@@ -105,7 +111,7 @@ export async function rebuildAllSummaries(db: FamilyDatabase): Promise<void> {
   await db.run(sql`DELETE FROM person_summary`);
 
   await db.run(sql`
-    INSERT INTO person_summary (
+    INSERT OR REPLACE INTO person_summary (
       person_id, given_name, surname, sex, is_living,
       birth_date, death_date, birth_date_sort, death_date_sort,
       birth_place, death_place, spouse_count, child_count, parent_count,

@@ -49,7 +49,16 @@ export function createFamilyDb(dbFilename: string) {
   return drizzle({ client, schema });
 }
 
-const _ensuredDbs = new Set<string>();
+// Map<dbKey, in-flight ensureFamilySchema promise> — coalesces concurrent
+// callers so we don't double-run rebuildAllSummaries. Set-based caching
+// only added the dbKey *after* the body finished, so two parallel callers
+// (e.g., dashboard slot + family.listMine after a fresh signup) both passed
+// the early-return check and both ran the rebuild, racing to INSERT into
+// person_summary and tripping the UNIQUE(person_id) index on the loser.
+//
+// On rejection we delete the entry so the next request can retry — caching a
+// failed promise would permanently break the family for this process.
+const _ensuredDbs = new Map<string, Promise<void>>();
 
 /**
  * Ensure critical denormalized tables exist in a family database.
@@ -57,7 +66,20 @@ const _ensuredDbs = new Set<string>();
  * Needed because these tables were added after initial migrations.
  */
 export async function ensureFamilySchema(db: FamilyDatabase, dbKey?: string): Promise<void> {
-  if (dbKey && _ensuredDbs.has(dbKey)) return;
+  if (!dbKey) {
+    return ensureFamilySchemaInner(db);
+  }
+  const existing = _ensuredDbs.get(dbKey);
+  if (existing) return existing;
+  const promise = ensureFamilySchemaInner(db).catch((err) => {
+    _ensuredDbs.delete(dbKey);
+    throw err;
+  });
+  _ensuredDbs.set(dbKey, promise);
+  return promise;
+}
+
+async function ensureFamilySchemaInner(db: FamilyDatabase): Promise<void> {
 
   await db.run(sql`
     CREATE TABLE IF NOT EXISTS ancestor_paths (
@@ -243,8 +265,6 @@ export async function ensureFamilySchema(db: FamilyDatabase, dbKey?: string): Pr
     log.info('FTS5 index empty — rebuilding from person_names');
     await db.run(sql`INSERT INTO persons_fts(persons_fts) VALUES('rebuild')`);
   }
-
-  if (dbKey) _ensuredDbs.add(dbKey);
 }
 
 const _ensuredCentralDbs = new Set<string>();
