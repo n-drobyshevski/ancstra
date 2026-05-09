@@ -9,6 +9,7 @@ import {
   serializeLayoutData,
   tightenRankSpacing,
   relaxOverlapsByRank,
+  rescaleSpacingByMode,
 } from '../../components/tree/tree-utils';
 import type { Node, Edge } from '@xyflow/react';
 
@@ -171,5 +172,94 @@ describe('tightenRankSpacing (wide → compact compression)', () => {
     const xs = out.map((n) => n.position.x);
     const newCenter = (Math.min(...xs) + Math.max(...xs)) / 2;
     expect(newCenter).toBeCloseTo(origCenter, 5);
+  });
+});
+
+describe('rescaleSpacingByMode (preserves cross-rank alignment)', () => {
+  function pn(id: string, x: number, y: number): Node {
+    return {
+      id,
+      type: 'person',
+      position: { x, y },
+      data: { label: id },
+    };
+  }
+
+  it('returns input unchanged when fromStyle === toStyle', () => {
+    const nodes = [pn('a', 100, 0), pn('b', 420, 0)];
+    const out = rescaleSpacingByMode(nodes, 'wide', 'wide');
+    expect(out).toBe(nodes);
+  });
+
+  it('shrinks sibling stride from wide to compact (320 → 170)', () => {
+    // Two siblings at wide stride; pivot is their midpoint.
+    const nodes = [pn('a', 0, 0), pn('b', 320, 0)];
+    const out = rescaleSpacingByMode(nodes, 'wide', 'compact');
+    const dx = out[1].position.x - out[0].position.x;
+    expect(dx).toBeCloseTo(170, 5);
+  });
+
+  it('grows sibling stride from compact to wide (170 → 320)', () => {
+    const nodes = [pn('a', 0, 0), pn('b', 170, 0)];
+    const out = rescaleSpacingByMode(nodes, 'compact', 'wide');
+    const dx = out[1].position.x - out[0].position.x;
+    expect(dx).toBeCloseTo(320, 5);
+  });
+
+  it('preserves the relative offset between every pair of nodes', () => {
+    // Multi-rank fixture: granddad alone above dad, dad in a pair with mom,
+    // 3 kids below. After rescale, the offsets between any two nodes must
+    // scale by the same factor (170/320), so a parent stays vertically
+    // aligned with its child.
+    const nodes = [
+      pn('granddad', 640, 0),
+      pn('mom', 360, 200),
+      pn('dad', 640, 200),
+      pn('k1', 180, 400),
+      pn('k2', 500, 400),
+      pn('k3', 820, 400),
+    ];
+    const out = rescaleSpacingByMode(nodes, 'wide', 'compact');
+    const factor = 170 / 320;
+
+    const at = (id: string) => out.find((n) => n.id === id)!.position.x;
+
+    // Granddad and dad were at the same X — they MUST still be aligned.
+    expect(at('granddad')).toBeCloseTo(at('dad'), 5);
+
+    // Pairwise offsets all scaled by the same factor.
+    const origGranddadDad = 640 - 640;
+    expect(at('granddad') - at('dad')).toBeCloseTo(origGranddadDad * factor, 5);
+
+    const origMomK1 = 360 - 180;
+    expect(at('mom') - at('k1')).toBeCloseTo(origMomK1 * factor, 5);
+
+    const origDadK3 = 640 - 820;
+    expect(at('dad') - at('k3')).toBeCloseTo(origDadK3 * factor, 5);
+  });
+
+  it('keeps single-node ranks aligned with their multi-node neighbors', () => {
+    // Reproduces the screenshot bug: granddad is alone at the top rank
+    // (Y=0). With per-rank tighten + re-center, granddad doesn't move
+    // because his rank has length 1, so he ends up stranded above where
+    // his son USED to be. With rescale, he moves with the rest of the
+    // canvas.
+    const nodes = [
+      pn('granddad', 640, 0),
+      pn('mom', 360, 200),
+      pn('dad', 640, 200),
+    ];
+    const out = rescaleSpacingByMode(nodes, 'wide', 'compact');
+    const at = (id: string) => out.find((n) => n.id === id)!.position.x;
+
+    // Granddad still directly above dad (offset 0).
+    expect(at('granddad') - at('dad')).toBeCloseTo(0, 5);
+  });
+
+  it('leaves Y coordinates unchanged', () => {
+    const nodes = [pn('a', 0, 100), pn('b', 320, 200)];
+    const out = rescaleSpacingByMode(nodes, 'wide', 'compact');
+    expect(out[0].position.y).toBe(100);
+    expect(out[1].position.y).toBe(200);
   });
 });

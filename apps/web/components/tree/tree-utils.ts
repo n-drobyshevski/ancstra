@@ -842,6 +842,57 @@ export function tightenRankSpacing(
   });
 }
 
+/**
+ * Uniformly scales every person-node X around the global centroid by the
+ * ratio of expected sibling strides between modes. Use case: mode switch
+ * needs to preserve every pairwise relative position so a parent stays
+ * vertically aligned with its child, a singleton ancestor (placed via
+ * STEP D in `applyDagreLayout`) stays directly above its descendant, and
+ * any user drag carries through proportionally.
+ *
+ * Why this beats a per-rank tighten/relax pass: per-rank passes anchor at
+ * each rank's own center, so a rank with N nodes shrinks differently than
+ * a rank with M nodes — and a rank with a single node doesn't shrink at
+ * all. The result is cross-rank misalignment (e.g. a paternal grandfather
+ * "stranded" above where his son USED to be). A single global pivot moves
+ * everyone by the same proportional shift.
+ *
+ * Stride ratios for the two adjacency types are slightly different
+ * (compact/wide siblings = 170/320 ≈ 0.531, partner pairs = 144/280 ≈
+ * 0.514), so post-scale partner gaps land within ~9px of ideal. Compose
+ * with `relaxOverlapsByRank` to push apart any pair that scaled too tight
+ * (compact→wide direction); the wide→compact direction leaves pair gaps
+ * ~5px wider than ideal, which is visually imperceptible.
+ *
+ * Pure: returns a new Node[]; does not mutate input.
+ */
+export function rescaleSpacingByMode(
+  nodes: Node[],
+  fromStyle: NodeStyle,
+  toStyle: NodeStyle,
+): Node[] {
+  if (fromStyle === toStyle || nodes.length === 0) return nodes;
+  const personNodes = nodes.filter((n) => n.type === 'person');
+  if (personNodes.length === 0) return nodes;
+
+  const stride = (s: NodeStyle): number =>
+    (s === 'compact' ? COMPACT_NODE_WIDTH : NODE_WIDTH) +
+    (s === 'compact' ? 50 : 80);
+  const factor = stride(toStyle) / stride(fromStyle);
+
+  // Pivot: centroid of all person X positions. Robust to outliers via the
+  // mean (single dragged-far node skews by 1/N which is fine for typical
+  // tree sizes; if this ever becomes a problem switch to median).
+  const xs = personNodes.map((n) => n.position.x);
+  const pivot = xs.reduce((a, b) => a + b, 0) / xs.length;
+
+  return nodes.map((n) => {
+    if (n.type !== 'person') return n;
+    const newX = pivot + (n.position.x - pivot) * factor;
+    return { ...n, position: { x: newX, y: n.position.y } };
+  });
+}
+
 export function applyPositionMap(
   nodes: Node[],
   positions: Record<string, { x: number; y: number }>,

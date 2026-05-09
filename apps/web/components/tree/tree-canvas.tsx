@@ -48,7 +48,7 @@ import {
   applyPositionMap,
   extractPositions,
   relaxOverlapsByRank,
-  tightenRankSpacing,
+  rescaleSpacingByMode,
   validateConnection,
   parseLayoutData,
   serializeLayoutData,
@@ -485,6 +485,10 @@ function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focus
   }, [rawNodes, rawEdges, setNodes, showGaps, effectiveNodeStyle, activeLayoutId, refreshLayouts, prefs.showDates, prefs.showLivingIndicator, prefs.showCitations, genealogicalOrdering]);
 
   const handleNodeStyleChange = useCallback((style: NodeStyle) => {
+    // Capture the current mode BEFORE setNodeStyle commits — rescaling
+    // needs both endpoints of the transition. effectiveNodeStyle accounts
+    // for mobile (which always renders as compact regardless of pref).
+    const prevStyle: NodeStyle = effectiveNodeStyle;
     setNodeStyle(style);
     writeNodeStylePreference(style);
     const autoSpreadEnabled = userPrefs?.treeAutoSpread ?? true;
@@ -504,15 +508,24 @@ function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focus
             }
           : n,
       );
-      // Two passes when treeAutoSpread is on:
-      //   1. relax — push apart on enlarge (compact→wide direction).
-      //   2. tighten — pull together on shrink (wide→compact direction).
-      // Each pass is a no-op in the direction the other handles, so the
-      // composition produces exact width+nodesep / width+partnerGap
-      // spacing per adjacent pair regardless of switch direction.
+      // Two-pass spacing on mode switch:
+      //   1. rescale — uniform scale around the global centroid by the
+      //      ratio of expected sibling strides (170/320 going wide→compact,
+      //      320/170 going compact→wide). Preserves the relative offset
+      //      between every pair of nodes, so a parent stays aligned with
+      //      its child and a singleton grandparent stays above its
+      //      descendant.
+      //   2. relax — pushes apart any post-scale overlaps. Pair stride
+      //      and sibling stride scale at slightly different ratios (the
+      //      pair ratio is ~0.514 vs sibling 0.531), so compact→wide can
+      //      land partner gaps ~9px tighter than the partnerGap minimum;
+      //      relax fixes that. Wide→compact leaves pair gaps ~5px wider
+      //      than ideal which is visually imperceptible — no tighten pass
+      //      needed (a tighten with re-centering would re-introduce the
+      //      cross-rank misalignment we just spent rescale to avoid).
       const next = autoSpreadEnabled
-        ? tightenRankSpacing(
-            relaxOverlapsByRank(restyled, edges, style),
+        ? relaxOverlapsByRank(
+            rescaleSpacingByMode(restyled, prevStyle, style),
             edges,
             style,
           )
@@ -533,7 +546,7 @@ function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focus
       });
     }
     setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 50);
-  }, [setNodes, fitView, edges, activeLayoutId, userPrefs?.treeAutoSpread, prefs.showDates, prefs.showLivingIndicator, prefs.showCitations]);
+  }, [setNodes, fitView, edges, activeLayoutId, userPrefs?.treeAutoSpread, prefs.showDates, prefs.showLivingIndicator, prefs.showCitations, effectiveNodeStyle]);
 
   const handleLoadLayout = useCallback(
     (id: string) => {
