@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import { cacheLife, cacheTag } from 'next/cache';
 import { getTranslations } from 'next-intl/server';
 import { getCentralDb } from '@/lib/db-singleton';
@@ -24,11 +25,11 @@ async function getCachedUsersPage(q: string, offset: number) {
   return listAllUsers(db, { q: q || undefined, offset, limit: PAGE_SIZE });
 }
 
-export default async function AdminUsersPage({
-  searchParams,
-}: {
+interface AdminUsersPageProps {
   searchParams: Promise<{ q?: string; offset?: string }>;
-}) {
+}
+
+async function AdminUsersContent({ searchParams }: AdminUsersPageProps) {
   const sp = await searchParams;
   const q = sp.q?.trim() ?? '';
   const offset = Math.max(0, parseInt(sp.offset ?? '0', 10) || 0);
@@ -65,5 +66,13 @@ export default async function AdminUsersPage({
         total={total}
       />
     </div>
+  );
+}
+
+export default function AdminUsersPage({ searchParams }: AdminUsersPageProps) {
+  return (
+    <Suspense fallback={null}>
+      <AdminUsersContent searchParams={searchParams} />
+    </Suspense>
   );
 }

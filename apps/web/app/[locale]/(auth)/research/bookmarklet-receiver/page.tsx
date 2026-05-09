@@ -1,7 +1,16 @@
+import { Suspense } from 'react';
 import { requirePagePermission } from '@/lib/auth/page-guard';
 import { BookmarkletReceiver } from './receiver-client';
 
-export default async function BookmarkletReceiverPage() {
+async function BookmarkletReceiverGuarded() {
   await requirePagePermission('ai:research');
   return <BookmarkletReceiver />;
+}
+
+export default function BookmarkletReceiverPage() {
+  return (
+    <Suspense fallback={null}>
+      <BookmarkletReceiverGuarded />
+    </Suspense>
+  );
 }

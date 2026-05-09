@@ -1,8 +1,9 @@
+import { Suspense } from 'react';
 import { DataTransferTabs } from '@/components/data-transfer-tabs';
 import { PagePadding } from '@/components/page-padding';
 import { requirePagePermissionAny } from '@/lib/auth/page-guard';
 
-export default async function DataPage() {
+async function DataContent() {
   // Editors hold gedcom:export but not gedcom:import; admins/owners hold both.
   // Viewers hold neither and get redirected with a toast.
   await requirePagePermissionAny(['gedcom:import', 'gedcom:export']);
@@ -13,5 +14,13 @@ export default async function DataPage() {
         <DataTransferTabs />
       </div>
     </PagePadding>
+  );
+}
+
+export default function DataPage() {
+  return (
+    <Suspense fallback={null}>
+      <DataContent />
+    </Suspense>
   );
 }

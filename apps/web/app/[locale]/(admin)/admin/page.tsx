@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { connection } from 'next/server';
 import { cacheLife, cacheTag } from 'next/cache';
 import { getTranslations } from 'next-intl/server';
@@ -26,7 +27,7 @@ async function getCachedRecentActivity() {
   return result.items;
 }
 
-export default async function AdminDashboardPage() {
+async function AdminDashboardContent() {
   // Skip build-time prerender: this page is admin-only and its `'use cache'`
   // aggregations need a real Turso/SQLite connection. CI has no DB at build,
   // so prerender would fail and bake empty data into the cache for first hit.
@@ -50,5 +51,13 @@ export default async function AdminDashboardPage() {
       <DashboardCards counts={counts} />
       <RecentActivityWidget items={recentActivity} />
     </div>
+  );
+}
+
+export default function AdminDashboardPage() {
+  return (
+    <Suspense fallback={null}>
+      <AdminDashboardContent />
+    </Suspense>
   );
 }

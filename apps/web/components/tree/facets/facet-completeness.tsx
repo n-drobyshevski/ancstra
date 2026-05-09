@@ -1,10 +1,12 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { Slider } from '@/components/ui/slider';
 import { FacetBlock } from '@/components/persons/facets/facet-block';
 import { useTreeTableFilters, useTreeFilterUpdate } from '../use-tree-table-filters';
 
 export function FacetCompleteness() {
+  const t = useTranslations('persons.facets.completeness');
   const { filters } = useTreeTableFilters();
   const update = useTreeFilterUpdate();
 
@@ -12,10 +14,10 @@ export function FacetCompleteness() {
   const active = filters.complGte !== null && filters.complGte > 0;
 
   return (
-    <FacetBlock label="Completeness" active={active}>
+    <FacetBlock label={t('label')} active={active}>
       <div className="space-y-2">
         <div className="flex items-center justify-between text-xs text-muted-foreground tabular-nums">
-          <span>Min:</span>
+          <span>{t('minPrefix')}</span>
           <span>{value}%</span>
         </div>
         <Slider
@@ -24,7 +26,7 @@ export function FacetCompleteness() {
           step={5}
           value={[value]}
           onValueChange={([v]) => update({ complGte: v === 0 ? null : v })}
-          aria-label="Minimum completeness"
+          aria-label={t('minAriaLabel')}
         />
       </div>
     </FacetBlock>

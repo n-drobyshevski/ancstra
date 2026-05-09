@@ -13,7 +13,10 @@ import { PersonsSidebarSkeleton } from '@/components/skeletons/persons-sidebar-s
 import { PersonsTableSkeleton } from '@/components/skeletons/persons-table-skeleton';
 import { RoleGate } from '@/components/auth/role-gate';
 
-// Static shell — no top-level awaits. Heading paints instantly; sidebar and
+// Lightweight async shell — only awaits the locale-bound `getTranslations`
+// at the top level. next-intl resolves it from the request scope before the
+// dynamic data scope, which is fine under cacheComponents (verified via PPR
+// analysis: this route prerenders as `◐` Partial Prerender). Sidebar and
 // table stream independently behind their own Suspense boundaries.
 export default async function PersonsPage({
   searchParams,

@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import Link from 'next/link';
 import { eq } from 'drizzle-orm';
 import { ArrowRight } from 'lucide-react';
@@ -8,7 +9,7 @@ import { LivingThresholdSection } from '@/components/settings/living-threshold-s
 import { SettingsMobileHeader } from '@/components/settings/settings-mobile-header';
 import { requirePagePermission } from '@/lib/auth/page-guard';
 
-export default async function PrivacyPage() {
+async function PrivacyContent() {
   // Family-wide privacy controls are owner-only (settings:manage).
   const ctx = await requirePagePermission('settings:manage');
   const db = await getCentralDb();
@@ -43,5 +44,13 @@ export default async function PrivacyPage() {
         <ArrowRight className="size-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
       </Link>
     </div>
+  );
+}
+
+export default function PrivacyPage() {
+  return (
+    <Suspense fallback={null}>
+      <PrivacyContent />
+    </Suspense>
   );
 }

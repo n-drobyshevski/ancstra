@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import { eq } from 'drizzle-orm';
 import { getTranslations } from 'next-intl/server';
 import { centralSchema } from '@ancstra/db';
@@ -12,7 +13,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: t('metadataTitle') };
 }
 
-export default async function EditorDefaultsPage() {
+async function EditorDefaultsContent() {
   // Editor+ tier — anyone who can create persons benefits from setting these.
   const ctx = await requirePagePermission('person:create');
   const db = await getCentralDb();
@@ -46,5 +47,13 @@ export default async function EditorDefaultsPage() {
       </div>
       <EditorDefaultsForm initial={initial} />
     </div>
+  );
+}
+
+export default function EditorDefaultsPage() {
+  return (
+    <Suspense fallback={null}>
+      <EditorDefaultsContent />
+    </Suspense>
   );
 }

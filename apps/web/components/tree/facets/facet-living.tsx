@@ -1,18 +1,16 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { Checkbox } from '@/components/ui/checkbox';
 import { FacetBlock } from '@/components/persons/facets/facet-block';
 import { useTreeTableFilters, useTreeFilterUpdate } from '../use-tree-table-filters';
 import { TREE_LIVING_VALUES } from '@/lib/tree/search-params';
 
-// Tree uses 'living'/'deceased' (vs persons' 'alive'/'deceased') — the labels
-// match what the rest of the tree UI shows ("Hide living", etc.).
-const LIVING_LABELS: Record<typeof TREE_LIVING_VALUES[number], string> = {
-  living: 'Living',
-  deceased: 'Deceased',
-};
-
 export function FacetLiving() {
+  const t = useTranslations('persons.facets.living');
+  // Tree's living keys are 'living'/'deceased' (vs persons' 'alive'/'deceased'),
+  // so values come from the tree namespace while the panel label is shared.
+  const tValues = useTranslations('tree.facets.living.values');
   const { filters } = useTreeTableFilters();
   const update = useTreeFilterUpdate();
   const active = filters.living.length === 1;
@@ -26,7 +24,7 @@ export function FacetLiving() {
   };
 
   return (
-    <FacetBlock label="Living" defaultOpen active={active}>
+    <FacetBlock label={t('label')} defaultOpen active={active}>
       <div className="space-y-1.5">
         {TREE_LIVING_VALUES.map((v) => {
           const id = `tree-living-${v}`;
@@ -34,7 +32,7 @@ export function FacetLiving() {
           return (
             <label key={v} htmlFor={id} className="flex items-center gap-2 text-sm cursor-pointer">
               <Checkbox id={id} checked={checked} onCheckedChange={() => toggle(v)} />
-              <span>{LIVING_LABELS[v]}</span>
+              <span>{tValues(v)}</span>
             </label>
           );
         })}

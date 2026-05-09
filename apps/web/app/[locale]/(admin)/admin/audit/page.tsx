@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { AuditLogTable } from '@/components/admin/audit-log-table';
 import type { Locale } from '@/i18n/routing';
@@ -13,11 +14,11 @@ export async function generateMetadata({
   return { title: `${t('heading')} — Admin` };
 }
 
-export default async function AdminAuditPage({
-  params,
-}: {
+interface AdminAuditPageProps {
   params: Promise<{ locale: Locale }>;
-}) {
+}
+
+async function AdminAuditContent({ params }: AdminAuditPageProps) {
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations('admin.audit.page');
@@ -31,5 +32,13 @@ export default async function AdminAuditPage({
       </div>
       <AuditLogTable />
     </div>
+  );
+}
+
+export default function AdminAuditPage({ params }: AdminAuditPageProps) {
+  return (
+    <Suspense fallback={null}>
+      <AdminAuditContent params={params} />
+    </Suspense>
   );
 }

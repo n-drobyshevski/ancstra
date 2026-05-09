@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { FacetBlock } from '@/components/persons/facets/facet-block';
@@ -22,6 +23,7 @@ export function FacetYearRange({
   defaultOpen = false,
   visualBounds,
 }: FacetYearRangeProps) {
+  const t = useTranslations('persons.facets.yearRange');
   const { filters } = useTreeTableFilters();
   const update = useTreeFilterUpdate();
 
@@ -65,14 +67,14 @@ export function FacetYearRange({
             [toKey]: to === visualBounds.maxYear ? null : to,
           } as Partial<TreeTableFilters>);
         }}
-        aria-label={`${label} year range`}
+        aria-label={t('yearRangeAriaLabel', { label })}
       />
       <div className="flex items-center gap-2 mt-2">
         <Input
           type="number"
           inputMode="numeric"
-          aria-label={`${label} from year`}
-          placeholder="From"
+          aria-label={t('fromYearAriaLabel', { label })}
+          placeholder={t('fromPlaceholder')}
           value={fromText}
           onChange={(e) => setFromText(e.target.value)}
           onBlur={(e) => commitInput('from', e.target.value)}
@@ -83,8 +85,8 @@ export function FacetYearRange({
         <Input
           type="number"
           inputMode="numeric"
-          aria-label={`${label} to year`}
-          placeholder="To"
+          aria-label={t('toYearAriaLabel', { label })}
+          placeholder={t('toPlaceholder')}
           value={toText}
           onChange={(e) => setToText(e.target.value)}
           onBlur={(e) => commitInput('to', e.target.value)}

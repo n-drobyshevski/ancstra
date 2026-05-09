@@ -39,6 +39,14 @@
       "died": "Умер"
     }
   },
+  "facets": {
+    "living": {
+      "values": {
+        "living": "Живые",
+        "deceased": "Умершие"
+      }
+    }
+  },
   "viewMenu": {
     "trigger": "Вид",
     "groups": {

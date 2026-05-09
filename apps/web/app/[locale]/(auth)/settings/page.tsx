@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
@@ -12,7 +13,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: t('title') };
 }
 
-export default async function SettingsPage() {
+async function SettingsDashboardSection() {
   const ctx = await requireAuthContext();
   const tWelcome = await getTranslations('settings.welcome');
   const tCards = await getTranslations('settings.cards');
@@ -72,5 +73,13 @@ export default async function SettingsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SettingsPage() {
+  return (
+    <Suspense fallback={null}>
+      <SettingsDashboardSection />
+    </Suspense>
   );
 }

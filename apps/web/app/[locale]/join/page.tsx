@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { connection } from 'next/server';
 import { getTranslations } from 'next-intl/server';
 import { auth } from '@/auth';
@@ -10,11 +11,13 @@ import Link from 'next/link';
 import { JoinCard } from './join-card';
 import { ErrorCard } from './error-card';
 
-export default async function JoinPage({
-  searchParams,
-}: {
+interface JoinPageProps {
   searchParams: Promise<{ token?: string }>;
-}) {
+}
+
+async function JoinContent({ searchParams }: JoinPageProps) {
+  // Opt the whole route into runtime: token validation + session lookup are
+  // dynamic by definition, no point trying to prerender.
   await connection();
   const { token } = await searchParams;
   const t = await getTranslations('auth.join');
@@ -26,16 +29,13 @@ export default async function JoinPage({
   const session = await auth();
   const userEmail = session?.user?.email || undefined;
 
-  // Validate the token
   const validation = await validateInviteToken(centralDb, token, userEmail);
-
   if (!validation.valid) {
     return <ErrorCard message={validation.reason} />;
   }
 
   const { invitation } = validation;
 
-  // Get family name
   const family = await centralDb
     .select()
     .from(centralSchema.familyRegistry)
@@ -44,7 +44,6 @@ export default async function JoinPage({
 
   const familyName = family?.name || t('fallbackFamilyName');
 
-  // If user is logged in, show the join button
   if (session?.user?.id) {
     return (
       <JoinCard
@@ -55,7 +54,6 @@ export default async function JoinPage({
     );
   }
 
-  // Not logged in — show sign in/up options
   return (
     <div className="flex min-h-screen items-center justify-center bg-background">
       <Card className="w-full max-w-sm">
@@ -83,5 +81,13 @@ export default async function JoinPage({
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function JoinPage({ searchParams }: JoinPageProps) {
+  return (
+    <Suspense fallback={null}>
+      <JoinContent searchParams={searchParams} />
+    </Suspense>
   );
 }

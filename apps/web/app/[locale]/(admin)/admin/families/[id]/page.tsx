@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
@@ -31,11 +32,11 @@ export async function generateMetadata({
   return { title: data ? t('metadataSuffix', { name: data.family.name }) : t('notFound') };
 }
 
-export default async function AdminFamilyDetailPage({
-  params,
-}: {
+interface AdminFamilyDetailPageProps {
   params: Promise<{ id: string }>;
-}) {
+}
+
+async function AdminFamilyDetailContent({ params }: AdminFamilyDetailPageProps) {
   const { id } = await params;
   const db = await getCentralDb();
   if (!(await familyExists(db, id))) notFound();
@@ -54,5 +55,13 @@ export default async function AdminFamilyDetailPage({
       </Button>
       <FamilyDetail data={data} />
     </div>
+  );
+}
+
+export default function AdminFamilyDetailPage({ params }: AdminFamilyDetailPageProps) {
+  return (
+    <Suspense fallback={null}>
+      <AdminFamilyDetailContent params={params} />
+    </Suspense>
   );
 }

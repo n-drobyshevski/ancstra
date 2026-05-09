@@ -15,7 +15,6 @@ import { centralSchema } from '@ancstra/db';
 import {
   getActivityVisibility,
   filterEntriesByVisibility,
-  type ActivityVisibility,
 } from '@/lib/activity-visibility';
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -46,28 +45,50 @@ async function getFamilyMembers(familyId: string): Promise<ActivityFeedMember[]>
   return rows.map((r) => ({ userId: r.userId, name: r.name, email: r.email }));
 }
 
-async function ActivityFeedServer({
-  familyId,
-  visibility,
-}: {
-  familyId: string;
-  visibility: ActivityVisibility;
-}) {
+// Each section reads auth context independently. NextAuth's `auth()` and
+// `headers()` are React-cached per request, so the duplication is effectively
+// free — and it keeps the page sync so cacheComponents can stream the layout
+// without waiting on cookies/headers (Next.js 16 blocking-route diagnostic).
+async function ActivityHeaderSection() {
+  const ctx = await requireAuthContext();
+  return <ActivityPageHeader role={ctx.role} />;
+}
+
+async function ActivityStatBandSection() {
+  const ctx = await requireAuthContext();
+  const visibility = getActivityVisibility(ctx.role);
+  return <ActivityStatBand familyId={ctx.familyId} visibility={visibility} />;
+}
+
+async function ActivityFeedSection() {
+  const ctx = await requireAuthContext();
+  const visibility = getActivityVisibility(ctx.role);
   const [feed, members] = await Promise.all([
-    getCachedActivityFeed(familyId),
-    getFamilyMembers(familyId),
+    getCachedActivityFeed(ctx.familyId),
+    getFamilyMembers(ctx.familyId),
   ]);
   // The cached loader is shared across roles; trim to the visible set before
   // sending to the client so the role-aware stat counts align with the feed.
   const visibleItems = filterEntriesByVisibility(feed.items, visibility);
   return (
     <ActivityFeed
-      familyId={familyId}
+      familyId={ctx.familyId}
       visibility={visibility}
       initialItems={visibleItems}
       initialCursor={feed.nextCursor}
       members={members}
     />
+  );
+}
+
+function HeaderSkeleton() {
+  return (
+    <header className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+      <div className="space-y-2">
+        <Skeleton className="h-7 w-32" />
+        <Skeleton className="h-4 w-72" />
+      </div>
+    </header>
   );
 }
 
@@ -81,21 +102,20 @@ function StatBandSkeleton() {
   );
 }
 
-export default async function ActivityPage() {
-  const ctx = await requireAuthContext();
-  const visibility = getActivityVisibility(ctx.role);
-
+export default function ActivityPage() {
   return (
     <PagePadding>
       <div className="space-y-6">
-        <ActivityPageHeader role={ctx.role} />
+        <Suspense fallback={<HeaderSkeleton />}>
+          <ActivityHeaderSection />
+        </Suspense>
 
         <Suspense fallback={<StatBandSkeleton />}>
-          <ActivityStatBand familyId={ctx.familyId} visibility={visibility} />
+          <ActivityStatBandSection />
         </Suspense>
 
         <Suspense fallback={<ActivityFeedSkeleton />}>
-          <ActivityFeedServer familyId={ctx.familyId} visibility={visibility} />
+          <ActivityFeedSection />
         </Suspense>
       </div>
     </PagePadding>

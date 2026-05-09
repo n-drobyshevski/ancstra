@@ -1,17 +1,14 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { Checkbox } from '@/components/ui/checkbox';
 import { FacetBlock } from '@/components/persons/facets/facet-block';
 import { useTreeTableFilters, useTreeFilterUpdate } from '../use-tree-table-filters';
 import { TREE_SEX_VALUES } from '@/lib/tree/search-params';
 
-const SEX_LABELS: Record<typeof TREE_SEX_VALUES[number], string> = {
-  M: 'Male',
-  F: 'Female',
-  U: 'Unknown',
-};
-
 export function FacetSex() {
+  const t = useTranslations('persons.facets.sex');
+  const tValues = useTranslations('persons.facets.sex.values');
   const { filters } = useTreeTableFilters();
   const update = useTreeFilterUpdate();
   const active = filters.sex.length > 0 && filters.sex.length < 3;
@@ -25,7 +22,7 @@ export function FacetSex() {
   };
 
   return (
-    <FacetBlock label="Sex" active={active}>
+    <FacetBlock label={t('label')} active={active}>
       <div className="space-y-1.5">
         {TREE_SEX_VALUES.map((v) => {
           const id = `tree-sex-${v}`;
@@ -34,7 +31,7 @@ export function FacetSex() {
           return (
             <label key={v} htmlFor={id} className="flex items-center gap-2 text-sm cursor-pointer">
               <Checkbox id={id} checked={checked} onCheckedChange={() => toggle(v)} />
-              <span>{SEX_LABELS[v]}</span>
+              <span>{tValues(v)}</span>
             </label>
           );
         })}

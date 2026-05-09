@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import { cacheLife, cacheTag } from 'next/cache';
 import { getTranslations } from 'next-intl/server';
 import { getCentralDb } from '@/lib/db-singleton';
@@ -23,11 +24,11 @@ async function getCachedFamiliesPage(q: string, offset: number) {
   return listAllFamilies(db, { q: q || undefined, offset, limit: PAGE_SIZE });
 }
 
-export default async function AdminFamiliesPage({
-  searchParams,
-}: {
+interface AdminFamiliesPageProps {
   searchParams: Promise<{ q?: string; offset?: string }>;
-}) {
+}
+
+async function AdminFamiliesContent({ searchParams }: AdminFamiliesPageProps) {
   const sp = await searchParams;
   const q = sp.q?.trim() ?? '';
   const offset = Math.max(0, parseInt(sp.offset ?? '0', 10) || 0);
@@ -63,5 +64,13 @@ export default async function AdminFamiliesPage({
         total={total}
       />
     </div>
+  );
+}
+
+export default function AdminFamiliesPage({ searchParams }: AdminFamiliesPageProps) {
+  return (
+    <Suspense fallback={null}>
+      <AdminFamiliesContent searchParams={searchParams} />
+    </Suspense>
   );
 }

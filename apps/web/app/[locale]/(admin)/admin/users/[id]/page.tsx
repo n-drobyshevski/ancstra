@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
@@ -32,11 +33,11 @@ export async function generateMetadata({
   return { title: data ? t('metadataSuffix', { name: data.user.name }) : t('notFound') };
 }
 
-export default async function AdminUserDetailPage({
-  params,
-}: {
+interface AdminUserDetailPageProps {
   params: Promise<{ id: string }>;
-}) {
+}
+
+async function AdminUserDetailContent({ params }: AdminUserDetailPageProps) {
   const { id } = await params;
   const viewer = await requirePlatformAdmin();
   const db = await getCentralDb();
@@ -56,5 +57,13 @@ export default async function AdminUserDetailPage({
       </Button>
       <UserDetail data={data} viewerUserId={viewer.userId} />
     </div>
+  );
+}
+
+export default function AdminUserDetailPage({ params }: AdminUserDetailPageProps) {
+  return (
+    <Suspense fallback={null}>
+      <AdminUserDetailContent params={params} />
+    </Suspense>
   );
 }

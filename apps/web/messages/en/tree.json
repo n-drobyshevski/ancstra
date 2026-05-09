@@ -39,6 +39,14 @@
       "died": "Died"
     }
   },
+  "facets": {
+    "living": {
+      "values": {
+        "living": "Living",
+        "deceased": "Deceased"
+      }
+    }
+  },
   "viewMenu": {
     "trigger": "View",
     "groups": {

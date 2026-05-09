@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { NextIntlClientProvider, hasLocale } from 'next-intl';
-import { getMessages, setRequestLocale } from 'next-intl/server';
+import { setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import "../globals.css";
 import { cn } from "@/lib/utils";
@@ -14,6 +14,7 @@ import { WebVitalsReporter } from '../web-vitals';
 import { NuqsAdapter } from 'nuqs/adapters/next/app';
 import { TRPCReactProvider } from '@/lib/trpc/provider';
 import { routing } from '@/i18n/routing';
+import { getCachedMessages } from '@/i18n/cached-messages';
 
 const inter = Inter({
   subsets: ["latin", "cyrillic"],
@@ -54,7 +55,12 @@ export default async function LocaleLayout({
   // the entire layout on it. Instead, components that branch on
   // `useSession()` content gate themselves with `useIsHydrated` so SSR and
   // first client render both produce the fallback (matching tree shape).
-  const messages = await getMessages();
+  //
+  // For the same reason we use getCachedMessages(locale) rather than
+  // next-intl's getMessages(): the latter reads the request locale (dynamic
+  // input) and trips the same blocking-route warning. Our wrapper is
+  // 'use cache' + cacheLife('max'), so it prerenders per locale.
+  const messages = await getCachedMessages(locale);
 
   return (
     <html lang={locale} suppressHydrationWarning className={cn("h-full", "antialiased", "font-sans", inter.variable)}>
