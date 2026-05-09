@@ -6,13 +6,18 @@
     "heading": "Ваше семейное древо пусто",
     "tagline": "Начните с добавления первого члена семьи или импорта существующего файла GEDCOM.",
     "addFirstPerson": "Добавить первого человека",
-    "importGedcom": "Импортировать GEDCOM"
+    "importGedcom": "Импортировать GEDCOM",
+    "viewer": {
+      "heading": "Пока нечего смотреть",
+      "tagline": "В этой семье ещё никого не добавили. Загляните позже — ваши родственники могут добавить записи."
+    }
   },
   "quickActions": {
     "addPerson": "Добавить человека",
     "importData": "Импортировать данные",
     "aiResearch": "ИИ-исследование",
-    "viewTree": "Посмотреть древо"
+    "viewTree": "Посмотреть древо",
+    "inviteMember": "Пригласить"
   },
   "recentActivity": {
     "title": "Недавняя активность",
@@ -23,7 +28,8 @@
     "peopleInTree": "Людей в древе",
     "families": "Семьи",
     "dataQuality": "Качество данных",
-    "last30Days": "Последние 30 дней"
+    "last30Days": "Последние 30 дней",
+    "pendingContributions": "На проверку"
   },
   "recentPersons": {
     "title": "Недавние люди",
@@ -54,5 +60,110 @@
     "importGedcom": "Импортировать файл GEDCOM",
     "addPerson": "Добавить человека",
     "aiResearch": "ИИ-исследование"
+  },
+  "familyHealth": {
+    "eyebrow": "СЕМЬЯ",
+    "heading": "Ваша семья — обзор",
+    "tagline": "Участники, приглашения и управление — в одном месте.",
+    "manage": "Управление",
+    "manageAriaLabel": "Управление участниками семьи и настройками",
+    "members": "Участники",
+    "pendingInvites": "Ожидают ответа",
+    "reviewInvites": "Просмотреть приглашения",
+    "noInvites": "Нет ожидающих приглашений.",
+    "governance": "Управление",
+    "governanceTagline": "Пригласите новых участников или измените настройки семьи.",
+    "inviteMember": "Пригласить",
+    "familySettings": "Настройки семьи"
+  },
+  "moderation": {
+    "eyebrow": "МОДЕРАЦИЯ",
+    "heading": "{count, plural, =1 {1 запись ожидает проверки} few {# записи ожидают проверки} many {# записей ожидают проверки} other {# записей ожидают проверки}}",
+    "tagline": "Одобряйте, запрашивайте правки или отклоняйте. Все решения логируются.",
+    "review": "Проверить",
+    "reviewAriaLabel": "Перейти к очереди вкладов",
+    "pending": "Ожидают",
+    "pendingFootnote": "Ждут вашего решения.",
+    "oldest": "Самая старая",
+    "oldestToday": "Сегодня",
+    "oldestDays": "{count, plural, =1 {1 день} few {# дня} many {# дней} other {# дня}}",
+    "oldestNormalFootnote": "Очередь свежая.",
+    "oldestWarnFootnote": "Некоторые элементы устаревают.",
+    "oldestHighFootnote": "Требуется внимание — элементы ждут более недели.",
+    "breakdown": "По типу",
+    "noBreakdown": "Нет элементов.",
+    "emptyHeading": "Пусто",
+    "emptyTagline": "Нет вкладов на проверку.",
+    "entity": {
+      "person": "Люди",
+      "family": "Семьи",
+      "event": "События",
+      "source": "Источники",
+      "media": "Медиа"
+    }
+  },
+  "researchFocus": {
+    "eyebrow": "ИССЛЕДОВАНИЯ",
+    "heading": "Продолжите с того места, где остановились",
+    "tagline": "Ваша последняя сессия, ИИ-подсказки и статус вкладов — в одном месте.",
+    "openResearch": "Открыть исследования",
+    "openResearchAriaLabel": "Открыть рабочее пространство исследований",
+    "continue": "Продолжить",
+    "lastUpdated": "Обновлено {relative}",
+    "noSession": "Нет активной сессии.",
+    "startNewSession": "Начать новую",
+    "aiSuggestions": "ИИ-подсказки",
+    "reviewSuggestions": "Просмотреть",
+    "noSuggestions": "Новых подсказок нет.",
+    "myContributions": "Мои вклады",
+    "noContributions": "Пока ничего не отправлено.",
+    "statusBadges": {
+      "pending": "{count} в ожидании",
+      "approved": "{count} одобрено",
+      "revisionRequested": "{count} на доработку",
+      "rejected": "{count} отклонено"
+    }
+  },
+  "factsheetsRecent": {
+    "title": "Недавние факт-листы",
+    "viewAll": "Все",
+    "status": {
+      "draft": "Черновик",
+      "ready": "Готов",
+      "promoted": "Принят",
+      "merged": "Объединён",
+      "dismissed": "Отклонён"
+    }
+  },
+  "explore": {
+    "eyebrow": "ИЗУЧАЙТЕ",
+    "heading": "Знакомьтесь со своей семьёй",
+    "tagline": "Изучайте древо, читайте биографии и следите за происходящим.",
+    "openTree": "Открыть древо",
+    "openTreeAriaLabel": "Открыть семейное древо",
+    "exploreTree": "Семейное древо",
+    "exploreTreeAction": "Посмотреть древо",
+    "exploreTreeTagline": "Узнайте, как все связаны.",
+    "browsePeople": "Люди",
+    "browsePeopleAction": "Просмотреть профили",
+    "browsePeopleTagline": "Ищите, фильтруйте и читайте биографии.",
+    "mostRecent": "Самая недавняя запись",
+    "viewActivity": "Активность",
+    "viewActivityAction": "Что происходит",
+    "viewActivityTagline": "Последние обновления от ваших родственников.",
+    "birthPrefix": "р. {date}"
+  },
+  "featuredAncestor": {
+    "title": "Предок дня",
+    "viewProfile": "Открыть профиль",
+    "bornIn": "Родился(-ась) в {place}"
+  },
+  "whatsNew": {
+    "title": "Что нового",
+    "viewAll": "Все",
+    "window": "За последние {days} дней",
+    "personsAdded": "{count, plural, =1 {Добавлен 1 человек} few {Добавлено # человека} many {Добавлено # человек} other {Добавлено # человек}}",
+    "eventsAdded": "{count, plural, =1 {Записано 1 событие} few {Записано # события} many {Записано # событий} other {Записано # событий}}",
+    "sourcesAdded": "{count, plural, =1 {Указан 1 источник} few {Указано # источника} many {Указано # источников} other {Указано # источников}}"
   }
 }

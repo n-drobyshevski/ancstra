@@ -463,6 +463,11 @@ body {
 ::view-transition-group(sidebar-active) {
   animation-duration: 150ms;
 }
+/* Override: dashboard hero — slightly slower so the role morph reads clearly
+   when a lens flip swaps the variant card in place. */
+::view-transition-group(dashboard-hero) {
+  animation-duration: 280ms;
+}
 
 /* Respect reduced motion — disable all view transitions */
 @media (prefers-reduced-motion: reduce) {

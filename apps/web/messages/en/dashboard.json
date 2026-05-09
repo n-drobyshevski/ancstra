@@ -6,13 +6,18 @@
     "heading": "Your family tree is empty",
     "tagline": "Get started by adding your first family member or importing an existing GEDCOM file.",
     "addFirstPerson": "Add First Person",
-    "importGedcom": "Import GEDCOM"
+    "importGedcom": "Import GEDCOM",
+    "viewer": {
+      "heading": "Nothing to explore yet",
+      "tagline": "This family hasn't added anyone yet. Check back soon — your relatives may add records here."
+    }
   },
   "quickActions": {
     "addPerson": "Add Person",
     "importData": "Import Data",
     "aiResearch": "AI Research",
-    "viewTree": "View Tree"
+    "viewTree": "View Tree",
+    "inviteMember": "Invite Member"
   },
   "recentActivity": {
     "title": "Recent Activity",
@@ -23,7 +28,8 @@
     "peopleInTree": "People in tree",
     "families": "Families",
     "dataQuality": "Data quality",
-    "last30Days": "Last 30 days"
+    "last30Days": "Last 30 days",
+    "pendingContributions": "Pending review"
   },
   "recentPersons": {
     "title": "Recent Persons",
@@ -54,5 +60,110 @@
     "importGedcom": "Import a GEDCOM file",
     "addPerson": "Add a person",
     "aiResearch": "AI Research"
+  },
+  "familyHealth": {
+    "eyebrow": "FAMILY HEALTH",
+    "heading": "Your family at a glance",
+    "tagline": "Members, invitations, and governance — all in one place.",
+    "manage": "Manage",
+    "manageAriaLabel": "Manage family members and settings",
+    "members": "Members",
+    "pendingInvites": "Pending invites",
+    "reviewInvites": "Review invitations",
+    "noInvites": "No pending invitations.",
+    "governance": "Governance",
+    "governanceTagline": "Invite new members or adjust family settings.",
+    "inviteMember": "Invite member",
+    "familySettings": "Family settings"
+  },
+  "moderation": {
+    "eyebrow": "MODERATION",
+    "heading": "{count, plural, =1 {1 contribution awaiting review} other {# contributions awaiting review}}",
+    "tagline": "Approve, request changes, or reject. Reviews are logged.",
+    "review": "Review",
+    "reviewAriaLabel": "Jump to the contribution queue",
+    "pending": "Pending",
+    "pendingFootnote": "Awaiting your decision.",
+    "oldest": "Oldest",
+    "oldestToday": "Today",
+    "oldestDays": "{count, plural, =1 {1 day} other {# days}}",
+    "oldestNormalFootnote": "Queue is fresh.",
+    "oldestWarnFootnote": "Some items are getting stale.",
+    "oldestHighFootnote": "Action recommended — items waiting over a week.",
+    "breakdown": "By type",
+    "noBreakdown": "No items.",
+    "emptyHeading": "Inbox zero",
+    "emptyTagline": "No pending contributions to review.",
+    "entity": {
+      "person": "People",
+      "family": "Families",
+      "event": "Events",
+      "source": "Sources",
+      "media": "Media"
+    }
+  },
+  "researchFocus": {
+    "eyebrow": "RESEARCH FOCUS",
+    "heading": "Pick up where you left off",
+    "tagline": "Your last session, AI leads, and contribution status — at a glance.",
+    "openResearch": "Open Research",
+    "openResearchAriaLabel": "Open the Research workspace",
+    "continue": "Continue",
+    "lastUpdated": "Last updated {relative}",
+    "noSession": "No research session yet.",
+    "startNewSession": "Start one",
+    "aiSuggestions": "AI suggestions",
+    "reviewSuggestions": "Review suggestions",
+    "noSuggestions": "No new suggestions.",
+    "myContributions": "My contributions",
+    "noContributions": "Nothing submitted yet.",
+    "statusBadges": {
+      "pending": "{count} pending",
+      "approved": "{count} approved",
+      "revisionRequested": "{count} revisions",
+      "rejected": "{count} rejected"
+    }
+  },
+  "factsheetsRecent": {
+    "title": "Recent factsheets",
+    "viewAll": "View all",
+    "status": {
+      "draft": "Draft",
+      "ready": "Ready",
+      "promoted": "Promoted",
+      "merged": "Merged",
+      "dismissed": "Dismissed"
+    }
+  },
+  "explore": {
+    "eyebrow": "EXPLORE",
+    "heading": "Get to know your family",
+    "tagline": "Browse the tree, meet the people, and follow what's happening.",
+    "openTree": "Open Tree",
+    "openTreeAriaLabel": "Open the family tree",
+    "exploreTree": "Family tree",
+    "exploreTreeAction": "View the tree",
+    "exploreTreeTagline": "See how everyone is connected.",
+    "browsePeople": "People",
+    "browsePeopleAction": "Browse profiles",
+    "browsePeopleTagline": "Search, filter, and read full biographies.",
+    "mostRecent": "Most recent addition",
+    "viewActivity": "Activity",
+    "viewActivityAction": "What's happening",
+    "viewActivityTagline": "Recent updates from your relatives.",
+    "birthPrefix": "b. {date}"
+  },
+  "featuredAncestor": {
+    "title": "Featured ancestor",
+    "viewProfile": "View profile",
+    "bornIn": "Born in {place}"
+  },
+  "whatsNew": {
+    "title": "What's new",
+    "viewAll": "View all",
+    "window": "In the last {days} days",
+    "personsAdded": "{count, plural, =1 {1 new person added} other {# new people added}}",
+    "eventsAdded": "{count, plural, =1 {1 new event recorded} other {# new events recorded}}",
+    "sourcesAdded": "{count, plural, =1 {1 new source cited} other {# new sources cited}}"
   }
 }
