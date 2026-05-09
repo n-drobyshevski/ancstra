@@ -1,10 +1,14 @@
 import { Suspense } from 'react';
 import { CreateFamilyWizard } from './wizard';
+import { PublicLocaleSwitcher } from '@/components/auth/public-locale-switcher';
 
 export default function CreateFamilyPage() {
   return (
-    <Suspense fallback={null}>
-      <CreateFamilyWizard />
-    </Suspense>
+    <>
+      <PublicLocaleSwitcher />
+      <Suspense fallback={null}>
+        <CreateFamilyWizard />
+      </Suspense>
+    </>
   );
 }

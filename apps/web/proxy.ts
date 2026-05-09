@@ -77,6 +77,45 @@ async function fetchMembershipsVersion(userId: string): Promise<number> {
   return row?.v ?? 0;
 }
 
+/**
+ * Re-fetch a user's active memberships directly from the central DB. Used as
+ * a recovery path when the JWT is stale: useSession().update() is unreliable
+ * in next-auth v5 (the JWT callback's shouldRefresh check `!token.memberships`
+ * evaluates to false for an empty array, so memberships are never re-fetched
+ * on update). Without this, a freshly-signed-up user who creates their first
+ * family is bounced back to /create-family because the JWT still claims
+ * memberships=[] even though the DB has the new membership.
+ *
+ * Cost: one additional Turso roundtrip per request when the JWT is stale.
+ * Staleness is rare (it only happens immediately after a membership change),
+ * so amortized cost is near-zero.
+ */
+async function fetchUserMemberships(userId: string): Promise<{
+  familyId: string;
+  role: string;
+  dbFilename: string;
+}[]> {
+  const db = await getCentralDb();
+  return await db
+    .select({
+      familyId: centralSchema.familyMembers.familyId,
+      role: centralSchema.familyMembers.role,
+      dbFilename: centralSchema.familyRegistry.dbFilename,
+    })
+    .from(centralSchema.familyMembers)
+    .innerJoin(
+      centralSchema.familyRegistry,
+      eq(centralSchema.familyMembers.familyId, centralSchema.familyRegistry.id),
+    )
+    .where(
+      and(
+        eq(centralSchema.familyMembers.userId, userId),
+        eq(centralSchema.familyMembers.isActive, 1),
+      ),
+    )
+    .all();
+}
+
 export const proxy = auth(async (request) => {
   const pathname = request.nextUrl.pathname;
   const session = request.auth;
@@ -153,7 +192,20 @@ export const proxy = auth(async (request) => {
     return response;
   }
 
-  const memberships = session.user.memberships;
+  // When the JWT is stale, the cached `memberships` may not reflect a
+  // recently-joined or recently-created family. Pulling fresh memberships
+  // from the DB here lets the user proceed even though their JWT cookie
+  // hasn't been re-encoded yet (the JWT_REFRESH_COOKIE set later in the
+  // pipeline takes care of the eventual refresh).
+  let memberships = session.user.memberships;
+  if (staleJwtDetected) {
+    try {
+      const fresh = await fetchUserMemberships(session.user.id);
+      memberships = fresh as typeof memberships;
+    } catch (err) {
+      console.warn('[PROXY] live memberships fetch failed, falling back to JWT cache', err);
+    }
+  }
   const familyParam = request.nextUrl.searchParams.get('family');
   const familyCookie = request.cookies.get('active-family')?.value;
   const requestedFamilyId = familyParam || familyCookie || '';

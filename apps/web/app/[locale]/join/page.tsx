@@ -10,6 +10,7 @@ import { JoinCard } from './join-card';
 import { ErrorCard } from './error-card';
 import { JoinSignup } from './join-signup';
 import { SwitchAccountCard } from './switch-account-card';
+import { PublicLocaleSwitcher } from '@/components/auth/public-locale-switcher';
 
 interface JoinPageProps {
   searchParams: Promise<{ token?: string; auto?: string }>;
@@ -101,8 +102,11 @@ async function JoinContent({ searchParams }: JoinPageProps) {
 
 export default function JoinPage({ searchParams }: JoinPageProps) {
   return (
-    <Suspense fallback={null}>
-      <JoinContent searchParams={searchParams} />
-    </Suspense>
+    <>
+      <PublicLocaleSwitcher />
+      <Suspense fallback={null}>
+        <JoinContent searchParams={searchParams} />
+      </Suspense>
+    </>
   );
 }

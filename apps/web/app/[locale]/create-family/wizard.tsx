@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -49,7 +48,6 @@ function splitName(full: string): { given: string; surname: string } {
 export function CreateFamilyWizard() {
   const t = useTranslations('auth.createFamily');
   const { data: session, status: sessionStatus, update: updateSession } = useSession();
-  const router = useRouter();
   const createFamily = trpc.family.create.useMutation();
 
   const [step, setStep] = useState<Step>({ kind: 'name' });
@@ -69,11 +67,24 @@ export function CreateFamilyWizard() {
   }
 
   async function landOnDashboard(familyId: string) {
-    // Refresh JWT so the proxy sees the new membership on the navigation.
-    // Without this, /dashboard?family=X redirects back to /create-family
-    // because the stale JWT still says memberships=[].
-    await updateSession();
-    router.push(`/dashboard?family=${familyId}`);
+    // Two-step recovery from the post-create stale JWT:
+    //   1. Trigger a session refresh so next-auth re-runs the JWT callback
+    //      and (ideally) re-encodes the cookie with the new membership.
+    //   2. Hard-navigate. A full page load lets the proxy's stale-JWT path
+    //      pull live memberships from the DB — works even if step 1 was a
+    //      no-op, which can happen in next-auth v5 because the empty-array
+    //      `!token.memberships` short-circuit means trigger='update' is the
+    //      only branch that refreshes, and useSession.update()'s actual
+    //      payload semantics shifted between betas.
+    //   `router.push` retains the React tree, which keeps the wizard's
+    //   client-side session view stale; window.location forces a clean
+    //   server-rendered dashboard with the fresh data.
+    try {
+      await updateSession();
+    } catch {
+      /* update() is best-effort — the proxy path covers us either way. */
+    }
+    window.location.href = `/dashboard?family=${familyId}`;
   }
 
   // ── Step 1: name ────────────────────────────────────────────────────────
@@ -245,7 +256,10 @@ export function CreateFamilyWizard() {
           <p className="text-sm text-muted-foreground">{t('stepGedcom.tagline')}</p>
         </CardHeader>
         <CardContent className="space-y-4">
-          <GedcomImport redirectAfterImport={`/dashboard?family=${step.familyId}`} />
+          <GedcomImport
+            redirectAfterImport={`/dashboard?family=${step.familyId}`}
+            hardRedirect
+          />
           <Button
             variant="ghost"
             className="w-full"

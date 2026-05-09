@@ -31,9 +31,20 @@ interface GedcomImportProps {
    * created family lands on its own dashboard rather than the global tree view.
    */
   redirectAfterImport?: string;
+  /**
+   * If true, finish the import via a full page navigation (window.location)
+   * instead of router.push. The onboarding wizard sets this so the proxy
+   * can re-resolve memberships server-side after a fresh family.create —
+   * router.push retains the stale client-side session, leaving role-gated
+   * UI broken on the destination.
+   */
+  hardRedirect?: boolean;
 }
 
-export function GedcomImport({ redirectAfterImport = '/tree' }: GedcomImportProps = {}) {
+export function GedcomImport({
+  redirectAfterImport = '/tree',
+  hardRedirect = false,
+}: GedcomImportProps = {}) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -118,7 +129,11 @@ export function GedcomImport({ redirectAfterImport = '/tree' }: GedcomImportProp
       toast.success(
         `Imported ${result.imported.persons} persons, ${result.imported.families} families, ${result.imported.events} events`
       );
-      router.push(redirectAfterImport);
+      if (hardRedirect) {
+        window.location.href = redirectAfterImport;
+      } else {
+        router.push(redirectAfterImport);
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Import failed');
       setStep('preview');

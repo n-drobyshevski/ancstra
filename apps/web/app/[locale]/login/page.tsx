@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { OAuthButtons } from '@/components/auth/oauth-buttons';
+import { PublicLocaleSwitcher } from '@/components/auth/public-locale-switcher';
 import { safeCallbackPath } from '@/lib/auth/safe-callback-url';
 
 function LoginForm() {
@@ -43,6 +44,7 @@ function LoginForm() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background">
+      <PublicLocaleSwitcher />
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-semibold">{t('title')}</CardTitle>
