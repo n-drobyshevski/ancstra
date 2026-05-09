@@ -11,6 +11,7 @@ interface Prefs {
   notifyEmail: boolean;
   notifyActivity: boolean;
   treeAutoSpread: boolean;
+  treeGenealogicalOrdering: boolean;
 }
 
 const DEFAULTS: Prefs = {
@@ -20,6 +21,7 @@ const DEFAULTS: Prefs = {
   notifyEmail: true,
   notifyActivity: true,
   treeAutoSpread: true,
+  treeGenealogicalOrdering: true,
 };
 
 const preferencesPatchSchema = z.object({
@@ -29,6 +31,7 @@ const preferencesPatchSchema = z.object({
   notifyEmail: z.boolean().optional(),
   notifyActivity: z.boolean().optional(),
   treeAutoSpread: z.boolean().optional(),
+  treeGenealogicalOrdering: z.boolean().optional(),
 });
 
 const profilePatchSchema = z.object({
@@ -47,6 +50,7 @@ function rowToPrefs(
     notifyEmail: row.notifyEmail === 1,
     notifyActivity: row.notifyActivity === 1,
     treeAutoSpread: row.treeAutoSpread === 1,
+    treeGenealogicalOrdering: row.treeGenealogicalOrdering === 1,
   };
 }
 
@@ -75,6 +79,9 @@ export const userPreferencesRouter = createTRPCRouter({
       if (input.notifyEmail !== undefined) setClause.notifyEmail = input.notifyEmail ? 1 : 0;
       if (input.notifyActivity !== undefined) setClause.notifyActivity = input.notifyActivity ? 1 : 0;
       if (input.treeAutoSpread !== undefined) setClause.treeAutoSpread = input.treeAutoSpread ? 1 : 0;
+      if (input.treeGenealogicalOrdering !== undefined) {
+        setClause.treeGenealogicalOrdering = input.treeGenealogicalOrdering ? 1 : 0;
+      }
 
       // Upsert: insert with provided values + defaults; on conflict, update only
       // the fields the caller passed.
@@ -88,6 +95,8 @@ export const userPreferencesRouter = createTRPCRouter({
           notifyEmail: input.notifyEmail === undefined ? 1 : input.notifyEmail ? 1 : 0,
           notifyActivity: input.notifyActivity === undefined ? 1 : input.notifyActivity ? 1 : 0,
           treeAutoSpread: input.treeAutoSpread === undefined ? 1 : input.treeAutoSpread ? 1 : 0,
+          treeGenealogicalOrdering:
+            input.treeGenealogicalOrdering === undefined ? 1 : input.treeGenealogicalOrdering ? 1 : 0,
           updatedAt: now,
         })
         .onConflictDoUpdate({

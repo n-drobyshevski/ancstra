@@ -329,6 +329,7 @@ export async function ensureCentralSchema(db: CentralDatabase, dbKey?: string): 
     'experimental_enabled INTEGER NOT NULL DEFAULT 0',
     "experimental_features TEXT NOT NULL DEFAULT '{}'",
     'tree_auto_spread INTEGER NOT NULL DEFAULT 1',
+    'tree_genealogical_ordering INTEGER NOT NULL DEFAULT 1',
   ]) {
     try {
       await db.run(sql.raw(`ALTER TABLE user_preferences ADD COLUMN ${col}`));

@@ -22,6 +22,18 @@ const COMPACT_PARTNER_GAP = 24;
 
 export type NodeStyle = 'wide' | 'compact';
 
+/** Toggleable layout behaviors. Defaults match the user-preferences DB
+ * defaults: genealogical ordering ON. Off restores legacy insertion-order
+ * behavior; the existing `orderByMotherLeft` partner-pair swap still runs
+ * unconditionally because it's a single-pair guarantee, not a layout policy. */
+export interface LayoutOpts {
+  genealogicalOrdering?: boolean;
+}
+
+const DEFAULT_LAYOUT_OPTS: Required<LayoutOpts> = {
+  genealogicalOrdering: true,
+};
+
 export interface PersonNodeData extends PersonListItem {
   label: string;
   qualityScore?: number;
@@ -36,11 +48,50 @@ export interface PersonNodeData extends PersonListItem {
   [key: string]: unknown;
 }
 
-export function treeDataToFlow(data: TreeData): {
+/** Extract a numeric year-month-day key from a (possibly fuzzy) ISO date string.
+ * Returns Infinity for null / unparseable values so undated rows sort to the end.
+ * Strict ISO ("1880-03-12", "1880") parses; "about 1880" falls back to first
+ * 4-digit year occurrence. */
+function parseYearForSort(birthDate: string | null | undefined): number {
+  if (!birthDate) return Number.POSITIVE_INFINITY;
+  const t = Date.parse(birthDate);
+  if (!Number.isNaN(t)) return t;
+  const m = birthDate.match(/(\d{4})/);
+  if (m) {
+    // Treat "about 1880" as Jan 1 1880 for ordering purposes only.
+    const yr = Number.parseInt(m[1], 10);
+    return Date.UTC(yr, 0, 1);
+  }
+  return Number.POSITIVE_INFINITY;
+}
+
+/** Compare two child-link entries for stable left-to-right sibling order:
+ * birthDate asc → childOrder asc → original array index. */
+function compareChildLinks(
+  a: { birthKey: number; childOrder: number; idx: number },
+  b: { birthKey: number; childOrder: number; idx: number },
+): number {
+  if (a.birthKey !== b.birthKey) return a.birthKey - b.birthKey;
+  if (a.childOrder !== b.childOrder) return a.childOrder - b.childOrder;
+  return a.idx - b.idx;
+}
+
+/** F before M before U. Stable for identical sex. */
+function sexRank(sex: 'M' | 'F' | 'U' | undefined): number {
+  if (sex === 'F') return 0;
+  if (sex === 'M') return 2;
+  return 1;
+}
+
+export function treeDataToFlow(
+  data: TreeData,
+  opts?: LayoutOpts,
+): {
   nodes: Node[];
   edges: Edge[];
 } {
   const { persons, families, childLinks } = data;
+  const { genealogicalOrdering } = { ...DEFAULT_LAYOUT_OPTS, ...opts };
   const personMap = new Map(persons.map((p) => [p.id, p]));
 
   const nodes: Node[] = persons.map((p) => ({
@@ -58,11 +109,21 @@ export function treeDataToFlow(data: TreeData): {
   // Partner edges (horizontal between spouses)
   for (const fam of families) {
     if (fam.partner1Id && fam.partner2Id) {
+      let source = fam.partner1Id;
+      let target = fam.partner2Id;
+      if (genealogicalOrdering) {
+        const p1 = personMap.get(fam.partner1Id);
+        const p2 = personMap.get(fam.partner2Id);
+        if (p1 && p2 && sexRank(p2.sex) < sexRank(p1.sex)) {
+          source = fam.partner2Id;
+          target = fam.partner1Id;
+        }
+      }
       edges.push({
         id: `partner-${fam.id}`,
         type: 'partner',
-        source: fam.partner1Id,
-        target: fam.partner2Id,
+        source,
+        target,
         sourceHandle: 'right',
         targetHandle: 'left',
         data: { familyId: fam.id },
@@ -70,48 +131,100 @@ export function treeDataToFlow(data: TreeData): {
     }
   }
 
-  // Parent-child edges
-  for (const cl of childLinks) {
+  // Parent-child edges. With genealogical ordering on: group by family, sort
+  // siblings eldest-first, and emit mother→child before father→child.
+  const orderedLinks = genealogicalOrdering
+    ? sortChildLinksForEmission(childLinks, personMap)
+    : childLinks;
+
+  for (const cl of orderedLinks) {
     const family = families.find((f) => f.id === cl.familyId);
     if (!family) continue;
 
-    if (
-      family.partner1Id &&
-      personMap.has(family.partner1Id) &&
-      personMap.has(cl.personId)
-    ) {
-      edges.push({
-        id: `pc-${family.partner1Id}-${cl.personId}`,
-        type: 'parentChild',
-        source: family.partner1Id,
-        target: cl.personId,
-        data: {
-          validationStatus: cl.validationStatus,
-          familyId: cl.familyId,
-        },
-      });
+    const p1 = family.partner1Id;
+    const p2 = family.partner2Id;
+    let parentIds: (string | null | undefined)[] = [p1, p2];
+
+    if (genealogicalOrdering && p1 && p2) {
+      // Mother-edge first → seeds Dagre's barycenter toward mother-left.
+      const persons1 = personMap.get(p1);
+      const persons2 = personMap.get(p2);
+      if (persons1 && persons2 && sexRank(persons2.sex) < sexRank(persons1.sex)) {
+        parentIds = [p2, p1];
+      }
     }
 
-    if (
-      family.partner2Id &&
-      !family.partner1Id &&
-      personMap.has(family.partner2Id) &&
-      personMap.has(cl.personId)
-    ) {
-      edges.push({
-        id: `pc-${family.partner2Id}-${cl.personId}`,
-        type: 'parentChild',
-        source: family.partner2Id,
-        target: cl.personId,
-        data: {
-          validationStatus: cl.validationStatus,
-          familyId: cl.familyId,
-        },
-      });
+    // Legacy semantics: when both partners exist, the canonical edge is from
+    // partner1 only — partner-pair tightening collapses the pair to share the
+    // child position. When only partner2 exists, emit from partner2.
+    // We preserve that behavior here: only emit ONE parent→child edge per
+    // child unless this is a single-parent family.
+    const hasPartner1 = !!p1 && personMap.has(p1);
+    const hasPartner2 = !!p2 && personMap.has(p2);
+    const childExists = personMap.has(cl.personId);
+    if (!childExists) continue;
+
+    let primaryParent: string | undefined;
+    if (genealogicalOrdering && hasPartner1 && hasPartner2) {
+      primaryParent = parentIds[0] as string;
+    } else if (hasPartner1) {
+      primaryParent = p1!;
+    } else if (hasPartner2) {
+      primaryParent = p2!;
     }
+    if (!primaryParent) continue;
+
+    edges.push({
+      id: `pc-${primaryParent}-${cl.personId}`,
+      type: 'parentChild',
+      source: primaryParent,
+      target: cl.personId,
+      data: {
+        validationStatus: cl.validationStatus,
+        familyId: cl.familyId,
+      },
+    });
   }
 
   return { nodes, edges };
+}
+
+/** Stable global re-order of childLinks: group by familyId, sort each group
+ * by birth date ASC (then childOrder, then original idx), preserve family
+ * encounter order across groups. */
+function sortChildLinksForEmission(
+  childLinks: TreeData['childLinks'],
+  personMap: Map<string, PersonListItem>,
+): TreeData['childLinks'] {
+  type Entry = {
+    cl: TreeData['childLinks'][number];
+    sortKey: { birthKey: number; childOrder: number; idx: number };
+  };
+  const groups = new Map<string, Entry[]>();
+  const familyOrder: string[] = [];
+  childLinks.forEach((cl, idx) => {
+    if (!groups.has(cl.familyId)) {
+      groups.set(cl.familyId, []);
+      familyOrder.push(cl.familyId);
+    }
+    const person = personMap.get(cl.personId);
+    groups.get(cl.familyId)!.push({
+      cl,
+      sortKey: {
+        birthKey: parseYearForSort(person?.birthDate),
+        childOrder: cl.childOrder ?? Number.POSITIVE_INFINITY,
+        idx,
+      },
+    });
+  });
+
+  const out: TreeData['childLinks'] = [];
+  for (const famId of familyOrder) {
+    const group = groups.get(famId)!;
+    group.sort((a, b) => compareChildLinks(a.sortKey, b.sortKey));
+    for (const g of group) out.push(g.cl);
+  }
+  return out;
 }
 
 /** Order a pair so female is left, male is right. Falls back to original order. */
@@ -159,20 +272,24 @@ export function applyDagreLayout(
   edges: Edge[],
   nodeHeight?: number,
   nodeStyle: NodeStyle = 'wide',
+  opts?: LayoutOpts,
 ): Node[] {
   if (nodes.length === 0) return nodes;
+
+  const { genealogicalOrdering } = { ...DEFAULT_LAYOUT_OPTS, ...opts };
 
   const isCompact = nodeStyle === 'compact';
   const width = isCompact ? COMPACT_NODE_WIDTH : NODE_WIDTH;
   const height = nodeHeight ?? (isCompact ? COMPACT_NODE_HEIGHT : NODE_HEIGHT);
   const partnerGap = isCompact ? COMPACT_PARTNER_GAP : PARTNER_GAP;
+  const nodesep = isCompact ? 50 : 80;
 
   const g = new dagre.graphlib.Graph();
   g.setDefaultEdgeLabel(() => ({}));
   g.setGraph({
     rankdir: 'TB',
     ranksep: isCompact ? 100 : 120,
-    nodesep: isCompact ? 50 : 80,
+    nodesep,
     marginx: 40,
     marginy: 40,
   });
@@ -181,15 +298,51 @@ export function applyDagreLayout(
     g.setNode(node.id, { width, height });
   }
 
+  // When genealogical ordering is on, also feed Dagre "ghost" parent→child
+  // edges from any spouse who isn't the canonical (visible) parent. This
+  // anchors both grandparents at the rank above their grandchild so paternal
+  // and maternal sub-trees occupy distinct horizontal regions instead of
+  // intermixing. Without this, the non-canonical spouse is an orphan in
+  // Dagre's view and gets placed arbitrarily.
+  const dagreEdgeKeys = new Set<string>();
+  const setDagreEdge = (src: string, tgt: string) => {
+    const k = `${src} ${tgt}`;
+    if (dagreEdgeKeys.has(k)) return;
+    dagreEdgeKeys.add(k);
+    g.setEdge(src, tgt);
+  };
+
+  let partnersForGhost: Map<string, Set<string>> | null = null;
+  if (genealogicalOrdering) {
+    partnersForGhost = new Map();
+    const nodeIds = new Set(nodes.map((n) => n.id));
+    const partnerPairs = collectPartnerPairKeys(edges, nodeIds);
+    for (const key of partnerPairs) {
+      const [a, b] = key.split(':');
+      if (!partnersForGhost.has(a)) partnersForGhost.set(a, new Set());
+      if (!partnersForGhost.has(b)) partnersForGhost.set(b, new Set());
+      partnersForGhost.get(a)!.add(b);
+      partnersForGhost.get(b)!.add(a);
+    }
+  }
+
   for (const edge of edges) {
     if (edge.type === 'parentChild') {
-      g.setEdge(edge.source, edge.target);
+      setDagreEdge(edge.source, edge.target);
+      if (partnersForGhost) {
+        const partners = partnersForGhost.get(edge.source);
+        if (partners) {
+          for (const partnerId of partners) {
+            setDagreEdge(partnerId, edge.target);
+          }
+        }
+      }
     }
   }
 
   dagre.layout(g);
 
-  const positioned = nodes.map((node) => {
+  let positioned: Node[] = nodes.map((node) => {
     const pos = g.node(node.id);
     return {
       ...node,
@@ -197,9 +350,18 @@ export function applyDagreLayout(
     };
   });
 
-  // Position each pair side-by-side (mother left, father right). Use the
-  // shared partner-pair detection helper so this list stays in sync with
-  // `relaxOverlapsByRank` below.
+  // Genealogical reorder pass replaces both the per-rank sibling sort AND the
+  // partner-pair tightening loop. It walks ranks bottom-up so each pair's
+  // anchor is the average X of their already-placed children, naturally
+  // propagating "father's branch trends right" up the tree.
+  if (genealogicalOrdering) {
+    positioned = reorderByGenealogy(positioned, edges, width, partnerGap, nodesep);
+    return positioned;
+  }
+
+  // Legacy path (toggle off): position each pair side-by-side (mother left,
+  // father right). Uses the shared partner-pair detection helper so this list
+  // stays in sync with `relaxOverlapsByRank`.
   const nodeIdSet = new Set(positioned.map((n) => n.id));
   const partnerKeys = collectPartnerPairKeys(edges, nodeIdSet);
   const byId = new Map(positioned.map((n) => [n.id, n] as const));
@@ -216,6 +378,265 @@ export function applyDagreLayout(
   }
 
   return positioned;
+}
+
+/**
+ * Per-rank reorder pass. Walks ranks BOTTOM-UP so each partner pair anchors
+ * to the average X of its already-positioned children at the rank below.
+ * That naturally propagates "father's branch trends right" up the tree:
+ *   - Mid rank: mother sits left of children's anchor, father sits right.
+ *   - Top rank: paternal grandparents anchor to father (now on the right);
+ *     maternal grandparents anchor to mother (on the left).
+ *
+ * Sibling ordering within each parent-pair group is read from the
+ * `parentChild` edge insertion order — `treeDataToFlow` pre-sorts those
+ * edges by birthDate → childOrder → original index when ordering is on, so
+ * downstream callers see a single consistent order.
+ *
+ * Y is preserved (Dagre owns vertical spacing). Pure: returns a new
+ * Node[]; does not mutate input.
+ */
+function reorderByGenealogy(
+  nodes: Node[],
+  edges: Edge[],
+  width: number,
+  partnerGap: number,
+  nodesep: number,
+): Node[] {
+  const Y_TOLERANCE = 5;
+  const personNodes = nodes.filter((n) => n.type === 'person');
+  if (personNodes.length === 0) return nodes;
+
+  // --- Group by rank (top to bottom: rank 0 = oldest ancestors) ---
+  const sortedByY = [...personNodes].sort((a, b) => a.position.y - b.position.y);
+  const ranks: Node[][] = [];
+  let currentRank: Node[] = [];
+  let anchorY = Number.NEGATIVE_INFINITY;
+  for (const n of sortedByY) {
+    if (currentRank.length === 0 || Math.abs(n.position.y - anchorY) <= Y_TOLERANCE) {
+      if (currentRank.length === 0) anchorY = n.position.y;
+      currentRank.push(n);
+    } else {
+      ranks.push(currentRank);
+      currentRank = [n];
+      anchorY = n.position.y;
+    }
+  }
+  if (currentRank.length > 0) ranks.push(currentRank);
+
+  // --- Adjacency from edges ---
+  const parentsByChild = new Map<string, string[]>();
+  const childrenByParent = new Map<string, string[]>();
+  for (const e of edges) {
+    if (e.type === 'parentChild') {
+      const ps = parentsByChild.get(e.target) ?? [];
+      ps.push(e.source);
+      parentsByChild.set(e.target, ps);
+      const cs = childrenByParent.get(e.source) ?? [];
+      cs.push(e.target);
+      childrenByParent.set(e.source, cs);
+    }
+  }
+
+  const personIdSet = new Set(personNodes.map((n) => n.id));
+  const partnerKeys = collectPartnerPairKeys(edges, personIdSet);
+  const partnerOf = new Map<string, Set<string>>();
+  for (const key of partnerKeys) {
+    const [a, b] = key.split(':');
+    if (!partnerOf.has(a)) partnerOf.set(a, new Set());
+    if (!partnerOf.has(b)) partnerOf.set(b, new Set());
+    partnerOf.get(a)!.add(b);
+    partnerOf.get(b)!.add(a);
+  }
+
+  // Emission rank: position of each child's canonical parentChild edge in
+  // the edges array. Encodes the sibling sort key from `treeDataToFlow`
+  // (birthDate → childOrder → idx). Lower = earlier-emitted = leftmost.
+  const emissionRank = new Map<string, number>();
+  let emIdx = 0;
+  for (const e of edges) {
+    if (e.type === 'parentChild' && !emissionRank.has(e.target)) {
+      emissionRank.set(e.target, emIdx);
+      emIdx += 1;
+    }
+  }
+
+  /** Group siblings by their parent-pair (or single parent). Top-rank
+   * orphans get a unique key per node so each is its own group. */
+  const parentGroupKey = (childId: string): string => {
+    const ps = parentsByChild.get(childId);
+    if (!ps || ps.length === 0) return `orphan:${childId}`;
+    if (ps.length === 1) {
+      const p1 = ps[0];
+      const partners = partnerOf.get(p1);
+      const partner =
+        partners && partners.size === 1 ? Array.from(partners)[0] : null;
+      return partner ? pairKey(p1, partner) : `single:${p1}`;
+    }
+    return pairKey(ps[0], ps[1]);
+  };
+
+  // nextX accumulates the new X per node; defaults to current Dagre X.
+  const nextX = new Map<string, number>();
+  for (const n of personNodes) nextX.set(n.id, n.position.x);
+
+  // --- Bottom-up rank pass ---
+  for (let r = ranks.length - 1; r >= 0; r -= 1) {
+    const rank = ranks[r];
+    const inRank = new Set(rank.map((n) => n.id));
+
+    // STEP A: within each sibling group, order by emission rank (which
+    // already encodes birthDate + childOrder + idx); fall back to current X.
+    const byGroup = new Map<string, Node[]>();
+    for (const node of rank) {
+      const key = parentGroupKey(node.id);
+      if (!byGroup.has(key)) byGroup.set(key, []);
+      byGroup.get(key)!.push(node);
+    }
+    for (const group of byGroup.values()) {
+      group.sort((a, b) => {
+        const ra = emissionRank.get(a.id) ?? Number.POSITIVE_INFINITY;
+        const rb = emissionRank.get(b.id) ?? Number.POSITIVE_INFINITY;
+        if (ra !== rb) return ra - rb;
+        return (nextX.get(a.id) ?? 0) - (nextX.get(b.id) ?? 0);
+      });
+    }
+
+    // STEP B: within each multi-sibling group, re-space around the group's
+    // current center using a fixed stride (width + nodesep). This snaps
+    // siblings into the genealogical order regardless of Dagre's choice.
+    for (const group of byGroup.values()) {
+      if (group.length <= 1) continue;
+      const center =
+        group.reduce((s, n) => s + (nextX.get(n.id) ?? 0), 0) / group.length;
+      const stride = width + nodesep;
+      const startX = center - (stride * (group.length - 1)) / 2;
+      group.forEach((n, idx) => {
+        nextX.set(n.id, startX + stride * idx);
+      });
+    }
+
+    // STEP C: anchor each partner pair at this rank to the average X of
+    // their shared children at rank+1 (already placed by previous bottom-up
+    // iteration). Mother gets the left slot, father the right.
+    const seen = new Set<string>();
+    for (const node of rank) {
+      if (seen.has(node.id)) continue;
+      const partners = partnerOf.get(node.id);
+      if (!partners) continue;
+
+      // Pick a partner that is also at THIS rank.
+      let partnerId: string | null = null;
+      for (const pid of partners) {
+        if (inRank.has(pid)) {
+          partnerId = pid;
+          break;
+        }
+      }
+      if (!partnerId) continue;
+      seen.add(node.id);
+      seen.add(partnerId);
+
+      // Children of this pair = union of each partner's canonical children
+      // (treeDataToFlow emits a single canonical parent→child edge per child;
+      // a partnered pair shares ALL their canonical children).
+      const aKids = childrenByParent.get(node.id) ?? [];
+      const bKids = childrenByParent.get(partnerId) ?? [];
+      const sharedKids = Array.from(new Set([...aKids, ...bKids])).filter((c) =>
+        nextX.has(c),
+      );
+
+      let anchor: number;
+      if (sharedKids.length > 0) {
+        const xs = sharedKids.map((c) => nextX.get(c)!);
+        anchor = xs.reduce((a, b) => a + b, 0) / xs.length;
+      } else {
+        // No children-in-view: keep the pair's current midpoint.
+        anchor = ((nextX.get(node.id) ?? 0) + (nextX.get(partnerId) ?? 0)) / 2;
+      }
+
+      // Decide mother vs father.
+      const aSex = (rank.find((n) => n.id === node.id)!.data as PersonNodeData).sex;
+      const bSex = (rank.find((n) => n.id === partnerId)!.data as PersonNodeData).sex;
+      let momId: string;
+      let dadId: string;
+      if (aSex === 'F' && bSex !== 'F') {
+        momId = node.id;
+        dadId = partnerId;
+      } else if (bSex === 'F' && aSex !== 'F') {
+        momId = partnerId;
+        dadId = node.id;
+      } else if (aSex === 'M' && bSex !== 'M') {
+        momId = partnerId;
+        dadId = node.id;
+      } else if (bSex === 'M' && aSex !== 'M') {
+        momId = node.id;
+        dadId = partnerId;
+      } else {
+        // Both U or both same — preserve current order.
+        if ((nextX.get(node.id) ?? 0) <= (nextX.get(partnerId) ?? 0)) {
+          momId = node.id;
+          dadId = partnerId;
+        } else {
+          momId = partnerId;
+          dadId = node.id;
+        }
+      }
+
+      // Tighten the pair to a partnerGap visual unless an ancestor PAIR
+      // (a co-parent couple) sits above either partner. A solo ancestor
+      // (single grandparent with no spouse in view) doesn't need horizontal
+      // room — STEP D below anchors them to follow the descendant, so the
+      // pair below can stay tight. Two side-by-side grandparent cards DO
+      // need room, so we leave Dagre's spread intact in that case.
+      const hasAncestorPair = (parentId: string): boolean => {
+        const ps = parentsByChild.get(parentId) ?? [];
+        if (ps.length >= 2) return true;
+        if (ps.length === 1) {
+          const grandparentPartners = partnerOf.get(ps[0]);
+          if (grandparentPartners && grandparentPartners.size > 0) return true;
+        }
+        return false;
+      };
+      const tighten = !hasAncestorPair(momId) && !hasAncestorPair(dadId);
+
+      if (tighten) {
+        nextX.set(momId, anchor - (width + partnerGap) / 2);
+        nextX.set(dadId, anchor + (width + partnerGap) / 2);
+      } else {
+        const momX = nextX.get(momId) ?? 0;
+        const dadX = nextX.get(dadId) ?? 0;
+        if (momX > dadX) {
+          nextX.set(momId, dadX);
+          nextX.set(dadId, momX);
+        }
+      }
+    }
+
+    // STEP D: anchor singleton parents (not part of any partner pair at this
+    // rank) to the average X of their children at the rank below. Without
+    // this, an only-parent ancestor like a paternal grandfather (whose son's
+    // position changed via STEP C) keeps Dagre's stale X and ends up far
+    // from the child it's connected to.
+    for (const node of rank) {
+      if (seen.has(node.id)) continue;
+      const kids = childrenByParent.get(node.id);
+      if (!kids || kids.length === 0) continue;
+      const xs = kids
+        .map((c) => nextX.get(c))
+        .filter((v): v is number => v !== undefined);
+      if (xs.length === 0) continue;
+      const childAvg = xs.reduce((a, b) => a + b, 0) / xs.length;
+      nextX.set(node.id, childAvg);
+    }
+  }
+
+  // Apply nextX → return new node array.
+  return nodes.map((n) => {
+    const x = nextX.get(n.id);
+    if (x === undefined || x === n.position.x) return n;
+    return { ...n, position: { x, y: n.position.y } };
+  });
 }
 
 /**

@@ -61,6 +61,8 @@ describe('userPreferences.get', () => {
       density: 'comfortable',
       notifyEmail: true,
       notifyActivity: true,
+      treeAutoSpread: true,
+      treeGenealogicalOrdering: true,
     });
   });
 
@@ -85,6 +87,8 @@ describe('userPreferences.get', () => {
       density: 'compact',
       notifyEmail: false,
       notifyActivity: true,
+      treeAutoSpread: true,
+      treeGenealogicalOrdering: true,
     });
   });
 
@@ -136,6 +140,8 @@ describe('userPreferences.update', () => {
       density: 'comfortable',
       notifyEmail: false,
       notifyActivity: true,
+      treeAutoSpread: true,
+      treeGenealogicalOrdering: true,
     });
   });
 

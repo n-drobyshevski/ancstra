@@ -121,6 +121,7 @@ CREATE TABLE IF NOT EXISTS user_preferences (
   experimental_enabled INTEGER NOT NULL DEFAULT 0,
   experimental_features TEXT NOT NULL DEFAULT '{}',
   tree_auto_spread INTEGER NOT NULL DEFAULT 1,
+  tree_genealogical_ordering INTEGER NOT NULL DEFAULT 1,
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

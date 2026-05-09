@@ -132,9 +132,17 @@ function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focus
     symmetricTypes: ['spouse'],
   });
 
+  // Server-stored user preferences (tree layout behaviors). Read once and
+  // cached by tRPC; defaults to "on" while the query is in-flight so the
+  // first render applies the same ordering the user will see post-fetch.
+  const { data: userPrefs } = trpc.userPreferences.get.useQuery(undefined, {
+    staleTime: 60_000,
+  });
+  const genealogicalOrdering = userPrefs?.treeGenealogicalOrdering ?? true;
+
   const { nodes: rawNodes, edges: rawEdges } = useMemo(
-    () => treeDataToFlow(treeData),
-    [treeData],
+    () => treeDataToFlow(treeData, { genealogicalOrdering }),
+    [treeData, genealogicalOrdering],
   );
 
   // Read the user's preferred node style from localStorage once at mount so
@@ -163,15 +171,30 @@ function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focus
     const initShowDates = readShowDates() ?? true;
     const initShowLivingIndicator = readShowLivingIndicator() ?? true;
     const initShowCitations = readShowCitations() ?? false;
-    const laid = applyDagreLayout(rawNodes, rawEdges, undefined, initStyle).map(
-      n => n.type === 'person'
-        ? { ...n, data: { ...n.data, nodeStyle: initStyle, showDates: initShowDates, showLivingIndicator: initShowLivingIndicator, showCitations: initShowCitations } }
+    const laid = applyDagreLayout(
+      rawNodes,
+      rawEdges,
+      undefined,
+      initStyle,
+      { genealogicalOrdering },
+    ).map((n) =>
+      n.type === 'person'
+        ? {
+            ...n,
+            data: {
+              ...n.data,
+              nodeStyle: initStyle,
+              showDates: initShowDates,
+              showLivingIndicator: initShowLivingIndicator,
+              showCitations: initShowCitations,
+            },
+          }
         : n,
     );
     if (!defaultLayout) return laid;
     const { positions } = parseLayoutData(defaultLayout.layoutData);
     return applyPositionMap(laid, positions);
-  }, [rawNodes, rawEdges, initStyle, defaultLayout]);
+  }, [rawNodes, rawEdges, initStyle, defaultLayout, genealogicalOrdering]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(rawEdges);
@@ -210,13 +233,6 @@ function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focus
   const setFilterState = onFilterStateChange ?? setInternalFilterState;
   const prefs = useTreeViewPrefs();
   const { showMinimap } = prefs;
-  // Server-stored user preference: nudge overlapping nodes apart on
-  // node-style mode switch. Loaded once and cached by tRPC; reads `?? true`
-  // so the spread runs on first switch even before the query resolves
-  // (matches the DB default of 1).
-  const { data: userPrefs } = trpc.userPreferences.get.useQuery(undefined, {
-    staleTime: 60_000,
-  });
   // Canvas reads showGaps directly from prefs (localStorage). Parent's showGaps
   // prop is accepted (legacy) but ignored on canvas. Table view manages its own
   // showGaps via the parent state. v1 limitation: canvas/table toggles do not
@@ -245,7 +261,13 @@ function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focus
         for (const n of prev) {
           if (n.type !== 'draftPerson') posMap[n.id] = n.position;
         }
-        const laid = applyDagreLayout(rawNodes, rawEdges, showGaps ? 82 : undefined, effectiveNodeStyle);
+        const laid = applyDagreLayout(
+          rawNodes,
+          rawEdges,
+          showGaps ? 82 : undefined,
+          effectiveNodeStyle,
+          { genealogicalOrdering },
+        );
         return laid.map((n) => ({
           ...n,
           position: posMap[n.id] ?? n.position,
@@ -265,7 +287,7 @@ function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focus
         return [...rawEdges, ...optimistic];
       });
     });
-  }, [treeData, rawNodes, rawEdges, setNodes, setEdges, showGaps, effectiveNodeStyle, prefs.showDates, prefs.showLivingIndicator, prefs.showCitations]);
+  }, [treeData, rawNodes, rawEdges, setNodes, setEdges, showGaps, effectiveNodeStyle, prefs.showDates, prefs.showLivingIndicator, prefs.showCitations, genealogicalOrdering]);
 
   const handleToggleFilter = useCallback((category: 'sex' | 'living', key: string) => {
     const next = {
@@ -424,7 +446,13 @@ function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focus
   const onPaneClick = useCallback(() => setContextMenu(null), []);
 
   const handleAutoLayout = useCallback(() => {
-    const laid = applyDagreLayout(rawNodes, rawEdges, showGaps ? 82 : undefined, effectiveNodeStyle);
+    const laid = applyDagreLayout(
+      rawNodes,
+      rawEdges,
+      showGaps ? 82 : undefined,
+      effectiveNodeStyle,
+      { genealogicalOrdering },
+    );
     const newNodes = laid.map(n =>
       n.type === 'person' ? { ...n, data: { ...n.data, nodeStyle: effectiveNodeStyle, showDates: prefs.showDates, showLivingIndicator: prefs.showLivingIndicator, showCitations: prefs.showCitations } } : n,
     );
@@ -453,7 +481,7 @@ function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focus
           refreshLayouts();
         });
     }
-  }, [rawNodes, rawEdges, setNodes, showGaps, effectiveNodeStyle, activeLayoutId, refreshLayouts, prefs.showDates, prefs.showLivingIndicator, prefs.showCitations]);
+  }, [rawNodes, rawEdges, setNodes, showGaps, effectiveNodeStyle, activeLayoutId, refreshLayouts, prefs.showDates, prefs.showLivingIndicator, prefs.showCitations, genealogicalOrdering]);
 
   const handleNodeStyleChange = useCallback((style: NodeStyle) => {
     setNodeStyle(style);

@@ -56,6 +56,7 @@ async function ProfileContent({ params }: ProfilePageProps) {
     notifyEmail: prefsRow ? prefsRow.notifyEmail === 1 : true,
     notifyActivity: prefsRow ? prefsRow.notifyActivity === 1 : true,
     treeAutoSpread: prefsRow ? prefsRow.treeAutoSpread === 1 : true,
+    treeGenealogicalOrdering: prefsRow ? prefsRow.treeGenealogicalOrdering === 1 : true,
   };
 
   return (

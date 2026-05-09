@@ -33,6 +33,7 @@ interface PrefsShape {
   notifyEmail: boolean;
   notifyActivity: boolean;
   treeAutoSpread: boolean;
+  treeGenealogicalOrdering: boolean;
 }
 
 interface Props {
@@ -92,6 +93,9 @@ export function ProfileForm({ initialProfile, initialPrefs }: Props) {
   const [notifyEmail, setNotifyEmail] = useState(initialPrefs.notifyEmail);
   const [notifyActivity, setNotifyActivity] = useState(initialPrefs.notifyActivity);
   const [treeAutoSpread, setTreeAutoSpread] = useState(initialPrefs.treeAutoSpread);
+  const [treeGenealogicalOrdering, setTreeGenealogicalOrdering] = useState(
+    initialPrefs.treeGenealogicalOrdering,
+  );
 
   const timezones = useMemo(() => getTimezones(), []);
 
@@ -110,7 +114,8 @@ export function ProfileForm({ initialProfile, initialPrefs }: Props) {
     density !== initialPrefs.density ||
     notifyEmail !== initialPrefs.notifyEmail ||
     notifyActivity !== initialPrefs.notifyActivity ||
-    treeAutoSpread !== initialPrefs.treeAutoSpread;
+    treeAutoSpread !== initialPrefs.treeAutoSpread ||
+    treeGenealogicalOrdering !== initialPrefs.treeGenealogicalOrdering;
 
   const dirty = profileDirty || prefsDirty;
 
@@ -155,6 +160,9 @@ export function ProfileForm({ initialProfile, initialPrefs }: Props) {
             ...(notifyEmail !== initialPrefs.notifyEmail ? { notifyEmail } : {}),
             ...(notifyActivity !== initialPrefs.notifyActivity ? { notifyActivity } : {}),
             ...(treeAutoSpread !== initialPrefs.treeAutoSpread ? { treeAutoSpread } : {}),
+            ...(treeGenealogicalOrdering !== initialPrefs.treeGenealogicalOrdering
+              ? { treeGenealogicalOrdering }
+              : {}),
           }),
         );
       }
@@ -340,7 +348,24 @@ export function ProfileForm({ initialProfile, initialPrefs }: Props) {
         <CardHeader>
           <CardTitle>{t('treeHeading')}</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <Label htmlFor="tree-genealogical-ordering" className="text-base">
+                {t('treeGenealogicalOrderingLabel')}
+              </Label>
+              <p className="text-xs text-muted-foreground mt-1">
+                {t('treeGenealogicalOrderingHint')}
+              </p>
+            </div>
+            <Switch
+              id="tree-genealogical-ordering"
+              checked={treeGenealogicalOrdering}
+              onCheckedChange={setTreeGenealogicalOrdering}
+              disabled={isSaving}
+            />
+          </div>
+
           <div className="flex items-center justify-between gap-4">
             <div>
               <Label htmlFor="tree-auto-spread" className="text-base">

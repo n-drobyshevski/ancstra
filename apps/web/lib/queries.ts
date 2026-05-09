@@ -729,6 +729,7 @@ export async function getTreeData(db: Database): Promise<TreeData> {
         familyId: children.familyId,
         personId: children.personId,
         validationStatus: children.validationStatus,
+        childOrder: children.childOrder,
       })
       .from(children)
       .all(),

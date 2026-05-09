@@ -158,6 +158,8 @@
       "activityFeedLabel": "Activity feed",
       "activityFeedHint": "Edits and contributions in families you belong to.",
       "treeHeading": "Tree visualization",
+      "treeGenealogicalOrderingLabel": "Genealogical ordering",
+      "treeGenealogicalOrderingHint": "Order siblings left-to-right by birth date (eldest leftmost), and place mother on the left and father on the right at every generation, so the paternal lineage trends to the right side. Saved layouts override this — click Auto layout to reapply.",
       "treeAutoSpreadLabel": "Auto-spread overlapping nodes",
       "treeAutoSpreadHint": "When you switch between compact and wide node modes, automatically nudge any overlapping nodes apart so they remain readable. Only conflicting nodes move; the rest of your layout stays put.",
       "saving": "Saving…",

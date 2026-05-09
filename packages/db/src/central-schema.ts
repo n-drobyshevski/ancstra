@@ -138,6 +138,12 @@ export const userPreferences = sqliteTable('user_preferences', {
   // nudges any overlapping nodes apart per rank. Default ON — fixes a real
   // overlap bug; opt-out for users who prefer the unmodified positions.
   treeAutoSpread: integer('tree_auto_spread').notNull().default(1),
+  // Tree visualization: when on, the layout orders siblings left-to-right by
+  // birth date (eldest leftmost) and places mother left / father right at every
+  // generation, so the paternal lineage trends to the right side of the canvas.
+  // Default ON. Off restores DB insertion order for siblings; the immediate
+  // partner-pair swap (mother-left for the direct couple) still applies.
+  treeGenealogicalOrdering: integer('tree_genealogical_ordering').notNull().default(1),
   updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
 });
 

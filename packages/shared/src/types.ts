@@ -155,6 +155,9 @@ export interface ChildLink {
   familyId: string;
   personId: string;
   validationStatus: 'confirmed' | 'proposed' | 'disputed';
+  /** User-edited insertion order for siblings within a family. Used as a
+   * tiebreaker when sorting by birth date. May be null for legacy rows. */
+  childOrder?: number | null;
 }
 
 export interface TreeData {
