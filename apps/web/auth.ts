@@ -75,10 +75,54 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       // (e.g. after creating/joining a family). Embedding membership info in
       // the JWT lets the proxy forward role + dbFilename as headers, so
       // getAuthContext() in server components is a pure header read.
-      const shouldRefresh =
+      //
+      // Three triggers refresh the cached memberships:
+      //   1. Initial sign-in / sign-up (`user` is set).
+      //   2. Explicit `useSession().update()` from the client.
+      //   3. The token holds a userId but no membership data yet — covers
+      //      the empty-array case which the original `!token.memberships`
+      //      check missed (`![]` is false), and the "first family created
+      //      since signup" path where the cached array became non-empty
+      //      in the DB but stayed `[]` in the cookie.
+      //
+      // Staleness check (when none of the above triggers): one extra DB
+      // roundtrip to compare `users.memberships_version` against the
+      // value stored in the JWT. The proxy already does this same check
+      // per request to set the JWT_REFRESH_COOKIE, but next-auth v5
+      // beta-30's update() doesn't reliably re-encode the cookie via
+      // trigger='update', so we have to detect staleness here too. When
+      // it fires we re-fetch memberships and the JWT cookie gets
+      // re-issued naturally on the response.
+      const hasNoMemberships = Array.isArray(token.memberships)
+        ? token.memberships.length === 0
+        : !token.memberships;
+
+      let shouldRefresh =
         Boolean(user) ||
         trigger === 'update' ||
-        (token.userId && !token.memberships);
+        (token.userId && hasNoMemberships);
+
+      if (!shouldRefresh && token.userId) {
+        try {
+          const db = getCentralDbSync();
+          const versionRow = await db
+            .select({ v: centralSchema.users.membershipsVersion })
+            .from(centralSchema.users)
+            .where(eq(centralSchema.users.id, token.userId as string))
+            .get();
+          const dbVersion = versionRow?.v ?? 0;
+          const jwtVersion = (token.membershipsVersion as number | undefined) ?? 0;
+          if (dbVersion !== jwtVersion) {
+            shouldRefresh = true;
+          }
+        } catch (error) {
+          // If the staleness probe fails we fall through with the cached
+          // token — proxy.ts has its own staleness fallback that runs
+          // server-side, so role-gated server rendering stays correct.
+          console.warn('[AUTH] memberships_version probe failed', error);
+        }
+      }
+
       if (shouldRefresh && token.userId) {
         try {
           const db = getCentralDbSync();
