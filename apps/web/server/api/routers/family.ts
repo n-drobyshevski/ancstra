@@ -7,13 +7,34 @@ import {
   deleteFamily,
   logActivity,
 } from '@ancstra/auth';
-import { centralSchema } from '@ancstra/db';
+import {
+  centralSchema,
+  createFamilyDb,
+  events,
+  personNames,
+  persons,
+} from '@ancstra/db';
 import {
   createTRPCRouter,
   authenticatedProcedure,
   protectedProcedure,
 } from '../trpc';
 import { invalidateTags } from '../cache';
+
+const rootSelfSeed = z.object({
+  kind: z.literal('root-self'),
+  givenName: z.string().trim().min(1, 'Given name is required'),
+  surname: z.string().trim().min(1, 'Surname is required'),
+  sex: z.enum(['M', 'F', 'U']),
+  birthYear: z.number().int().min(1).max(9999).optional(),
+});
+
+const blankSeed = z.object({ kind: z.literal('blank') });
+const gedcomSeed = z.object({ kind: z.literal('gedcom') });
+
+const seedSchema = z.discriminatedUnion('kind', [rootSelfSeed, blankSeed, gedcomSeed]);
+
+type RootSelfSeed = z.infer<typeof rootSelfSeed>;
 
 const settingsPatchSchema = z.object({
   name: z.string().trim().min(1, 'Family name is required').optional(),
@@ -48,12 +69,23 @@ const EDITOR_DEFAULTS_FIELD_LABELS: Record<string, string> = {
 
 export const familyRouter = createTRPCRouter({
   create: authenticatedProcedure
-    .input(z.object({ name: z.string().trim().min(1, 'Family name is required') }))
+    .input(z.object({
+      name: z.string().trim().min(1, 'Family name is required'),
+      seed: seedSchema.optional(),
+    }))
     .mutation(async ({ ctx, input }) => {
-      const { familyId } = await createFamily(ctx.centralDb, {
+      const { familyId, dbFilename } = await createFamily(ctx.centralDb, {
         name: input.name,
         ownerId: ctx.userId,
       });
+
+      // Optional seeding into the freshly-provisioned family DB.
+      // Only the 'root-self' seed writes rows here; 'gedcom' is handled by
+      // the wizard's next step (the GEDCOM importer), and 'blank' is a no-op.
+      if (input.seed?.kind === 'root-self') {
+        await seedRootSelf(dbFilename, input.seed, ctx.userId);
+      }
+
       // Admin surfaces (users list, families list, dashboard counts) all
       // derive aggregates from family_registry / family_members. Without
       // these, a fresh family doesn't show up until cacheLife('minutes')
@@ -290,3 +322,48 @@ export const familyRouter = createTRPCRouter({
       }
     }),
 });
+
+/**
+ * Seed a brand-new family DB with a single Person representing the owner
+ * (the "root self" onboarding option). Three rows: persons + person_names +
+ * optional birth event. Inserts are issued sequentially without a transaction
+ * because the family DB is empty and unreachable to other clients — a partial
+ * insert leaves orphan rows the user can clean up from the dashboard, which is
+ * preferable to introducing the better-sqlite3 / libsql transaction-driver
+ * mismatch documented in feedback_drizzle_transactions.
+ */
+async function seedRootSelf(
+  dbFilename: string,
+  seed: RootSelfSeed,
+  ownerId: string,
+): Promise<void> {
+  const familyDb = createFamilyDb(dbFilename);
+  const personId = crypto.randomUUID();
+
+  await familyDb.insert(persons).values({
+    id: personId,
+    sex: seed.sex,
+    isLiving: true,
+    privacyLevel: 'private',
+    createdBy: ownerId,
+  }).run();
+
+  await familyDb.insert(personNames).values({
+    personId,
+    givenName: seed.givenName,
+    surname: seed.surname,
+    nameType: 'birth',
+    isPrimary: true,
+  }).run();
+
+  if (seed.birthYear !== undefined) {
+    const yearStr = String(seed.birthYear);
+    await familyDb.insert(events).values({
+      personId,
+      eventType: 'birth',
+      dateOriginal: yearStr,
+      // dateSort uses YYYYMMDD numeric form; year-only → YYYY0000.
+      dateSort: seed.birthYear * 10000,
+    }).run();
+  }
+}

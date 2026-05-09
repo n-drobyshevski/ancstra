@@ -24,7 +24,16 @@ async function fileToBase64(file: File): Promise<string> {
   });
 }
 
-export function GedcomImport() {
+interface GedcomImportProps {
+  /**
+   * Path to navigate to after a successful commit. Defaults to `/tree`. The
+   * onboarding wizard overrides this to `/dashboard?family={id}` so a freshly
+   * created family lands on its own dashboard rather than the global tree view.
+   */
+  redirectAfterImport?: string;
+}
+
+export function GedcomImport({ redirectAfterImport = '/tree' }: GedcomImportProps = {}) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -109,7 +118,7 @@ export function GedcomImport() {
       toast.success(
         `Imported ${result.imported.persons} persons, ${result.imported.families} families, ${result.imported.events} events`
       );
-      router.push('/tree');
+      router.push(redirectAfterImport);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Import failed');
       setStep('preview');
