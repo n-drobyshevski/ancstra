@@ -1,0 +1,446 @@
+{
+  "toolbar": {
+    "newPerson": "+ New Person",
+    "search": "Search",
+    "sex": {
+      "M": "M",
+      "F": "F",
+      "U": "U"
+    },
+    "living": {
+      "living": "Living",
+      "deceased": "Deceased"
+    }
+  },
+  "viewToggle": {
+    "canvas": "Canvas",
+    "table": "Table"
+  },
+  "exportMenu": {
+    "label": "Export",
+    "exporting": "Exporting…",
+    "png": "Export as PNG",
+    "svg": "Export as SVG",
+    "pdf": "Export as PDF"
+  },
+  "topology": {
+    "all": "All",
+    "ancestors": "Ancestors",
+    "descendants": "Descendants",
+    "ofReference": "of {name}",
+    "selectFirstHint": "Select a person in the tree first to filter by their ancestors or descendants"
+  },
+  "sidebar": {
+    "ariaLabel": "Filter people",
+    "filtersLabel": "Filters",
+    "clearAll": "Clear all",
+    "facetLabels": {
+      "born": "Born",
+      "died": "Died"
+    }
+  },
+  "viewMenu": {
+    "trigger": "View",
+    "groups": {
+      "nodeStyle": "Node style",
+      "showOnNodes": "Show on nodes",
+      "overlays": "Overlays",
+      "coloring": "Coloring",
+      "applyAs": "Apply as",
+      "edges": "Edges",
+      "camera": "Camera"
+    },
+    "nodeStyle": {
+      "wide": "Wide",
+      "compact": "Compact"
+    },
+    "showOnNodes": {
+      "lifespanDates": "Lifespan dates",
+      "livingIndicator": "Living indicator"
+    },
+    "overlays": {
+      "minimap": "Minimap",
+      "dataQuality": "Data Quality heatmap",
+      "proposals": "Pending proposals",
+      "citations": "Citation indicators"
+    },
+    "coloring": {
+      "off": "Off",
+      "generation": "Generation",
+      "branch": "Paternal / maternal branch",
+      "living": "Living status"
+    },
+    "applyAs": {
+      "fill": "Fill",
+      "border": "Border"
+    },
+    "edges": {
+      "curved": "Curved",
+      "stepped": "Stepped",
+      "straight": "Straight"
+    },
+    "camera": {
+      "fitToScreen": "Fit to screen",
+      "centerOnSelected": "Center on selected",
+      "resetZoom": "Reset zoom"
+    },
+    "savedLayouts": {
+      "label": "Saved layouts",
+      "saveAsNew": "Save current as…",
+      "updateNamed": "Update “{name}”",
+      "setDefault": "Set as default",
+      "rename": "Rename",
+      "delete": "Delete"
+    },
+    "autoLayout": "Auto Layout"
+  },
+  "tableToolbar": {
+    "dataQuality": "Data Quality",
+    "rowDensityAriaLabel": "Row density",
+    "density": {
+      "compact": "Compact",
+      "comfortable": "Comfortable",
+      "spacious": "Spacious"
+    },
+    "densityAriaLabel": "{label} density"
+  },
+  "activeFilters": {
+    "ariaLabel": "Active filters",
+    "removeChipAriaLabel": "Remove filter: {label}",
+    "search": "Search: \"{value}\"",
+    "sex": "Sex: {values}",
+    "living": "Living: {value}",
+    "livingValues": {
+      "living": "Living",
+      "deceased": "Deceased"
+    },
+    "validation": "Validation: {value}",
+    "born": "Born: {from}–{to}",
+    "died": "Died: {from}–{to}",
+    "place": "Place: \"{value}\" {scope}",
+    "placeScopeBirth": "(birth)",
+    "placeScopeAny": "(any)",
+    "citationsNone": "No sources",
+    "citationsGte1": "≥ 1 source",
+    "citationsGte3": "≥ 3 sources",
+    "completeness": "Completeness: ≥ {value}%",
+    "hasProposals": "AI proposals open",
+    "topologyAncestors": "Ancestors of {name}",
+    "topologyDescendants": "Descendants of {name}",
+    "openEllipsis": "…"
+  },
+  "columnsDropdown": {
+    "ariaLabel": "Toggle columns",
+    "label": "Columns",
+    "visibleColumns": "Visible columns",
+    "labels": {
+      "sex": "Sex",
+      "status": "Status",
+      "completeness": "Completeness",
+      "parents": "Parents",
+      "spouses": "Spouses",
+      "children": "Children"
+    }
+  },
+  "table": {
+    "headers": {
+      "name": "Name",
+      "lifespan": "Lifespan",
+      "sex": "Sex",
+      "completeness": "Completeness",
+      "parents": "Parents",
+      "spouses": "Spouses",
+      "children": "Children",
+      "status": "Status",
+      "focus": "Focus"
+    },
+    "sex": {
+      "M": "Male",
+      "F": "Female",
+      "U": "Unknown"
+    },
+    "status": {
+      "proposedAria": "Proposed",
+      "proposedTooltip": "Proposed — needs review",
+      "confirmedAria": "Confirmed",
+      "confirmedTooltip": "Confirmed",
+      "livingAria": "Living",
+      "livingTooltip": "Presumed living"
+    },
+    "lifespan": {
+      "living": "Living",
+      "birthPrefix": "b. {year}",
+      "deathPrefix": "d. {year}",
+      "emDash": "—"
+    },
+    "noRelatives": "—",
+    "footer": {
+      "showing": "Showing {visible} of {total} {total, plural, one {person} other {people}}",
+      "loadingSuffix": " • loading…"
+    },
+    "clearFilters": "Clear filters",
+    "noPersonsYet": "No persons in your tree yet.",
+    "addFirstHint": "Add your first person from the toolbar to get started.",
+    "noMatchFiltered": "No persons match the active filters.",
+    "noMatchSearch": "No persons match your search.",
+    "rowContextMenu": {
+      "openDetail": "Open detail",
+      "focus": "Focus",
+      "setAnchor": "Set as topology anchor",
+      "copyName": "Copy name"
+    },
+    "mobile": {
+      "listAriaLabel": "People in your family tree",
+      "focusAriaLabel": "Focus {name} on tree"
+    }
+  },
+  "detail": {
+    "header": {
+      "livingBadge": "Living",
+      "closeAriaLabel": "Close detail panel"
+    },
+    "lifespan": {
+      "noDates": "No dates recorded",
+      "ageSuffix": "{count, plural, one {# year} other {# years}}",
+      "birthPrefix": "b. {date}",
+      "deathPrefix": "d. {date}"
+    },
+    "actionStrip": {
+      "focus": "Focus",
+      "edit": "Edit",
+      "done": "Done",
+      "research": "Research",
+      "fullPage": "Full Page"
+    },
+    "vital": {
+      "heading": "Vital Information",
+      "born": "Born",
+      "died": "Died",
+      "fields": {
+        "birthDate": "Birth date",
+        "birthPlace": "Birth place",
+        "deathDate": "Death date",
+        "deathPlace": "Death place"
+      }
+    },
+    "editableField": {
+      "addPrefix": "Add {label}",
+      "addAria": "Add {label}",
+      "editTitle": "Edit {label}",
+      "editAria": "Edit {label}"
+    },
+    "notes": {
+      "heading": "Notes",
+      "placeholder": "Add notes...",
+      "addPrompt": "No notes — click to add",
+      "more": "more"
+    },
+    "family": {
+      "heading": "Family",
+      "noRelationships": "No relationships recorded",
+      "labels": {
+        "spouse": "Spouse",
+        "father": "Father",
+        "mother": "Mother",
+        "parents": "Parents",
+        "children": "Children",
+        "siblings": "Siblings"
+      },
+      "addButtons": {
+        "linkExisting": "Link existing",
+        "new": "New",
+        "linkFather": "Link father",
+        "linkMother": "Link mother",
+        "father": "Father",
+        "mother": "Mother"
+      },
+      "rowActions": {
+        "editTitle": "Edit {name}",
+        "editAria": "Edit {fullName}",
+        "removeTitle": "Remove {name}",
+        "removeAria": "Remove {fullName}"
+      },
+      "remove": {
+        "spouseConfirm": "Unlink {name} as spouse?\nThis will remove the partnership but keep both people.",
+        "parentConfirm": "Remove {name} as parent?\nThe co-parent (if any) and any siblings will stay attached.",
+        "childConfirm": "Remove {name} as child?\nThe person stays in the tree.",
+        "siblingConfirm": "Remove {name} as sibling?\nThe person stays in the tree.",
+        "networkError": "Network error",
+        "failed": "Failed to remove",
+        "success": "Removed {name}"
+      }
+    },
+    "timeline": {
+      "heading": "Life Events",
+      "birth": "Birth",
+      "death": "Death",
+      "noDetails": "No details",
+      "noEvents": "No events recorded",
+      "showAll": "Show all ({count})",
+      "addEvent": "Add event",
+      "editTitle": "Edit event",
+      "editAria": "Edit {type} event",
+      "deleteTitle": "Delete event",
+      "deleteAria": "Delete {type} event",
+      "deleteConfirm": "Delete {type} event?",
+      "deleteFailed": "Failed to delete event",
+      "deleteSuccess": "Event deleted",
+      "networkError": "Network error"
+    },
+    "sources": {
+      "count": "{count, plural, one {# source citation} other {# source citations}}",
+      "viewAll": "View all →"
+    }
+  },
+  "personCard": {
+    "ariaLabel": "{name}",
+    "ariaLabelWithLifespan": "{name}, {lifespan}"
+  },
+  "mobile": {
+    "title": "Family Tree",
+    "moreOptions": "More options",
+    "addRelation": {
+      "ariaLabel": "Add a relation to this person",
+      "label": "Add",
+      "subTrigger": "Add {label}",
+      "linkExisting": "Link existing",
+      "newPerson": "+ New",
+      "relations": {
+        "spouse": "Spouse",
+        "father": "Father",
+        "mother": "Mother",
+        "child": "Child",
+        "sibling": "Sibling"
+      }
+    },
+    "treeButton": "Tree",
+    "treeButtonAriaLabel": "Focus {name} on tree",
+    "filtersDrawer": {
+      "openLabel": "Open filters",
+      "openLabelWithCount": "Open filters ({count} active)",
+      "filtersChip": "Filters",
+      "drawerTitle": "Filter people"
+    },
+    "toolbarMenu": {
+      "dataQuality": "Data Quality",
+      "autoLayout": "Auto Layout",
+      "exportPng": "Export PNG",
+      "exportSvg": "Export SVG",
+      "exportPdf": "Export PDF"
+    },
+    "viewBarMenu": {
+      "topologyLabelWithName": "Topology — {name}",
+      "topologyLabelEmpty": "Topology (select a person first)",
+      "topologyAll": "All",
+      "topologyAncestors": "Ancestors",
+      "topologyDescendants": "Descendants",
+      "rowDensityLabel": "Row density",
+      "densityCompact": "Compact",
+      "densityComfortable": "Comfortable",
+      "densitySpacious": "Spacious"
+    },
+    "sex": {
+      "M": "Male",
+      "F": "Female",
+      "U": "Unknown"
+    }
+  },
+  "palette": {
+    "title": "Palette",
+    "closeAriaLabel": "Close palette",
+    "newPerson": "New Person",
+    "dragHint": "Drag to canvas",
+    "factsheetsHeading": "Factsheets",
+    "noFactsheets": "No factsheets to place. Create one from Research."
+  },
+  "draftPerson": {
+    "givenNamePlaceholder": "Given name",
+    "surnamePlaceholder": "Surname",
+    "sexOptions": {
+      "M": "Male",
+      "F": "Female",
+      "U": "Unknown"
+    },
+    "saving": "...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "nameRequired": "Name is required",
+    "createFailed": "Failed to create person",
+    "networkError": "Network error"
+  },
+  "draftFactsheet": {
+    "loading": "Loading factsheet...",
+    "factsCount": "{count, plural, one {# fact} other {# facts}}",
+    "linksCount": "{count, plural, one {# link} other {# links}}",
+    "partOfFamily": "Part of family unit ({count} linked)",
+    "checkingDuplicates": "Checking duplicates...",
+    "possibleMatch": "Possible match: {name} ({score}%)",
+    "mergeIntoThis": "Merge into this person",
+    "promoting": "Promoting...",
+    "promoteFamily": "Promote Family",
+    "createPerson": "Create Person",
+    "cancelAriaLabel": "Cancel",
+    "familyPromoted": "Family unit promoted",
+    "personCreated": "Person created",
+    "promotionFailed": "Promotion failed"
+  },
+  "node": {
+    "handles": {
+      "parents": "Parents",
+      "children": "Children",
+      "spouse": "Spouse"
+    },
+    "living": "Living",
+    "noDates": "no dates",
+    "birthPrefix": "b. {date}",
+    "deathPrefix": "d. {date}",
+    "sources": "{count, plural, one {# source} other {# sources}}",
+    "fields": {
+      "name": "Name",
+      "birthDate": "Birth Date",
+      "birthPlace": "Birth Place",
+      "deathDate": "Death Date",
+      "source": "Source"
+    },
+    "tooltipMissing": "{label}: missing",
+    "tooltipPresent": "{label}: ✓",
+    "tooltipNotApplicable": "{label}: N/A (living)"
+  },
+  "contextMenu": {
+    "unnamed": "(unnamed)",
+    "viewDetails": "View details",
+    "editPerson": "Edit person",
+    "research": "Research this person",
+    "addRelation": "Add relation",
+    "relations": {
+      "spouse": "Spouse",
+      "father": "Father",
+      "mother": "Mother",
+      "child": "Child",
+      "sibling": "Sibling"
+    },
+    "linkExisting": "Link existing…",
+    "newPerson": "+ New person",
+    "focusOnPerson": "Focus on person",
+    "showAncestorsOnly": "Show ancestors only",
+    "showDescendantsOnly": "Show descendants only",
+    "seeInTableView": "See in table view",
+    "copyPersonId": "Copy person ID",
+    "copyShareLink": "Copy share link",
+    "openInNewTab": "Open in new tab",
+    "deletePerson": "Delete person…",
+    "deleteRelationship": "Delete relationship",
+    "selectedCount": "Selected ({count}) people",
+    "bulkExport": "Bulk export",
+    "deletePeopleCount": "Delete {count} people…",
+    "addPerson": "Add person",
+    "fitView": "Fit view",
+    "resetZoom": "Reset zoom",
+    "toggleMinimap": "Toggle minimap",
+    "toasts": {
+      "personIdCopied": "Person ID copied",
+      "shareLinkCopied": "Share link copied",
+      "copyFailed": "Could not copy to clipboard"
+    }
+  }
+}

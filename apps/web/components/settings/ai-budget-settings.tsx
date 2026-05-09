@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -28,6 +29,7 @@ interface BudgetData {
 }
 
 export function AiBudgetSettings() {
+  const t = useTranslations('settings.ai.budget');
   const [data, setData] = useState<BudgetData | null>(null);
   const [budgetInput, setBudgetInput] = useState('');
   const [saving, setSaving] = useState(false);
@@ -35,14 +37,14 @@ export function AiBudgetSettings() {
   const fetchBudget = useCallback(async () => {
     try {
       const res = await fetch('/api/settings/ai-budget');
-      if (!res.ok) throw new Error('Failed to load budget');
+      if (!res.ok) throw new Error(t('loadFailed'));
       const json: BudgetData = await res.json();
       setData(json);
       setBudgetInput(String(json.limit));
     } catch {
-      toast.error('Failed to load AI budget data');
+      toast.error(t('loadFailed'));
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchBudget();
@@ -51,7 +53,7 @@ export function AiBudgetSettings() {
   async function handleSave() {
     const value = parseFloat(budgetInput);
     if (isNaN(value) || value < 0 || value > 1000) {
-      toast.error('Budget must be between $0 and $1,000');
+      toast.error(t('validation'));
       return;
     }
 
@@ -64,12 +66,12 @@ export function AiBudgetSettings() {
       });
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.error ?? 'Failed to update budget');
+        throw new Error(err.error ?? t('updateFailed'));
       }
-      toast.success('Budget updated');
+      toast.success(t('updated'));
       await fetchBudget();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to update budget');
+      toast.error(e instanceof Error ? e.message : t('updateFailed'));
     } finally {
       setSaving(false);
     }
@@ -77,7 +79,7 @@ export function AiBudgetSettings() {
 
   if (!data) {
     return (
-      <div className="text-sm text-muted-foreground">Loading AI budget data...</div>
+      <div className="text-sm text-muted-foreground">{t('loading')}</div>
     );
   }
 
@@ -90,15 +92,15 @@ export function AiBudgetSettings() {
       {/* Budget Setting */}
       <Card>
         <CardHeader>
-          <CardTitle>Monthly Budget</CardTitle>
+          <CardTitle>{t('monthlyTitle')}</CardTitle>
           <CardDescription>
-            Set the maximum amount to spend on AI features per calendar month.
+            {t('monthlyDescription')}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-3">
             <Label htmlFor="budget-input" className="sr-only">
-              Monthly budget (USD)
+              {t('budgetSrLabel')}
             </Label>
             <span className="text-sm font-medium text-muted-foreground">$</span>
             <Input
@@ -111,13 +113,13 @@ export function AiBudgetSettings() {
               onChange={(e) => setBudgetInput(e.target.value)}
               className="w-28"
             />
-            <span className="text-sm text-muted-foreground">USD / month</span>
+            <span className="text-sm text-muted-foreground">{t('perMonthSuffix')}</span>
             <Button
               onClick={handleSave}
               disabled={saving || budgetInput === String(data.limit)}
               size="sm"
             >
-              {saving ? 'Saving...' : 'Save'}
+              {saving ? t('saving') : t('save')}
             </Button>
           </div>
         </CardContent>
@@ -126,11 +128,11 @@ export function AiBudgetSettings() {
       {/* Current Month Usage */}
       <Card>
         <CardHeader>
-          <CardTitle>Current Month Usage</CardTitle>
+          <CardTitle>{t('currentMonthTitle')}</CardTitle>
           <CardDescription>
-            ${data.spent.toFixed(2)} of ${data.limit.toFixed(2)} used
+            {t('spentOfLimit', { spent: data.spent.toFixed(2), limit: data.limit.toFixed(2) })}
             {data.overBudget && (
-              <span className="ml-2 text-red-500 font-medium">- Over budget</span>
+              <span className="ml-2 text-red-500 font-medium">- {t('overBudget')}</span>
             )}
           </CardDescription>
         </CardHeader>
@@ -144,19 +146,19 @@ export function AiBudgetSettings() {
               />
             </div>
             <div className="flex justify-between text-xs text-muted-foreground">
-              <span>{usagePercent.toFixed(0)}% used</span>
-              <span>${data.remaining.toFixed(2)} remaining</span>
+              <span>{t('percentUsed', { percent: usagePercent.toFixed(0) })}</span>
+              <span>{t('remaining', { remaining: data.remaining.toFixed(2) })}</span>
             </div>
           </div>
 
           {/* Stats */}
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="rounded-lg border p-3">
-              <p className="text-sm text-muted-foreground">Total Requests</p>
+              <p className="text-sm text-muted-foreground">{t('totalRequests')}</p>
               <p className="text-2xl font-semibold">{data.stats.totalRequests}</p>
             </div>
             <div className="rounded-lg border p-3">
-              <p className="text-sm text-muted-foreground">Total Cost</p>
+              <p className="text-sm text-muted-foreground">{t('totalCost')}</p>
               <p className="text-2xl font-semibold">${data.stats.totalCost.toFixed(2)}</p>
             </div>
           </div>
@@ -164,13 +166,13 @@ export function AiBudgetSettings() {
           {/* Cost by Model */}
           {Object.keys(data.stats.byModel).length > 0 && (
             <div className="space-y-2">
-              <h4 className="text-sm font-medium">Cost by Model</h4>
+              <h4 className="text-sm font-medium">{t('costByModel')}</h4>
               <div className="rounded-lg border divide-y">
                 {Object.entries(data.stats.byModel).map(([model, info]) => (
                   <div key={model} className="flex items-center justify-between px-3 py-2 text-sm">
                     <span className="font-mono text-muted-foreground">{model}</span>
                     <span>
-                      {info.requests} req &middot; ${info.cost.toFixed(2)}
+                      {t('modelLine', { count: info.requests, cost: info.cost.toFixed(2) })}
                     </span>
                   </div>
                 ))}

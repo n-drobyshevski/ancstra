@@ -5,6 +5,7 @@ import type { FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { ChevronDown, ChevronRight, HousePlus, Loader2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { trpc } from '@/lib/trpc/client';
 import { Button } from '@/components/ui/button';
 import {
@@ -26,18 +27,17 @@ import {
 const DEFAULT_MAX_MEMBERS = 50;
 
 export function AddFamilyDialog() {
+  const t = useTranslations('admin.families.addDialog');
   const [open, setOpen] = useState(false);
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button size="sm">
           <HousePlus className="size-4" />
-          Add family
+          {t('trigger')}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">
-        {/* Remount on each open so state is fresh — same pattern
-            add-user-dialog uses. */}
         {open ? <AddFamilyForm onClose={() => setOpen(false)} /> : null}
       </DialogContent>
     </Dialog>
@@ -46,6 +46,7 @@ export function AddFamilyDialog() {
 
 function AddFamilyForm({ onClose }: { onClose: () => void }) {
   const router = useRouter();
+  const t = useTranslations('admin.families.addDialog');
 
   const [name, setName] = useState('');
   const [selectedOwner, setSelectedOwner] = useState<UserOption | null>(null);
@@ -54,11 +55,11 @@ function AddFamilyForm({ onClose }: { onClose: () => void }) {
 
   const createFamily = trpc.platformAdmin.createFamily.useMutation({
     onSuccess: ({ name: createdName, ownerName }) => {
-      toast.success(`Created family "${createdName}" with ${ownerName} as owner`);
+      toast.success(t('created', { name: createdName, owner: ownerName }));
       onClose();
       router.refresh();
     },
-    onError: (err) => toast.error(err.message || 'Failed to create family'),
+    onError: (err) => toast.error(err.message || t('createFailed')),
   });
 
   const trimmedName = name.trim();
@@ -76,8 +77,6 @@ function AddFamilyForm({ onClose }: { onClose: () => void }) {
     createFamily.mutate({
       name: trimmedName,
       ownerId: selectedOwner.id,
-      // Only send when the user explicitly diverged from the default,
-      // keeping the audit-log metadata clean.
       maxMembers:
         showAdvanced && maxMembers !== DEFAULT_MAX_MEMBERS
           ? maxMembers
@@ -88,16 +87,15 @@ function AddFamilyForm({ onClose }: { onClose: () => void }) {
   return (
     <form onSubmit={handleSubmit}>
       <DialogHeader>
-        <DialogTitle>Add new family</DialogTitle>
+        <DialogTitle>{t('title')}</DialogTitle>
         <DialogDescription>
-          Provision a new family tree on behalf of an existing user. They
-          become the owner. This action is logged in the platform audit log.
+          {t('description')}
         </DialogDescription>
       </DialogHeader>
 
       <div className="space-y-4 py-2">
         <div className="space-y-2">
-          <Label htmlFor="add-family-name">Family name</Label>
+          <Label htmlFor="add-family-name">{t('nameLabel')}</Label>
           <Input
             id="add-family-name"
             value={name}
@@ -106,7 +104,7 @@ function AddFamilyForm({ onClose }: { onClose: () => void }) {
             autoComplete="off"
             autoFocus
             required
-            placeholder="e.g. Smith Family Tree"
+            placeholder={t('namePlaceholder')}
           />
         </div>
 
@@ -129,14 +127,14 @@ function AddFamilyForm({ onClose }: { onClose: () => void }) {
             ) : (
               <ChevronRight className="size-4" />
             )}
-            Advanced settings
+            {t('advancedToggle')}
           </button>
         </div>
 
         {showAdvanced ? (
           <div className="space-y-3 rounded-md border border-dashed border-border p-3">
             <div className="space-y-2">
-              <Label htmlFor="add-family-max-members">Member cap</Label>
+              <Label htmlFor="add-family-max-members">{t('memberCapLabel')}</Label>
               <Input
                 id="add-family-max-members"
                 type="number"
@@ -150,12 +148,11 @@ function AddFamilyForm({ onClose }: { onClose: () => void }) {
                 className="max-w-[10rem]"
               />
               <p className="text-xs text-muted-foreground">
-                Default is {DEFAULT_MAX_MEMBERS}. Increase for large extended
-                families. Range 1–10000.
+                {t('memberCapHint', { default: DEFAULT_MAX_MEMBERS })}
               </p>
               {!capValid ? (
                 <p className="text-xs text-destructive">
-                  Enter a whole number between 1 and 10000.
+                  {t('memberCapValidation')}
                 </p>
               ) : null}
             </div>
@@ -170,18 +167,18 @@ function AddFamilyForm({ onClose }: { onClose: () => void }) {
           onClick={onClose}
           disabled={createFamily.isPending}
         >
-          Cancel
+          {t('cancel')}
         </Button>
         <Button type="submit" disabled={!canSubmit}>
           {createFamily.isPending ? (
             <>
               <Loader2 className="size-4 animate-spin" />
-              Creating…
+              {t('creating')}
             </>
           ) : (
             <>
               <HousePlus className="size-4" />
-              Create family
+              {t('create')}
             </>
           )}
         </Button>

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -19,6 +20,7 @@ function buildHref(basePath: string, q: string | undefined, offset: number) {
 }
 
 export function DataTablePagination({ basePath, q, offset, limit, total }: Props) {
+  const t = useTranslations('admin.dataTable');
   if (total <= limit) return null;
 
   const page = Math.floor(offset / limit) + 1;
@@ -31,7 +33,7 @@ export function DataTablePagination({ basePath, q, offset, limit, total }: Props
   return (
     <div className="flex items-center justify-between pt-4">
       <p className="text-sm text-muted-foreground tabular-nums">
-        Page {page} of {pageCount}
+        {t('pageOf', { page, pageCount })}
       </p>
       <div className="flex gap-2">
         <Button
@@ -39,17 +41,17 @@ export function DataTablePagination({ basePath, q, offset, limit, total }: Props
           variant="outline"
           size="sm"
           disabled={!hasPrev}
-          aria-label="Previous page"
+          aria-label={t('previousAriaLabel')}
         >
           {hasPrev ? (
             <Link href={buildHref(basePath, q, prev)}>
               <ChevronLeft className="size-4" />
-              Previous
+              {t('previous')}
             </Link>
           ) : (
             <span>
               <ChevronLeft className="size-4" />
-              Previous
+              {t('previous')}
             </span>
           )}
         </Button>
@@ -58,16 +60,16 @@ export function DataTablePagination({ basePath, q, offset, limit, total }: Props
           variant="outline"
           size="sm"
           disabled={!hasNext}
-          aria-label="Next page"
+          aria-label={t('nextAriaLabel')}
         >
           {hasNext ? (
             <Link href={buildHref(basePath, q, next)}>
-              Next
+              {t('next')}
               <ChevronRight className="size-4" />
             </Link>
           ) : (
             <span>
-              Next
+              {t('next')}
               <ChevronRight className="size-4" />
             </span>
           )}

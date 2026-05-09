@@ -1,6 +1,7 @@
 'use client';
 
 import { Check, Minus, X } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import type { PersonListItem } from '@ancstra/shared';
 import { Progress } from '@/components/ui/progress';
 import {
@@ -16,6 +17,8 @@ interface CompletenessCellProps {
 
 export function CompletenessCell({ person }: CompletenessCellProps) {
   const { items, total } = getCompletenessBreakdown(person);
+  const t = useTranslations('persons.completenessCell');
+  const tFields = useTranslations('persons.completenessCell.fields');
 
   return (
     <Tooltip>
@@ -23,7 +26,7 @@ export function CompletenessCell({ person }: CompletenessCellProps) {
         <span
           tabIndex={0}
           role="group"
-          aria-label={`Completeness ${total}%`}
+          aria-label={t('ariaLabel', { value: total })}
           className="inline-flex items-center gap-2 rounded-sm focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           <Progress value={total} className="h-2 w-20" />
@@ -37,7 +40,7 @@ export function CompletenessCell({ person }: CompletenessCellProps) {
       </TooltipTrigger>
       <TooltipContent side="top" sideOffset={4}>
         <div className="flex min-w-[180px] flex-col gap-1.5">
-          <div className="font-medium">Completeness {total}%</div>
+          <div className="font-medium">{t('tooltipTitle', { value: total })}</div>
           <div className="border-t border-current/20" />
           <ul className="flex flex-col gap-0.5">
             {items.map((it) => {
@@ -49,7 +52,7 @@ export function CompletenessCell({ person }: CompletenessCellProps) {
                   >
                     <span className="flex items-center gap-1.5">
                       <Minus className="size-3" aria-hidden />
-                      {it.label}
+                      {tFields(it.key)}
                     </span>
                     <span className="tabular-nums">—</span>
                   </li>
@@ -66,7 +69,7 @@ export function CompletenessCell({ person }: CompletenessCellProps) {
                     ) : (
                       <X className="size-3 opacity-60" aria-hidden />
                     )}
-                    {it.label}
+                    {tFields(it.key)}
                   </span>
                   <span className="tabular-nums">
                     {it.hit ? it.weight : `0/${it.weight}`}

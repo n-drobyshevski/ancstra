@@ -2,22 +2,34 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Users, Building2, ArrowLeft, History } from 'lucide-react';
+import { LayoutDashboard, Users, Building2, ArrowLeft, History, type LucideIcon } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 
-const navItems = [
-  { title: 'Dashboard', href: '/admin', icon: LayoutDashboard, exact: true },
-  { title: 'Users', href: '/admin/users', icon: Users, exact: false },
-  { title: 'Family trees', href: '/admin/families', icon: Building2, exact: false },
-  { title: 'Audit Log', href: '/admin/audit', icon: History, exact: false },
+type AdminNavKey = 'dashboard' | 'users' | 'families' | 'audit';
+
+interface AdminNavItem {
+  key: AdminNavKey;
+  href: string;
+  icon: LucideIcon;
+  exact: boolean;
+}
+
+const navItems: AdminNavItem[] = [
+  { key: 'dashboard', href: '/admin', icon: LayoutDashboard, exact: true },
+  { key: 'users', href: '/admin/users', icon: Users, exact: false },
+  { key: 'families', href: '/admin/families', icon: Building2, exact: false },
+  { key: 'audit', href: '/admin/audit', icon: History, exact: false },
 ];
 
 export function AdminNav() {
   const pathname = usePathname();
+  const t = useTranslations('admin.nav');
+  const tItems = useTranslations('admin.nav.items');
 
   return (
     <nav
-      aria-label="Admin navigation"
+      aria-label={t('platform')}
       className="hidden md:block w-[200px] shrink-0 border-r border-border pr-4 space-y-1"
     >
       <Link
@@ -25,10 +37,10 @@ export function AdminNav() {
         className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors mb-2"
       >
         <ArrowLeft className="size-4 shrink-0" />
-        Back to App
+        {t('backToApp')}
       </Link>
       <div className="px-3 pt-2 pb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        Platform
+        {t('platform')}
       </div>
       {navItems.map((item) => {
         const isActive = item.exact
@@ -46,7 +58,7 @@ export function AdminNav() {
             )}
           >
             <item.icon className="size-4 shrink-0" />
-            {item.title}
+            {tItems(item.key)}
           </Link>
         );
       })}

@@ -12,6 +12,7 @@ import {
   Trash2,
   UserPlus,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { trpc } from '@/lib/trpc/client';
 import {
   AlertDialog,
@@ -40,6 +41,7 @@ import { Label } from '@/components/ui/label';
 import { MoveOrAddMemberDialog } from '@/components/admin/move-or-add-member-dialog';
 
 type Role = 'owner' | 'admin' | 'editor' | 'viewer';
+type AssignableRole = Exclude<Role, 'owner'>;
 
 interface Props {
   familyId: string;
@@ -52,10 +54,13 @@ interface Props {
   };
 }
 
-const ASSIGNABLE: ReadonlyArray<Exclude<Role, 'owner'>> = ['admin', 'editor', 'viewer'];
+const ASSIGNABLE: ReadonlyArray<AssignableRole> = ['admin', 'editor', 'viewer'];
 
 export function FamilyMemberActions({ familyId, familyName, member }: Props) {
   const router = useRouter();
+  const t = useTranslations('admin.familyMemberActions');
+  const tRoles = useTranslations('admin.familyMemberActions.roles');
+  const tCommon = useTranslations('common');
   const [removeOpen, setRemoveOpen] = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
   const [addToFamilyOpen, setAddToFamilyOpen] = useState(false);
@@ -64,33 +69,32 @@ export function FamilyMemberActions({ familyId, familyName, member }: Props) {
 
   const changeRole = trpc.platformAdmin.changeMemberRole.useMutation({
     onSuccess: ({ changed }) => {
-      toast.success(changed ? 'Role updated' : 'Role unchanged');
+      toast.success(changed ? t('roleUpdated') : t('roleUnchanged'));
       router.refresh();
     },
-    onError: (err) => toast.error(err.message || 'Failed to update role'),
+    onError: (err) => toast.error(err.message || t('roleUpdateFailed')),
   });
 
   const remove = trpc.platformAdmin.removeMember.useMutation({
     onSuccess: () => {
-      toast.success(`Removed ${member.userName}`);
+      toast.success(t('removed', { name: member.userName }));
       setRemoveOpen(false);
       router.refresh();
     },
-    onError: (err) => toast.error(err.message || 'Failed to remove member'),
+    onError: (err) => toast.error(err.message || t('removeFailed')),
   });
 
   const transfer = trpc.platformAdmin.forceTransferOwnership.useMutation({
     onSuccess: ({ changed }) => {
-      toast.success(changed ? `Ownership transferred to ${member.userName}` : 'No change');
+      toast.success(changed ? t('transferred', { name: member.userName }) : t('noChange'));
       setTransferOpen(false);
       setConfirmName('');
       router.refresh();
     },
-    onError: (err) => toast.error(err.message || 'Failed to transfer ownership'),
+    onError: (err) => toast.error(err.message || t('transferFailed')),
   });
 
   const isPending = changeRole.isPending || remove.isPending || transfer.isPending;
-
   const isOwner = member.role === 'owner';
 
   return (
@@ -100,7 +104,7 @@ export function FamilyMemberActions({ familyId, familyName, member }: Props) {
           <Button
             variant="ghost"
             size="icon"
-            aria-label={`Actions for ${member.userName}`}
+            aria-label={t('ariaLabel', { name: member.userName })}
             disabled={isPending}
           >
             {isPending ? (
@@ -112,7 +116,7 @@ export function FamilyMemberActions({ familyId, familyName, member }: Props) {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
           <DropdownMenuLabel className="text-xs">
-            {isOwner ? 'Owner — limited actions' : 'Platform-admin override'}
+            {isOwner ? t('ownerLabel') : t('platformOverrideLabel')}
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
 
@@ -121,7 +125,7 @@ export function FamilyMemberActions({ familyId, familyName, member }: Props) {
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger>
                   <ShieldOff className="size-4 mr-2" />
-                  Change role
+                  {t('changeRole')}
                 </DropdownMenuSubTrigger>
                 <DropdownMenuSubContent>
                   {ASSIGNABLE.map((r) => (
@@ -136,9 +140,9 @@ export function FamilyMemberActions({ familyId, familyName, member }: Props) {
                         })
                       }
                     >
-                      <span className="capitalize">{r}</span>
+                      <span className="capitalize">{tRoles(r)}</span>
                       {r === member.role ? (
-                        <span className="ml-auto text-xs text-muted-foreground">current</span>
+                        <span className="ml-auto text-xs text-muted-foreground">{t('current')}</span>
                       ) : null}
                     </DropdownMenuItem>
                   ))}
@@ -148,7 +152,7 @@ export function FamilyMemberActions({ familyId, familyName, member }: Props) {
               {member.role === 'admin' ? (
                 <DropdownMenuItem onClick={() => setTransferOpen(true)}>
                   <Crown className="size-4 mr-2" />
-                  Force transfer ownership
+                  {t('forceTransfer')}
                 </DropdownMenuItem>
               ) : null}
 
@@ -157,16 +161,16 @@ export function FamilyMemberActions({ familyId, familyName, member }: Props) {
           ) : null}
           <DropdownMenuItem onClick={() => setAddToFamilyOpen(true)}>
             <UserPlus className="size-4 mr-2" />
-            Add to another family…
+            {t('addToFamily')}
           </DropdownMenuItem>
           <DropdownMenuItem
             disabled={isOwner}
             onClick={() => setMoveToFamilyOpen(true)}
           >
             <ArrowLeftRight className="size-4 mr-2" />
-            Move to another family…
+            {t('moveToFamily')}
             {isOwner ? (
-              <span className="ml-auto text-xs text-muted-foreground">owner</span>
+              <span className="ml-auto text-xs text-muted-foreground">{t('ownerDisabledReason')}</span>
             ) : null}
           </DropdownMenuItem>
 
@@ -177,9 +181,9 @@ export function FamilyMemberActions({ familyId, familyName, member }: Props) {
             onClick={() => setRemoveOpen(true)}
           >
             <Trash2 className="size-4 mr-2" />
-            Remove member
+            {t('remove')}
             {isOwner ? (
-              <span className="ml-auto text-xs text-muted-foreground">owner</span>
+              <span className="ml-auto text-xs text-muted-foreground">{t('ownerDisabledReason')}</span>
             ) : null}
           </DropdownMenuItem>
         </DropdownMenuContent>
@@ -214,14 +218,16 @@ export function FamilyMemberActions({ familyId, familyName, member }: Props) {
       <AlertDialog open={removeOpen} onOpenChange={setRemoveOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove {member.userName}?</AlertDialogTitle>
+            <AlertDialogTitle>{t('removeTitle', { name: member.userName })}</AlertDialogTitle>
             <AlertDialogDescription>
-              They will lose access to <strong>{familyName}</strong> immediately.
-              The action is logged in the audit log and the family activity feed.
+              {t.rich('removeDescription', {
+                family: familyName,
+                b: (chunks) => <strong>{chunks}</strong>,
+              })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={remove.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={remove.isPending}>{tCommon('buttons.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => {
                 e.preventDefault();
@@ -232,10 +238,10 @@ export function FamilyMemberActions({ familyId, familyName, member }: Props) {
               {remove.isPending ? (
                 <>
                   <Loader2 className="size-4 animate-spin" />
-                  Removing…
+                  {tCommon('states.loading')}
                 </>
               ) : (
-                'Remove'
+                t('remove')
               )}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -252,17 +258,18 @@ export function FamilyMemberActions({ familyId, familyName, member }: Props) {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Force transfer ownership to {member.userName}?
+              {t('transferTitle', { name: member.userName })}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              The current owner will be demoted to admin. This is a
-              platform-admin override and is logged in the audit log and the
-              family activity feed.
+              {t('transferDescription')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-2">
             <Label htmlFor="confirm-transfer-family-name">
-              Type the family name <strong>{familyName}</strong> to confirm
+              {t.rich('typeFamilyToConfirm', {
+                family: familyName,
+                b: (chunks) => <strong>{chunks}</strong>,
+              })}
             </Label>
             <Input
               id="confirm-transfer-family-name"
@@ -273,7 +280,7 @@ export function FamilyMemberActions({ familyId, familyName, member }: Props) {
             />
           </div>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={transfer.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={transfer.isPending}>{tCommon('buttons.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               disabled={confirmName.trim() !== familyName || transfer.isPending}
               onClick={(e) => {
@@ -285,10 +292,10 @@ export function FamilyMemberActions({ familyId, familyName, member }: Props) {
               {transfer.isPending ? (
                 <>
                   <Loader2 className="size-4 animate-spin" />
-                  Transferring…
+                  {tCommon('states.loading')}
                 </>
               ) : (
-                'Force transfer'
+                t('forceTransfer')
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

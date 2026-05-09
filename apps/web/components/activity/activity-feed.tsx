@@ -2,19 +2,22 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Activity, AlertTriangle } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { ActivityEntry } from './activity-entry';
 import { ActivityEntrySkeleton } from './activity-entry-skeleton';
 import { Button } from '@/components/ui/button';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ACTIVITY_CATEGORIES, type ActivityCategoryKey } from '@/lib/activity-config';
-import { groupItemsByDate } from '@/lib/format';
+  ActivityFilterBar,
+  rangeForPreset,
+  type ActivityFilters,
+  type ActivityFeedMember,
+} from './activity-filter-bar';
+import type { ActivityCategoryKey } from '@/lib/activity-config';
+import {
+  filterEntriesByVisibility,
+  type ActivityVisibility,
+} from '@/lib/activity-visibility';
+import { useGroupItemsByRelativeBucket } from '@/lib/format-client';
 
 interface ActivityItem {
   id: string;
@@ -34,113 +37,134 @@ interface ActivityResponse {
   nextCursor: string | null;
 }
 
-export interface ActivityFeedMember {
-  userId: string;
-  name: string | null;
-  email: string;
-}
+export type { ActivityFeedMember };
 
 interface ActivityFeedProps {
   familyId: string;
+  visibility: ActivityVisibility;
   initialItems?: ActivityItem[];
   initialCursor?: string | null;
   /** Optional: family members for the actor filter dropdown. */
   members?: ActivityFeedMember[];
 }
 
-export function ActivityFeed({ familyId, initialItems, initialCursor, members }: ActivityFeedProps) {
-  const [items, setItems] = useState<ActivityItem[]>(initialItems ?? []);
+const INITIAL_FILTERS: ActivityFilters = {
+  category: 'all',
+  userId: 'all',
+  q: '',
+  datePreset: 'all',
+};
+
+function tabActions(
+  visibility: ActivityVisibility,
+  category: ActivityCategoryKey,
+): string[] | null {
+  if (category === 'all') return null;
+  const cat = visibility.categories.find((c) => c.key === category);
+  return cat?.actions ?? [];
+}
+
+export function ActivityFeed({
+  familyId,
+  visibility,
+  initialItems,
+  initialCursor,
+  members,
+}: ActivityFeedProps) {
+  const tPage = useTranslations('activity.page');
+  const tCommon = useTranslations('common');
+  const [items, setItems] = useState<ActivityItem[]>(() =>
+    initialItems ? filterEntriesByVisibility(initialItems, visibility) : [],
+  );
   const [nextCursor, setNextCursor] = useState<string | null>(initialCursor ?? null);
   const [loading, setLoading] = useState(!initialItems);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeCategory, setActiveCategory] = useState<ActivityCategoryKey>('all');
-  const [userFilter, setUserFilter] = useState<string>('all');
+  const [filters, setFilters] = useState<ActivityFilters>(INITIAL_FILTERS);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
-  const fetchActivity = useCallback(
-    async (cursor?: string, actionFilter?: string, userId?: string) => {
+  const buildParams = useCallback(
+    (f: ActivityFilters, cursor?: string | null) => {
       const params = new URLSearchParams({ limit: '20' });
+      // Only forward `action` when the tab maps to exactly one action; otherwise
+      // the role allowlist on the server already constrains the result and the
+      // client narrows further with `tabActions` below.
+      const actions = tabActions(visibility, f.category);
+      if (actions && actions.length === 1) {
+        params.set('action', actions[0]);
+      }
+      if (f.userId !== 'all') params.set('userId', f.userId);
+      if (f.q.trim()) params.set('q', f.q.trim());
+      const range = rangeForPreset(f.datePreset);
+      if (range.since) params.set('since', range.since);
+      if (range.until) params.set('until', range.until);
       if (cursor) params.set('cursor', cursor);
-      if (actionFilter) params.set('action', actionFilter);
-      if (userId) params.set('userId', userId);
-
-      const res = await fetch(
-        `/api/families/${familyId}/activity?${params.toString()}`
-      );
-      if (!res.ok) throw new Error('Failed to load activity');
-      return (await res.json()) as ActivityResponse;
+      return params;
     },
-    [familyId]
+    [visibility],
   );
 
-  function categoryActionFilter(key: string): string | undefined {
-    const category = ACTIVITY_CATEGORIES.find((c) => c.key === key);
-    return category?.actions?.length === 1 ? category.actions[0] : undefined;
-  }
-  function categoryActionList(key: string): string[] | null {
-    const category = ACTIVITY_CATEGORIES.find((c) => c.key === key);
-    return category?.actions ?? null;
-  }
+  const narrowToTab = useCallback(
+    (rows: ActivityItem[], category: ActivityCategoryKey) => {
+      const allowed = tabActions(visibility, category);
+      if (!allowed) return filterEntriesByVisibility(rows, visibility);
+      const allowedSet = new Set(allowed);
+      return rows.filter((r) => allowedSet.has(r.action));
+    },
+    [visibility],
+  );
 
-  // Re-fetch first page whenever a filter changes (mount handled separately).
-  const refetchFromFilters = useCallback(
-    (categoryKey: ActivityCategoryKey, userId: string) => {
+  const fetchActivity = useCallback(
+    async (params: URLSearchParams) => {
+      const res = await fetch(
+        `/api/families/${familyId}/activity?${params.toString()}`,
+      );
+      if (!res.ok) throw new Error(tPage('loadFailed'));
+      return (await res.json()) as ActivityResponse;
+    },
+    [familyId, tPage],
+  );
+
+  const refetch = useCallback(
+    (nextFilters: ActivityFilters) => {
       setLoading(true);
       setError(null);
       setItems([]);
       setNextCursor(null);
 
-      const actionFilter = categoryActionFilter(categoryKey);
-      const userIdParam = userId === 'all' ? undefined : userId;
-
-      fetchActivity(undefined, actionFilter, userIdParam)
+      fetchActivity(buildParams(nextFilters))
         .then((data) => {
-          const allowed = categoryActionList(categoryKey);
-          const filtered = allowed
-            ? data.items.filter((item) => allowed.includes(item.action))
-            : data.items;
-          setItems(filtered);
+          setItems(narrowToTab(data.items, nextFilters.category));
           setNextCursor(data.nextCursor);
         })
-        .catch((err) => setError(err.message))
+        .catch((err) =>
+          setError(err instanceof Error ? err.message : tPage('loadFailed')),
+        )
         .finally(() => setLoading(false));
     },
-    [fetchActivity],
+    [buildParams, fetchActivity, narrowToTab, tPage],
   );
 
-  // Mount fetch when no initial data was provided
+  // Initial mount fetch when no SSR data was provided.
   useEffect(() => {
     if (initialItems) return;
-    refetchFromFilters('all', 'all');
-  }, [initialItems, refetchFromFilters]);
+    refetch(INITIAL_FILTERS);
+  }, [initialItems, refetch]);
 
-  function handleCategoryChange(key: string) {
-    const next = key as ActivityCategoryKey;
-    setActiveCategory(next);
-    refetchFromFilters(next, userFilter);
-  }
-
-  function handleUserFilterChange(value: string) {
-    setUserFilter(value);
-    refetchFromFilters(activeCategory, value);
+  function handleFiltersChange(next: ActivityFilters) {
+    setFilters(next);
+    refetch(next);
   }
 
   async function loadMore() {
     if (!nextCursor || loadingMore) return;
     setLoadingMore(true);
     try {
-      const actionFilter = categoryActionFilter(activeCategory);
-      const userIdParam = userFilter === 'all' ? undefined : userFilter;
-      const data = await fetchActivity(nextCursor, actionFilter, userIdParam);
-      const allowed = categoryActionList(activeCategory);
-      const filtered = allowed
-        ? data.items.filter((item) => allowed.includes(item.action))
-        : data.items;
-      setItems((prev) => [...prev, ...filtered]);
+      const data = await fetchActivity(buildParams(filters, nextCursor));
+      setItems((prev) => [...prev, ...narrowToTab(data.items, filters.category)]);
       setNextCursor(data.nextCursor);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load more');
+      setError(err instanceof Error ? err.message : tPage('loadMoreFailed'));
     } finally {
       setLoadingMore(false);
     }
@@ -150,127 +174,96 @@ export function ActivityFeed({ familyId, initialItems, initialCursor, members }:
   useEffect(() => {
     const sentinel = sentinelRef.current;
     if (!sentinel) return;
-
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting && nextCursor && !loadingMore && !loading) {
           loadMore();
         }
       },
-      { rootMargin: '200px' }
+      { rootMargin: '200px' },
     );
-
     observer.observe(sentinel);
     return () => observer.disconnect();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nextCursor, loadingMore, loading]);
 
-  const dateGroups = groupItemsByDate(items, (item) => item.createdAt);
+  const groupByBucket = useGroupItemsByRelativeBucket();
+  const dateGroups = groupByBucket(items, (item) => item.createdAt);
 
   return (
-    <div className="pb-[env(safe-area-inset-bottom)]">
-      {/* Filter tabs */}
-      <Tabs value={activeCategory} onValueChange={handleCategoryChange}>
-        <div className="-mx-3 overflow-x-auto scrollbar-none px-3 sm:mx-0 sm:px-0">
-          <TabsList variant="line">
-            {ACTIVITY_CATEGORIES.map((cat) => (
-              <TabsTrigger key={cat.key} value={cat.key}>
-                {cat.label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </div>
-      </Tabs>
+    <div className="space-y-4 pb-[env(safe-area-inset-bottom)]">
+      <ActivityFilterBar
+        visibility={visibility}
+        members={members}
+        filters={filters}
+        onFiltersChange={handleFiltersChange}
+      />
 
-      {/* Secondary filters (only when we have a members list to populate from) */}
-      {members && members.length > 0 ? (
-        <div className="mt-3 flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">By:</span>
-          <Select value={userFilter} onValueChange={handleUserFilterChange}>
-            <SelectTrigger size="sm" className="h-8 w-[200px]">
-              <SelectValue placeholder="Anyone" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Anyone</SelectItem>
-              {members.map((m) => (
-                <SelectItem key={m.userId} value={m.userId}>
-                  {m.name ?? m.email}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      {loading ? (
+        <div className="space-y-0 divide-y">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <ActivityEntrySkeleton key={i} />
+          ))}
         </div>
-      ) : null}
-
-      {/* Content */}
-      <div className="mt-4">
-        {loading ? (
-          <div className="space-y-0 divide-y">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <ActivityEntrySkeleton key={i} />
-            ))}
-          </div>
-        ) : error ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <AlertTriangle className="size-12 text-destructive/50" />
-            <h2 className="mt-4 text-lg font-semibold">Something went wrong</h2>
-            <p className="mt-1 max-w-sm text-sm text-muted-foreground">{error}</p>
-            <Button
-              variant="outline"
-              className="mt-6"
-              onClick={() => {
-                setError(null);
-                handleCategoryChange(activeCategory);
-              }}
-            >
-              Try again
-            </Button>
-          </div>
-        ) : items.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <Activity className="size-16 text-muted-foreground/30" />
-            <h2 className="mt-4 text-lg font-semibold">No activity recorded yet</h2>
-            <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-              Activity will appear here as changes are made to your family tree.
-            </p>
-          </div>
-        ) : (
-          <div>
-            {dateGroups.map((group) => (
-              <div key={group.label}>
-                {/* Sticky date group header */}
-                <div className="sticky top-0 z-10 bg-background/95 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground backdrop-blur-sm">
-                  {group.label}
-                </div>
-                <div className="divide-y">
-                  {group.items.map((item) => (
-                    <ActivityEntry
-                      key={item.id}
-                      userName={item.userName}
-                      userAvatarUrl={item.userAvatarUrl}
-                      action={item.action}
-                      entityType={item.entityType}
-                      entityId={item.entityId}
-                      summary={item.summary}
-                      createdAt={item.createdAt}
-                    />
-                  ))}
-                </div>
+      ) : error ? (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <AlertTriangle className="size-12 text-destructive/50" />
+          <h2 className="mt-4 text-lg font-semibold">{tCommon('states.somethingWentWrong')}</h2>
+          <p className="mt-1 max-w-sm text-sm text-muted-foreground">{error}</p>
+          <Button
+            variant="outline"
+            className="mt-6"
+            onClick={() => {
+              setError(null);
+              refetch(filters);
+            }}
+          >
+            {tCommon('buttons.tryAgain')}
+          </Button>
+        </div>
+      ) : items.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <Activity className="size-16 text-muted-foreground/30" />
+          <h2 className="mt-4 text-lg font-semibold">{tPage('noActivityHere')}</h2>
+          <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+            {tPage('tryClearingFilters')}
+          </p>
+        </div>
+      ) : (
+        <div>
+          {dateGroups.map((group) => (
+            <div key={group.label}>
+              <div className="sticky top-0 z-10 bg-background/95 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground backdrop-blur-sm">
+                {group.label}
               </div>
-            ))}
-
-            {/* Load more skeleton / sentinel */}
-            {loadingMore && (
               <div className="divide-y">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <ActivityEntrySkeleton key={i} />
+                {group.items.map((item) => (
+                  <ActivityEntry
+                    key={item.id}
+                    userName={item.userName}
+                    userAvatarUrl={item.userAvatarUrl}
+                    action={item.action}
+                    entityType={item.entityType}
+                    entityId={item.entityId}
+                    summary={item.summary}
+                    createdAt={item.createdAt}
+                    metadata={item.metadata}
+                  />
                 ))}
               </div>
-            )}
-            {nextCursor && <div ref={sentinelRef} className="h-px" />}
-          </div>
-        )}
-      </div>
+            </div>
+          ))}
+
+          {loadingMore && (
+            <div className="divide-y">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <ActivityEntrySkeleton key={i} />
+              ))}
+            </div>
+          )}
+          {nextCursor && <div ref={sentinelRef} className="h-px" />}
+        </div>
+      )}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -11,6 +12,7 @@ const DISMISSED_KEY = 'ancstra-welcome-dismissed';
 
 export function WelcomeCard() {
   const [dismissed, setDismissed] = useState(true);
+  const t = useTranslations('dashboard.welcomeCard');
 
   useEffect(() => {
     setDismissed(localStorage.getItem(DISMISSED_KEY) === 'true');
@@ -28,29 +30,29 @@ export function WelcomeCard() {
           localStorage.setItem(DISMISSED_KEY, 'true');
           setDismissed(true);
         }}
-        aria-label="Dismiss welcome message"
+        aria-label={t('dismiss')}
       >
         <X className="h-4 w-4" />
       </Button>
       <CardHeader>
-        <CardTitle>Welcome to Ancstra!</CardTitle>
+        <CardTitle>{t('title')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
-        <p className="text-sm text-muted-foreground">Here&apos;s how to get started:</p>
+        <p className="text-sm text-muted-foreground">{t('tagline')}</p>
         <div className="flex flex-wrap gap-2">
           <RoleGate permission="gedcom:import">
             <Button asChild size="sm">
-              <Link href="/data">Import a GEDCOM file</Link>
+              <Link href="/data">{t('importGedcom')}</Link>
             </Button>
           </RoleGate>
           <RoleGate permission="person:create">
             <Button asChild size="sm" variant="outline">
-              <Link href="/persons/new">Add a person</Link>
+              <Link href="/persons/new">{t('addPerson')}</Link>
             </Button>
           </RoleGate>
           <RoleGate permission="ai:research">
             <Button asChild size="sm" variant="outline">
-              <Link href="/research">AI Research</Link>
+              <Link href="/research">{t('aiResearch')}</Link>
             </Button>
           </RoleGate>
         </div>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Loader2, Server, ExternalLink } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -12,6 +13,7 @@ interface WorkerHealth {
 }
 
 export function WorkerStatus() {
+  const t = useTranslations('settings.sources.worker');
   const [health, setHealth] = useState<WorkerHealth>({ status: 'unknown' });
   const [testing, setTesting] = useState(false);
 
@@ -52,10 +54,10 @@ export function WorkerStatus() {
 
   const statusLabel =
     health.status === 'healthy'
-      ? 'Connected'
+      ? t('connected')
       : health.status === 'down'
-        ? 'Unreachable'
-        : 'Not configured';
+        ? t('unreachable')
+        : t('notConfigured');
 
   return (
     <div
@@ -69,12 +71,12 @@ export function WorkerStatus() {
         <div>
           <div className="flex items-center gap-2">
             <span className={cn('size-2 rounded-full', dotColor)} />
-            <span className="text-sm font-medium">Background Worker</span>
+            <span className="text-sm font-medium">{t('label')}</span>
             <span className="text-xs text-muted-foreground">{statusLabel}</span>
           </div>
           {health.status === 'unknown' && (
             <p className="mt-1 text-xs text-muted-foreground">
-              Set WORKER_URL in your environment to enable scraper-based providers.
+              {t('hint')}
             </p>
           )}
         </div>
@@ -90,7 +92,7 @@ export function WorkerStatus() {
         ) : (
           <ExternalLink className="size-3.5" />
         )}
-        <span className="ml-1.5">Test</span>
+        <span className="ml-1.5">{t('test')}</span>
       </Button>
     </div>
   );

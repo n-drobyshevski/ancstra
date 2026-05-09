@@ -35,12 +35,13 @@ import { Button } from '@/components/ui/button';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import type { PersonListItem } from '@ancstra/shared';
 import {
-  treeTableColumns,
+  useTreeTableColumns,
   getAriaSort,
   TREE_COLUMN_ID_TO_SORT_KEY,
   TREE_SORT_KEY_TO_COLUMN_ID,
   type TreePersonRow,
 } from './tree-table-columns';
+import { useTranslations } from 'next-intl';
 import { sexTokens, getInitials } from './detail-sections';
 import { Network, ShieldAlert, ShieldCheck, Sprout } from 'lucide-react';
 import type {
@@ -118,6 +119,10 @@ export function TreeTable({
     (personId: string) => onSelectPerson(personId),
     [onSelectPerson],
   );
+  const treeTableColumns = useTreeTableColumns();
+  const tTable = useTranslations('tree.table');
+  const tCtx = useTranslations('tree.table.rowContextMenu');
+  const tMobile = useTranslations('tree.table.mobile');
 
   const table = useReactTable({
     data: rows,
@@ -256,9 +261,9 @@ export function TreeTable({
     return (
       <div className="flex h-full items-center justify-center p-8">
         <div className="text-center space-y-2">
-          <p className="text-muted-foreground">No persons in your tree yet.</p>
+          <p className="text-muted-foreground">{tTable('noPersonsYet')}</p>
           <p className="text-xs text-muted-foreground/70">
-            Add your first person from the toolbar to get started.
+            {tTable('addFirstHint')}
           </p>
         </div>
       </div>
@@ -349,14 +354,14 @@ export function TreeTable({
                           </ContextMenuTrigger>
                           <ContextMenuContent>
                             <ContextMenuItem onSelect={() => onSelectPerson(p.id)}>
-                              Open detail
+                              {tCtx('openDetail')}
                             </ContextMenuItem>
                             <ContextMenuItem onSelect={() => onSeeOnTree(p.id)}>
-                              <Network className="mr-2 size-4" /> Focus
+                              <Network className="mr-2 size-4" /> {tCtx('focus')}
                             </ContextMenuItem>
                             {onSetTopologyAnchor && (
                               <ContextMenuItem onSelect={() => onSetTopologyAnchor(p)}>
-                                Set as topology anchor
+                                {tCtx('setAnchor')}
                               </ContextMenuItem>
                             )}
                             <ContextMenuSeparator />
@@ -365,7 +370,7 @@ export function TreeTable({
                                 void navigator.clipboard?.writeText(`${p.givenName} ${p.surname}`);
                               }}
                             >
-                              Copy name
+                              {tCtx('copyName')}
                             </ContextMenuItem>
                           </ContextMenuContent>
                         </ContextMenu>
@@ -395,7 +400,7 @@ export function TreeTable({
             data-density={density}
             className="h-full overflow-auto"
             role="list"
-            aria-label="People in your family tree"
+            aria-label={tMobile('listAriaLabel')}
           >
             {tableRows.length === 0 ? (
               <NoResults onClear={onClearFilters} hasFilters={isFiltered} />
@@ -441,13 +446,15 @@ export function TreeTable({
           aria-live="polite"
         >
           <span>
-            Showing {filteredCount.toLocaleString()} of {total.toLocaleString()}{' '}
-            {total === 1 ? 'person' : 'people'}
-            {isAppending ? ' • loading…' : ''}
+            {tTable('footer.showing', {
+              visible: filteredCount.toLocaleString(),
+              total: total,
+            })}
+            {isAppending ? tTable('footer.loadingSuffix') : ''}
           </span>
           {isFiltered && onClearFilters && (
             <Button variant="link" size="sm" className="h-6 px-2 text-xs" onClick={onClearFilters}>
-              Clear filters
+              {tTable('clearFilters')}
             </Button>
           )}
         </div>
@@ -465,16 +472,15 @@ function NoResults({
   onClear?: () => void;
   hasFilters: boolean;
 }) {
+  const t = useTranslations('tree.table');
   return (
     <div className="flex h-full flex-col items-center justify-center gap-2 p-8 text-center">
       <p className="text-sm text-muted-foreground">
-        {hasFilters
-          ? 'No persons match the active filters.'
-          : 'No persons match your search.'}
+        {hasFilters ? t('noMatchFiltered') : t('noMatchSearch')}
       </p>
       {hasFilters && onClear && (
         <Button variant="link" size="sm" onClick={onClear}>
-          Clear filters
+          {t('clearFilters')}
         </Button>
       )}
     </div>
@@ -497,6 +503,8 @@ function MobileTreeRow({
   onSeeOnTree,
 }: MobileTreeRowProps) {
   const tokens = sexTokens[person.sex];
+  const tLifespan = useTranslations('tree.table.lifespan');
+  const tMobile = useTranslations('tree.table.mobile');
   const lastTapRef = useRef<number>(0);
 
   const handleClick = () => {
@@ -543,7 +551,12 @@ function MobileTreeRow({
           {person.givenName} {person.surname}
         </div>
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground tabular-nums">
-          <span>{compactLifespanInline(person.birthDate, person.deathDate, person.isLiving)}</span>
+          <span>{compactLifespanInline(person.birthDate, person.deathDate, person.isLiving, {
+            living: tLifespan('living'),
+            birthPrefix: (year) => tLifespan('birthPrefix', { year }),
+            deathPrefix: (year) => tLifespan('deathPrefix', { year }),
+            emDash: tLifespan('emDash'),
+          })}</span>
           {person.isLiving && (
             <Sprout className="size-3" style={{ color: 'var(--status-confirmed)' }} aria-hidden />
           )}
@@ -561,7 +574,7 @@ function MobileTreeRow({
           e.stopPropagation();
           onSeeOnTree();
         }}
-        aria-label={`Focus ${person.givenName} ${person.surname} on tree`}
+        aria-label={tMobile('focusAriaLabel', { name: `${person.givenName} ${person.surname}` })}
         className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
       >
         <Network className="size-4" aria-hidden />
@@ -570,16 +583,24 @@ function MobileTreeRow({
   );
 }
 
+interface LifespanStrings {
+  living: string;
+  birthPrefix: (year: string) => string;
+  deathPrefix: (year: string) => string;
+  emDash: string;
+}
+
 function compactLifespanInline(
-  birthDate?: string | null,
-  deathDate?: string | null,
-  isLiving?: boolean,
+  birthDate: string | null | undefined,
+  deathDate: string | null | undefined,
+  isLiving: boolean | undefined,
+  s: LifespanStrings,
 ): string {
   const by = birthDate?.match(/\b(\d{4})\b/)?.[1];
   const dy = deathDate?.match(/\b(\d{4})\b/)?.[1];
   if (by && dy) return `${by} \u2013 ${dy}`;
-  if (by && isLiving) return `${by} \u2013 Living`;
-  if (by) return `b. ${by}`;
-  if (dy) return `d. ${dy}`;
-  return '\u2014';
+  if (by && isLiving) return `${by} \u2013 ${s.living}`;
+  if (by) return s.birthPrefix(by);
+  if (dy) return s.deathPrefix(dy);
+  return s.emDash;
 }

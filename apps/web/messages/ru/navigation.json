@@ -1,0 +1,34 @@
+{
+  "ariaLabel": "Главная навигация",
+  "brand": "Ancstra",
+  "header": {
+    "search": "Поиск",
+    "defaultTitle": "Ancstra",
+    "familyPickerFallback": "Выбрать семью"
+  },
+  "items": {
+    "dashboard": "Панель",
+    "people": "Люди",
+    "tree": "Древо",
+    "research": "Исследование",
+    "factsheets": "Карточки фактов",
+    "importExport": "Импорт / Экспорт",
+    "activity": "Активность",
+    "dataQuality": "Качество данных",
+    "platform": "Платформа",
+    "settings": "Настройки",
+    "help": "Помощь",
+    "signOut": "Выйти"
+  },
+  "groups": {
+    "research": "Исследование",
+    "data": "Данные",
+    "analytics": "Аналитика"
+  },
+  "tooltips": {
+    "platformAdmin": "Администратор платформы",
+    "settings": "Настройки",
+    "help": "Помощь",
+    "signOut": "Выйти"
+  }
+}

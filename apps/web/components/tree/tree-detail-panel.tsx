@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import type { Event as PersonEvent, Person, PersonListItem, TreeData } from '@ancstra/shared';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -16,11 +17,10 @@ import { PersonLinkDialog, type RelationType } from '@/components/person-link-di
 import { EventCreateDialog } from '@/components/event-create-dialog';
 import {
   usePersonDetail,
-  sexLabel,
+  useSexLabel,
   sexTokens,
-  computeLifespan,
+  useComputeLifespan,
   getInitials,
-  formatEventType,
   MiniAvatar,
   DetailFamily,
   DetailTimeline,
@@ -98,6 +98,9 @@ function DetailHeader({
   isLoading: boolean;
   onClose: () => void;
 }) {
+  const t = useTranslations('tree.detail.header');
+  const sexLabel = useSexLabel();
+  const formatLifespan = useComputeLifespan();
   const sex = fullPerson?.sex ?? person.sex;
   const tokens = sexTokens[sex];
   const birthDate = fullPerson?.birthDate ?? person.birthDate;
@@ -121,7 +124,7 @@ function DetailHeader({
             <Skeleton className="h-3.5 w-36 mt-1" />
           ) : (
             <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
-              {computeLifespan(birthDate, deathDate)}
+              {formatLifespan(birthDate, deathDate)}
             </p>
           )}
           <div className="flex items-center gap-1.5 mt-1.5">
@@ -129,7 +132,7 @@ function DetailHeader({
               {sexLabel[sex]}
             </Badge>
             {person.isLiving && (
-              <Badge className="text-[10px] px-1.5 py-0">Living</Badge>
+              <Badge className="text-[10px] px-1.5 py-0">{t('livingBadge')}</Badge>
             )}
           </div>
         </div>
@@ -139,7 +142,7 @@ function DetailHeader({
         size="icon"
         className="size-8 shrink-0"
         onClick={onClose}
-        aria-label="Close detail panel"
+        aria-label={t('closeAriaLabel')}
       >
         <X className="size-4" />
       </Button>
@@ -160,6 +163,7 @@ function DetailActionStrip({
   onSeeOnTree: (personId: string) => void;
 }) {
   const router = useRouter();
+  const t = useTranslations('tree.detail.actionStrip');
 
   return (
     <div className="flex flex-wrap items-center gap-1 px-4 py-2 bg-muted/30 border-b">
@@ -170,7 +174,7 @@ function DetailActionStrip({
         onClick={() => onSeeOnTree(personId)}
       >
         <Network className="size-3.5" />
-        Focus
+        {t('focus')}
       </Button>
       <Button
         variant="ghost"
@@ -179,7 +183,7 @@ function DetailActionStrip({
         onClick={onToggleEdit}
       >
         <Pencil className="size-3.5" />
-        {isEditMode ? 'Done' : 'Edit'}
+        {isEditMode ? t('done') : t('edit')}
       </Button>
       <Button
         variant="ghost"
@@ -188,7 +192,7 @@ function DetailActionStrip({
         onClick={() => router.push(`/persons/${personId}`)}
       >
         <Search className="size-3.5" />
-        Research
+        {t('research')}
       </Button>
       <Button
         variant="ghost"
@@ -197,7 +201,7 @@ function DetailActionStrip({
         onClick={() => router.push(`/persons/${personId}`)}
       >
         <FileText className="size-3.5" />
-        Full Page
+        {t('fullPage')}
       </Button>
     </div>
   );
@@ -215,8 +219,10 @@ function EditableField({
   editState: ReturnType<typeof useInlineEdit>;
   label?: string;
 }) {
+  const t = useTranslations('tree.detail.editableField');
   const isEditing = editState.editingField === field;
   const isEmpty = !value;
+  const labelText = label ?? field;
 
   if (isEditing) {
     return (
@@ -237,14 +243,15 @@ function EditableField({
   }
 
   if (isEmpty && editState.isEditMode) {
+    const lowercase = label ? label.toLowerCase() : field;
     return (
       <button
         className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
         onClick={() => editState.startEdit(field, '')}
-        aria-label={`Add ${label ?? field}`}
+        aria-label={t('addAria', { label: labelText })}
       >
         <Pencil className="size-3" />
-        Add {label ? label.toLowerCase() : field}
+        {t('addPrefix', { label: lowercase })}
       </button>
     );
   }
@@ -264,8 +271,8 @@ function EditableField({
           type="button"
           onClick={() => editState.startEdit(field, value)}
           className="rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
-          title={`Edit ${label ?? field}`}
-          aria-label={`Edit ${label ?? field}`}
+          title={t('editTitle', { label: labelText })}
+          aria-label={t('editAria', { label: labelText })}
         >
           <Pencil className="size-3" />
         </button>
@@ -287,6 +294,9 @@ function DetailVitalInfo({
   isLoading: boolean;
   editState: ReturnType<typeof useInlineEdit>;
 }) {
+  const t = useTranslations('tree.detail.vital');
+  const tFields = useTranslations('tree.detail.vital.fields');
+
   if (isLoading) {
     return (
       <div className="border-b p-4 space-y-3">
@@ -303,29 +313,29 @@ function DetailVitalInfo({
 
   return (
     <div className="border-b p-4 space-y-2 text-sm">
-      <div className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-2">Vital Information</div>
+      <div className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-2">{t('heading')}</div>
       {/* Birth */}
       <div className="flex items-baseline gap-2">
-        <span className="w-10 text-xs text-muted-foreground shrink-0">Born</span>
+        <span className="w-10 text-xs text-muted-foreground shrink-0">{t('born')}</span>
         <span className="font-medium">
-          <EditableField field="birthDate" value={fullPerson.birthDate ?? ''} editState={editState} label="Birth date" />
+          <EditableField field="birthDate" value={fullPerson.birthDate ?? ''} editState={editState} label={tFields('birthDate')} />
         </span>
       </div>
       <div className="ml-12">
-        <EditableField field="birthPlace" value={fullPerson.birthPlace ?? ''} editState={editState} label="Birth place" />
+        <EditableField field="birthPlace" value={fullPerson.birthPlace ?? ''} editState={editState} label={tFields('birthPlace')} />
       </div>
 
       {/* Death */}
       {showDeath && (
         <>
           <div className="flex items-baseline gap-2 mt-2">
-            <span className="w-10 text-xs text-muted-foreground shrink-0">Died</span>
+            <span className="w-10 text-xs text-muted-foreground shrink-0">{t('died')}</span>
             <span className="font-medium">
-              <EditableField field="deathDate" value={fullPerson.deathDate ?? ''} editState={editState} label="Death date" />
+              <EditableField field="deathDate" value={fullPerson.deathDate ?? ''} editState={editState} label={tFields('deathDate')} />
             </span>
           </div>
           <div className="ml-12">
-            <EditableField field="deathPlace" value={fullPerson.deathPlace ?? ''} editState={editState} label="Death place" />
+            <EditableField field="deathPlace" value={fullPerson.deathPlace ?? ''} editState={editState} label={tFields('deathPlace')} />
           </div>
         </>
       )}
@@ -344,6 +354,7 @@ function DetailNotes({
   isLoading: boolean;
   editState: ReturnType<typeof useInlineEdit>;
 }) {
+  const t = useTranslations('tree.detail.notes');
   const [showFull, setShowFull] = useState(false);
   const isEditing = editState.editingField === 'notes';
   const text = notes ?? '';
@@ -370,7 +381,7 @@ function DetailNotes({
             if (e.key === 'Escape') editState.cancelEdit();
           }}
           disabled={editState.isSaving}
-          placeholder="Add notes..."
+          placeholder={t('placeholder')}
         />
       </div>
     );
@@ -383,7 +394,7 @@ function DetailNotes({
           className="text-xs text-muted-foreground hover:text-foreground"
           onClick={() => editState.startEdit('notes', '')}
         >
-          No notes — click to add
+          {t('addPrompt')}
         </button>
       </div>
     );
@@ -395,7 +406,7 @@ function DetailNotes({
 
   return (
     <div className="border-b p-4">
-      <div className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-2">Notes</div>
+      <div className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-2">{t('heading')}</div>
       <div
         className={`text-sm text-muted-foreground ${!showFull && isLong ? 'line-clamp-3' : ''} ${
           editState.isEditMode ? 'hover:ring-1 hover:ring-border rounded px-1 -mx-1 cursor-pointer' : ''
@@ -409,7 +420,7 @@ function DetailNotes({
           className="text-xs text-primary mt-1 hover:underline"
           onClick={() => setShowFull(true)}
         >
-          more
+          {t('more')}
         </button>
       )}
     </div>

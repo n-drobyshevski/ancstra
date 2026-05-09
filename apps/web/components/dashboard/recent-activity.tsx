@@ -2,7 +2,8 @@ import Link from 'next/link';
 import { cacheLife, cacheTag } from 'next/cache';
 import { Card, CardContent, CardHeader, CardTitle, CardAction } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { formatRelativeTime } from '@/lib/format';
+import { getTranslations } from 'next-intl/server';
+import { getFormatRelativeTime } from '@/lib/format-server';
 import { getActionConfig } from '@/lib/activity-config';
 import { getCachedActivityFeed } from '@/lib/cache/activity';
 
@@ -17,20 +18,22 @@ export async function RecentActivity({ familyId }: RecentActivityProps) {
 
   const feed = await getCachedActivityFeed(familyId, 5);
   const items = feed.items;
+  const formatRelative = await getFormatRelativeTime();
+  const t = await getTranslations('dashboard.recentActivity');
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Recent Activity</CardTitle>
+        <CardTitle className="text-base">{t('title')}</CardTitle>
         <CardAction>
           <Button variant="ghost" size="sm" asChild>
-            <Link href="/activity">View all</Link>
+            <Link href="/activity">{t('viewAll')}</Link>
           </Button>
         </CardAction>
       </CardHeader>
       <CardContent>
         {items.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-2">No recent activity</p>
+          <p className="text-sm text-muted-foreground py-2">{t('none')}</p>
         ) : (
           <ul role="list" className="space-y-0">
             {items.map((item) => {
@@ -40,7 +43,7 @@ export async function RecentActivity({ familyId }: RecentActivityProps) {
                   <div className={`size-2 shrink-0 rounded-full ${config.color.replace('text-', 'bg-')}`} />
                   <span className="text-sm flex-1 min-w-0 truncate">{item.summary}</span>
                   <span className="text-xs text-muted-foreground shrink-0">
-                    {formatRelativeTime(item.createdAt)}
+                    {formatRelative(item.createdAt)}
                   </span>
                 </li>
               );

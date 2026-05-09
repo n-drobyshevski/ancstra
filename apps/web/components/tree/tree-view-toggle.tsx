@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface TreeViewToggleProps {
@@ -8,6 +9,7 @@ interface TreeViewToggleProps {
 }
 
 export function TreeViewToggle({ view, onSetView }: TreeViewToggleProps) {
+  const t = useTranslations('tree.viewToggle');
   return (
     <Tabs
       value={view}
@@ -16,10 +18,10 @@ export function TreeViewToggle({ view, onSetView }: TreeViewToggleProps) {
     >
       <TabsList className="h-7">
         <TabsTrigger value="canvas" className="text-xs px-3 py-0.5">
-          Canvas
+          {t('canvas')}
         </TabsTrigger>
         <TabsTrigger value="table" className="text-xs px-3 py-0.5">
-          Table
+          {t('table')}
         </TabsTrigger>
       </TabsList>
     </Tabs>

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { cacheLife, cacheTag } from 'next/cache';
+import { getTranslations } from 'next-intl/server';
 import { Card, CardContent, CardHeader, CardTitle, CardAction } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,30 +12,26 @@ interface RecentPersonsProps {
   dbFilename: string;
 }
 
-const SEX_LABELS: Record<'M' | 'F' | 'U', string> = {
-  M: 'Male',
-  F: 'Female',
-  U: 'Unknown',
-};
-
 export async function RecentPersons({ dbFilename }: RecentPersonsProps) {
   'use cache';
   cacheLife('dashboard');
   cacheTag('dashboard-recent', 'dashboard-stats', 'persons');
 
-  const [recentPersons, { totalPersons }] = await Promise.all([
+  const [recentPersons, { totalPersons }, t, tSex] = await Promise.all([
     getCachedRecentPersons(dbFilename),
     getCachedStatCards(dbFilename),
+    getTranslations('dashboard.recentPersons'),
+    getTranslations('common.sexLabels'),
   ]);
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Recent Persons</CardTitle>
+        <CardTitle>{t('title')}</CardTitle>
         {totalPersons > 5 && (
           <CardAction>
             <Button variant="ghost" size="sm" asChild>
-              <Link href="/persons">View all</Link>
+              <Link href="/persons">{t('viewAll')}</Link>
             </Button>
           </CardAction>
         )}
@@ -43,21 +40,21 @@ export async function RecentPersons({ dbFilename }: RecentPersonsProps) {
         {recentPersons.length === 0 ? (
           <div className="py-12 text-center">
             <Users className="mx-auto size-16 text-muted-foreground/30" />
-            <p className="text-lg font-semibold mt-4">Start building your tree</p>
+            <p className="text-lg font-semibold mt-4">{t('emptyHeading')}</p>
             <p className="text-sm text-muted-foreground mt-1">
-              Add your first family member or import an existing GEDCOM file
+              {t('emptyTagline')}
             </p>
             <div className="flex flex-col sm:flex-row gap-2 mt-6 justify-center">
               <Button asChild>
                 <Link href="/persons/new">
                   <UserPlus />
-                  Add First Person
+                  {t('addFirstPerson')}
                 </Link>
               </Button>
               <Button variant="outline" asChild>
                 <Link href="/data">
                   <Upload />
-                  Import GEDCOM
+                  {t('importGedcom')}
                 </Link>
               </Button>
             </div>
@@ -83,11 +80,11 @@ export async function RecentPersons({ dbFilename }: RecentPersonsProps) {
                     {person.givenName} {person.surname}
                   </Link>
                   {person.birthDate && (
-                    <p className="text-xs text-muted-foreground">b. {person.birthDate}</p>
+                    <p className="text-xs text-muted-foreground">{t('birthPrefix', { date: person.birthDate })}</p>
                   )}
                 </div>
                 <Badge variant="secondary" className="text-xs hidden sm:inline-flex">
-                  {SEX_LABELS[person.sex]}
+                  {tSex(person.sex)}
                 </Badge>
               </li>
             ))}

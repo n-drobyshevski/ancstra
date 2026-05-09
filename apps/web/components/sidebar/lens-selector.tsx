@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { toast } from 'sonner';
 import { Check, Glasses, RotateCcw } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import type { Role } from '@ancstra/auth/types';
 import { availableLenses } from '@ancstra/auth/lens';
 import {
@@ -15,11 +16,13 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { useLens } from '@/lib/lens/provider';
-import { LENS_THEME, ROLE_LABEL, type LensableRole } from '@/lib/lens/theme';
+import { LENS_THEME, type LensableRole } from '@/lib/lens/theme';
 import { cn } from '@/lib/utils';
 
 export function LensSelector() {
   const { actualRole, lens, setLens, familyId } = useLens();
+  const t = useTranslations('common.lens');
+  const tRoles = useTranslations('common.lens.roles');
 
   // Hide entirely when there's nothing meaningful to show:
   //  - no current family context
@@ -30,22 +33,22 @@ export function LensSelector() {
   const isActive = lens !== null;
   const activeTheme = isActive ? LENS_THEME[lens as LensableRole] : null;
   const ActiveIcon = activeTheme?.icon ?? Glasses;
-  const triggerLabel = isActive ? `Viewing as ${ROLE_LABEL[lens]}` : 'Your view';
+  const triggerLabel = isActive ? t('viewingAs', { role: tRoles(lens as Role) }) : t('yourView');
   const triggerTooltip = isActive
-    ? `Lens active: ${ROLE_LABEL[lens]} — click to change`
-    : 'Lens: your view';
+    ? t('tooltipActive', { role: tRoles(lens as Role) })
+    : t('tooltipYourView');
 
   function activate(role: Role) {
     setLens(role);
-    toast.success(`Now viewing as ${ROLE_LABEL[role]}`, {
-      description: 'Permissions are temporarily downgraded.',
+    toast.success(t('activated', { role: tRoles(role) }), {
+      description: t('activatedDescription'),
     });
   }
 
   function reset() {
     setLens(null);
-    toast.success('Lens reset', {
-      description: `Restored your ${ROLE_LABEL[actualRole!]} access.`,
+    toast.success(t('reset'), {
+      description: t('resetDescription', { role: tRoles(actualRole!) }),
     });
   }
 
@@ -83,10 +86,10 @@ export function LensSelector() {
         >
           <DropdownMenuLabel className="flex items-center justify-between gap-2">
             <span className="text-xs font-normal text-muted-foreground">
-              View this family as
+              {t('viewAs')}
             </span>
             <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-              You: {ROLE_LABEL[actualRole]}
+              {t('youPrefix', { role: tRoles(actualRole) })}
             </span>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
@@ -106,7 +109,7 @@ export function LensSelector() {
                   className={cn('size-4', theme.itemIconClass)}
                   aria-hidden
                 />
-                <span className="flex-1">{ROLE_LABEL[role]}</span>
+                <span className="flex-1">{tRoles(role)}</span>
                 {selected && <Check className="size-4" aria-hidden />}
               </DropdownMenuItem>
             );
@@ -119,7 +122,7 @@ export function LensSelector() {
                 className="gap-2 text-destructive focus:text-destructive"
               >
                 <RotateCcw className="size-4" aria-hidden />
-                <span>Reset to your view</span>
+                <span>{t('resetLabel')}</span>
               </DropdownMenuItem>
             </>
           )}

@@ -1,0 +1,34 @@
+{
+  "ariaLabel": "Main navigation",
+  "brand": "Ancstra",
+  "header": {
+    "search": "Search",
+    "defaultTitle": "Ancstra",
+    "familyPickerFallback": "Select Family"
+  },
+  "items": {
+    "dashboard": "Dashboard",
+    "people": "People",
+    "tree": "Tree",
+    "research": "Research",
+    "factsheets": "Factsheets",
+    "importExport": "Import / Export",
+    "activity": "Activity",
+    "dataQuality": "Data Quality",
+    "platform": "Platform",
+    "settings": "Settings",
+    "help": "Help",
+    "signOut": "Sign Out"
+  },
+  "groups": {
+    "research": "Research",
+    "data": "Data",
+    "analytics": "Analytics"
+  },
+  "tooltips": {
+    "platformAdmin": "Platform Admin",
+    "settings": "Settings",
+    "help": "Help",
+    "signOut": "Sign Out"
+  }
+}

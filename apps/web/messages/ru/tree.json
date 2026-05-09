@@ -1,0 +1,446 @@
+{
+  "toolbar": {
+    "newPerson": "+ Новый человек",
+    "search": "Поиск",
+    "sex": {
+      "M": "М",
+      "F": "Ж",
+      "U": "?"
+    },
+    "living": {
+      "living": "Живые",
+      "deceased": "Умершие"
+    }
+  },
+  "viewToggle": {
+    "canvas": "Холст",
+    "table": "Таблица"
+  },
+  "exportMenu": {
+    "label": "Экспорт",
+    "exporting": "Экспорт…",
+    "png": "Экспорт в PNG",
+    "svg": "Экспорт в SVG",
+    "pdf": "Экспорт в PDF"
+  },
+  "topology": {
+    "all": "Все",
+    "ancestors": "Предки",
+    "descendants": "Потомки",
+    "ofReference": "от {name}",
+    "selectFirstHint": "Сначала выберите человека в древе, чтобы фильтровать по предкам или потомкам"
+  },
+  "sidebar": {
+    "ariaLabel": "Фильтр людей",
+    "filtersLabel": "Фильтры",
+    "clearAll": "Очистить всё",
+    "facetLabels": {
+      "born": "Рождён",
+      "died": "Умер"
+    }
+  },
+  "viewMenu": {
+    "trigger": "Вид",
+    "groups": {
+      "nodeStyle": "Стиль узла",
+      "showOnNodes": "Показывать на узлах",
+      "overlays": "Наложения",
+      "coloring": "Раскраска",
+      "applyAs": "Применить как",
+      "edges": "Связи",
+      "camera": "Камера"
+    },
+    "nodeStyle": {
+      "wide": "Широкий",
+      "compact": "Компактный"
+    },
+    "showOnNodes": {
+      "lifespanDates": "Даты жизни",
+      "livingIndicator": "Индикатор жизни"
+    },
+    "overlays": {
+      "minimap": "Мини-карта",
+      "dataQuality": "Тепловая карта качества",
+      "proposals": "Ожидающие предложения",
+      "citations": "Индикаторы цитирований"
+    },
+    "coloring": {
+      "off": "Выкл",
+      "generation": "Поколение",
+      "branch": "Отцовская / материнская ветвь",
+      "living": "Статус жизни"
+    },
+    "applyAs": {
+      "fill": "Заливка",
+      "border": "Граница"
+    },
+    "edges": {
+      "curved": "Изогнутые",
+      "stepped": "Ступенчатые",
+      "straight": "Прямые"
+    },
+    "camera": {
+      "fitToScreen": "По размеру экрана",
+      "centerOnSelected": "Центрировать на выбранном",
+      "resetZoom": "Сбросить масштаб"
+    },
+    "savedLayouts": {
+      "label": "Сохранённые макеты",
+      "saveAsNew": "Сохранить текущий как…",
+      "updateNamed": "Обновить «{name}»",
+      "setDefault": "Установить по умолчанию",
+      "rename": "Переименовать",
+      "delete": "Удалить"
+    },
+    "autoLayout": "Авто-макет"
+  },
+  "tableToolbar": {
+    "dataQuality": "Качество данных",
+    "rowDensityAriaLabel": "Плотность строк",
+    "density": {
+      "compact": "Компактная",
+      "comfortable": "Удобная",
+      "spacious": "Просторная"
+    },
+    "densityAriaLabel": "Плотность {label}"
+  },
+  "activeFilters": {
+    "ariaLabel": "Активные фильтры",
+    "removeChipAriaLabel": "Убрать фильтр: {label}",
+    "search": "Поиск: «{value}»",
+    "sex": "Пол: {values}",
+    "living": "Статус: {value}",
+    "livingValues": {
+      "living": "Живой",
+      "deceased": "Умерший"
+    },
+    "validation": "Проверка: {value}",
+    "born": "Рождение: {from}–{to}",
+    "died": "Смерть: {from}–{to}",
+    "place": "Место: «{value}» {scope}",
+    "placeScopeBirth": "(рождение)",
+    "placeScopeAny": "(любое)",
+    "citationsNone": "Без источников",
+    "citationsGte1": "≥ 1 источник",
+    "citationsGte3": "≥ 3 источника",
+    "completeness": "Полнота: ≥ {value}%",
+    "hasProposals": "ИИ-предложения открыты",
+    "topologyAncestors": "Предки {name}",
+    "topologyDescendants": "Потомки {name}",
+    "openEllipsis": "…"
+  },
+  "columnsDropdown": {
+    "ariaLabel": "Переключить столбцы",
+    "label": "Столбцы",
+    "visibleColumns": "Видимые столбцы",
+    "labels": {
+      "sex": "Пол",
+      "status": "Статус",
+      "completeness": "Полнота",
+      "parents": "Родители",
+      "spouses": "Супруги",
+      "children": "Дети"
+    }
+  },
+  "table": {
+    "headers": {
+      "name": "Имя",
+      "lifespan": "Период жизни",
+      "sex": "Пол",
+      "completeness": "Полнота",
+      "parents": "Родители",
+      "spouses": "Супруги",
+      "children": "Дети",
+      "status": "Статус",
+      "focus": "Фокус"
+    },
+    "sex": {
+      "M": "Мужской",
+      "F": "Женский",
+      "U": "Неизвестно"
+    },
+    "status": {
+      "proposedAria": "Предложен",
+      "proposedTooltip": "Предложен — требует проверки",
+      "confirmedAria": "Подтверждён",
+      "confirmedTooltip": "Подтверждён",
+      "livingAria": "Живой",
+      "livingTooltip": "Предположительно живой"
+    },
+    "lifespan": {
+      "living": "Живой",
+      "birthPrefix": "р. {year}",
+      "deathPrefix": "ум. {year}",
+      "emDash": "—"
+    },
+    "noRelatives": "—",
+    "footer": {
+      "showing": "Показано {visible} из {total} {total, plural, one {человек} few {человека} many {человек} other {человек}}",
+      "loadingSuffix": " • загрузка…"
+    },
+    "clearFilters": "Очистить фильтры",
+    "noPersonsYet": "В вашем древе ещё нет людей.",
+    "addFirstHint": "Добавьте первого человека из панели инструментов, чтобы начать.",
+    "noMatchFiltered": "Нет людей, соответствующих активным фильтрам.",
+    "noMatchSearch": "Нет людей, соответствующих вашему поиску.",
+    "rowContextMenu": {
+      "openDetail": "Открыть детали",
+      "focus": "Фокус",
+      "setAnchor": "Установить как якорь топологии",
+      "copyName": "Копировать имя"
+    },
+    "mobile": {
+      "listAriaLabel": "Люди в вашем семейном древе",
+      "focusAriaLabel": "Сфокусировать {name} на древе"
+    }
+  },
+  "detail": {
+    "header": {
+      "livingBadge": "Живой",
+      "closeAriaLabel": "Закрыть панель деталей"
+    },
+    "lifespan": {
+      "noDates": "Нет записей о датах",
+      "ageSuffix": "{count, plural, one {# год} few {# года} many {# лет} other {# лет}}",
+      "birthPrefix": "р. {date}",
+      "deathPrefix": "ум. {date}"
+    },
+    "actionStrip": {
+      "focus": "Фокус",
+      "edit": "Изменить",
+      "done": "Готово",
+      "research": "Исследовать",
+      "fullPage": "Полная страница"
+    },
+    "vital": {
+      "heading": "Основная информация",
+      "born": "Рождён",
+      "died": "Умер",
+      "fields": {
+        "birthDate": "Дата рождения",
+        "birthPlace": "Место рождения",
+        "deathDate": "Дата смерти",
+        "deathPlace": "Место смерти"
+      }
+    },
+    "editableField": {
+      "addPrefix": "Добавить {label}",
+      "addAria": "Добавить {label}",
+      "editTitle": "Изменить {label}",
+      "editAria": "Изменить {label}"
+    },
+    "notes": {
+      "heading": "Заметки",
+      "placeholder": "Добавить заметки...",
+      "addPrompt": "Нет заметок — нажмите, чтобы добавить",
+      "more": "ещё"
+    },
+    "family": {
+      "heading": "Семья",
+      "noRelationships": "Нет записанных связей",
+      "labels": {
+        "spouse": "Супруг(а)",
+        "father": "Отец",
+        "mother": "Мать",
+        "parents": "Родители",
+        "children": "Дети",
+        "siblings": "Братья/сёстры"
+      },
+      "addButtons": {
+        "linkExisting": "Связать существующего",
+        "new": "Новый",
+        "linkFather": "Связать отца",
+        "linkMother": "Связать мать",
+        "father": "Отец",
+        "mother": "Мать"
+      },
+      "rowActions": {
+        "editTitle": "Изменить {name}",
+        "editAria": "Изменить {fullName}",
+        "removeTitle": "Убрать {name}",
+        "removeAria": "Убрать {fullName}"
+      },
+      "remove": {
+        "spouseConfirm": "Разорвать связь с {name} как с супругом(ой)?\nЭто удалит партнёрство, но сохранит обоих людей.",
+        "parentConfirm": "Убрать {name} как родителя?\nСо-родитель (если есть) и братья/сёстры останутся прикреплёнными.",
+        "childConfirm": "Убрать {name} как ребёнка?\nЧеловек останется в древе.",
+        "siblingConfirm": "Убрать {name} как брата/сестру?\nЧеловек останется в древе.",
+        "networkError": "Сетевая ошибка",
+        "failed": "Не удалось убрать",
+        "success": "{name} убран"
+      }
+    },
+    "timeline": {
+      "heading": "События жизни",
+      "birth": "Рождение",
+      "death": "Смерть",
+      "noDetails": "Нет деталей",
+      "noEvents": "Нет записанных событий",
+      "showAll": "Показать все ({count})",
+      "addEvent": "Добавить событие",
+      "editTitle": "Изменить событие",
+      "editAria": "Изменить событие {type}",
+      "deleteTitle": "Удалить событие",
+      "deleteAria": "Удалить событие {type}",
+      "deleteConfirm": "Удалить событие {type}?",
+      "deleteFailed": "Не удалось удалить событие",
+      "deleteSuccess": "Событие удалено",
+      "networkError": "Сетевая ошибка"
+    },
+    "sources": {
+      "count": "{count, plural, =0 {Нет цитирований} one {# цитирование источника} few {# цитирования источников} many {# цитирований источников} other {# цитирований источников}}",
+      "viewAll": "Посмотреть все →"
+    }
+  },
+  "personCard": {
+    "ariaLabel": "{name}",
+    "ariaLabelWithLifespan": "{name}, {lifespan}"
+  },
+  "mobile": {
+    "title": "Семейное древо",
+    "moreOptions": "Больше опций",
+    "addRelation": {
+      "ariaLabel": "Добавить связь к этому человеку",
+      "label": "Добавить",
+      "subTrigger": "Добавить {label}",
+      "linkExisting": "Связать существующего",
+      "newPerson": "+ Новый",
+      "relations": {
+        "spouse": "Супруг(а)",
+        "father": "Отец",
+        "mother": "Мать",
+        "child": "Ребёнок",
+        "sibling": "Брат/сестра"
+      }
+    },
+    "treeButton": "Древо",
+    "treeButtonAriaLabel": "Сфокусировать {name} на древе",
+    "filtersDrawer": {
+      "openLabel": "Открыть фильтры",
+      "openLabelWithCount": "Открыть фильтры ({count} активных)",
+      "filtersChip": "Фильтры",
+      "drawerTitle": "Фильтр людей"
+    },
+    "toolbarMenu": {
+      "dataQuality": "Качество данных",
+      "autoLayout": "Авто-макет",
+      "exportPng": "Экспорт PNG",
+      "exportSvg": "Экспорт SVG",
+      "exportPdf": "Экспорт PDF"
+    },
+    "viewBarMenu": {
+      "topologyLabelWithName": "Топология — {name}",
+      "topologyLabelEmpty": "Топология (сначала выберите человека)",
+      "topologyAll": "Все",
+      "topologyAncestors": "Предки",
+      "topologyDescendants": "Потомки",
+      "rowDensityLabel": "Плотность строк",
+      "densityCompact": "Компактная",
+      "densityComfortable": "Удобная",
+      "densitySpacious": "Просторная"
+    },
+    "sex": {
+      "M": "Мужской",
+      "F": "Женский",
+      "U": "Неизвестно"
+    }
+  },
+  "palette": {
+    "title": "Палитра",
+    "closeAriaLabel": "Закрыть палитру",
+    "newPerson": "Новый человек",
+    "dragHint": "Перетащите на холст",
+    "factsheetsHeading": "Карточки фактов",
+    "noFactsheets": "Нет карточек фактов для размещения. Создайте одну в Исследовании."
+  },
+  "draftPerson": {
+    "givenNamePlaceholder": "Имя",
+    "surnamePlaceholder": "Фамилия",
+    "sexOptions": {
+      "M": "Мужской",
+      "F": "Женский",
+      "U": "Неизвестно"
+    },
+    "saving": "...",
+    "save": "Сохранить",
+    "cancel": "Отмена",
+    "nameRequired": "Имя обязательно",
+    "createFailed": "Не удалось создать человека",
+    "networkError": "Сетевая ошибка"
+  },
+  "draftFactsheet": {
+    "loading": "Загрузка карточки фактов...",
+    "factsCount": "{count, plural, one {# факт} few {# факта} many {# фактов} other {# фактов}}",
+    "linksCount": "{count, plural, one {# связь} few {# связи} many {# связей} other {# связей}}",
+    "partOfFamily": "Часть семейной единицы (связано: {count})",
+    "checkingDuplicates": "Проверка дубликатов...",
+    "possibleMatch": "Возможное совпадение: {name} ({score}%)",
+    "mergeIntoThis": "Объединить с этим человеком",
+    "promoting": "Продвижение...",
+    "promoteFamily": "Продвинуть семью",
+    "createPerson": "Создать человека",
+    "cancelAriaLabel": "Отмена",
+    "familyPromoted": "Семейная единица продвинута",
+    "personCreated": "Человек создан",
+    "promotionFailed": "Продвижение не удалось"
+  },
+  "node": {
+    "handles": {
+      "parents": "Родители",
+      "children": "Дети",
+      "spouse": "Супруг(а)"
+    },
+    "living": "Живой",
+    "noDates": "нет дат",
+    "birthPrefix": "р. {date}",
+    "deathPrefix": "ум. {date}",
+    "sources": "{count, plural, one {# источник} few {# источника} many {# источников} other {# источников}}",
+    "fields": {
+      "name": "Имя",
+      "birthDate": "Дата рождения",
+      "birthPlace": "Место рождения",
+      "deathDate": "Дата смерти",
+      "source": "Источник"
+    },
+    "tooltipMissing": "{label}: отсутствует",
+    "tooltipPresent": "{label}: ✓",
+    "tooltipNotApplicable": "{label}: Н/Д (живой)"
+  },
+  "contextMenu": {
+    "unnamed": "(без имени)",
+    "viewDetails": "Посмотреть детали",
+    "editPerson": "Изменить человека",
+    "research": "Исследовать этого человека",
+    "addRelation": "Добавить связь",
+    "relations": {
+      "spouse": "Супруг(а)",
+      "father": "Отец",
+      "mother": "Мать",
+      "child": "Ребёнок",
+      "sibling": "Брат/сестра"
+    },
+    "linkExisting": "Связать существующего…",
+    "newPerson": "+ Новый человек",
+    "focusOnPerson": "Сфокусировать на человеке",
+    "showAncestorsOnly": "Показать только предков",
+    "showDescendantsOnly": "Показать только потомков",
+    "seeInTableView": "Посмотреть в табличном виде",
+    "copyPersonId": "Копировать ID человека",
+    "copyShareLink": "Копировать ссылку для общего доступа",
+    "openInNewTab": "Открыть в новой вкладке",
+    "deletePerson": "Удалить человека…",
+    "deleteRelationship": "Удалить связь",
+    "selectedCount": "Выбрано: {count} человек",
+    "bulkExport": "Массовый экспорт",
+    "deletePeopleCount": "Удалить {count} человек…",
+    "addPerson": "Добавить человека",
+    "fitView": "По размеру вида",
+    "resetZoom": "Сбросить масштаб",
+    "toggleMinimap": "Переключить мини-карту",
+    "toasts": {
+      "personIdCopied": "ID человека скопирован",
+      "shareLinkCopied": "Ссылка для общего доступа скопирована",
+      "copyFailed": "Не удалось скопировать в буфер обмена"
+    }
+  }
+}

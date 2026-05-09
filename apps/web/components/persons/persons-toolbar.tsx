@@ -1,6 +1,7 @@
 'use client';
 
 import { Filter } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import {
   Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger,
 } from '@/components/ui/drawer';
@@ -17,6 +18,7 @@ interface PersonsToolbarProps {
 }
 
 export function PersonsToolbar({ yearBounds }: PersonsToolbarProps) {
+  const t = useTranslations('persons.toolbar');
   const { filters } = usePersonsFilters();
   const activeCount = countActiveFilters(filters);
 
@@ -28,10 +30,14 @@ export function PersonsToolbar({ yearBounds }: PersonsToolbarProps) {
             <Button
               variant="outline"
               size="sm"
-              aria-label={`Open filters${activeCount > 0 ? ` (${activeCount} active)` : ''}`}
+              aria-label={
+                activeCount > 0
+                  ? t('openFiltersWithCount', { count: activeCount })
+                  : t('openFilters')
+              }
             >
               <Filter className="mr-2 h-4 w-4" aria-hidden />
-              Filters
+              {t('filtersLabel')}
               {activeCount > 0 && (
                 <Badge className="ml-2 h-5 px-1.5" aria-hidden>
                   {activeCount}
@@ -41,7 +47,7 @@ export function PersonsToolbar({ yearBounds }: PersonsToolbarProps) {
           </DrawerTrigger>
           <DrawerContent>
             <DrawerHeader className="text-left">
-              <DrawerTitle>Filter people</DrawerTitle>
+              <DrawerTitle>{t('drawerTitle')}</DrawerTitle>
             </DrawerHeader>
             <ScrollArea className="max-h-[70vh] pb-8">
               <PersonsSidebar yearBounds={yearBounds} />

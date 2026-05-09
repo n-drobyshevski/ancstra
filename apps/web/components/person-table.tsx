@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { formatDistanceToNow, parseISO } from 'date-fns';
+import { useTranslations } from 'next-intl';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import {
@@ -14,8 +15,6 @@ import {
 } from '@/components/ui/table';
 import type { PersonListItem } from '@ancstra/shared';
 
-const sexLabel = { M: 'Male', F: 'Female', U: 'Unknown' } as const;
-
 function formatRelative(iso: string | undefined): string {
   if (!iso) return '—';
   try {
@@ -26,10 +25,15 @@ function formatRelative(iso: string | undefined): string {
 }
 
 export function PersonTable({ persons }: { persons: PersonListItem[] }) {
+  const tHeaders = useTranslations('persons.table.headers');
+  const tSex = useTranslations('common.sexLabels');
+  const tValidation = useTranslations('persons.table.validation');
+  const tEmpty = useTranslations('persons.table');
+
   if (persons.length === 0) {
     return (
       <p className="py-8 text-center text-sm text-muted-foreground">
-        No persons found.
+        {tEmpty('noPersonsMatch')}
       </p>
     );
   }
@@ -38,14 +42,14 @@ export function PersonTable({ persons }: { persons: PersonListItem[] }) {
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Name</TableHead>
-          <TableHead className="w-16">Sex</TableHead>
-          <TableHead className="w-24">Birth</TableHead>
-          <TableHead className="w-24">Death</TableHead>
-          <TableHead className="w-32">Completeness</TableHead>
-          <TableHead className="w-20 text-right">Sources</TableHead>
-          <TableHead className="w-24">Validation</TableHead>
-          <TableHead className="w-32">Last edited</TableHead>
+          <TableHead>{tHeaders('name')}</TableHead>
+          <TableHead className="w-16">{tHeaders('sex')}</TableHead>
+          <TableHead className="w-24">{tHeaders('birth')}</TableHead>
+          <TableHead className="w-24">{tHeaders('death')}</TableHead>
+          <TableHead className="w-32">{tHeaders('completeness')}</TableHead>
+          <TableHead className="w-20 text-right">{tHeaders('sources')}</TableHead>
+          <TableHead className="w-24">{tHeaders('validation')}</TableHead>
+          <TableHead className="w-32">{tHeaders('lastEdited')}</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -66,7 +70,7 @@ export function PersonTable({ persons }: { persons: PersonListItem[] }) {
               </TableCell>
               <TableCell>
                 <Badge variant="secondary" className="text-xs">
-                  {sexLabel[person.sex]}
+                  {tSex(person.sex)}
                 </Badge>
               </TableCell>
               <TableCell className="text-muted-foreground">
@@ -89,10 +93,10 @@ export function PersonTable({ persons }: { persons: PersonListItem[] }) {
               <TableCell>
                 {validation === 'proposed' ? (
                   <Badge variant="outline" className="border-status-warning-text bg-status-warning-bg text-status-warning-text">
-                    Proposed
+                    {tValidation('proposed')}
                   </Badge>
                 ) : (
-                  <span className="text-xs text-muted-foreground">Confirmed</span>
+                  <span className="text-xs text-muted-foreground">{tValidation('confirmed')}</span>
                 )}
               </TableCell>
               <TableCell className="text-muted-foreground text-xs">

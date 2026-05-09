@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { cacheLife, cacheTag } from 'next/cache';
+import { getTranslations } from 'next-intl/server';
 import { Card, CardContent, CardHeader, CardTitle, CardAction } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { scoreColor } from '@/lib/quality-utils';
@@ -14,15 +15,18 @@ export async function QualityWidget({ dbFilename }: QualityWidgetProps) {
   cacheLife('genealogy');
   cacheTag('quality');
 
-  const score = await getCachedQualityScore(dbFilename);
+  const [score, t] = await Promise.all([
+    getCachedQualityScore(dbFilename),
+    getTranslations('dashboard.qualityWidget'),
+  ]);
 
   return (
     <Card size="sm">
       <CardHeader>
-        <CardTitle>Data Quality</CardTitle>
+        <CardTitle>{t('title')}</CardTitle>
         <CardAction>
           <Button variant="ghost" size="sm" asChild>
-            <Link href="/analytics/quality">Details</Link>
+            <Link href="/analytics/quality">{t('details')}</Link>
           </Button>
         </CardAction>
       </CardHeader>
@@ -31,7 +35,7 @@ export async function QualityWidget({ dbFilename }: QualityWidgetProps) {
           <span className="text-2xl font-bold" style={{ color: scoreColor(score) }}>
             {score}%
           </span>
-          <span className="text-sm text-muted-foreground">completeness</span>
+          <span className="text-sm text-muted-foreground">{t('completeness')}</span>
         </div>
         <div
           className="h-2 rounded-full bg-muted"
@@ -39,7 +43,7 @@ export async function QualityWidget({ dbFilename }: QualityWidgetProps) {
           aria-valuenow={score}
           aria-valuemin={0}
           aria-valuemax={100}
-          aria-label="Data quality score"
+          aria-label={t('scoreAriaLabel')}
         >
           <div
             className="h-2 rounded-full transition-all duration-500"

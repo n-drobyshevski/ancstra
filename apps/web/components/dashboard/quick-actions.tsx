@@ -2,22 +2,25 @@
 
 import Link from 'next/link';
 import { UserPlus, Upload, Sparkles, GitBranch, type LucideIcon } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { hasPermission } from '@ancstra/auth/permissions';
 import type { Permission } from '@ancstra/auth';
 import { useEffectiveMembership } from '@/lib/auth/use-has-permission';
 
+type ActionKey = 'addPerson' | 'importData' | 'aiResearch' | 'viewTree';
+
 interface Action {
-  label: string;
+  key: ActionKey;
   icon: LucideIcon;
   href: string;
   permission: Permission;
 }
 
 const actions: Action[] = [
-  { label: 'Add Person', icon: UserPlus, href: '/persons/new', permission: 'person:create' },
-  { label: 'Import Data', icon: Upload, href: '/data', permission: 'gedcom:import' },
-  { label: 'AI Research', icon: Sparkles, href: '/research', permission: 'ai:research' },
-  { label: 'View Tree', icon: GitBranch, href: '/tree', permission: 'tree:view' },
+  { key: 'addPerson', icon: UserPlus, href: '/persons/new', permission: 'person:create' },
+  { key: 'importData', icon: Upload, href: '/data', permission: 'gedcom:import' },
+  { key: 'aiResearch', icon: Sparkles, href: '/research', permission: 'ai:research' },
+  { key: 'viewTree', icon: GitBranch, href: '/tree', permission: 'tree:view' },
 ];
 
 /**
@@ -27,6 +30,7 @@ const actions: Action[] = [
  */
 export function QuickActions() {
   const membership = useEffectiveMembership();
+  const t = useTranslations('dashboard.quickActions');
   const visible = membership
     ? actions.filter((a) => hasPermission(membership.role, a.permission))
     : [];
@@ -34,14 +38,14 @@ export function QuickActions() {
 
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-      {visible.map(({ label, icon: Icon, href }) => (
+      {visible.map(({ key, icon: Icon, href }) => (
         <Link
           key={href}
           href={href}
           className="flex flex-col items-center gap-2 p-4 rounded-lg border border-border bg-card text-card-foreground hover:bg-muted/50 transition-colors"
         >
           <Icon className="size-5 text-primary" />
-          <span className="text-sm font-medium">{label}</span>
+          <span className="text-sm font-medium">{t(key)}</span>
         </Link>
       ))}
     </div>

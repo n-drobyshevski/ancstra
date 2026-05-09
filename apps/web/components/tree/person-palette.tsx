@@ -2,6 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Users, X, Layers } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 import { useFactsheets } from '@/lib/research/factsheet-client';
 import { FACTSHEET_STATUS_CONFIG } from '@/lib/research/constants';
@@ -11,6 +12,7 @@ interface PersonPaletteProps {
 }
 
 export function PersonPalette({ onClose }: PersonPaletteProps) {
+  const t = useTranslations('tree.palette');
   const { factsheets } = useFactsheets(''); // empty personId gets all factsheets
 
   // Only show factsheets that can be promoted
@@ -32,8 +34,8 @@ export function PersonPalette({ onClose }: PersonPaletteProps) {
     <div className="w-[250px] shrink-0 border-r border-border bg-card flex flex-col overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-4 pt-4 pb-2">
-        <h3 className="text-sm font-medium">Palette</h3>
-        <Button variant="ghost" size="icon" className="size-7" onClick={onClose} aria-label="Close palette">
+        <h3 className="text-sm font-medium">{t('title')}</h3>
+        <Button variant="ghost" size="icon" className="size-7" onClick={onClose} aria-label={t('closeAriaLabel')}>
           <X className="size-4" />
         </Button>
       </div>
@@ -47,8 +49,8 @@ export function PersonPalette({ onClose }: PersonPaletteProps) {
         >
           <Users className="size-5 text-primary" />
           <div>
-            <div className="text-sm font-medium">New Person</div>
-            <div className="text-xs text-muted-foreground">Drag to canvas</div>
+            <div className="text-sm font-medium">{t('newPerson')}</div>
+            <div className="text-xs text-muted-foreground">{t('dragHint')}</div>
           </div>
         </div>
 
@@ -57,13 +59,13 @@ export function PersonPalette({ onClose }: PersonPaletteProps) {
           <div className="flex items-center gap-1.5 mb-2">
             <Layers className="size-3.5 text-muted-foreground" />
             <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              Factsheets
+              {t('factsheetsHeading')}
             </h4>
           </div>
 
           {draggableSheets.length === 0 ? (
             <p className="text-[10px] text-muted-foreground py-2">
-              No factsheets to place. Create one from Research.
+              {t('noFactsheets')}
             </p>
           ) : (
             <div className="space-y-1.5">

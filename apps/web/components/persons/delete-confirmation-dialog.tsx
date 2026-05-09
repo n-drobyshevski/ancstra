@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Trash2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,6 +36,7 @@ export function DeleteConfirmationDialog({
   isPending,
   onConfirm,
 }: DeleteConfirmationDialogProps) {
+  const t = useTranslations('persons.deleteDialog');
   const [echo, setEcho] = useState('');
 
   useEffect(() => {
@@ -53,20 +55,21 @@ export function DeleteConfirmationDialog({
               <Trash2 className="h-5 w-5" aria-hidden />
             </div>
             <AlertDialogTitle>
-              Delete {count.toLocaleString()} {count === 1 ? 'person' : 'persons'}?
+              {t('title', { count })}
             </AlertDialogTitle>
           </div>
           <AlertDialogDescription>
-            This will soft-delete the selected persons. Their family and event links will remain
-            in place but the persons themselves will no longer appear in the tree, lists, or
-            search results. You can restore them by reverting the database. There is no UI undo.
+            {t('description')}
           </AlertDialogDescription>
         </AlertDialogHeader>
 
         {requireCountEcho && (
           <div className="space-y-2 py-2">
             <label htmlFor="delete-confirm-count" className="text-sm font-medium">
-              Type <span className="tabular-nums">{count}</span> to confirm:
+              {t.rich('echoPrompt', {
+                count,
+                code: (chunks) => <span className="tabular-nums">{chunks}</span>,
+              })}
             </label>
             <Input
               id="delete-confirm-count"
@@ -84,7 +87,7 @@ export function DeleteConfirmationDialog({
 
         <AlertDialogFooter>
           <AlertDialogCancel asChild>
-            <Button variant="outline" disabled={isPending}>Cancel</Button>
+            <Button variant="outline" disabled={isPending}>{t('cancel')}</Button>
           </AlertDialogCancel>
           <AlertDialogAction asChild>
             <Button
@@ -95,7 +98,7 @@ export function DeleteConfirmationDialog({
                 onConfirm();
               }}
             >
-              {isPending ? 'Deleting…' : 'Delete'}
+              {isPending ? t('deleting') : t('delete')}
             </Button>
           </AlertDialogAction>
         </AlertDialogFooter>

@@ -1,8 +1,10 @@
 'use client';
 
 import Link from 'next/link';
+import { useMemo } from 'react';
 import { ArrowDown, ArrowUp } from 'lucide-react';
 import { formatDistanceToNow, parseISO } from 'date-fns';
+import { useTranslations } from 'next-intl';
 import type { ColumnDef, SortDirection } from '@tanstack/react-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -21,8 +23,6 @@ declare module '@tanstack/react-table' {
     onTogglePage?: (pageIds: readonly string[], allChecked: boolean) => void;
   }
 }
-
-const sexLabel = { M: 'Male', F: 'Female', U: 'Unknown' } as const;
 
 function formatRelative(iso: string | undefined): string {
   if (!iso) return '—';
@@ -66,204 +66,219 @@ export function getAriaSort(direction: false | SortDirection): 'ascending' | 'de
   return 'none';
 }
 
-export const personsColumns: ColumnDef<PersonListItem>[] = [
-  {
-    id: 'select',
-    enableSorting: false,
-    enableHiding: false,
-    size: 32,
-    header: ({ table }) => {
-      const meta = table.options.meta;
-      const selection = meta?.selection;
-      const pageIds = meta?.pageIds ?? [];
-      if (!selection || !meta?.onTogglePage) return null;
+/**
+ * Builds the persons table column definitions with translated headers and
+ * cell labels. Hook form so it can read translations from the React tree.
+ */
+export function usePersonsColumns(): ColumnDef<PersonListItem>[] {
+  const tHeaders = useTranslations('persons.table.headers');
+  const tSex = useTranslations('persons.table.sex');
+  const tValidation = useTranslations('persons.table.validation');
+  const tTable = useTranslations('persons.table');
 
-      let checked: boolean | 'indeterminate' = false;
-      if (selection.kind === 'matching') {
-        const someExcluded = pageIds.some((id) => selection.exclude.has(id));
-        const allExcluded = pageIds.length > 0 && pageIds.every((id) => selection.exclude.has(id));
-        checked = allExcluded ? false : someExcluded ? 'indeterminate' : true;
-      } else if (selection.kind === 'ids') {
-        const checkedCount = pageIds.filter((id) => selection.rowIds.has(id)).length;
-        checked = checkedCount === 0 ? false : checkedCount === pageIds.length ? true : 'indeterminate';
-      }
+  return useMemo<ColumnDef<PersonListItem>[]>(
+    () => [
+      {
+        id: 'select',
+        enableSorting: false,
+        enableHiding: false,
+        size: 32,
+        header: ({ table }) => {
+          const meta = table.options.meta;
+          const selection = meta?.selection;
+          const pageIds = meta?.pageIds ?? [];
+          if (!selection || !meta?.onTogglePage) return null;
 
-      return (
-        <Checkbox
-          checked={checked}
-          onCheckedChange={() => {
-            const allChecked = checked === true;
-            meta.onTogglePage!(pageIds, allChecked);
-          }}
-          aria-label={checked === true ? 'Deselect all on page' : 'Select all on page'}
-        />
-      );
-    },
-    cell: ({ row, table }) => {
-      const meta = table.options.meta;
-      const selection = meta?.selection;
-      if (!selection || !meta?.onToggleRow) return null;
+          let checked: boolean | 'indeterminate' = false;
+          if (selection.kind === 'matching') {
+            const someExcluded = pageIds.some((id) => selection.exclude.has(id));
+            const allExcluded = pageIds.length > 0 && pageIds.every((id) => selection.exclude.has(id));
+            checked = allExcluded ? false : someExcluded ? 'indeterminate' : true;
+          } else if (selection.kind === 'ids') {
+            const checkedCount = pageIds.filter((id) => selection.rowIds.has(id)).length;
+            checked = checkedCount === 0 ? false : checkedCount === pageIds.length ? true : 'indeterminate';
+          }
 
-      const id = row.original.id;
-      const isChecked =
-        selection.kind === 'matching'
-          ? !selection.exclude.has(id)
-          : selection.kind === 'ids'
-            ? selection.rowIds.has(id)
-            : false;
+          return (
+            <Checkbox
+              checked={checked}
+              onCheckedChange={() => {
+                const allChecked = checked === true;
+                meta.onTogglePage!(pageIds, allChecked);
+              }}
+              aria-label={checked === true ? tTable('deselectAllOnPage') : tTable('selectAllOnPage')}
+            />
+          );
+        },
+        cell: ({ row, table }) => {
+          const meta = table.options.meta;
+          const selection = meta?.selection;
+          if (!selection || !meta?.onToggleRow) return null;
 
-      return (
-        <Checkbox
-          checked={isChecked}
-          onCheckedChange={() => meta.onToggleRow!(id)}
-          aria-label={isChecked ? `Deselect ${row.original.givenName} ${row.original.surname}` : `Select ${row.original.givenName} ${row.original.surname}`}
-        />
-      );
-    },
-  },
-  {
-    id: 'name',
-    accessorFn: (row) => `${row.surname} ${row.givenName}`,
-    header: ({ column }) => (
-      <SortableHeader
-        label="Name"
-        isSorted={column.getIsSorted()}
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-      />
-    ),
-    cell: ({ row }) => (
-      <Link
-        href={`/persons/${row.original.id}`}
-        className="font-medium text-primary underline-offset-4 hover:underline"
-        style={{ viewTransitionName: `person-${row.original.id}` }}
-      >
-        {row.original.givenName} {row.original.surname}
-      </Link>
-    ),
-    enableHiding: false,
-    enableSorting: true,
-  },
-  {
-    id: 'sex',
-    accessorKey: 'sex',
-    header: 'Sex',
-    cell: ({ row }) => (
-      <Badge variant="secondary" className="text-xs">
-        {sexLabel[row.original.sex]}
-      </Badge>
-    ),
-    enableSorting: false,
-    size: 64,
-  },
-  {
-    id: 'born',
-    accessorKey: 'birthDate',
-    header: ({ column }) => (
-      <SortableHeader
-        label="Birth"
-        isSorted={column.getIsSorted()}
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-      />
-    ),
-    cell: ({ row }) => (
-      <span className="text-muted-foreground tabular-nums">
-        {row.original.birthDate ?? '—'}
-      </span>
-    ),
-    enableSorting: true,
-    size: 96,
-  },
-  {
-    id: 'died',
-    accessorKey: 'deathDate',
-    header: ({ column }) => (
-      <SortableHeader
-        label="Death"
-        isSorted={column.getIsSorted()}
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-      />
-    ),
-    cell: ({ row }) => (
-      <span className="text-muted-foreground tabular-nums">
-        {row.original.deathDate ?? '—'}
-      </span>
-    ),
-    enableSorting: true,
-    size: 96,
-  },
-  {
-    id: 'completeness',
-    accessorKey: 'completeness',
-    header: ({ column }) => (
-      <SortableHeader
-        label="Completeness"
-        isSorted={column.getIsSorted()}
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-      />
-    ),
-    cell: ({ row }) => <CompletenessCell person={row.original} />,
-    enableSorting: true,
-    size: 128,
-  },
-  {
-    id: 'sourcesCount',
-    accessorKey: 'sourcesCount',
-    header: ({ column }) => (
-      <div className="text-right">
-        <SortableHeader
-          label="Sources"
-          isSorted={column.getIsSorted()}
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-        />
-      </div>
-    ),
-    cell: ({ row }) => (
-      <div className="text-right tabular-nums text-muted-foreground">
-        {row.original.sourcesCount ?? 0}
-      </div>
-    ),
-    enableSorting: true,
-    size: 80,
-  },
-  {
-    id: 'validation',
-    accessorKey: 'validation',
-    header: 'Validation',
-    cell: ({ row }) => {
-      const v = row.original.validation ?? 'confirmed';
-      return v === 'proposed' ? (
-        <Badge
-          variant="outline"
-          className="border-status-warning-text bg-status-warning-bg text-status-warning-text"
-        >
-          Proposed
-        </Badge>
-      ) : (
-        <span className="text-xs text-muted-foreground">Confirmed</span>
-      );
-    },
-    enableSorting: false,
-    size: 96,
-  },
-  {
-    id: 'updatedAt',
-    accessorKey: 'updatedAt',
-    header: ({ column }) => (
-      <SortableHeader
-        label="Last edited"
-        isSorted={column.getIsSorted()}
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-      />
-    ),
-    cell: ({ row }) => (
-      <span className="text-muted-foreground text-xs">
-        {formatRelative(row.original.updatedAt)}
-      </span>
-    ),
-    enableSorting: true,
-    size: 128,
-  },
-];
+          const id = row.original.id;
+          const isChecked =
+            selection.kind === 'matching'
+              ? !selection.exclude.has(id)
+              : selection.kind === 'ids'
+                ? selection.rowIds.has(id)
+                : false;
+          const fullName = `${row.original.givenName} ${row.original.surname}`.trim();
+
+          return (
+            <Checkbox
+              checked={isChecked}
+              onCheckedChange={() => meta.onToggleRow!(id)}
+              aria-label={isChecked ? tTable('deselectPerson', { name: fullName }) : tTable('selectPerson', { name: fullName })}
+            />
+          );
+        },
+      },
+      {
+        id: 'name',
+        accessorFn: (row) => `${row.surname} ${row.givenName}`,
+        header: ({ column }) => (
+          <SortableHeader
+            label={tHeaders('name')}
+            isSorted={column.getIsSorted()}
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          />
+        ),
+        cell: ({ row }) => (
+          <Link
+            href={`/persons/${row.original.id}`}
+            className="font-medium text-primary underline-offset-4 hover:underline"
+            style={{ viewTransitionName: `person-${row.original.id}` }}
+          >
+            {row.original.givenName} {row.original.surname}
+          </Link>
+        ),
+        enableHiding: false,
+        enableSorting: true,
+      },
+      {
+        id: 'sex',
+        accessorKey: 'sex',
+        header: tHeaders('sex'),
+        cell: ({ row }) => (
+          <Badge variant="secondary" className="text-xs">
+            {tSex(row.original.sex)}
+          </Badge>
+        ),
+        enableSorting: false,
+        size: 64,
+      },
+      {
+        id: 'born',
+        accessorKey: 'birthDate',
+        header: ({ column }) => (
+          <SortableHeader
+            label={tHeaders('birth')}
+            isSorted={column.getIsSorted()}
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          />
+        ),
+        cell: ({ row }) => (
+          <span className="text-muted-foreground tabular-nums">
+            {row.original.birthDate ?? tTable('emDash')}
+          </span>
+        ),
+        enableSorting: true,
+        size: 96,
+      },
+      {
+        id: 'died',
+        accessorKey: 'deathDate',
+        header: ({ column }) => (
+          <SortableHeader
+            label={tHeaders('death')}
+            isSorted={column.getIsSorted()}
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          />
+        ),
+        cell: ({ row }) => (
+          <span className="text-muted-foreground tabular-nums">
+            {row.original.deathDate ?? tTable('emDash')}
+          </span>
+        ),
+        enableSorting: true,
+        size: 96,
+      },
+      {
+        id: 'completeness',
+        accessorKey: 'completeness',
+        header: ({ column }) => (
+          <SortableHeader
+            label={tHeaders('completeness')}
+            isSorted={column.getIsSorted()}
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          />
+        ),
+        cell: ({ row }) => <CompletenessCell person={row.original} />,
+        enableSorting: true,
+        size: 128,
+      },
+      {
+        id: 'sourcesCount',
+        accessorKey: 'sourcesCount',
+        header: ({ column }) => (
+          <div className="text-right">
+            <SortableHeader
+              label={tHeaders('sources')}
+              isSorted={column.getIsSorted()}
+              onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            />
+          </div>
+        ),
+        cell: ({ row }) => (
+          <div className="text-right tabular-nums text-muted-foreground">
+            {row.original.sourcesCount ?? 0}
+          </div>
+        ),
+        enableSorting: true,
+        size: 80,
+      },
+      {
+        id: 'validation',
+        accessorKey: 'validation',
+        header: tHeaders('validation'),
+        cell: ({ row }) => {
+          const v = row.original.validation ?? 'confirmed';
+          return v === 'proposed' ? (
+            <Badge
+              variant="outline"
+              className="border-status-warning-text bg-status-warning-bg text-status-warning-text"
+            >
+              {tValidation('proposed')}
+            </Badge>
+          ) : (
+            <span className="text-xs text-muted-foreground">{tValidation('confirmed')}</span>
+          );
+        },
+        enableSorting: false,
+        size: 96,
+      },
+      {
+        id: 'updatedAt',
+        accessorKey: 'updatedAt',
+        header: ({ column }) => (
+          <SortableHeader
+            label={tHeaders('lastEdited')}
+            isSorted={column.getIsSorted()}
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          />
+        ),
+        cell: ({ row }) => (
+          <span className="text-muted-foreground text-xs">
+            {formatRelative(row.original.updatedAt)}
+          </span>
+        ),
+        enableSorting: true,
+        size: 128,
+      },
+    ],
+    [tHeaders, tSex, tValidation, tTable],
+  );
+}
 
 export const SORT_KEY_TO_COLUMN_ID: Record<string, string> = {
   name: 'name', born: 'born', died: 'died',

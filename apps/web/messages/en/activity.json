@@ -1,0 +1,75 @@
+{
+  "page": {
+    "title": "Activity",
+    "noActivityHere": "No activity here",
+    "tryClearingFilters": "Try clearing filters, or check back as your family tree changes.",
+    "loadFailed": "Failed to load activity",
+    "loadMoreFailed": "Failed to load more"
+  },
+  "welcome": {
+    "owner": "Everything happening across your family tree, in one place.",
+    "admin": "Member changes, contributions, and tree updates you help oversee.",
+    "editor": "Tree edits, media, contributions, and imports you can act on.",
+    "viewer": "Recent additions and updates to the tree you have access to."
+  },
+  "actions": {
+    "person_added": "Person added",
+    "person_edited": "Person edited",
+    "person_deleted": "Person deleted",
+    "relationship_added": "Relationship added",
+    "media_uploaded": "Media uploaded",
+    "gedcom_imported": "GEDCOM imported",
+    "invite_sent": "Invite sent",
+    "invite_accepted": "Invite accepted",
+    "role_changed": "Role changed",
+    "member_removed": "Member removed",
+    "contribution_submitted": "Contribution submitted",
+    "contribution_approved": "Contribution approved",
+    "contribution_rejected": "Contribution rejected",
+    "owner_transferred": "Ownership transferred",
+    "invite_revoked": "Invite revoked",
+    "family_settings_updated": "Settings updated",
+    "fallback": "Activity"
+  },
+  "categories": {
+    "all": "All",
+    "people": "People",
+    "media": "Media",
+    "members": "Members",
+    "settings": "Settings",
+    "import": "Import",
+    "contrib": "Contributions"
+  },
+  "stats": {
+    "summaryAriaLabel": "Activity summary",
+    "today": "Today",
+    "thisWeek": "This week",
+    "topContributor": "Top contributor",
+    "lastUpdate": "Last update",
+    "noActivityYet": "No activity yet",
+    "eventCount": "{count, plural, =0 {No events} one {# event} other {# events}}",
+    "eventCountThisWeek": "{count, plural, =0 {No events} one {# event} other {# events}} this week",
+    "emDash": "—"
+  },
+  "filters": {
+    "searchPlaceholder": "Search activity",
+    "searchAriaLabel": "Search activity",
+    "memberFilterAriaLabel": "Filter by member",
+    "byAnyone": "By: Anyone",
+    "byMember": "By: {name}",
+    "dateLabel": "Date: {value}",
+    "dateRangeAriaLabel": "Date range",
+    "datePresets": {
+      "all": "Any time",
+      "24h": "Last 24 hours",
+      "7d": "Last 7 days",
+      "30d": "Last 30 days"
+    },
+    "moreFiltersAriaLabel": "More filters",
+    "moreFilters": "Filters",
+    "sheetTitle": "Filters",
+    "chipQuoted": "“{value}”",
+    "removeFilterAriaLabel": "Remove filter {label}",
+    "memberFallback": "member"
+  }
+}

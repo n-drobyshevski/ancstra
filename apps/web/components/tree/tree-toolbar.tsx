@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Menubar } from '@/components/ui/menubar';
 import { Separator } from '@/components/ui/separator';
@@ -38,6 +39,9 @@ export function TreeToolbar(props: TreeToolbarProps) {
     onToggleFilter,
     ...viewMenuProps
   } = props;
+  const t = useTranslations('tree.toolbar');
+  const tSex = useTranslations('tree.toolbar.sex');
+  const tLiving = useTranslations('tree.toolbar.living');
 
   return (
     <div className="flex items-center justify-between border-b border-border bg-background px-4 py-2">
@@ -52,7 +56,7 @@ export function TreeToolbar(props: TreeToolbarProps) {
             variant={paletteOpen ? 'default' : 'secondary'}
             onClick={onTogglePalette}
           >
-            + New Person
+            {t('newPerson')}
           </Button>
         </RoleGate>
 
@@ -66,7 +70,7 @@ export function TreeToolbar(props: TreeToolbarProps) {
 
       <div className="flex items-center gap-1.5">
         <Button variant="secondary" size="sm" disabled>
-          Search
+          {t('search')}
         </Button>
 
         <Button
@@ -75,7 +79,7 @@ export function TreeToolbar(props: TreeToolbarProps) {
           className="h-7 text-xs"
           onClick={() => onToggleFilter('sex', 'M')}
         >
-          M
+          {tSex('M')}
         </Button>
         <Button
           variant={filterState.sex.F ? 'secondary' : 'outline'}
@@ -83,7 +87,7 @@ export function TreeToolbar(props: TreeToolbarProps) {
           className="h-7 text-xs"
           onClick={() => onToggleFilter('sex', 'F')}
         >
-          F
+          {tSex('F')}
         </Button>
         <Button
           variant={filterState.sex.U ? 'secondary' : 'outline'}
@@ -91,7 +95,7 @@ export function TreeToolbar(props: TreeToolbarProps) {
           className="h-7 text-xs"
           onClick={() => onToggleFilter('sex', 'U')}
         >
-          U
+          {tSex('U')}
         </Button>
 
         <Separator orientation="vertical" className="h-5 mx-0.5" />
@@ -102,7 +106,7 @@ export function TreeToolbar(props: TreeToolbarProps) {
           className="h-7 text-xs"
           onClick={() => onToggleFilter('living', 'living')}
         >
-          Living
+          {tLiving('living')}
         </Button>
         <Button
           variant={filterState.living.deceased ? 'secondary' : 'outline'}
@@ -110,7 +114,7 @@ export function TreeToolbar(props: TreeToolbarProps) {
           className="h-7 text-xs"
           onClick={() => onToggleFilter('living', 'deceased')}
         >
-          Deceased
+          {tLiving('deceased')}
         </Button>
       </div>
     </div>

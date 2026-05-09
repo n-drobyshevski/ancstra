@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { Database, Archive, Image } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -21,12 +22,13 @@ function formatBytes(bytes: number): string {
 }
 
 const categories = [
-  { key: 'database' as const, label: 'Database', icon: Database, color: 'bg-blue-500' },
-  { key: 'archives' as const, label: 'Archives', icon: Archive, color: 'bg-indigo-500' },
-  { key: 'screenshots' as const, label: 'Screenshots', icon: Image, color: 'bg-emerald-500' },
+  { key: 'database' as const, icon: Database, color: 'bg-blue-500' },
+  { key: 'archives' as const, icon: Archive, color: 'bg-indigo-500' },
+  { key: 'screenshots' as const, icon: Image, color: 'bg-emerald-500' },
 ];
 
 export function StorageUsage({ refreshKey }: { refreshKey?: number }) {
+  const t = useTranslations('settings.data.storage');
   const [data, setData] = useState<StorageData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -52,7 +54,7 @@ export function StorageUsage({ refreshKey }: { refreshKey?: number }) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Storage Usage</CardTitle>
+          <CardTitle>{t('title')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <Skeleton className="h-3 w-full rounded-full" />
@@ -73,13 +75,13 @@ export function StorageUsage({ refreshKey }: { refreshKey?: number }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Storage Usage</CardTitle>
+        <CardTitle>{t('title')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Progress bar */}
         <div>
           <div className="flex items-center justify-between text-sm mb-1.5">
-            <span className="text-muted-foreground">Total</span>
+            <span className="text-muted-foreground">{t('total')}</span>
             <span className="font-medium">{formatBytes(data.total)}</span>
           </div>
           <div className="h-3 w-full rounded-full bg-muted overflow-hidden flex">
@@ -99,12 +101,12 @@ export function StorageUsage({ refreshKey }: { refreshKey?: number }) {
 
         {/* Breakdown */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {categories.map(({ key, label, icon: Icon, color }) => (
+          {categories.map(({ key, icon: Icon, color }) => (
             <div key={key} className="flex items-center gap-2">
               <div className={`size-2.5 rounded-full ${color}`} />
               <div className="flex items-center gap-1.5 text-sm">
                 <Icon className="size-3.5 text-muted-foreground" />
-                <span className="text-muted-foreground">{label}</span>
+                <span className="text-muted-foreground">{t(key)}</span>
               </div>
               <span className="ml-auto text-sm font-medium">
                 {formatBytes(data[key])}

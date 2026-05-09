@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { Loader2, X, Users } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import {
   Tooltip,
   TooltipContent,
@@ -30,6 +31,8 @@ interface DraftFactsheetNodeData {
 
 export function DraftFactsheetNode({ data }: { data: DraftFactsheetNodeData }) {
   const { factsheetId, onPromoted, onCancel } = data;
+  const t = useTranslations('tree.draftFactsheet');
+  const tHandles = useTranslations('tree.node.handles');
   const { detail, isLoading } = useFactsheetDetail(factsheetId);
   const { matches, isLoading: dupsLoading } = useFactsheetDuplicates(factsheetId, true);
   const [promoting, setPromoting] = useState(false);
@@ -54,20 +57,20 @@ export function DraftFactsheetNode({ data }: { data: DraftFactsheetNodeData }) {
         mode === 'merge' ? selectedMatch?.personId : undefined,
         hasLinks,
       );
-      toast.success(hasLinks ? 'Family unit promoted' : 'Person created');
+      toast.success(hasLinks ? t('familyPromoted') : t('personCreated'));
       onPromoted();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Promotion failed');
+      toast.error(err instanceof Error ? err.message : t('promotionFailed'));
     } finally {
       setPromoting(false);
     }
-  }, [factsheetId, detail, selectedMatch, onPromoted]);
+  }, [factsheetId, detail, selectedMatch, onPromoted, t]);
 
   if (isLoading || !detail) {
     return (
       <div className="w-[240px] rounded-lg border bg-card p-4 shadow-md flex items-center justify-center gap-2 text-xs text-muted-foreground">
         <Loader2 className="size-3 animate-spin" />
-        Loading factsheet...
+        {t('loading')}
       </div>
     );
   }
@@ -83,13 +86,13 @@ export function DraftFactsheetNode({ data }: { data: DraftFactsheetNodeData }) {
         <TooltipTrigger asChild>
           <Handle type="target" position={Position.Top} className="!bg-primary" />
         </TooltipTrigger>
-        <TooltipContent side="top" className="text-xs">Parents</TooltipContent>
+        <TooltipContent side="top" className="text-xs">{tHandles('parents')}</TooltipContent>
       </Tooltip>
       <Tooltip>
         <TooltipTrigger asChild>
           <Handle type="source" position={Position.Bottom} className="!bg-primary" />
         </TooltipTrigger>
-        <TooltipContent side="bottom" className="text-xs">Children</TooltipContent>
+        <TooltipContent side="bottom" className="text-xs">{tHandles('children')}</TooltipContent>
       </Tooltip>
 
       <div className="w-[240px] rounded-lg border-2 border-dashed border-primary/40 bg-card p-3 shadow-md space-y-2.5 nowheel">
@@ -98,8 +101,8 @@ export function DraftFactsheetNode({ data }: { data: DraftFactsheetNodeData }) {
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium truncate">{detail.title}</p>
             <p className="text-[10px] text-muted-foreground">
-              {detail.facts.length} fact{detail.facts.length !== 1 ? 's' : ''}
-              {hasLinks && ` · ${detail.links.length} link${detail.links.length !== 1 ? 's' : ''}`}
+              {t('factsCount', { count: detail.facts.length })}
+              {hasLinks && ` · ${t('linksCount', { count: detail.links.length })}`}
             </p>
           </div>
           <span className={cn('shrink-0 rounded px-1.5 py-0.5 text-[9px] font-medium', statusCfg.className)}>
@@ -125,7 +128,7 @@ export function DraftFactsheetNode({ data }: { data: DraftFactsheetNodeData }) {
         {hasLinks && (
           <div className="flex items-center gap-1.5 text-[10px] text-primary">
             <Users className="size-3" />
-            Part of family unit ({detail.links.length} linked)
+            {t('partOfFamily', { count: detail.links.length })}
           </div>
         )}
 
@@ -133,13 +136,16 @@ export function DraftFactsheetNode({ data }: { data: DraftFactsheetNodeData }) {
         {dupsLoading && (
           <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
             <Loader2 className="size-3 animate-spin" />
-            Checking duplicates...
+            {t('checkingDuplicates')}
           </div>
         )}
         {!dupsLoading && topMatch && (
           <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2 text-[10px]">
             <p className="text-amber-500 font-medium mb-1">
-              Possible match: {topMatch.givenName} {topMatch.surname} ({Math.round(topMatch.score * 100)}%)
+              {t('possibleMatch', {
+                name: `${topMatch.givenName} ${topMatch.surname}`,
+                score: Math.round(topMatch.score * 100),
+              })}
             </p>
             <Button
               variant="outline"
@@ -148,7 +154,7 @@ export function DraftFactsheetNode({ data }: { data: DraftFactsheetNodeData }) {
               disabled={promoting}
               onClick={() => { setSelectedMatch(topMatch); handlePromote('merge'); }}
             >
-              Merge into this person
+              {t('mergeIntoThis')}
             </Button>
           </div>
         )}
@@ -162,11 +168,11 @@ export function DraftFactsheetNode({ data }: { data: DraftFactsheetNodeData }) {
             onClick={() => handlePromote('create')}
           >
             {promoting ? (
-              <><Loader2 className="mr-1 size-3 animate-spin" />Promoting...</>
+              <><Loader2 className="mr-1 size-3 animate-spin" />{t('promoting')}</>
             ) : hasLinks ? (
-              'Promote Family'
+              t('promoteFamily')
             ) : (
-              'Create Person'
+              t('createPerson')
             )}
           </Button>
           <Button
@@ -174,7 +180,7 @@ export function DraftFactsheetNode({ data }: { data: DraftFactsheetNodeData }) {
             size="sm"
             className="h-8 w-8 p-0"
             onClick={onCancel}
-            aria-label="Cancel"
+            aria-label={t('cancelAriaLabel')}
           >
             <X className="size-3.5" />
           </Button>

@@ -9,6 +9,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
+import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface GenerationData {
@@ -21,14 +22,16 @@ interface CompletenessChartProps {
 }
 
 function CompletenessChartImpl({ data }: CompletenessChartProps) {
+  const t = useTranslations('analytics.completenessChart');
+
   if (data.length === 0) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Completeness by Generation</CardTitle>
+          <CardTitle>{t('title')}</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">No generation data available.</p>
+          <p className="text-sm text-muted-foreground">{t('noData')}</p>
         </CardContent>
       </Card>
     );
@@ -37,22 +40,22 @@ function CompletenessChartImpl({ data }: CompletenessChartProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Completeness by Generation</CardTitle>
+        <CardTitle>{t('title')}</CardTitle>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={data}>
             <XAxis
               dataKey="generation"
-              label={{ value: 'Generation', position: 'insideBottom', offset: -5 }}
+              label={{ value: t('xAxis'), position: 'insideBottom', offset: -5 }}
             />
             <YAxis
               domain={[0, 100]}
-              label={{ value: 'Avg Score %', angle: -90, position: 'insideLeft' }}
+              label={{ value: t('yAxis'), angle: -90, position: 'insideLeft' }}
             />
             <Tooltip
-              formatter={(value) => [`${value}%`, 'Avg Score']}
-              labelFormatter={(label) => `Generation ${label}`}
+              formatter={(value) => [`${value}%`, t('tooltipLabel')]}
+              labelFormatter={(label) => t('tooltipGeneration', { value: label })}
             />
             <Bar dataKey="avgScore" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
           </BarChart>

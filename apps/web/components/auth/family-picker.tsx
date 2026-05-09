@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -15,6 +16,7 @@ import { useActiveMembership } from '@/lib/auth/use-has-permission';
 
 export function FamilyPicker() {
   const router = useRouter();
+  const t = useTranslations('navigation.header');
   const familiesQuery = trpc.family.listMine.useQuery();
   const activeMembership = useActiveMembership();
 
@@ -33,7 +35,7 @@ export function FamilyPicker() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="sm" className="gap-1">
           <span className="block truncate max-w-[240px]">
-            {activeFamily?.name ?? 'Select Family'}
+            {activeFamily?.name ?? t('familyPickerFallback')}
           </span>
           <ChevronDown className="h-4 w-4" />
         </Button>

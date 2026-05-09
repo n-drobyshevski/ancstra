@@ -9,6 +9,7 @@ import {
   ResponsiveContainer,
   Label,
 } from 'recharts';
+import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { QualityMetric } from '@ancstra/db';
 
@@ -25,8 +26,14 @@ interface MissingDataChartProps {
 }
 
 function MissingDataChartImpl({ metrics }: MissingDataChartProps) {
+  const t = useTranslations('analytics.missingDataChart');
+  const tMissing = useTranslations('analytics.missingFields');
+
+  // db emits canonical English labels like "Has Birth Date"; the
+  // analytics.missingFields namespace provides translated counterparts.
+  type MissingKey = Parameters<typeof tMissing>[0];
   const chartData = metrics.map((m) => ({
-    name: m.label.replace('Has ', 'Missing '),
+    name: tMissing(m.label as MissingKey),
     value: m.total - m.count,
   }));
 
@@ -36,10 +43,10 @@ function MissingDataChartImpl({ metrics }: MissingDataChartProps) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Missing Data Breakdown</CardTitle>
+          <CardTitle>{t('title')}</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">No missing data found.</p>
+          <p className="text-sm text-muted-foreground">{t('noMissing')}</p>
         </CardContent>
       </Card>
     );
@@ -48,7 +55,7 @@ function MissingDataChartImpl({ metrics }: MissingDataChartProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Missing Data Breakdown</CardTitle>
+        <CardTitle>{t('title')}</CardTitle>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={300}>

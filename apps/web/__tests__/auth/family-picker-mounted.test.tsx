@@ -1,8 +1,21 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import { NextIntlClientProvider } from 'next-intl';
 import { AppHeader } from '@/components/app-header';
+import navigationMessages from '@/messages/en/navigation.json';
+import commonMessages from '@/messages/en/common.json';
 import React from 'react';
+
+const messages = { navigation: navigationMessages, common: commonMessages };
+
+function renderWithIntl(ui: React.ReactElement) {
+  return render(
+    <NextIntlClientProvider locale="en" messages={messages}>
+      {ui}
+    </NextIntlClientProvider>,
+  );
+}
 
 // ── sidebar (throws without SidebarProvider) ──────────────────────────────────
 vi.mock('@/components/ui/sidebar', () => ({
@@ -146,7 +159,7 @@ describe('FamilyPicker mounted in AppHeader', () => {
     });
     mockUseSession.mockReturnValue(makeSession('f1'));
 
-    render(<AppHeader />);
+    renderWithIntl(<AppHeader />);
 
     // The picker renders null when families.length <= 1, so no family name in DOM
     expect(screen.queryByText('Smith Family')).toBeNull();
@@ -160,7 +173,7 @@ describe('FamilyPicker mounted in AppHeader', () => {
     mockListMineUseQuery.mockReturnValue({ data: families, isLoading: false });
     mockUseSession.mockReturnValue(makeSession('f1'));
 
-    const { rerender } = render(<AppHeader />);
+    const { rerender } = renderWithIntl(<AppHeader />);
 
     // Trigger button should show the active family name
     expect(screen.getByText('Smith Family')).toBeDefined();
@@ -169,15 +182,19 @@ describe('FamilyPicker mounted in AppHeader', () => {
     const trigger = getFamilyPickerTrigger('Smith Family');
     fireEvent.click(trigger);
     // Rerender so DropdownMenuContent sees the updated dropdownOpen state
-    rerender(<AppHeader />);
+    rerender(
+      <NextIntlClientProvider locale="en" messages={messages}>
+        <AppHeader />
+      </NextIntlClientProvider>,
+    );
 
     // Both family names should be in the open menu
     expect(screen.getAllByText('Smith Family').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('Jones Family')).toBeDefined();
 
-    // Role badges should be present (RoleBadge renders the role text)
-    expect(screen.getByText('owner')).toBeDefined();
-    expect(screen.getByText('editor')).toBeDefined();
+    // Role badges render the translated role label.
+    expect(screen.getByText('Owner')).toBeDefined();
+    expect(screen.getByText('Editor')).toBeDefined();
   });
 
   it('clicking a non-active family calls router.push with ?family=<id>', () => {
@@ -188,12 +205,16 @@ describe('FamilyPicker mounted in AppHeader', () => {
     mockListMineUseQuery.mockReturnValue({ data: families, isLoading: false });
     mockUseSession.mockReturnValue(makeSession('f1'));
 
-    const { rerender } = render(<AppHeader />);
+    const { rerender } = renderWithIntl(<AppHeader />);
 
     // Open the dropdown
     const trigger = getFamilyPickerTrigger('Smith Family');
     fireEvent.click(trigger);
-    rerender(<AppHeader />);
+    rerender(
+      <NextIntlClientProvider locale="en" messages={messages}>
+        <AppHeader />
+      </NextIntlClientProvider>,
+    );
 
     // Click the second family item
     const jonesItem = screen.getByText('Jones Family');

@@ -1,0 +1,62 @@
+{
+  "page": {
+    "title": "Data Quality",
+    "tagline": "Track completeness and identify research priorities across your family tree."
+  },
+  "loading": "Loading...",
+  "metricCards": {
+    "totalPersons": "Total Persons",
+    "overallScore": "Overall Score",
+    "withBirthDate": "% with Birth Date",
+    "withBirthPlace": "% with Birth Place",
+    "withSource": "% with Source",
+    "loadFailed": "Failed to load quality summary"
+  },
+  "qualityFields": {
+    "Has Name": "Name",
+    "Has Birth Date": "Birth Date",
+    "Has Birth Place": "Birth Place",
+    "Has Death Date": "Death Date",
+    "Has Source": "Source"
+  },
+  "missingFields": {
+    "Has Name": "Missing Name",
+    "Has Birth Date": "Missing Birth Date",
+    "Has Birth Place": "Missing Birth Place",
+    "Has Death Date": "Missing Death Date",
+    "Has Source": "Missing Source"
+  },
+  "completenessChart": {
+    "title": "Completeness by Generation",
+    "noData": "No generation data available.",
+    "xAxis": "Generation",
+    "yAxis": "Avg Score %",
+    "tooltipLabel": "Avg Score",
+    "tooltipGeneration": "Generation {value}"
+  },
+  "missingDataChart": {
+    "title": "Missing Data Breakdown",
+    "noMissing": "No missing data found."
+  },
+  "priorityTable": {
+    "title": "Research Priorities",
+    "loadFailed": "Failed to load priorities",
+    "headers": {
+      "name": "Name",
+      "score": "Score",
+      "missingFields": "Missing Fields"
+    },
+    "fieldLabels": {
+      "name": "Name",
+      "birthDate": "Birth Date",
+      "birthPlace": "Birth Place",
+      "deathDate": "Death Date",
+      "source": "Source"
+    },
+    "unknown": "Unknown",
+    "noPersons": "No persons found.",
+    "pageOf": "Page {page} of {total} ({count} total)",
+    "previous": "Previous",
+    "next": "Next"
+  }
+}

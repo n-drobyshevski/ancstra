@@ -1,6 +1,7 @@
 'use client';
 
 import { X } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useTreeTableFilters, useTreeFilterUpdate } from './use-tree-table-filters';
@@ -10,16 +11,6 @@ interface Chip {
   label: string;
   remove: () => void;
 }
-
-const SEX_LABELS = { M: 'Male', F: 'Female', U: 'Unknown' } as const;
-const LIVING_LABELS = { living: 'Living', deceased: 'Deceased' } as const;
-const VALIDATION_LABELS = { confirmed: 'Confirmed', proposed: 'Proposed' } as const;
-const CITATIONS_LABELS = {
-  any: '',
-  none: 'No sources',
-  gte1: '≥ 1 source',
-  gte3: '≥ 3 sources',
-} as const;
 
 interface TreeActiveFiltersProps {
   /** Display name of the topology anchor for chip text. Looked up by parent. */
@@ -32,6 +23,10 @@ interface TreeActiveFiltersProps {
  * additional topology chip for the tree's anchor-based lineage filter.
  */
 export function TreeActiveFilters({ topologyReferenceName }: TreeActiveFiltersProps) {
+  const t = useTranslations('tree.activeFilters');
+  const tSex = useTranslations('persons.facets.sex.values');
+  const tLiving = useTranslations('tree.activeFilters.livingValues');
+  const tValidation = useTranslations('persons.table.validation');
   const { filters } = useTreeTableFilters();
   const update = useTreeFilterUpdate();
 
@@ -40,78 +35,95 @@ export function TreeActiveFilters({ topologyReferenceName }: TreeActiveFiltersPr
   if (filters.q.trim()) {
     chips.push({
       key: 'q',
-      label: `Search: "${filters.q.trim()}"`,
+      label: t('search', { value: filters.q.trim() }),
       remove: () => update({ q: '' }),
     });
   }
   if (filters.sex.length > 0 && filters.sex.length < 3) {
     chips.push({
       key: 'sex',
-      label: `Sex: ${filters.sex.map((s) => SEX_LABELS[s]).join(', ')}`,
+      label: t('sex', { values: filters.sex.map((s) => tSex(s)).join(', ') }),
       remove: () => update({ sex: [] }),
     });
   }
   if (filters.living.length === 1) {
     chips.push({
       key: 'living',
-      label: `Living: ${LIVING_LABELS[filters.living[0]]}`,
+      label: t('living', { value: tLiving(filters.living[0]) }),
       remove: () => update({ living: [] }),
     });
   }
   if (filters.validation.length === 1) {
     chips.push({
       key: 'validation',
-      label: `Validation: ${VALIDATION_LABELS[filters.validation[0]]}`,
+      label: t('validation', { value: tValidation(filters.validation[0]) }),
       remove: () => update({ validation: [] }),
     });
   }
   if (filters.bornFrom !== null || filters.bornTo !== null) {
     chips.push({
       key: 'born',
-      label: `Born: ${filters.bornFrom ?? '…'}–${filters.bornTo ?? '…'}`,
+      label: t('born', {
+        from: filters.bornFrom ?? t('openEllipsis'),
+        to: filters.bornTo ?? t('openEllipsis'),
+      }),
       remove: () => update({ bornFrom: null, bornTo: null }),
     });
   }
   if (filters.diedFrom !== null || filters.diedTo !== null) {
     chips.push({
       key: 'died',
-      label: `Died: ${filters.diedFrom ?? '…'}–${filters.diedTo ?? '…'}`,
+      label: t('died', {
+        from: filters.diedFrom ?? t('openEllipsis'),
+        to: filters.diedTo ?? t('openEllipsis'),
+      }),
       remove: () => update({ diedFrom: null, diedTo: null }),
     });
   }
   if (filters.place.trim()) {
-    const scopeLabel = filters.placeScope === 'birth' ? '(birth)' : '(any)';
     chips.push({
       key: 'place',
-      label: `Place: "${filters.place.trim()}" ${scopeLabel}`,
+      label: t('place', {
+        value: filters.place.trim(),
+        scope: filters.placeScope === 'birth' ? t('placeScopeBirth') : t('placeScopeAny'),
+      }),
       remove: () => update({ place: '', placeScope: 'birth' }),
     });
   }
   if (filters.citations !== 'any') {
+    const citationsKey =
+      filters.citations === 'none'
+        ? 'citationsNone'
+        : filters.citations === 'gte1'
+          ? 'citationsGte1'
+          : 'citationsGte3';
     chips.push({
       key: 'citations',
-      label: CITATIONS_LABELS[filters.citations],
+      label: t(citationsKey),
       remove: () => update({ citations: 'any' }),
     });
   }
   if (filters.complGte !== null) {
     chips.push({
       key: 'compl',
-      label: `Completeness: ≥ ${filters.complGte}%`,
+      label: t('completeness', { value: filters.complGte }),
       remove: () => update({ complGte: null }),
     });
   }
   if (filters.hasProposals) {
     chips.push({
       key: 'proposals',
-      label: 'AI proposals open',
+      label: t('hasProposals'),
       remove: () => update({ hasProposals: false }),
     });
   }
   if (filters.topologyMode !== 'all' && topologyReferenceName) {
     chips.push({
       key: 'topology',
-      label: `${filters.topologyMode === 'ancestors' ? 'Ancestors' : 'Descendants'} of ${topologyReferenceName}`,
+      label:
+        filters.topologyMode === 'ancestors'
+          ? t('topologyAncestors', { name: topologyReferenceName })
+          : t('topologyDescendants', { name: topologyReferenceName }),
       remove: () => update({ topologyMode: 'all', topologyAnchor: '' }),
     });
   }
@@ -122,7 +134,7 @@ export function TreeActiveFilters({ topologyReferenceName }: TreeActiveFiltersPr
     <div
       className="flex flex-wrap items-center gap-2 px-1"
       role="region"
-      aria-label="Active filters"
+      aria-label={t('ariaLabel')}
     >
       {chips.map((chip) => (
         <Badge key={chip.key} variant="secondary" className="pl-2 pr-1 gap-1">
@@ -131,7 +143,7 @@ export function TreeActiveFilters({ topologyReferenceName }: TreeActiveFiltersPr
             variant="ghost"
             size="icon"
             className="h-5 w-5 hover:bg-background"
-            aria-label={`Remove filter: ${chip.label}`}
+            aria-label={t('removeChipAriaLabel', { label: chip.label })}
             onClick={chip.remove}
           >
             <X className="h-3 w-3" aria-hidden />

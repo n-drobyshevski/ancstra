@@ -1,4 +1,4 @@
-import { eq, and, or, lt, desc } from 'drizzle-orm';
+import { eq, and, or, lt, desc, gte, lte, like, inArray } from 'drizzle-orm';
 import { activityFeed } from '@ancstra/db/central-schema';
 import { type ActivityAction } from './types';
 
@@ -61,19 +61,44 @@ export async function getActivityFeed(
     familyId: string;
     cursor?: string;
     limit?: number;
+    /** Single-action filter (e.g. user selected one category). */
     action?: string;
+    /** Allowlist filter (e.g. role-allowed actions). Intersected with `action`. */
+    actions?: readonly string[];
     userId?: string;
+    /** Case-insensitive substring search on `summary`. */
+    q?: string;
+    /** ISO timestamp; only entries with createdAt >= since. */
+    since?: string;
+    /** ISO timestamp; only entries with createdAt <= until. */
+    until?: string;
   }
 ): Promise<{ items: ActivityEntry[]; nextCursor: string | null }> {
   const limit = opts.limit ?? 50;
 
-  const conditions: ReturnType<typeof eq>[] = [eq(activityFeed.familyId, opts.familyId)];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const conditions: any[] = [eq(activityFeed.familyId, opts.familyId)];
 
   if (opts.action) {
     conditions.push(eq(activityFeed.action, opts.action));
   }
+  if (opts.actions && opts.actions.length > 0) {
+    conditions.push(inArray(activityFeed.action, [...opts.actions]));
+  }
   if (opts.userId) {
     conditions.push(eq(activityFeed.userId, opts.userId));
+  }
+  if (opts.q && opts.q.trim().length > 0) {
+    // SQLite LIKE is ASCII-case-insensitive by default; escape wildcards in
+    // the user's query so a literal `%` or `_` doesn't expand the match.
+    const escaped = opts.q.replace(/[\\%_]/g, (c) => `\\${c}`);
+    conditions.push(like(activityFeed.summary, `%${escaped}%`));
+  }
+  if (opts.since) {
+    conditions.push(gte(activityFeed.createdAt, opts.since));
+  }
+  if (opts.until) {
+    conditions.push(lte(activityFeed.createdAt, opts.until));
   }
 
   if (opts.cursor) {
@@ -129,6 +154,10 @@ export async function getActivityFeed(
 /**
  * Redact activity entries for viewer role: replace summary with generic text
  * for entries whose entityId refers to a living person.
+ *
+ * Caller contract: run this AFTER any role-based visibility filter
+ * (e.g. `filterEntriesByVisibility`) so redaction only targets entries the
+ * viewer is allowed to see in the first place.
  */
 export function redactActivityForViewer(
   entries: ActivityEntry[],

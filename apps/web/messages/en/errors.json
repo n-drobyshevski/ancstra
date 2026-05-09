@@ -1,0 +1,19 @@
+{
+  "generic": "Something went wrong. Please try again.",
+  "notAuthenticated": "Please sign in to continue.",
+  "network": "Unable to connect. Check your internet connection.",
+  "databaseBusy": "Database is busy. Please try again.",
+  "forbidden": "You don’t have permission to {action}. Contact a family admin.",
+  "permissions": {
+    "person:delete": "delete this person",
+    "person:edit": "edit this person",
+    "person:create": "add new persons",
+    "settings:manage": "change settings",
+    "members:manage": "manage family members",
+    "tree:delete": "delete this family tree",
+    "gedcom:import": "import GEDCOM files",
+    "gedcom:export": "export data",
+    "ai:research": "use AI research features",
+    "fallback": "perform this action"
+  }
+}

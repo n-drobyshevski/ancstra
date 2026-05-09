@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import {
   Table,
   TableBody,
@@ -29,10 +30,14 @@ function formatDate(iso: string): string {
 }
 
 export function FamiliesTable({ rows }: Props) {
+  const t = useTranslations('admin.families.table');
+  const tHeaders = useTranslations('admin.families.table.headers');
+  const tDetail = useTranslations('admin.families.detail');
+
   if (rows.length === 0) {
     return (
       <p className="py-8 text-center text-sm text-muted-foreground">
-        No families found.
+        {t('empty')}
       </p>
     );
   }
@@ -42,12 +47,12 @@ export function FamiliesTable({ rows }: Props) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Family</TableHead>
-            <TableHead>Owner</TableHead>
-            <TableHead className="text-right">Members</TableHead>
-            <TableHead className="text-right">Pending invites</TableHead>
-            <TableHead>Created</TableHead>
-            <TableHead className="w-12" aria-label="Actions" />
+            <TableHead>{tHeaders('family')}</TableHead>
+            <TableHead>{tHeaders('owner')}</TableHead>
+            <TableHead className="text-right">{tHeaders('members')}</TableHead>
+            <TableHead className="text-right">{tHeaders('pendingInvites')}</TableHead>
+            <TableHead>{tHeaders('created')}</TableHead>
+            <TableHead className="w-12" aria-label={tHeaders('actions')} />
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -76,8 +81,8 @@ export function FamiliesTable({ rows }: Props) {
                 <CountWithNamesTooltip
                   count={f.memberCount}
                   names={f.memberNames}
-                  hint="Active members"
-                  ariaNoun="active members"
+                  hint={tDetail('membersCount', { count: f.memberCount })}
+                  ariaNoun={tHeaders('members').toLowerCase()}
                 />
               </TableCell>
               <TableCell className="text-right tabular-nums">

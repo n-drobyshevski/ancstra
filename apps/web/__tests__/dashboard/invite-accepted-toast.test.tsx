@@ -1,8 +1,20 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render } from '@testing-library/react';
+import { NextIntlClientProvider } from 'next-intl';
 import { InviteAcceptedToast } from '@/components/dashboard/invite-accepted-toast';
+import dashboardMessages from '@/messages/en/dashboard.json';
 import React from 'react';
+
+const messages = { dashboard: dashboardMessages };
+
+function renderWithIntl(ui: React.ReactElement) {
+  return render(
+    <NextIntlClientProvider locale="en" messages={messages}>
+      {ui}
+    </NextIntlClientProvider>,
+  );
+}
 
 // ── sonner toast ──────────────────────────────────────────────────────────────
 const mockToastSuccess = vi.fn();
@@ -69,7 +81,7 @@ describe('<InviteAcceptedToast>', () => {
       isLoading: false,
     });
 
-    render(<InviteAcceptedToast />);
+    renderWithIntl(<InviteAcceptedToast />);
 
     expect(mockToastSuccess).toHaveBeenCalledTimes(1);
     expect(mockToastSuccess).toHaveBeenCalledWith('Welcome to Smith Family');
@@ -87,7 +99,7 @@ describe('<InviteAcceptedToast>', () => {
     mockUseSession.mockReturnValue({ data: null, status: 'unauthenticated', update: vi.fn() });
     mockListMineUseQuery.mockReturnValue({ data: [], isLoading: false });
 
-    render(<InviteAcceptedToast />);
+    renderWithIntl(<InviteAcceptedToast />);
 
     expect(mockToastSuccess).toHaveBeenCalledTimes(1);
     expect(mockToastSuccess).toHaveBeenCalledWith('Welcome to your new family');
@@ -102,7 +114,7 @@ describe('<InviteAcceptedToast>', () => {
       isLoading: false,
     });
 
-    render(<InviteAcceptedToast />);
+    renderWithIntl(<InviteAcceptedToast />);
 
     expect(mockToastSuccess).not.toHaveBeenCalled();
     expect(mockRouterReplace).not.toHaveBeenCalled();
@@ -114,7 +126,7 @@ describe('<InviteAcceptedToast>', () => {
     mockUseSession.mockReturnValue(makeSession('f1'));
     mockListMineUseQuery.mockReturnValue({ data: undefined, isLoading: true });
 
-    render(<InviteAcceptedToast />);
+    renderWithIntl(<InviteAcceptedToast />);
 
     expect(mockToastSuccess).not.toHaveBeenCalled();
   });

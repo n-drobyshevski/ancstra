@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,32 +23,37 @@ interface PriorityResponse {
   pageSize: number;
 }
 
-const FIELD_LABELS: Record<string, string> = {
-  name: 'Name',
-  birthDate: 'Birth Date',
-  birthPlace: 'Birth Place',
-  deathDate: 'Death Date',
-  source: 'Source',
-};
+const FIELD_KEYS = ['name', 'birthDate', 'birthPlace', 'deathDate', 'source'] as const;
+type FieldKey = (typeof FIELD_KEYS)[number];
+
+function isFieldKey(s: string): s is FieldKey {
+  return (FIELD_KEYS as readonly string[]).includes(s);
+}
 
 export function PriorityTable() {
+  const t = useTranslations('analytics.priorityTable');
+  const tFields = useTranslations('analytics.priorityTable.fieldLabels');
+  const tHeaders = useTranslations('analytics.priorityTable.headers');
   const [data, setData] = useState<PriorityResponse | null>(null);
   const [page, setPage] = useState(1);
   const [error, setError] = useState<string | null>(null);
   const pageSize = 20;
 
-  const fetchPage = useCallback((p: number) => {
-    fetch(`/api/quality/priorities?page=${p}&pageSize=${pageSize}`)
-      .then((res) => {
-        if (!res.ok) throw new Error('Failed to load priorities');
-        return res.json();
-      })
-      .then((result: PriorityResponse) => {
-        setData(result);
-        setPage(result.page);
-      })
-      .catch((err) => setError(err.message));
-  }, []);
+  const fetchPage = useCallback(
+    (p: number) => {
+      fetch(`/api/quality/priorities?page=${p}&pageSize=${pageSize}`)
+        .then((res) => {
+          if (!res.ok) throw new Error(t('loadFailed'));
+          return res.json();
+        })
+        .then((result: PriorityResponse) => {
+          setData(result);
+          setPage(result.page);
+        })
+        .catch((err) => setError(err.message));
+    },
+    [t],
+  );
 
   useEffect(() => {
     fetchPage(1);
@@ -61,7 +67,7 @@ export function PriorityTable() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Research Priorities</CardTitle>
+          <CardTitle>{t('title')}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="h-48 animate-pulse rounded bg-muted" />
@@ -75,15 +81,15 @@ export function PriorityTable() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Research Priorities</CardTitle>
+        <CardTitle>{t('title')}</CardTitle>
       </CardHeader>
       <CardContent>
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead className="w-24 text-right">Score</TableHead>
-              <TableHead>Missing Fields</TableHead>
+              <TableHead>{tHeaders('name')}</TableHead>
+              <TableHead className="w-24 text-right">{tHeaders('score')}</TableHead>
+              <TableHead>{tHeaders('missingFields')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -96,7 +102,7 @@ export function PriorityTable() {
                   >
                     {person.givenName || person.surname
                       ? `${person.givenName} ${person.surname}`.trim()
-                      : 'Unknown'}
+                      : t('unknown')}
                   </Link>
                 </TableCell>
                 <TableCell className="text-right font-mono">{person.score}%</TableCell>
@@ -104,7 +110,7 @@ export function PriorityTable() {
                   <div className="flex flex-wrap gap-1">
                     {person.missingFields.map((field) => (
                       <Badge key={field} variant="secondary">
-                        {FIELD_LABELS[field] ?? field}
+                        {isFieldKey(field) ? tFields(field) : field}
                       </Badge>
                     ))}
                   </div>
@@ -114,7 +120,7 @@ export function PriorityTable() {
             {data.persons.length === 0 && (
               <TableRow>
                 <TableCell colSpan={3} className="text-center text-muted-foreground">
-                  No persons found.
+                  {t('noPersons')}
                 </TableCell>
               </TableRow>
             )}
@@ -123,7 +129,7 @@ export function PriorityTable() {
         {totalPages > 1 && (
           <div className="mt-4 flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
-              Page {page} of {totalPages} ({data.total} total)
+              {t('pageOf', { page, total: totalPages, count: data.total })}
             </p>
             <div className="flex gap-2">
               <Button
@@ -132,7 +138,7 @@ export function PriorityTable() {
                 disabled={page <= 1}
                 onClick={() => fetchPage(page - 1)}
               >
-                Previous
+                {t('previous')}
               </Button>
               <Button
                 variant="outline"
@@ -140,7 +146,7 @@ export function PriorityTable() {
                 disabled={page >= totalPages}
                 onClick={() => fetchPage(page + 1)}
               >
-                Next
+                {t('next')}
               </Button>
             </div>
           </div>

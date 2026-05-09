@@ -2,6 +2,7 @@
 
 import { useId, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 
 interface FacetBlockProps {
@@ -16,6 +17,7 @@ export function FacetBlock({
 }: FacetBlockProps) {
   const [open, setOpen] = useState(defaultOpen);
   const contentId = useId();
+  const t = useTranslations('persons.facets');
   return (
     <section className="border-b border-border last:border-b-0">
       <button
@@ -30,7 +32,7 @@ export function FacetBlock({
           {active && (
             <span
               className="inline-block h-1.5 w-1.5 rounded-full bg-primary"
-              aria-label="filter active"
+              aria-label={t('filterActiveAriaLabel')}
             />
           )}
         </span>

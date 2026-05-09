@@ -1,6 +1,7 @@
 import { memo, type CSSProperties } from 'react';
 import { Handle, Position, useConnection, type Node, type NodeProps } from '@xyflow/react';
 import { Quote } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 import { personDetailCache } from '@/lib/tree/person-detail-cache';
 import type { PersonNodeData } from './tree-utils';
@@ -19,13 +20,8 @@ const sexColors = {
   U: { border: 'var(--sex-unknown)', bg: 'var(--sex-unknown-bg)', text: 'var(--sex-unknown)' },
 } as const;
 
-const GAP_FIELDS = [
-  { key: 'name', label: 'Name' },
-  { key: 'birthDate', label: 'Birth Date' },
-  { key: 'birthPlace', label: 'Birth Place' },
-  { key: 'deathDate', label: 'Death Date' },
-  { key: 'source', label: 'Source' },
-] as const;
+const GAP_FIELD_KEYS = ['name', 'birthDate', 'birthPlace', 'deathDate', 'source'] as const;
+type GapFieldKey = (typeof GAP_FIELD_KEYS)[number];
 
 function scoreColor(score: number): string {
   if (score >= 70) return 'var(--completion-high)';
@@ -34,6 +30,9 @@ function scoreColor(score: number): string {
 }
 
 function PersonNodeComponent({ id, data, selected }: NodeProps<PersonNodeType>) {
+  const tNode = useTranslations('tree.node');
+  const tHandles = useTranslations('tree.node.handles');
+  const tFields = useTranslations('tree.node.fields');
   const dimmed = !!data.dimmed;
   const colors = sexColors[data.sex] ?? sexColors.U;
   const initials = `${data.givenName[0] ?? ''}${data.surname[0] ?? ''}`.toUpperCase();
@@ -99,8 +98,8 @@ function PersonNodeComponent({ id, data, selected }: NodeProps<PersonNodeType>) 
   // Shared: lifespan string for compact layout
   const lifespan = (() => {
     if (data.birthDate && data.deathDate) return `${data.birthDate} \u2013 ${data.deathDate}`;
-    if (data.birthDate) return `b. ${data.birthDate}`;
-    if (data.deathDate) return `d. ${data.deathDate}`;
+    if (data.birthDate) return tNode('birthPrefix', { date: data.birthDate });
+    if (data.deathDate) return tNode('deathPrefix', { date: data.deathDate });
     return null;
   })();
 
@@ -111,25 +110,25 @@ function PersonNodeComponent({ id, data, selected }: NodeProps<PersonNodeType>) 
         <TooltipTrigger asChild>
           <Handle type="target" position={Position.Top} className={handleClass('top')} />
         </TooltipTrigger>
-        <TooltipContent side="top" className="text-xs">Parents</TooltipContent>
+        <TooltipContent side="top" className="text-xs">{tHandles('parents')}</TooltipContent>
       </Tooltip>
       <Tooltip>
         <TooltipTrigger asChild>
           <Handle type="source" position={Position.Bottom} className={handleClass('bottom')} />
         </TooltipTrigger>
-        <TooltipContent side="bottom" className="text-xs">Children</TooltipContent>
+        <TooltipContent side="bottom" className="text-xs">{tHandles('children')}</TooltipContent>
       </Tooltip>
       <Tooltip>
         <TooltipTrigger asChild>
           <Handle type="source" position={Position.Right} id="right" className={handleClass('right')} />
         </TooltipTrigger>
-        <TooltipContent side="right" className="text-xs">Spouse</TooltipContent>
+        <TooltipContent side="right" className="text-xs">{tHandles('spouse')}</TooltipContent>
       </Tooltip>
       <Tooltip>
         <TooltipTrigger asChild>
           <Handle type="target" position={Position.Left} id="left" className={handleClass('left')} />
         </TooltipTrigger>
-        <TooltipContent side="left" className="text-xs">Spouse</TooltipContent>
+        <TooltipContent side="left" className="text-xs">{tHandles('spouse')}</TooltipContent>
       </Tooltip>
     </>
   );
@@ -138,7 +137,7 @@ function PersonNodeComponent({ id, data, selected }: NodeProps<PersonNodeType>) 
   function gapDots(dotSize: string) {
     return (
       <div className="flex justify-center mt-0.5 -mx-1">
-        {GAP_FIELDS.map(({ key, label }) => {
+        {GAP_FIELD_KEYS.map((key: GapFieldKey) => {
           const isNotApplicable = key === 'deathDate' && isLiving;
           const isMissing = missingSet.has(key);
           const dotColor = isNotApplicable
@@ -146,11 +145,12 @@ function PersonNodeComponent({ id, data, selected }: NodeProps<PersonNodeType>) 
             : isMissing
               ? 'var(--completion-low)'
               : 'var(--completion-high)';
+          const label = tFields(key);
           const tooltipText = isNotApplicable
-            ? `${label}: N/A (living)`
+            ? tNode('tooltipNotApplicable', { label })
             : isMissing
-              ? `${label}: missing`
-              : `${label}: ✓`;
+              ? tNode('tooltipMissing', { label })
+              : tNode('tooltipPresent', { label });
           return (
             <Tooltip key={key}>
               <TooltipTrigger asChild>
@@ -192,11 +192,12 @@ function PersonNodeComponent({ id, data, selected }: NodeProps<PersonNodeType>) 
 
   // Shared: citation indicator badge (top-right corner, inside card bounds so
   // it survives `overflow-hidden` when the quality bar is on).
+  const sourcesLabel = tNode('sources', { count: sourcesCount });
   const citationBadge = renderCitationBadge ? (
     <Tooltip>
       <TooltipTrigger asChild>
         <span
-          aria-label={`${sourcesCount} source${sourcesCount > 1 ? 's' : ''}`}
+          aria-label={sourcesLabel}
           className="absolute right-1 top-1 inline-flex items-center gap-0.5 rounded-full bg-background px-1 py-0.5 ring-1 ring-border shadow-sm"
         >
           <Quote className="size-2.5 text-muted-foreground" aria-hidden />
@@ -208,7 +209,7 @@ function PersonNodeComponent({ id, data, selected }: NodeProps<PersonNodeType>) 
         </span>
       </TooltipTrigger>
       <TooltipContent side="top" className="text-xs">
-        {sourcesCount} source{sourcesCount > 1 ? 's' : ''}
+        {sourcesLabel}
       </TooltipContent>
     </Tooltip>
   ) : null;
@@ -241,7 +242,7 @@ function PersonNodeComponent({ id, data, selected }: NodeProps<PersonNodeType>) 
               {showLivingIndicator && isLiving && (
                 <span
                   role="img"
-                  aria-label="Living"
+                  aria-label={tNode('living')}
                   className="absolute bottom-0 right-0 block h-2 w-2 rounded-full bg-completion-high ring-1 ring-background"
                 />
               )}
@@ -253,7 +254,7 @@ function PersonNodeComponent({ id, data, selected }: NodeProps<PersonNodeType>) 
             {showDates && (lifespan ? (
               <div className="text-[9px] text-muted-foreground">{lifespan}</div>
             ) : (
-              <div className="text-[9px] text-muted-foreground italic">no dates</div>
+              <div className="text-[9px] text-muted-foreground italic">{tNode('noDates')}</div>
             ))}
             {showGaps && gapDots('size-1')}
           </div>
@@ -278,7 +279,7 @@ function PersonNodeComponent({ id, data, selected }: NodeProps<PersonNodeType>) 
               {showLivingIndicator && isLiving && (
                 <span
                   role="img"
-                  aria-label="Living"
+                  aria-label={tNode('living')}
                   className="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full bg-completion-high ring-1 ring-background"
                 />
               )}
@@ -288,13 +289,13 @@ function PersonNodeComponent({ id, data, selected }: NodeProps<PersonNodeType>) 
                 {data.givenName} {data.surname}
               </div>
               {showDates && data.birthDate && (
-                <div className="text-[11px] text-muted-foreground">b. {data.birthDate}</div>
+                <div className="text-[11px] text-muted-foreground">{tNode('birthPrefix', { date: data.birthDate })}</div>
               )}
               {showDates && data.deathDate && (
-                <div className="text-[11px] text-muted-foreground">d. {data.deathDate}</div>
+                <div className="text-[11px] text-muted-foreground">{tNode('deathPrefix', { date: data.deathDate })}</div>
               )}
               {showDates && !data.birthDate && !data.deathDate && (
-                <div className="text-[11px] text-muted-foreground italic">no dates</div>
+                <div className="text-[11px] text-muted-foreground italic">{tNode('noDates')}</div>
               )}
               {showGaps && gapDots('size-1.5')}
             </div>

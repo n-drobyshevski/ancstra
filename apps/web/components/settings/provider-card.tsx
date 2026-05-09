@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { Loader2, Eye, EyeOff, Zap } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -24,7 +25,6 @@ const CATEGORY_COLORS: Record<string, string> = {
   web: 'bg-violet-500/15 text-[oklch(0.35_0.12_300)] dark:text-[oklch(0.75_0.10_300)]',
 };
 
-// Map provider IDs to categories
 const PROVIDER_CATEGORIES: Record<string, string> = {
   familysearch: 'databases',
   nara: 'databases',
@@ -36,67 +36,20 @@ const PROVIDER_CATEGORIES: Record<string, string> = {
   geneanet: 'web',
 };
 
-// Provider descriptions
-const PROVIDER_DESCRIPTIONS: Record<string, string> = {
-  familysearch: 'Census, vital records, immigration records',
-  nara: 'National Archives catalog and digitized records',
-  wikitree: 'Collaborative genealogy community',
-  openarchives: 'Dutch and European archive records',
-  chronicling_america: 'Historical newspaper archives (LOC)',
-  findagrave: 'Cemetery and burial records',
-  web_search: 'General web search via SearXNG or Brave',
-  geneanet: 'European genealogy database',
-};
+const KNOWN_PROVIDER_DESCRIPTIONS = [
+  'familysearch',
+  'nara',
+  'wikitree',
+  'openarchives',
+  'chronicling_america',
+  'findagrave',
+  'web_search',
+  'geneanet',
+] as const;
+type KnownProviderId = (typeof KNOWN_PROVIDER_DESCRIPTIONS)[number];
 
-// Which providers need API keys
 const NEEDS_API_KEY: Set<string> = new Set(['familysearch']);
-
-// Which providers have configurable base URLs
 const HAS_BASE_URL: Set<string> = new Set(['web_search']);
-
-function getStatusBadge(provider: SearchProvider): {
-  label: string;
-  variant: 'default' | 'secondary' | 'destructive' | 'outline';
-  className?: string;
-} {
-  if (!provider.isEnabled) {
-    return { label: 'Disabled', variant: 'secondary' };
-  }
-
-  if (provider.healthStatus === 'healthy') {
-    return {
-      label: 'Online',
-      variant: 'outline',
-      className: 'border-emerald-500/50 text-status-success-text',
-    };
-  }
-
-  if (provider.healthStatus === 'down') {
-    return { label: 'Offline', variant: 'destructive' };
-  }
-
-  if (provider.healthStatus === 'degraded') {
-    return {
-      label: 'Degraded',
-      variant: 'outline',
-      className: 'border-amber-500/50 text-status-warning-text',
-    };
-  }
-
-  // If it needs an API key and doesn't have one
-  if (NEEDS_API_KEY.has(provider.id)) {
-    const config = provider.config ? JSON.parse(provider.config) : {};
-    if (!config.apiKey) {
-      return {
-        label: 'Needs Auth',
-        variant: 'outline',
-        className: 'border-amber-500/50 text-status-warning-text',
-      };
-    }
-  }
-
-  return { label: 'Not Checked', variant: 'secondary' };
-}
 
 interface ProviderCardProps {
   provider: SearchProvider;
@@ -104,22 +57,21 @@ interface ProviderCardProps {
 }
 
 export function ProviderCard({ provider, onUpdate }: ProviderCardProps) {
+  const t = useTranslations('settings.sources.provider');
+  const tDescriptions = useTranslations('settings.sources.providerDescriptions');
   const [testResult, setTestResult] = useState<TestResult | null>(null);
   const [testing, setTesting] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
 
-  // Local state for debounced fields
   const config = provider.config ? JSON.parse(provider.config) : {};
   const [apiKey, setApiKey] = useState<string>(config.apiKey ?? '');
   const [rateLimit, setRateLimit] = useState<string>(String(provider.rateLimitRpm));
   const [baseUrl, setBaseUrl] = useState<string>(provider.baseUrl ?? '');
 
-  // Debounce timer refs
   const apiKeyTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const rateLimitTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const baseUrlTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  // Cleanup timers
   useEffect(() => {
     return () => {
       clearTimeout(apiKeyTimerRef.current);
@@ -128,10 +80,48 @@ export function ProviderCard({ provider, onUpdate }: ProviderCardProps) {
     };
   }, []);
 
+  function getStatusBadge(p: SearchProvider): {
+    label: string;
+    variant: 'default' | 'secondary' | 'destructive' | 'outline';
+    className?: string;
+  } {
+    if (!p.isEnabled) return { label: t('disabled'), variant: 'secondary' };
+    if (p.healthStatus === 'healthy') {
+      return {
+        label: t('online'),
+        variant: 'outline',
+        className: 'border-emerald-500/50 text-status-success-text',
+      };
+    }
+    if (p.healthStatus === 'down') {
+      return { label: t('offline'), variant: 'destructive' };
+    }
+    if (p.healthStatus === 'degraded') {
+      return {
+        label: t('degraded'),
+        variant: 'outline',
+        className: 'border-amber-500/50 text-status-warning-text',
+      };
+    }
+    if (NEEDS_API_KEY.has(p.id)) {
+      const cfg = p.config ? JSON.parse(p.config) : {};
+      if (!cfg.apiKey) {
+        return {
+          label: t('needsAuth'),
+          variant: 'outline',
+          className: 'border-amber-500/50 text-status-warning-text',
+        };
+      }
+    }
+    return { label: t('notChecked'), variant: 'secondary' };
+  }
+
   const category = PROVIDER_CATEGORIES[provider.id] ?? 'web';
   const colorClass = CATEGORY_COLORS[category] ?? CATEGORY_COLORS.web;
   const abbrev = provider.name.slice(0, 2).toUpperCase();
-  const description = PROVIDER_DESCRIPTIONS[provider.id] ?? '';
+  const description = (KNOWN_PROVIDER_DESCRIPTIONS as readonly string[]).includes(provider.id)
+    ? tDescriptions(provider.id as KnownProviderId)
+    : '';
   const statusBadge = getStatusBadge(provider);
 
   const needsApiKey = NEEDS_API_KEY.has(provider.id);
@@ -142,13 +132,17 @@ export function ProviderCard({ provider, onUpdate }: ProviderCardProps) {
     async (checked: boolean) => {
       try {
         await updateProvider(provider.id, { isEnabled: checked });
-        toast.success(`${provider.name} ${checked ? 'enabled' : 'disabled'}`);
+        toast.success(
+          checked
+            ? t('enabled', { name: provider.name })
+            : t('providerDisabled', { name: provider.name }),
+        );
         onUpdate();
       } catch {
-        toast.error(`Failed to update ${provider.name}`);
+        toast.error(t('updateFailed', { name: provider.name }));
       }
     },
-    [provider.id, provider.name, onUpdate]
+    [provider.id, provider.name, onUpdate, t]
   );
 
   const handleApiKeyChange = useCallback(
@@ -157,20 +151,18 @@ export function ProviderCard({ provider, onUpdate }: ProviderCardProps) {
       clearTimeout(apiKeyTimerRef.current);
       apiKeyTimerRef.current = setTimeout(async () => {
         try {
-          const existingConfig = provider.config
-            ? JSON.parse(provider.config)
-            : {};
+          const existingConfig = provider.config ? JSON.parse(provider.config) : {};
           await updateProvider(provider.id, {
             config: JSON.stringify({ ...existingConfig, apiKey: value }),
           });
-          toast.success('API key saved');
+          toast.success(t('apiKeySaved'));
           onUpdate();
         } catch {
-          toast.error('Failed to save API key');
+          toast.error(t('apiKeyFailed'));
         }
       }, 500);
     },
-    [provider.id, provider.config, onUpdate]
+    [provider.id, provider.config, onUpdate, t]
   );
 
   const handleRateLimitChange = useCallback(
@@ -182,14 +174,14 @@ export function ProviderCard({ provider, onUpdate }: ProviderCardProps) {
         if (isNaN(num) || num < 1 || num > 1000) return;
         try {
           await updateProvider(provider.id, { rateLimitRpm: num });
-          toast.success('Rate limit saved');
+          toast.success(t('rateSaved'));
           onUpdate();
         } catch {
-          toast.error('Failed to save rate limit');
+          toast.error(t('rateFailed'));
         }
       }, 500);
     },
-    [provider.id, onUpdate]
+    [provider.id, onUpdate, t]
   );
 
   const handleBaseUrlChange = useCallback(
@@ -198,17 +190,15 @@ export function ProviderCard({ provider, onUpdate }: ProviderCardProps) {
       clearTimeout(baseUrlTimerRef.current);
       baseUrlTimerRef.current = setTimeout(async () => {
         try {
-          await updateProvider(provider.id, {
-            baseUrl: value || null,
-          });
-          toast.success('Base URL saved');
+          await updateProvider(provider.id, { baseUrl: value || null });
+          toast.success(t('baseUrlSaved'));
           onUpdate();
         } catch {
-          toast.error('Failed to save base URL');
+          toast.error(t('baseUrlFailed'));
         }
       }, 500);
     },
-    [provider.id, onUpdate]
+    [provider.id, onUpdate, t]
   );
 
   const handleTest = useCallback(async () => {
@@ -274,14 +264,14 @@ export function ProviderCard({ provider, onUpdate }: ProviderCardProps) {
           {needsApiKey && (
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-muted-foreground">
-                API Key
+                {t('apiKey')}
               </label>
               <div className="relative">
                 <Input
                   type={showApiKey ? 'text' : 'password'}
                   value={apiKey}
                   onChange={(e) => handleApiKeyChange(e.target.value)}
-                  placeholder="Enter API key..."
+                  placeholder={t('apiKeyPlaceholder')}
                   className="pr-9"
                 />
                 <button
@@ -302,13 +292,13 @@ export function ProviderCard({ provider, onUpdate }: ProviderCardProps) {
           {hasBaseUrl && (
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-muted-foreground">
-                Base URL (SearXNG)
+                {t('baseUrl')}
               </label>
               <Input
                 type="url"
                 value={baseUrl}
                 onChange={(e) => handleBaseUrlChange(e.target.value)}
-                placeholder="http://localhost:8080"
+                placeholder={t('baseUrlPlaceholder')}
               />
             </div>
           )}
@@ -323,7 +313,7 @@ export function ProviderCard({ provider, onUpdate }: ProviderCardProps) {
       >
         <div className="space-y-1.5 flex-1">
           <label className="text-xs font-medium text-muted-foreground">
-            Rate limit (req/min)
+            {t('rateLimit')}
           </label>
           <Input
             type="number"
@@ -348,7 +338,7 @@ export function ProviderCard({ provider, onUpdate }: ProviderCardProps) {
               )}
             >
               {testResult.status === 'healthy'
-                ? `OK ${testResult.responseTimeMs}ms`
+                ? t('okMs', { ms: testResult.responseTimeMs })
                 : testResult.message ?? 'Failed'}
             </span>
           )}
@@ -363,7 +353,7 @@ export function ProviderCard({ provider, onUpdate }: ProviderCardProps) {
             ) : (
               <Zap className="size-3.5" />
             )}
-            <span className="ml-1">Test</span>
+            <span className="ml-1">{t('test')}</span>
           </Button>
         </div>
       </CardContent>
@@ -371,7 +361,7 @@ export function ProviderCard({ provider, onUpdate }: ProviderCardProps) {
       {provider.lastHealthCheck && (
         <CardContent className="pt-0">
           <p className="text-[11px] text-muted-foreground">
-            Last checked: {new Date(provider.lastHealthCheck).toLocaleString()}
+            {t('lastChecked', { date: new Date(provider.lastHealthCheck).toLocaleString() })}
           </p>
         </CardContent>
       )}

@@ -1,21 +1,34 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { NextIntlClientProvider } from 'next-intl';
 import { MemberList } from '@/components/members/member-list';
+import commonMessages from '@/messages/en/common.json';
+import React from 'react';
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock('@/components/auth/role-gate', () => ({
   RoleGate: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
+const messages = { common: commonMessages };
+
+function renderWithIntl(ui: React.ReactElement) {
+  return render(
+    <NextIntlClientProvider locale="en" messages={messages}>
+      {ui}
+    </NextIntlClientProvider>,
+  );
+}
+
 const mockMembers = [
   {
     id: 'm-1', userId: 'u-owner', role: 'owner', joinedAt: '2026-01-01',
-    lastSeenAt: '2026-05-07T10:00:00Z', name: 'Owner', email: 'o@t',
+    lastSeenAt: '2026-05-07T10:00:00Z', name: 'Alice', email: 'o@t',
   },
   {
     id: 'm-2', userId: 'u-admin', role: 'admin', joinedAt: '2026-02-01',
-    lastSeenAt: null, name: 'Admin', email: 'a@t',
+    lastSeenAt: null, name: 'Bob', email: 'a@t',
   },
 ];
 
@@ -34,20 +47,20 @@ function openDropdown(trigger: HTMLElement) {
 
 describe('<MemberList>', () => {
   it('renders Last seen column header', async () => {
-    render(<MemberList familyId="fam-1" familyName="Test" currentUserId="u-owner" currentRole="owner" />);
-    await waitFor(() => expect(screen.getByText('Owner')).not.toBeNull());
+    renderWithIntl(<MemberList familyId="fam-1" familyName="Test" currentUserId="u-owner" currentRole="owner" />);
+    await waitFor(() => expect(screen.getByText('Alice')).not.toBeNull());
     expect(screen.getByText('Last seen')).not.toBeNull();
   });
 
   it('renders em-dash for null lastSeenAt', async () => {
-    render(<MemberList familyId="fam-1" familyName="Test" currentUserId="u-owner" currentRole="owner" />);
-    await waitFor(() => expect(screen.getByText('Admin')).not.toBeNull());
+    renderWithIntl(<MemberList familyId="fam-1" familyName="Test" currentUserId="u-owner" currentRole="owner" />);
+    await waitFor(() => expect(screen.getByText('Bob')).not.toBeNull());
     expect(screen.getByText('—')).not.toBeNull();
   });
 
   it('owner sees Transfer ownership in dropdown for admin row', async () => {
-    render(<MemberList familyId="fam-1" familyName="Test" currentUserId="u-owner" currentRole="owner" />);
-    await waitFor(() => expect(screen.getByText('Admin')).not.toBeNull());
+    renderWithIntl(<MemberList familyId="fam-1" familyName="Test" currentUserId="u-owner" currentRole="owner" />);
+    await waitFor(() => expect(screen.getByText('Bob')).not.toBeNull());
 
     const triggers = screen.getAllByLabelText('Member actions');
     openDropdown(triggers[0]);
@@ -59,8 +72,8 @@ describe('<MemberList>', () => {
   });
 
   it('admin caller does not see Transfer ownership', async () => {
-    render(<MemberList familyId="fam-1" familyName="Test" currentUserId="u-admin" currentRole="admin" />);
-    await waitFor(() => expect(screen.getByText('Admin')).not.toBeNull());
+    renderWithIntl(<MemberList familyId="fam-1" familyName="Test" currentUserId="u-admin" currentRole="admin" />);
+    await waitFor(() => expect(screen.getByText('Bob')).not.toBeNull());
 
     const triggers = screen.queryAllByLabelText('Member actions');
     for (const t of triggers) openDropdown(t);

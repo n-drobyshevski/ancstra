@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -42,6 +43,8 @@ function initials(name: string, email: string): string {
 export function UserDetail({ data, viewerUserId }: Props) {
   const { user, memberships } = data;
   const isSelf = user.id === viewerUserId;
+  const t = useTranslations('admin.users.detail');
+  const tHeaders = useTranslations('admin.users.detail.headers');
 
   return (
     <div className="space-y-6">
@@ -60,13 +63,13 @@ export function UserDetail({ data, viewerUserId }: Props) {
                 {user.isPlatformAdmin ? (
                   <Badge variant="secondary" className="gap-1">
                     <ShieldCheck className="size-3" />
-                    Platform admin
+                    {t('platformAdminBadge')}
                   </Badge>
                 ) : null}
                 {!user.emailVerified ? (
-                  <Badge variant="outline">Email unverified</Badge>
+                  <Badge variant="outline">{t('emailUnverified')}</Badge>
                 ) : null}
-                {isSelf ? <Badge variant="outline">You</Badge> : null}
+                {isSelf ? <Badge variant="outline">{t('you')}</Badge> : null}
               </div>
               <div className="mt-2 flex flex-wrap gap-4 text-sm text-muted-foreground">
                 <span className="flex items-center gap-1.5">
@@ -75,11 +78,11 @@ export function UserDetail({ data, viewerUserId }: Props) {
                 </span>
                 <span className="flex items-center gap-1.5">
                   <Calendar className="size-3.5" />
-                  Joined {formatDate(user.createdAt)}
+                  {t('joinedDate', { date: formatDate(user.createdAt) })}
                 </span>
                 <span className="flex items-center gap-1.5">
                   <RefreshCw className="size-3.5" />
-                  Updated {formatDate(user.updatedAt)}
+                  {t('updatedDate', { date: formatDate(user.updatedAt) })}
                 </span>
               </div>
             </div>
@@ -96,25 +99,25 @@ export function UserDetail({ data, viewerUserId }: Props) {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">
-            Family memberships ({memberships.length})
+            {t('membershipsTitle', { count: memberships.length })}
           </CardTitle>
         </CardHeader>
         <CardContent>
           {memberships.length === 0 ? (
             <p className="py-4 text-sm text-muted-foreground">
-              This user has not joined any families.
+              {t('noMemberships')}
             </p>
           ) : (
             <div className="rounded-md border border-border">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Family</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Joined</TableHead>
-                    <TableHead>Last seen</TableHead>
-                    <TableHead aria-label="Status" />
-                    <TableHead className="w-[60px]" aria-label="Actions" />
+                    <TableHead>{tHeaders('family')}</TableHead>
+                    <TableHead>{tHeaders('role')}</TableHead>
+                    <TableHead>{tHeaders('joined')}</TableHead>
+                    <TableHead>{tHeaders('lastSeen')}</TableHead>
+                    <TableHead aria-label={tHeaders('status')} />
+                    <TableHead className="w-[60px]" aria-label={tHeaders('actions')} />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -142,7 +145,7 @@ export function UserDetail({ data, viewerUserId }: Props) {
                       <TableCell>
                         {!m.isActive ? (
                           <Badge variant="outline" className="text-muted-foreground">
-                            inactive
+                            {t('inactive')}
                           </Badge>
                         ) : null}
                       </TableCell>

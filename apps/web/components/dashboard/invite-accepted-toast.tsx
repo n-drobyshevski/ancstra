@@ -3,12 +3,14 @@
 import { useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 import { trpc } from '@/lib/trpc/client';
 import { useActiveMembership } from '@/lib/auth/use-has-permission';
 
 export function InviteAcceptedToast() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const t = useTranslations('dashboard.inviteToast');
   const activeMembership = useActiveMembership();
   const familiesQuery = trpc.family.listMine.useQuery(undefined, {
     enabled: searchParams.get('invite') === 'accepted',
@@ -28,13 +30,13 @@ export function InviteAcceptedToast() {
         ?.name ?? undefined;
 
     toast.success(
-      familyName ? `Welcome to ${familyName}` : 'Welcome to your new family',
+      familyName ? t('welcomeNamed', { familyName }) : t('welcomeFallback'),
     );
 
     const next = new URLSearchParams(searchParams.toString());
     next.delete('invite');
     router.replace(`?${next.toString()}`);
-  }, [searchParams, router, activeMembership, familiesQuery.isLoading, familiesQuery.data]);
+  }, [searchParams, router, activeMembership, familiesQuery.isLoading, familiesQuery.data, t]);
 
   return null;
 }

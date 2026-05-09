@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import {
   Table,
   TableBody,
@@ -38,10 +39,13 @@ function initials(name: string, email: string): string {
 }
 
 export function UsersTable({ rows, currentUserId }: Props) {
+  const t = useTranslations('admin.users.table');
+  const tHeaders = useTranslations('admin.users.table.headers');
+
   if (rows.length === 0) {
     return (
       <p className="py-8 text-center text-sm text-muted-foreground">
-        No users found.
+        {t('empty')}
       </p>
     );
   }
@@ -51,13 +55,13 @@ export function UsersTable({ rows, currentUserId }: Props) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>User</TableHead>
-            <TableHead>Email</TableHead>
-            <TableHead className="text-right">Family trees</TableHead>
-            <TableHead className="text-right">Owned</TableHead>
-            <TableHead>Joined</TableHead>
-            <TableHead aria-label="Platform admin" />
-            <TableHead className="w-12" aria-label="Actions" />
+            <TableHead>{tHeaders('user')}</TableHead>
+            <TableHead>{tHeaders('email')}</TableHead>
+            <TableHead className="text-right">{tHeaders('families')}</TableHead>
+            <TableHead className="text-right">{tHeaders('owned')}</TableHead>
+            <TableHead>{tHeaders('joined')}</TableHead>
+            <TableHead aria-label={tHeaders('platformAdmin')} />
+            <TableHead className="w-12" aria-label={tHeaders('actions')} />
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -78,23 +82,23 @@ export function UsersTable({ rows, currentUserId }: Props) {
               <TableCell className="text-muted-foreground truncate max-w-[16rem]">
                 {u.email}
                 {!u.emailVerified ? (
-                  <Badge variant="outline" className="ml-2 text-xs">unverified</Badge>
+                  <Badge variant="outline" className="ml-2 text-xs">{t('unverified')}</Badge>
                 ) : null}
               </TableCell>
               <TableCell className="text-right">
                 <CountWithNamesTooltip
                   count={u.familyCount}
                   names={u.familyNames}
-                  hint="Active memberships"
-                  ariaNoun="family memberships"
+                  hint={tHeaders('families')}
+                  ariaNoun={tHeaders('families').toLowerCase()}
                 />
               </TableCell>
               <TableCell className="text-right">
                 <CountWithNamesTooltip
                   count={u.ownedFamilyCount}
                   names={u.ownedFamilyNames}
-                  hint="Owned family trees"
-                  ariaNoun="owned family trees"
+                  hint={tHeaders('owned')}
+                  ariaNoun={tHeaders('owned').toLowerCase()}
                 />
               </TableCell>
               <TableCell className="text-muted-foreground">{formatDate(u.createdAt)}</TableCell>
@@ -102,7 +106,7 @@ export function UsersTable({ rows, currentUserId }: Props) {
                 {u.isPlatformAdmin ? (
                   <Badge variant="secondary" className="gap-1">
                     <ShieldCheck className="size-3" />
-                    Admin
+                    {t('adminBadge')}
                   </Badge>
                 ) : null}
               </TableCell>

@@ -1,0 +1,195 @@
+{
+  "page": {
+    "title": "People",
+    "addNewPerson": "Add New Person",
+    "metadataPerson": "Person",
+    "metadataNotFound": "Person not found"
+  },
+  "toolbar": {
+    "filtersLabel": "Filters",
+    "openFilters": "Open filters",
+    "openFiltersWithCount": "Open filters ({count} active)",
+    "drawerTitle": "Filter people"
+  },
+  "sidebar": {
+    "ariaLabel": "Filter people",
+    "filtersLabel": "Filters",
+    "clearAll": "Clear all",
+    "facetLabels": {
+      "born": "Born",
+      "died": "Died"
+    }
+  },
+  "facets": {
+    "filterActiveAriaLabel": "filter active",
+    "search": {
+      "label": "Search",
+      "placeholder": "Name, place, notes...",
+      "ariaLabel": "Search persons"
+    },
+    "sex": {
+      "label": "Sex",
+      "values": {
+        "M": "Male",
+        "F": "Female",
+        "U": "Unknown"
+      }
+    },
+    "living": {
+      "label": "Living",
+      "values": {
+        "alive": "Alive",
+        "deceased": "Deceased"
+      }
+    },
+    "validation": {
+      "label": "Validation",
+      "values": {
+        "confirmed": "Confirmed",
+        "proposed": "Proposed / disputed"
+      }
+    },
+    "yearRange": {
+      "yearRangeAriaLabel": "{label} year range",
+      "fromYearAriaLabel": "{label} from year",
+      "toYearAriaLabel": "{label} to year",
+      "fromPlaceholder": "From",
+      "toPlaceholder": "To"
+    },
+    "place": {
+      "label": "Place",
+      "containsAriaLabel": "Place contains",
+      "placeholder": "e.g. Chicago",
+      "scopeAriaLabel": "Place scope",
+      "scopes": {
+        "birth": "Birth only",
+        "any": "Any event"
+      }
+    },
+    "citations": {
+      "label": "Sources",
+      "groupAriaLabel": "Source citation count",
+      "values": {
+        "any": "Any",
+        "none": "No sources",
+        "gte1": "1 or more",
+        "gte3": "3 or more"
+      }
+    },
+    "completeness": {
+      "label": "Completeness",
+      "minPrefix": "Min:",
+      "minAriaLabel": "Minimum completeness"
+    },
+    "hasProposals": {
+      "label": "AI proposals",
+      "description": "Only persons with open AI proposals"
+    }
+  },
+  "table": {
+    "headers": {
+      "name": "Name",
+      "sex": "Sex",
+      "birth": "Birth",
+      "death": "Death",
+      "completeness": "Completeness",
+      "sources": "Sources",
+      "validation": "Validation",
+      "lastEdited": "Last edited"
+    },
+    "sex": {
+      "M": "Male",
+      "F": "Female",
+      "U": "Unknown"
+    },
+    "validation": {
+      "proposed": "Proposed",
+      "confirmed": "Confirmed"
+    },
+    "selectAllOnPage": "Select all on page",
+    "deselectAllOnPage": "Deselect all on page",
+    "selectPerson": "Select {name}",
+    "deselectPerson": "Deselect {name}",
+    "emDash": "—",
+    "noPersonsMatch": "No persons match these filters.",
+    "clearAllFilters": "Clear all filters",
+    "pageOf": "Page {page} of {total} ({count} total)",
+    "previous": "Previous",
+    "next": "Next"
+  },
+  "activeFilters": {
+    "ariaLabel": "Active filters",
+    "removeChipAriaLabel": "Remove filter: {label}",
+    "search": "Search: \"{value}\"",
+    "sex": "Sex: {values}",
+    "living": "Living: {value}",
+    "validation": "Validation: {value}",
+    "born": "Born: {from}–{to}",
+    "died": "Died: {from}–{to}",
+    "place": "Place: \"{value}\" {scope}",
+    "placeScopeBirth": "(birth)",
+    "placeScopeAny": "(any)",
+    "citationsNone": "No sources",
+    "citationsGte1": "≥ 1 source",
+    "citationsGte3": "≥ 3 sources",
+    "completeness": "Completeness: ≥ {value}%",
+    "hasProposals": "AI proposals open",
+    "openEllipsis": "…"
+  },
+  "selectionBar": {
+    "ariaLabel": "Bulk selection actions",
+    "countSelected": "{count} selected",
+    "delete": "Delete",
+    "clear": "Clear",
+    "clearAriaLabel": "Clear selection",
+    "deleteFailed": "Delete failed: {message}",
+    "deleted": "{count, plural, =0 {Deleted no persons} one {Deleted # person} other {Deleted # persons}}"
+  },
+  "selectAllBanner": {
+    "allMatchingSelected": "All {count} matching persons selected",
+    "excludedSuffix": " ({count} excluded)",
+    "trailingPeriod": ".",
+    "allOnPageSelected": "All {count} on this page selected.",
+    "selectAllMatching": "Select all {count} matching",
+    "clearSelection": "Clear selection"
+  },
+  "deleteDialog": {
+    "title": "{count, plural, one {Delete # person?} other {Delete # persons?}}",
+    "description": "This will soft-delete the selected persons. Their family and event links will remain in place but the persons themselves will no longer appear in the tree, lists, or search results. You can restore them by reverting the database. There is no UI undo.",
+    "echoPrompt": "Type <code>{count}</code> to confirm:",
+    "cancel": "Cancel",
+    "deleting": "Deleting…",
+    "delete": "Delete"
+  },
+  "exportButton": {
+    "label": "Export",
+    "csv": "CSV",
+    "gedcom": "GEDCOM",
+    "tooManyExplicit": "Cannot export {count} explicit selections. Use \"Select all matching\" or refine filters."
+  },
+  "columnsDropdown": {
+    "ariaLabel": "Toggle columns",
+    "label": "Columns",
+    "visibleColumns": "Visible columns",
+    "labels": {
+      "sex": "Sex",
+      "birthDate": "Birth",
+      "deathDate": "Death",
+      "completeness": "Completeness",
+      "sourcesCount": "Sources",
+      "validation": "Validation",
+      "updatedAt": "Last edited"
+    }
+  },
+  "completenessCell": {
+    "ariaLabel": "Completeness {value}%",
+    "tooltipTitle": "Completeness {value}%",
+    "fields": {
+      "name": "Name",
+      "birth": "Birth date",
+      "birthPlace": "Birth place",
+      "death": "Death date",
+      "source": "Source"
+    }
+  }
+}

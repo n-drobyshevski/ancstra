@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
@@ -27,23 +28,25 @@ interface Props {
 
 export function TogglePlatformAdmin({ userId, userName, isCurrentlyAdmin, isSelf }: Props) {
   const router = useRouter();
+  const t = useTranslations('admin.togglePlatformAdmin');
+  const tCommon = useTranslations('common');
   const [open, setOpen] = useState(false);
   const mutation = trpc.platformAdmin.togglePlatformAdmin.useMutation({
     onSuccess: () => {
       toast.success(
-        isCurrentlyAdmin ? `Demoted ${userName}` : `Promoted ${userName}`,
+        isCurrentlyAdmin ? t('demoted', { name: userName }) : t('promoted', { name: userName }),
       );
       setOpen(false);
       router.refresh();
     },
     onError: (err) => {
-      toast.error(err.message || 'Failed to update platform admin status');
+      toast.error(err.message || t('updateFailed'));
     },
   });
 
   const promoting = !isCurrentlyAdmin;
   const Icon = promoting ? ShieldCheck : ShieldOff;
-  const buttonLabel = promoting ? 'Promote to admin' : 'Demote from admin';
+  const buttonLabel = promoting ? t('promote') : t('demote');
 
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
@@ -56,18 +59,18 @@ export function TogglePlatformAdmin({ userId, userName, isCurrentlyAdmin, isSelf
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>
-            {promoting ? 'Grant platform admin access?' : 'Revoke platform admin access?'}
+            {promoting ? t('promoteTitle') : t('demoteTitle')}
           </AlertDialogTitle>
           <AlertDialogDescription>
             {promoting
-              ? `${userName} will gain access to the /admin console and be able to view all users and families across the platform.`
+              ? t('promoteDescription', { name: userName })
               : isSelf
-                ? `You'll lose access to /admin immediately after this. Make sure another platform admin exists first.`
-                : `${userName} will no longer be able to access the /admin console.`}
+                ? t('demoteSelfDescription')
+                : t('demoteOtherDescription', { name: userName })}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={mutation.isPending}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel disabled={mutation.isPending}>{tCommon('buttons.cancel')}</AlertDialogCancel>
           <AlertDialogAction
             disabled={mutation.isPending}
             onClick={(e) => {
@@ -78,7 +81,7 @@ export function TogglePlatformAdmin({ userId, userName, isCurrentlyAdmin, isSelf
             {mutation.isPending ? (
               <>
                 <Loader2 className="size-4 animate-spin" />
-                Saving…
+                {tCommon('states.loading')}
               </>
             ) : (
               buttonLabel

@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -54,6 +55,11 @@ export function MobileViewBar({
   yearBounds,
   extraMenuItems,
 }: MobileViewBarProps) {
+  const tMobile = useTranslations('tree.mobile');
+  const tMenu = useTranslations('tree.mobile.viewBarMenu');
+  const tToolbarMenu = useTranslations('tree.mobile.toolbarMenu');
+  const tSex = useTranslations('tree.toolbar.sex');
+  const tLiving = useTranslations('tree.toolbar.living');
   const hasActiveFilter =
     !filterState.sex.M ||
     !filterState.sex.F ||
@@ -65,7 +71,7 @@ export function MobileViewBar({
 
   return (
     <div className="flex h-11 items-center gap-1 border-b bg-background px-2 shrink-0">
-      <span className="flex-1 truncate text-sm font-semibold px-1">Family Tree</span>
+      <span className="flex-1 truncate text-sm font-semibold px-1">{tMobile('title')}</span>
 
       <TreeViewToggle view={view} onSetView={onSetView} />
 
@@ -79,7 +85,7 @@ export function MobileViewBar({
             variant="ghost"
             size="icon"
             className="size-8 relative"
-            aria-label="More options"
+            aria-label={tMobile('moreOptions')}
           >
             <EllipsisVertical className="size-4" />
             {hasActiveFilter && (
@@ -94,19 +100,19 @@ export function MobileViewBar({
             checked={filterState.sex.M}
             onCheckedChange={() => onToggleFilter('sex', 'M')}
           >
-            M
+            {tSex('M')}
           </DropdownMenuCheckboxItem>
           <DropdownMenuCheckboxItem
             checked={filterState.sex.F}
             onCheckedChange={() => onToggleFilter('sex', 'F')}
           >
-            F
+            {tSex('F')}
           </DropdownMenuCheckboxItem>
           <DropdownMenuCheckboxItem
             checked={filterState.sex.U}
             onCheckedChange={() => onToggleFilter('sex', 'U')}
           >
-            U
+            {tSex('U')}
           </DropdownMenuCheckboxItem>
 
           <DropdownMenuSeparator />
@@ -116,30 +122,32 @@ export function MobileViewBar({
             checked={filterState.living.living}
             onCheckedChange={() => onToggleFilter('living', 'living')}
           >
-            Living
+            {tLiving('living')}
           </DropdownMenuCheckboxItem>
           <DropdownMenuCheckboxItem
             checked={filterState.living.deceased}
             onCheckedChange={() => onToggleFilter('living', 'deceased')}
           >
-            Deceased
+            {tLiving('deceased')}
           </DropdownMenuCheckboxItem>
 
           <DropdownMenuSeparator />
 
           <DropdownMenuLabel className="text-xs text-muted-foreground">
-            {topologyReferenceName ? `Topology — ${topologyReferenceName}` : 'Topology (select a person first)'}
+            {topologyReferenceName
+              ? tMenu('topologyLabelWithName', { name: topologyReferenceName })
+              : tMenu('topologyLabelEmpty')}
           </DropdownMenuLabel>
           <DropdownMenuRadioGroup
             value={topologyMode}
             onValueChange={(v) => onTopologyModeChange(v as TopologyMode)}
           >
-            <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
+            <DropdownMenuRadioItem value="all">{tMenu('topologyAll')}</DropdownMenuRadioItem>
             <DropdownMenuRadioItem value="ancestors" disabled={!topologyReferenceName}>
-              Ancestors
+              {tMenu('topologyAncestors')}
             </DropdownMenuRadioItem>
             <DropdownMenuRadioItem value="descendants" disabled={!topologyReferenceName}>
-              Descendants
+              {tMenu('topologyDescendants')}
             </DropdownMenuRadioItem>
           </DropdownMenuRadioGroup>
 
@@ -148,7 +156,7 @@ export function MobileViewBar({
           {/* Data quality toggle */}
           <DropdownMenuCheckboxItem checked={showGaps} onCheckedChange={onToggleGaps}>
             <BarChart3 className="mr-2 size-4" />
-            Data Quality
+            {tToolbarMenu('dataQuality')}
           </DropdownMenuCheckboxItem>
 
           {/* Density (table view only) */}
@@ -156,15 +164,15 @@ export function MobileViewBar({
             <>
               <DropdownMenuSeparator />
               <DropdownMenuLabel className="text-xs text-muted-foreground">
-                Row density
+                {tMenu('rowDensityLabel')}
               </DropdownMenuLabel>
               <DropdownMenuRadioGroup
                 value={density ?? 'compact'}
                 onValueChange={(v) => onDensityChange(v as TreeDensity)}
               >
-                <DropdownMenuRadioItem value="compact">Compact</DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="comfortable">Comfortable</DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="spacious">Spacious</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="compact">{tMenu('densityCompact')}</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="comfortable">{tMenu('densityComfortable')}</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="spacious">{tMenu('densitySpacious')}</DropdownMenuRadioItem>
               </DropdownMenuRadioGroup>
             </>
           )}

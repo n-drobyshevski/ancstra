@@ -1,0 +1,81 @@
+import { Suspense } from "react";
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import { NextIntlClientProvider, hasLocale } from 'next-intl';
+import { getMessages, setRequestLocale } from 'next-intl/server';
+import { notFound } from 'next/navigation';
+import "../globals.css";
+import { cn } from "@/lib/utils";
+import { Toaster } from "@/components/ui/sonner";
+import { ThemeProvider } from "@/components/theme-provider";
+import { CommandPalette } from "@/components/command-palette";
+import { ServiceWorkerRegister } from "@/components/sw-register";
+import { WebVitalsReporter } from '../web-vitals';
+import { NuqsAdapter } from 'nuqs/adapters/next/app';
+import { TRPCReactProvider } from '@/lib/trpc/provider';
+import { routing } from '@/i18n/routing';
+
+const inter = Inter({
+  subsets: ["latin", "cyrillic"],
+  variable: "--font-sans",
+});
+
+export const metadata: Metadata = {
+  title: {
+    default: 'Ancstra',
+    template: '%s | Ancstra',
+  },
+  description: 'AI-Powered Personal Genealogy App',
+  openGraph: {
+    siteName: 'Ancstra',
+    type: 'website',
+  },
+};
+
+export function generateStaticParams() {
+  return routing.locales.map((locale) => ({ locale }));
+}
+
+export default async function LocaleLayout({
+  children,
+  params,
+}: {
+  children: React.ReactNode;
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  if (!hasLocale(routing.locales, locale)) {
+    notFound();
+  }
+  setRequestLocale(locale);
+  const messages = await getMessages();
+
+  return (
+    <html lang={locale} suppressHydrationWarning className={cn("h-full", "antialiased", "font-sans", inter.variable)}>
+      <body className={inter.variable}>
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          <NuqsAdapter>
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="system"
+              enableSystem
+              disableTransitionOnChange
+            >
+              <Suspense>
+                <WebVitalsReporter />
+              </Suspense>
+              <TRPCReactProvider>
+                {children}
+              </TRPCReactProvider>
+              <Suspense>
+                <CommandPalette />
+              </Suspense>
+              <Toaster />
+              <ServiceWorkerRegister />
+            </ThemeProvider>
+          </NuqsAdapter>
+        </NextIntlClientProvider>
+      </body>
+    </html>
+  );
+}

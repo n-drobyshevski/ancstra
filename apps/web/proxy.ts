@@ -1,10 +1,45 @@
 import { NextResponse } from 'next/server';
 import { eq, and, desc, sql } from 'drizzle-orm';
+import createIntlMiddleware from 'next-intl/middleware';
 import { centralSchema } from '@ancstra/db';
 import { JWT_REFRESH_COOKIE_NAME } from '@ancstra/auth';
 import { auth } from './auth';
 import { getCentralDb, getCentralDbSync } from './lib/db-singleton';
 import { bumpLastSeenAt } from './lib/auth/last-seen-tracker';
+import { routing } from './i18n/routing';
+
+const handleI18n = createIntlMiddleware(routing);
+
+const PUBLIC_PATHNAMES = ['/login', '/signup', '/join', '/create-family'];
+const LOCALE_PREFIX_RE = new RegExp(
+  `^/(?:${routing.locales.join('|')})(?=/|$)`,
+);
+
+/** Strip a leading /:locale segment so we can compare against canonical paths. */
+function canonicalPath(pathname: string): string {
+  return pathname.replace(LOCALE_PREFIX_RE, '') || '/';
+}
+
+function isPublicPath(pathname: string): boolean {
+  const stripped = canonicalPath(pathname);
+  return PUBLIC_PATHNAMES.some((p) => stripped === p || stripped.startsWith(`${p}/`));
+}
+
+function isAdminPath(pathname: string): boolean {
+  return canonicalPath(pathname).startsWith('/admin');
+}
+
+function isApiPath(pathname: string): boolean {
+  return pathname.startsWith('/api/');
+}
+
+/** Copy locale-related cookies from the intl response onto a downstream response. */
+function mergeIntlCookies(target: NextResponse, intlResponse: NextResponse): NextResponse {
+  intlResponse.cookies.getAll().forEach((c) => {
+    target.cookies.set(c);
+  });
+  return target;
+}
 
 async function fetchMembershipsVersion(userId: string): Promise<number> {
   const db = await getCentralDb();
@@ -17,17 +52,35 @@ async function fetchMembershipsVersion(userId: string): Promise<number> {
 }
 
 export const proxy = auth(async (request) => {
+  // ── 1. Run next-intl first to handle locale routing ────────────────────
+  // Intl middleware may redirect (unsupported locale) or rewrite internally
+  // (locale prefix → [locale] segment). For redirects, honor immediately.
+  const intlResponse = handleI18n(request);
+  const intlLocation = intlResponse.headers.get('location');
+  if (intlLocation && intlResponse.status >= 300 && intlResponse.status < 400) {
+    return intlResponse;
+  }
+
+  const pathname = request.nextUrl.pathname;
   const session = request.auth;
 
+  // ── 2. Public routes (login/signup/join/create-family) — no auth check ─
+  // These pages handle their own authentication flow. Return intl response
+  // so locale rewriting still applies.
+  if (isPublicPath(pathname)) {
+    return intlResponse;
+  }
+
+  // ── 3. Auth gate ───────────────────────────────────────────────────────
   if (!session?.user?.id) {
-    if (request.nextUrl.pathname.startsWith('/api/')) {
+    if (isApiPath(pathname)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    // Redirect to /login — intl middleware on the next request handles locale.
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  // Defense in depth: strip inbound x-user-* / x-family-* headers before setting our own.
-  // Closes the gap if a request bypasses the proxy or tries header forgery.
+  // ── 4. Defense in depth: strip inbound x-user-* / x-family-* headers ──
   const requestHeaders = new Headers(request.headers);
   for (const name of Array.from(requestHeaders.keys())) {
     if (name.startsWith('x-user-') || name.startsWith('x-family-')) {
@@ -35,8 +88,7 @@ export const proxy = auth(async (request) => {
     }
   }
 
-  // Lazy memberships_version check — detect stale JWT.
-  // Cost: one indexed SELECT per request. Acceptable; cache later if needed.
+  // ── 5. Lazy memberships_version check — detect stale JWT ──────────────
   let staleJwtDetected = false;
   try {
     const dbVersion = await fetchMembershipsVersion(session.user.id);
@@ -45,24 +97,19 @@ export const proxy = auth(async (request) => {
       staleJwtDetected = true;
     }
   } catch (err) {
-    // DB read failure shouldn't block the request; log and continue with current JWT
     console.warn('[PROXY] memberships_version fetch failed, continuing with JWT', err);
   }
 
-  // Sub-spec A: refuse mutations on stale JWT — the user's role may have changed.
-  // GETs are allowed (read-only stale data clears on next request after JWT refresh).
+  // ── 6. Sub-spec A: refuse mutations on stale JWT ──────────────────────
   const isMutation = request.method === 'POST'
     || request.method === 'PUT'
     || request.method === 'PATCH'
     || request.method === 'DELETE';
-  if (staleJwtDetected && isMutation && request.nextUrl.pathname.startsWith('/api/')) {
+  if (staleJwtDetected && isMutation && isApiPath(pathname)) {
     const response = NextResponse.json(
       { error: 'Session stale, please retry', code: 'JWT_STALE' },
       { status: 409 },
     );
-    // Cookie is non-httpOnly so client-side <JwtRefreshObserver> can read it.
-    // Carries no secret — only a signal that the server detected staleness.
-    // The actual JWT cookie remains correctly httpOnly.
     response.cookies.set(JWT_REFRESH_COOKIE_NAME, '1', {
       httpOnly: false,
       sameSite: 'lax',
@@ -77,11 +124,8 @@ export const proxy = auth(async (request) => {
   const familyCookie = request.cookies.get('active-family')?.value;
   const requestedFamilyId = familyParam || familyCookie || '';
 
-  // Platform-admin v1: /admin/* paths are family-agnostic. Bypass the
-  // create-family redirect and family-scope header injection. The page-level
-  // requirePlatformAdmin() guard verifies the claim; non-admins get notFound().
-  // We still set x-user-id so server components can identify the user.
-  if (request.nextUrl.pathname.startsWith('/admin')) {
+  // ── 7. Platform-admin paths — family-agnostic ─────────────────────────
+  if (isAdminPath(pathname)) {
     requestHeaders.set('x-user-id', session.user.id);
     const adminResponse = NextResponse.next({ request: { headers: requestHeaders } });
     if (staleJwtDetected) {
@@ -92,15 +136,12 @@ export const proxy = auth(async (request) => {
         maxAge: 60,
       });
     }
-    return adminResponse;
+    return mergeIntlCookies(adminResponse, intlResponse);
   }
 
-  // Authenticated user with no family yet → redirect to /create-family.
-  // `memberships === undefined` means the JWT predates this code (existing
-  // session) — let getAuthContext fall back to DB rather than wrongly
-  // redirecting. Only redirect when the JWT explicitly has zero memberships.
+  // ── 8. No-membership user → /create-family ─────────────────────────────
   if (Array.isArray(memberships) && memberships.length === 0) {
-    if (request.nextUrl.pathname.startsWith('/api/')) {
+    if (isApiPath(pathname)) {
       return NextResponse.json({ error: 'No family membership' }, { status: 403 });
     }
     return NextResponse.redirect(new URL('/create-family', request.url));
@@ -108,20 +149,11 @@ export const proxy = auth(async (request) => {
 
   const list = memberships ?? [];
 
-  // Change B — URL-mismatch redirect: requested family not in memberships → strip param.
-  // Proxy is the single source of truth; client-side useActiveMembership never sees the bad case.
-  // Applies to both ?family= query param and stale active-family cookie.
+  // ── 9. URL-mismatch redirect (unknown family in URL/cookie) ───────────
   if (requestedFamilyId && !list.find((m) => m.familyId === requestedFamilyId)) {
     const cleanUrl = new URL(request.nextUrl);
     cleanUrl.searchParams.delete('family');
     const redirect = NextResponse.redirect(cleanUrl);
-    // Clear the active-family cookie on every URL-mismatch redirect.
-    // Without this, a stale cookie (e.g. user was removed from that family)
-    // causes an infinite redirect loop: the redirect strips the ?family= param
-    // but the cookie is still present on the follow-up request, so the proxy
-    // re-enters this block forever. Clearing always is safe because the
-    // default-family selection (lastSeenAt) will pick the right family on the
-    // next request without needing the cookie as a hint.
     redirect.cookies.delete('active-family');
     return redirect;
   }
@@ -130,9 +162,7 @@ export const proxy = auth(async (request) => {
     ? list.find((m) => m.familyId === requestedFamilyId)
     : undefined;
 
-  // Change A — Default-family selection by lastSeenAt.
-  // When no requestedFamilyId was given, query DB for the most-recently-seen family
-  // rather than blindly picking list[0].
+  // ── 10. Default-family selection by lastSeenAt ────────────────────────
   if (!selected && list.length > 0) {
     try {
       const rows = await getCentralDbSync()
@@ -155,20 +185,17 @@ export const proxy = auth(async (request) => {
     } catch (err) {
       console.warn('[PROXY] default-family query failed, falling back to memberships[0]:', err);
     }
-    // Safety fallback: if DB query failed or returned nothing, use list[0]
     if (!selected) {
       selected = list[0];
     }
   }
 
+  // ── 11. Set family-scope headers ──────────────────────────────────────
   requestHeaders.set('x-user-id', session.user.id);
   if (selected) {
     requestHeaders.set('x-family-id', selected.familyId);
     requestHeaders.set('x-family-db', selected.dbFilename);
-    // x-family-role intentionally NOT set — role re-derived from JWT downstream (sub-spec A)
   } else if (requestedFamilyId) {
-    // Stale token / brand-new membership not yet in JWT — pass id only,
-    // getAuthContext will fall back to a DB lookup.
     requestHeaders.set('x-family-id', requestedFamilyId);
   }
 
@@ -183,12 +210,10 @@ export const proxy = auth(async (request) => {
       path: '/',
       maxAge: 60 * 60 * 24 * 365,
     });
-    // Fire-and-forget: track when user last switched to this family.
     void bumpLastSeenAt(getCentralDbSync(), session.user.id, familyParam);
   }
 
   if (staleJwtDetected) {
-    // Non-httpOnly: read by client-side <JwtRefreshObserver> (sub-spec D1).
     response.cookies.set(JWT_REFRESH_COOKIE_NAME, '1', {
       httpOnly: false,
       sameSite: 'lax',
@@ -197,13 +222,15 @@ export const proxy = auth(async (request) => {
     });
   }
 
-  return response;
+  return mergeIntlCookies(response, intlResponse);
 });
 
-// Only run proxy on protected routes
+// Matcher: include all UI routes (so intl middleware fires) but skip api/auth,
+// api/debug (no session), monitoring tunnel, Next internals, and dotted files.
+// Auth API routes still get the next-auth handler at the route level, just
+// not this proxy.
 export const config = {
   matcher: [
-    // Match all paths EXCEPT public routes and static files
-    '/((?!login|signup|join|create-family|api/auth|api/debug|monitoring|_next/static|_next/image|favicon.ico).*)',
+    '/((?!api/auth|api/debug|monitoring|_next/static|_next/image|favicon.ico|.*\\.[a-z0-9]+$).*)',
   ],
 };

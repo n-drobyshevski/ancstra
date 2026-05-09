@@ -1,6 +1,7 @@
 'use client';
 
 import { Network } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -19,8 +20,9 @@ interface TopologyToggleProps {
 }
 
 export function TopologyToggle({ mode, onModeChange, referenceName }: TopologyToggleProps) {
+  const t = useTranslations('tree.topology');
   const disabled = !referenceName;
-  const disabledHint = 'Select a person in the tree first to filter by their ancestors or descendants';
+  const disabledHint = t('selectFirstHint');
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -32,7 +34,7 @@ export function TopologyToggle({ mode, onModeChange, referenceName }: TopologyTo
           className="h-7 text-xs"
           onClick={() => onModeChange('all')}
         >
-          All
+          {t('all')}
         </Button>
         <Tooltip>
           <TooltipTrigger asChild>
@@ -44,7 +46,7 @@ export function TopologyToggle({ mode, onModeChange, referenceName }: TopologyTo
                 disabled={disabled}
                 onClick={() => onModeChange('ancestors')}
               >
-                Ancestors
+                {t('ancestors')}
               </Button>
             </span>
           </TooltipTrigger>
@@ -60,7 +62,7 @@ export function TopologyToggle({ mode, onModeChange, referenceName }: TopologyTo
                 disabled={disabled}
                 onClick={() => onModeChange('descendants')}
               >
-                Descendants
+                {t('descendants')}
               </Button>
             </span>
           </TooltipTrigger>
@@ -70,7 +72,7 @@ export function TopologyToggle({ mode, onModeChange, referenceName }: TopologyTo
           <>
             <Separator orientation="vertical" className="h-5 mx-0.5" />
             <span className="text-xs text-muted-foreground truncate max-w-[160px]">
-              of {referenceName}
+              {t('ofReference', { name: referenceName })}
             </span>
           </>
         )}

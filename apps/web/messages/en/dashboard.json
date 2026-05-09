@@ -1,0 +1,58 @@
+{
+  "title": "Welcome to Ancstra",
+  "personCount": "{count, plural, =0 {No people} one {# person} other {# people}} in your tree.",
+  "addNewPerson": "Add New Person",
+  "empty": {
+    "heading": "Your family tree is empty",
+    "tagline": "Get started by adding your first family member or importing an existing GEDCOM file.",
+    "addFirstPerson": "Add First Person",
+    "importGedcom": "Import GEDCOM"
+  },
+  "quickActions": {
+    "addPerson": "Add Person",
+    "importData": "Import Data",
+    "aiResearch": "AI Research",
+    "viewTree": "View Tree"
+  },
+  "recentActivity": {
+    "title": "Recent Activity",
+    "viewAll": "View all",
+    "none": "No recent activity"
+  },
+  "statCards": {
+    "peopleInTree": "People in tree",
+    "families": "Families",
+    "dataQuality": "Data quality",
+    "last30Days": "Last 30 days"
+  },
+  "recentPersons": {
+    "title": "Recent Persons",
+    "viewAll": "View all",
+    "emptyHeading": "Start building your tree",
+    "emptyTagline": "Add your first family member or import an existing GEDCOM file",
+    "addFirstPerson": "Add First Person",
+    "importGedcom": "Import GEDCOM",
+    "birthPrefix": "b. {date}"
+  },
+  "qualityWidget": {
+    "title": "Data Quality",
+    "details": "Details",
+    "completeness": "completeness",
+    "scoreAriaLabel": "Data quality score"
+  },
+  "mobileAddButton": {
+    "ariaLabel": "Add new person"
+  },
+  "inviteToast": {
+    "welcomeNamed": "Welcome to {familyName}",
+    "welcomeFallback": "Welcome to your new family"
+  },
+  "welcomeCard": {
+    "title": "Welcome to Ancstra!",
+    "tagline": "Here's how to get started:",
+    "dismiss": "Dismiss welcome message",
+    "importGedcom": "Import a GEDCOM file",
+    "addPerson": "Add a person",
+    "aiResearch": "AI Research"
+  }
+}

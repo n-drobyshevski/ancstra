@@ -1,0 +1,62 @@
+{
+  "page": {
+    "title": "Качество данных",
+    "tagline": "Отслеживайте полноту и определяйте приоритеты исследования по всему семейному древу."
+  },
+  "loading": "Загрузка...",
+  "metricCards": {
+    "totalPersons": "Всего людей",
+    "overallScore": "Общая оценка",
+    "withBirthDate": "% с датой рождения",
+    "withBirthPlace": "% с местом рождения",
+    "withSource": "% с источником",
+    "loadFailed": "Не удалось загрузить сводку качества"
+  },
+  "qualityFields": {
+    "Has Name": "Имя",
+    "Has Birth Date": "Дата рождения",
+    "Has Birth Place": "Место рождения",
+    "Has Death Date": "Дата смерти",
+    "Has Source": "Источник"
+  },
+  "missingFields": {
+    "Has Name": "Отсутствует имя",
+    "Has Birth Date": "Отсутствует дата рождения",
+    "Has Birth Place": "Отсутствует место рождения",
+    "Has Death Date": "Отсутствует дата смерти",
+    "Has Source": "Отсутствует источник"
+  },
+  "completenessChart": {
+    "title": "Полнота по поколениям",
+    "noData": "Нет данных по поколениям.",
+    "xAxis": "Поколение",
+    "yAxis": "Средняя оценка %",
+    "tooltipLabel": "Средняя оценка",
+    "tooltipGeneration": "Поколение {value}"
+  },
+  "missingDataChart": {
+    "title": "Разбивка отсутствующих данных",
+    "noMissing": "Отсутствующих данных нет."
+  },
+  "priorityTable": {
+    "title": "Приоритеты исследования",
+    "loadFailed": "Не удалось загрузить приоритеты",
+    "headers": {
+      "name": "Имя",
+      "score": "Оценка",
+      "missingFields": "Отсутствующие поля"
+    },
+    "fieldLabels": {
+      "name": "Имя",
+      "birthDate": "Дата рождения",
+      "birthPlace": "Место рождения",
+      "deathDate": "Дата смерти",
+      "source": "Источник"
+    },
+    "unknown": "Неизвестно",
+    "noPersons": "Люди не найдены.",
+    "pageOf": "Страница {page} из {total} (всего {count})",
+    "previous": "Назад",
+    "next": "Вперёд"
+  }
+}

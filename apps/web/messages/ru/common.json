@@ -1,0 +1,83 @@
+{
+  "appName": "Ancstra",
+  "accessDenied": {
+    "title": "У вас нет прав для просмотра этой страницы",
+    "description": "Ваша роль или активная линза не включает этот доступ."
+  },
+  "lens": {
+    "viewingAs": "Просмотр как {role}",
+    "yourView": "Ваш вид",
+    "tooltipActive": "Линза активна: {role} — нажмите, чтобы изменить",
+    "tooltipYourView": "Линза: ваш вид",
+    "viewAs": "Просматривать эту семью как",
+    "youPrefix": "Вы: {role}",
+    "resetLabel": "Сбросить к вашему виду",
+    "activated": "Теперь просматриваете как {role}",
+    "activatedDescription": "Права временно понижены.",
+    "reset": "Линза сброшена",
+    "resetDescription": "Восстановлен ваш доступ {role}.",
+    "banner": {
+      "message": "Просмотр как {role} — показано только то, что видит {roleLower}",
+      "exitAriaLabel": "Выйти из линзы и восстановить полный доступ",
+      "exit": "Выйти"
+    },
+    "roles": {
+      "owner": "Владелец",
+      "admin": "Администратор",
+      "editor": "Редактор",
+      "viewer": "Наблюдатель"
+    }
+  },
+  "sexLabels": {
+    "M": "Мужской",
+    "F": "Женский",
+    "U": "Неизвестно"
+  },
+  "commandPalette": {
+    "placeholder": "Поиск людей или команда...",
+    "searching": "Поиск...",
+    "noResults": "Ничего не найдено.",
+    "groupPeople": "Люди",
+    "groupActions": "Действия",
+    "birthPrefix": "р. {date}",
+    "actions": {
+      "addPerson": "Добавить нового человека",
+      "importGedcom": "Импортировать GEDCOM",
+      "exportGedcom": "Экспортировать GEDCOM",
+      "goToTree": "Перейти к дереву",
+      "goToPeople": "Перейти к людям",
+      "goToDashboard": "Перейти к панели"
+    }
+  },
+  "buttons": {
+    "save": "Сохранить",
+    "cancel": "Отмена",
+    "tryAgain": "Попробовать снова",
+    "loadMore": "Загрузить ещё"
+  },
+  "states": {
+    "loading": "Загрузка…",
+    "somethingWentWrong": "Что-то пошло не так"
+  },
+  "relativeTime": {
+    "justNow": "только что",
+    "minutesAgo": "{count} мин назад",
+    "hoursAgo": "{count} ч назад",
+    "daysAgo": "{count} дн назад",
+    "monthsAgo": "{count} мес назад",
+    "yearsAgo": "{count} г назад"
+  },
+  "dateBuckets": {
+    "today": "Сегодня",
+    "yesterday": "Вчера",
+    "thisWeek": "На этой неделе",
+    "earlierThisMonth": "Ранее в этом месяце",
+    "earlier": "Ранее"
+  },
+  "theme": {
+    "toggle": "Переключить тему",
+    "light": "Светлая",
+    "dark": "Тёмная",
+    "system": "Системная"
+  }
+}

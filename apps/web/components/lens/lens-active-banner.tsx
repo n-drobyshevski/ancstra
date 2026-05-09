@@ -1,8 +1,9 @@
 'use client';
 
 import { X } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useLens } from '@/lib/lens/provider';
-import { LENS_THEME, ROLE_LABEL, type LensableRole } from '@/lib/lens/theme';
+import { LENS_THEME, type LensableRole } from '@/lib/lens/theme';
 import { cn } from '@/lib/utils';
 
 /**
@@ -18,10 +19,12 @@ import { cn } from '@/lib/utils';
  */
 export function LensActiveBanner() {
   const { lens, setLens } = useLens();
+  const tBanner = useTranslations('common.lens.banner');
+  const tRoles = useTranslations('common.lens.roles');
   if (!lens) return null;
 
   const theme = LENS_THEME[lens as LensableRole];
-  const label = ROLE_LABEL[lens];
+  const role = tRoles(lens);
 
   return (
     <div
@@ -33,16 +36,16 @@ export function LensActiveBanner() {
       )}
     >
       <span className="truncate">
-        Viewing as {label} — only what a {label.toLowerCase()} can see is shown
+        {tBanner('message', { role, roleLower: role.toLowerCase() })}
       </span>
       <button
         type="button"
         onClick={() => setLens(null)}
-        aria-label="Exit lens and restore your full access"
+        aria-label={tBanner('exitAriaLabel')}
         className="inline-flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide hover:bg-black/10 dark:hover:bg-white/10"
       >
         <X className="size-3" aria-hidden />
-        <span>Exit</span>
+        <span>{tBanner('exit')}</span>
       </button>
     </div>
   );

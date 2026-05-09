@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Users, Heart, BarChart3, TrendingUp } from 'lucide-react';
 import { cacheLife, cacheTag } from 'next/cache';
+import { getTranslations } from 'next-intl/server';
 import {
   Card,
   CardAction,
@@ -24,9 +25,11 @@ export async function StatCards({ dbFilename }: StatCardsProps) {
   const [
     { totalPersons, totalFamilies, recentAdditionsCount },
     overallQualityScore,
+    t,
   ] = await Promise.all([
     getCachedStatCards(dbFilename),
     getCachedQualityScore(dbFilename),
+    getTranslations('dashboard.statCards'),
   ]);
 
   return (
@@ -34,7 +37,7 @@ export async function StatCards({ dbFilename }: StatCardsProps) {
       <Card size="sm">
         <CardHeader>
           <CardTitle className="text-sm font-normal text-muted-foreground">
-            People in tree
+            {t('peopleInTree')}
           </CardTitle>
           <CardAction>
             <Users className="size-4 text-muted-foreground" />
@@ -48,7 +51,7 @@ export async function StatCards({ dbFilename }: StatCardsProps) {
       <Card size="sm">
         <CardHeader>
           <CardTitle className="text-sm font-normal text-muted-foreground">
-            Families
+            {t('families')}
           </CardTitle>
           <CardAction>
             <Heart className="size-4 text-muted-foreground" />
@@ -63,7 +66,7 @@ export async function StatCards({ dbFilename }: StatCardsProps) {
         <Card size="sm" className="transition-opacity hover:opacity-80">
           <CardHeader>
             <CardTitle className="text-sm font-normal text-muted-foreground">
-              Data quality
+              {t('dataQuality')}
             </CardTitle>
             <CardAction>
               <BarChart3 className="size-4 text-muted-foreground" />
@@ -83,7 +86,7 @@ export async function StatCards({ dbFilename }: StatCardsProps) {
       <Card size="sm">
         <CardHeader>
           <CardTitle className="text-sm font-normal text-muted-foreground">
-            Last 30 days
+            {t('last30Days')}
           </CardTitle>
           <CardAction>
             <TrendingUp className="size-4 text-muted-foreground" />

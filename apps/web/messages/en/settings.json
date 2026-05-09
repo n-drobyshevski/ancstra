@@ -1,0 +1,376 @@
+{
+  "page": {
+    "title": "Settings"
+  },
+  "welcome": {
+    "owner": {
+      "title": "Owner settings",
+      "tagline": "You manage this family tree. Everything below is yours to configure."
+    },
+    "admin": {
+      "title": "Admin settings",
+      "tagline": "You help run this family. Manage members, data, and your own profile here."
+    },
+    "editor": {
+      "title": "Editor settings",
+      "tagline": "You contribute to this family tree. Adjust your defaults and personal preferences."
+    },
+    "viewer": {
+      "title": "Your settings",
+      "tagline": "You can view this family tree. Personalise your account below."
+    }
+  },
+  "nav": {
+    "sectionsAccount": "Your account",
+    "sectionsFamily": "Family settings",
+    "sectionTitles": {
+      "profile": "My profile",
+      "editor": "Editor defaults",
+      "admin": "Admin tools",
+      "owner": "Ownership"
+    },
+    "items": {
+      "profile": "Profile",
+      "appearance": "Appearance",
+      "activity": "Activity",
+      "family": "Family",
+      "members": "Members",
+      "dataStorage": "Data & Storage",
+      "editorDefaults": "Editor defaults",
+      "searchSources": "Search Sources",
+      "privacy": "Privacy",
+      "ai": "AI"
+    },
+    "subtitles": {
+      "profile": "Display name, language, notifications",
+      "appearance": "Theme and display",
+      "activity": "Recent changes in your family",
+      "family": "Name, limits, moderation",
+      "members": "Invites and roles",
+      "dataStorage": "Backups, cache, archives",
+      "editorDefaults": "Privacy, export, citation defaults",
+      "searchSources": "Genealogy databases & providers",
+      "privacy": "Living persons & data handling",
+      "ai": "Usage and budget"
+    }
+  },
+  "cards": {
+    "profile": {
+      "title": "Profile",
+      "description": "Display name, language, time zone, and notifications."
+    },
+    "appearance": {
+      "title": "Appearance",
+      "description": "Theme and display density."
+    },
+    "activity": {
+      "title": "Activity",
+      "description": "See recent changes in your family tree."
+    },
+    "family": {
+      "title": "Family",
+      "description": "Name, member limits, moderation rules."
+    },
+    "members": {
+      "title": "Members",
+      "description": "Invite collaborators and manage roles."
+    },
+    "dataStorage": {
+      "title": "Data & Storage",
+      "description": "Backups, cache, and archive cleanup."
+    },
+    "editorDefaults": {
+      "title": "Editor defaults",
+      "description": "Default privacy, GEDCOM export, and citation style."
+    },
+    "searchSources": {
+      "title": "Search Sources",
+      "description": "Connect external genealogy databases."
+    },
+    "privacy": {
+      "title": "Privacy",
+      "description": "How living persons are handled across the family."
+    },
+    "ai": {
+      "title": "AI",
+      "description": "Monthly AI budget and usage."
+    }
+  },
+  "profile": {
+    "page": {
+      "heading": "Profile",
+      "tagline": "Your account details and personal preferences. Visible only to you."
+    },
+    "form": {
+      "accountHeading": "Account",
+      "displayNameLabel": "Display name",
+      "displayNameHint": "Shown next to your contributions and on your avatar.",
+      "emailLabel": "Email",
+      "emailHint": "Email is set at sign-up and not editable here.",
+      "avatarUrlLabel": "Avatar URL",
+      "avatarUrlHint": "Leave blank to fall back to a generated avatar.",
+      "regionHeading": "Region",
+      "languageLabel": "Language",
+      "timezoneLabel": "Time zone",
+      "densityHeading": "Display density",
+      "densityComfortable": "Comfortable",
+      "densityComfortableHint": "Spacious — Quick View default",
+      "densityCompact": "Compact",
+      "densityCompactHint": "Dense — Research View",
+      "notificationsHeading": "Notifications",
+      "emailNotificationsLabel": "Email notifications",
+      "emailNotificationsHint": "Important account changes and invitations.",
+      "activityFeedLabel": "Activity feed",
+      "activityFeedHint": "Edits and contributions in families you belong to.",
+      "saving": "Saving…",
+      "saveChanges": "Save changes",
+      "unsavedChanges": "Unsaved changes",
+      "errors": {
+        "displayNameEmpty": "Display name cannot be empty.",
+        "avatarInvalid": "Avatar URL must be a valid URL.",
+        "saveFailed": "Failed to save."
+      },
+      "saved": "Saved."
+    },
+    "locales": {
+      "en-US": "English (United States)",
+      "en-GB": "English (United Kingdom)",
+      "de-DE": "Deutsch (Deutschland)",
+      "fr-FR": "Français (France)",
+      "es-ES": "Español (España)",
+      "it-IT": "Italiano (Italia)",
+      "nl-NL": "Nederlands",
+      "pt-BR": "Português (Brasil)",
+      "ru-RU": "Русский",
+      "ja-JP": "日本語",
+      "zh-CN": "简体中文"
+    }
+  },
+  "appearance": {
+    "page": {
+      "heading": "Appearance",
+      "tagline": "Customize how Ancstra looks on your device."
+    },
+    "theme": {
+      "label": "Theme",
+      "hint": "Choose how Ancstra looks to you.",
+      "light": "Light",
+      "dark": "Dark",
+      "system": "System"
+    }
+  },
+  "ai": {
+    "page": {
+      "heading": "AI",
+      "tagline": "Manage your monthly AI budget and monitor usage."
+    },
+    "budget": {
+      "monthlyTitle": "Monthly Budget",
+      "monthlyDescription": "Set the maximum amount to spend on AI features per calendar month.",
+      "budgetSrLabel": "Monthly budget (USD)",
+      "perMonthSuffix": "USD / month",
+      "save": "Save",
+      "saving": "Saving...",
+      "currentMonthTitle": "Current Month Usage",
+      "spentOfLimit": "${spent} of ${limit} used",
+      "overBudget": "Over budget",
+      "percentUsed": "{percent}% used",
+      "remaining": "${remaining} remaining",
+      "totalRequests": "Total Requests",
+      "totalCost": "Total Cost",
+      "costByModel": "Cost by Model",
+      "modelLine": "{count} req · ${cost}",
+      "loading": "Loading AI budget data...",
+      "loadFailed": "Failed to load AI budget data",
+      "validation": "Budget must be between $0 and $1,000",
+      "updated": "Budget updated",
+      "updateFailed": "Failed to update budget"
+    }
+  },
+  "data": {
+    "page": {
+      "heading": "Data & Storage",
+      "tagline": "Manage your database, backups, and cached data."
+    },
+    "backup": {
+      "heading": "Backup & Restore",
+      "download": "Download Backup",
+      "creating": "Creating backup...",
+      "restore": "Restore Backup",
+      "restoreTitle": "Restore Database",
+      "restoreDescription": "This will replace your entire database with the uploaded file. This action cannot be undone. Make sure you have a current backup before proceeding.",
+      "chooseAndRestore": "Choose File & Restore",
+      "cancel": "Cancel",
+      "downloaded": "Backup downloaded",
+      "downloadFailed": "Failed to create backup",
+      "restored": "Database restored. Reloading...",
+      "restoreFailed": "Failed to restore database"
+    },
+    "cache": {
+      "heading": "Cache",
+      "description": "Remove dismissed research items from the database.",
+      "clear": "Clear Search Cache",
+      "clearing": "Clearing...",
+      "cleared": "{count, plural, one {Cleared # dismissed research item} other {Cleared # dismissed research items}}",
+      "clearFailed": "Failed to clear cache"
+    },
+    "danger": {
+      "heading": "Danger Zone",
+      "archivesDescription": "Permanently delete all cached data and web archives. This cannot be undone.",
+      "clearArchives": "Clear Web Archives",
+      "clearing": "Clearing...",
+      "clearArchivesTitle": "Clear Web Archives",
+      "clearArchivesDescription": "This will permanently delete all saved HTML archives and screenshots. Research items will be kept but their archive references will be removed.",
+      "deleteArchives": "Delete Archives",
+      "freed": "Freed {size} of archive storage",
+      "clearArchivesFailed": "Failed to clear archives",
+      "deleteAll": "Delete All Data",
+      "deleteAllTitle": "Delete All Data",
+      "deleteAllDescription": "This will permanently delete all cached research items and web archives. Type <b>DELETE</b> below to confirm.",
+      "deleteConfirmPlaceholder": "Type DELETE to confirm",
+      "deleteEverything": "Delete Everything",
+      "allCleared": "All data cleared. Reloading...",
+      "deleteAllFailed": "Failed to delete all data"
+    },
+    "storage": {
+      "title": "Storage Usage",
+      "total": "Total",
+      "database": "Database",
+      "archives": "Archives",
+      "screenshots": "Screenshots"
+    }
+  },
+  "editorDefaults": {
+    "page": {
+      "heading": "Editor defaults",
+      "metadataTitle": "Editor defaults",
+      "tagline": "Family-wide defaults applied to new records. Anyone able to create persons can adjust these — owners override them per-record."
+    },
+    "form": {
+      "privacyHeading": "New person privacy",
+      "privacyLabel": "Default privacy level",
+      "privacyOptions": {
+        "private": "Private",
+        "privateHint": "Only family members see full details. Living persons stay redacted for viewers.",
+        "public": "Public",
+        "publicHint": "New persons are visible to anyone who can read the tree.",
+        "restricted": "Restricted",
+        "restrictedHint": "Only owner and admins see new persons by default."
+      },
+      "gedcomHeading": "GEDCOM export",
+      "gedcomLabel": "Default export mode",
+      "gedcomOptions": {
+        "shareable": "Shareable",
+        "shareableHint": "Living persons redacted, suitable for sharing.",
+        "full": "Full",
+        "fullHint": "Includes everything in the family DB. Owner/family use only."
+      },
+      "citationHeading": "Citation style",
+      "citationLabel": "Default citation format",
+      "citationOptions": {
+        "evidenceExplained": "Evidence Explained",
+        "evidenceExplainedHint": "Genealogy standard — Mills & Mills.",
+        "chicago": "Chicago",
+        "chicagoHint": "Standard humanities footnoting.",
+        "apa": "APA",
+        "apaHint": "Author-date scientific style."
+      },
+      "saving": "Saving…",
+      "save": "Save defaults",
+      "unsaved": "Unsaved changes",
+      "saved": "{count, plural, one {Saved (# change)} other {Saved (# changes)}}",
+      "noChanges": "No changes to save.",
+      "saveFailed": "Failed to save defaults"
+    }
+  },
+  "privacy": {
+    "page": {
+      "heading": "Privacy",
+      "tagline": "Control how living persons and sensitive data are handled across the family.",
+      "linkText": "Default privacy level & GEDCOM export mode",
+      "linkDescription": "Configure on Editor defaults — those values are applied to new persons and as the GEDCOM export fallback."
+    },
+    "livingThreshold": {
+      "label": "Living-person threshold",
+      "description": "Persons born within this many years, with no recorded death, are presumed living and redacted from viewers. Range {min}–{max} years.",
+      "yearsSuffix": "years",
+      "saving": "Saving…",
+      "save": "Save",
+      "unsaved": "Unsaved change",
+      "validation": "Must be between {min} and {max}.",
+      "saved": "Living-person threshold saved ({count} years)",
+      "noChange": "No change to save.",
+      "saveFailed": "Failed to save threshold"
+    }
+  },
+  "family": {
+    "metadataTitle": "Family Settings",
+    "page": {
+      "heading": "Family Settings",
+      "taglineCanEdit": "Configure your family tree and operational limits.",
+      "taglineReadOnly": "Read-only view. Only the family owner can change these settings."
+    }
+  },
+  "members": {
+    "page": {
+      "heading": "Family Members",
+      "tagline": "Manage who has access to your family tree and their permissions.",
+      "fallbackFamilyName": "this family"
+    }
+  },
+  "sources": {
+    "page": {
+      "heading": "Search Sources",
+      "tagline": "Configure which genealogy databases and search providers to use during research."
+    },
+    "worker": {
+      "label": "Background Worker",
+      "connected": "Connected",
+      "unreachable": "Unreachable",
+      "notConfigured": "Not configured",
+      "hint": "Set WORKER_URL in your environment to enable scraper-based providers.",
+      "test": "Test"
+    },
+    "provider": {
+      "disabled": "Disabled",
+      "online": "Online",
+      "offline": "Offline",
+      "degraded": "Degraded",
+      "needsAuth": "Needs Auth",
+      "notChecked": "Not Checked",
+      "apiKey": "API Key",
+      "apiKeyPlaceholder": "Enter API key...",
+      "baseUrl": "Base URL (SearXNG)",
+      "baseUrlPlaceholder": "http://localhost:8080",
+      "rateLimit": "Rate limit (req/min)",
+      "test": "Test",
+      "okMs": "OK {ms}ms",
+      "apiKeySaved": "API key saved",
+      "apiKeyFailed": "Failed to save API key",
+      "rateSaved": "Rate limit saved",
+      "rateFailed": "Failed to save rate limit",
+      "baseUrlSaved": "Base URL saved",
+      "baseUrlFailed": "Failed to save base URL",
+      "enabled": "{name} enabled",
+      "providerDisabled": "{name} disabled",
+      "updateFailed": "Failed to update {name}",
+      "lastChecked": "Last checked: {date}"
+    },
+    "categories": {
+      "databases": "Databases",
+      "newspapers": "Newspapers & Media",
+      "cemeteries": "Cemeteries",
+      "webCommunity": "Web & Community"
+    },
+    "providerDescriptions": {
+      "familysearch": "Census, vital records, immigration records",
+      "nara": "National Archives catalog and digitized records",
+      "wikitree": "Collaborative genealogy community",
+      "openarchives": "Dutch and European archive records",
+      "chronicling_america": "Historical newspaper archives (LOC)",
+      "findagrave": "Cemetery and burial records",
+      "web_search": "General web search via SearXNG or Brave",
+      "geneanet": "European genealogy database"
+    }
+  }
+}

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Download } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -54,14 +55,13 @@ function buildExportUrl(
 }
 
 export function ExportButton({ selection, filters }: ExportButtonProps) {
+  const t = useTranslations('persons.exportButton');
   const [open, setOpen] = useState(false);
 
   const trigger = (format: 'csv' | 'gedcom') => {
     const result = buildExportUrl(format, selection, filters);
     if (typeof result !== 'string') {
-      toast.error(
-        `Cannot export ${result.tooMany} explicit selections. Use "Select all matching" or refine filters.`,
-      );
+      toast.error(t('tooManyExplicit', { count: result.tooMany }));
       setOpen(false);
       return;
     }
@@ -78,12 +78,12 @@ export function ExportButton({ selection, filters }: ExportButtonProps) {
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="sm" className="h-7">
-          <Download className="mr-1 h-3 w-3" aria-hidden /> Export
+          <Download className="mr-1 h-3 w-3" aria-hidden /> {t('label')}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-44">
-        <DropdownMenuItem onClick={() => trigger('csv')}>CSV</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => trigger('gedcom')}>GEDCOM</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => trigger('csv')}>{t('csv')}</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => trigger('gedcom')}>{t('gedcom')}</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

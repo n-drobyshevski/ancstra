@@ -1,7 +1,20 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import { NextIntlClientProvider } from 'next-intl';
 import { LensActiveBanner } from '@/components/lens/lens-active-banner';
+import commonMessages from '@/messages/en/common.json';
+import React from 'react';
+
+const messages = { common: commonMessages };
+
+function renderWithIntl(ui: React.ReactElement) {
+  return render(
+    <NextIntlClientProvider locale="en" messages={messages}>
+      {ui}
+    </NextIntlClientProvider>,
+  );
+}
 
 const mockUseLens = vi.fn();
 vi.mock('@/lib/lens/provider', () => ({
@@ -20,7 +33,7 @@ describe('<LensActiveBanner>', () => {
       setLens: vi.fn(),
       familyId: 'fam-1',
     });
-    const { container } = render(<LensActiveBanner />);
+    const { container } = renderWithIntl(<LensActiveBanner />);
     expect(container.textContent).toBe('');
   });
 
@@ -31,7 +44,7 @@ describe('<LensActiveBanner>', () => {
       setLens: vi.fn(),
       familyId: null,
     });
-    const { container } = render(<LensActiveBanner />);
+    const { container } = renderWithIntl(<LensActiveBanner />);
     expect(container.textContent).toBe('');
   });
 
@@ -42,7 +55,7 @@ describe('<LensActiveBanner>', () => {
       setLens: vi.fn(),
       familyId: 'fam-1',
     });
-    render(<LensActiveBanner />);
+    renderWithIntl(<LensActiveBanner />);
     // Banner text uses the role label and a hint about restricted view
     expect(screen.getByText(/Viewing as Viewer/)).toBeDefined();
     expect(screen.getByRole('button', { name: /Exit lens/i })).toBeDefined();
@@ -55,7 +68,7 @@ describe('<LensActiveBanner>', () => {
       setLens: vi.fn(),
       familyId: 'fam-1',
     });
-    render(<LensActiveBanner />);
+    renderWithIntl(<LensActiveBanner />);
     const status = screen.getByRole('status');
     expect(status.getAttribute('aria-live')).toBe('polite');
   });
@@ -68,7 +81,7 @@ describe('<LensActiveBanner>', () => {
       setLens,
       familyId: 'fam-1',
     });
-    render(<LensActiveBanner />);
+    renderWithIntl(<LensActiveBanner />);
     fireEvent.click(screen.getByRole('button', { name: /Exit lens/i }));
     expect(setLens).toHaveBeenCalledWith(null);
   });
@@ -82,7 +95,7 @@ describe('<LensActiveBanner>', () => {
         familyId: 'fam-1',
       });
       const expected = lens === 'admin' ? 'Admin' : lens === 'editor' ? 'Editor' : 'Viewer';
-      const { unmount } = render(<LensActiveBanner />);
+      const { unmount } = renderWithIntl(<LensActiveBanner />);
       expect(screen.getByText(new RegExp(`Viewing as ${expected}`))).toBeDefined();
       unmount();
     }

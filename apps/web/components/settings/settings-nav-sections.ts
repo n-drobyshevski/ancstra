@@ -16,9 +16,25 @@ import { hasPermission } from '@ancstra/auth/permissions';
 
 export type SectionTier = 'profile' | 'editor' | 'admin' | 'owner';
 
+/**
+ * Translation keys under `settings.nav.items` and `settings.nav.subtitles`.
+ * The render layer resolves these to localized strings; the model just holds
+ * structural identifiers + permissions + icons.
+ */
+export type NavItemKey =
+  | 'profile'
+  | 'appearance'
+  | 'activity'
+  | 'family'
+  | 'members'
+  | 'dataStorage'
+  | 'editorDefaults'
+  | 'searchSources'
+  | 'privacy'
+  | 'ai';
+
 export interface NavItem {
-  title: string;
-  subtitle: string;
+  key: NavItemKey;
   href: string;
   icon: LucideIcon;
   /**
@@ -31,66 +47,34 @@ export interface NavItem {
 
 export interface NavSection {
   tier: SectionTier;
-  title: string;
   items: NavItem[];
 }
 
-/**
- * Source-of-truth section layout. Tier semantics: each section names the
- * LOWEST role that sees any of its items. Items inside a section may have
- * different permissions (e.g. Activity is `activity:view` which editors also
- * have) but the section header reflects what visiting that section means
- * organisationally — admins manage members, owners configure ownership.
- *
- * Phase 2 layout:
- * - profile: universal (no permission)
- * - editor:  Data & Storage (editor+ via gedcom:export); P3 adds Editor defaults
- * - admin:   Family / Members / Activity (members:manage; Activity is more
- *            permissive but lives here for organisational coherence)
- * - owner:   Search Sources / Privacy / AI (settings:manage)
- */
 const SECTIONS: NavSection[] = [
   {
     tier: 'profile',
-    title: 'My profile',
     items: [
+      { key: 'profile', href: '/settings/profile', icon: User },
+      { key: 'appearance', href: '/settings/appearance', icon: Palette },
       {
-        title: 'Profile',
-        subtitle: 'Display name, language, notifications',
-        href: '/settings/profile',
-        icon: User,
-      },
-      {
-        title: 'Appearance',
-        subtitle: 'Theme and display',
-        href: '/settings/appearance',
-        icon: Palette,
-      },
-      {
-        title: 'Activity',
-        subtitle: 'Recent changes in your family',
+        key: 'activity',
         href: '/activity',
         icon: Activity,
-        // activity:view is granted to every role, so this surfaces for all
-        // users — placed in the personal section rather than admin tools.
         permission: 'activity:view',
       },
     ],
   },
   {
     tier: 'editor',
-    title: 'Editor defaults',
     items: [
       {
-        title: 'Editor defaults',
-        subtitle: 'Privacy, export, citation defaults',
+        key: 'editorDefaults',
         href: '/settings/editor-defaults',
         icon: Sliders,
         permission: 'person:create',
       },
       {
-        title: 'Data & Storage',
-        subtitle: 'Backups, cache, archives',
+        key: 'dataStorage',
         href: '/settings/data',
         icon: Database,
         permission: 'gedcom:export',
@@ -99,49 +83,17 @@ const SECTIONS: NavSection[] = [
   },
   {
     tier: 'admin',
-    title: 'Admin tools',
     items: [
-      {
-        title: 'Family',
-        subtitle: 'Name, limits, moderation',
-        href: '/settings/family',
-        icon: Home,
-        permission: 'members:manage',
-      },
-      {
-        title: 'Members',
-        subtitle: 'Invites and roles',
-        href: '/settings/members',
-        icon: Users,
-        permission: 'members:manage',
-      },
-      {
-        title: 'Search Sources',
-        subtitle: 'Genealogy databases & providers',
-        href: '/settings/sources',
-        icon: Search,
-        permission: 'members:manage',
-      },
+      { key: 'family', href: '/settings/family', icon: Home, permission: 'members:manage' },
+      { key: 'members', href: '/settings/members', icon: Users, permission: 'members:manage' },
+      { key: 'searchSources', href: '/settings/sources', icon: Search, permission: 'members:manage' },
     ],
   },
   {
     tier: 'owner',
-    title: 'Ownership',
     items: [
-      {
-        title: 'Privacy',
-        subtitle: 'Living persons & data handling',
-        href: '/settings/privacy',
-        icon: Shield,
-        permission: 'settings:manage',
-      },
-      {
-        title: 'AI',
-        subtitle: 'Usage and budget',
-        href: '/settings/ai',
-        icon: Bot,
-        permission: 'settings:manage',
-      },
+      { key: 'privacy', href: '/settings/privacy', icon: Shield, permission: 'settings:manage' },
+      { key: 'ai', href: '/settings/ai', icon: Bot, permission: 'settings:manage' },
     ],
   },
 ];

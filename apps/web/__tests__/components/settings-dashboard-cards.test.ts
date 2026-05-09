@@ -1,8 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import {
-  getDashboardCards,
-  getDashboardWelcome,
-} from '@/components/settings/settings-dashboard-cards';
+import { getDashboardCards } from '@/components/settings/settings-dashboard-cards';
+import welcomeMessages from '@/messages/en/settings.json';
 
 describe('getDashboardCards', () => {
   it('viewer sees only personal cards', () => {
@@ -45,13 +43,17 @@ describe('getDashboardCards', () => {
     expect(hrefs).toContain('/settings/sources');
   });
 
-  it('every card has a title, description, href, and icon', () => {
+  it('every card has a key (with matching translation), href, and icon', () => {
     const cards = getDashboardCards('owner');
     for (const c of cards) {
-      expect(c.title.length).toBeGreaterThan(0);
-      expect(c.description.length).toBeGreaterThan(0);
+      expect(c.key.length).toBeGreaterThan(0);
       expect(c.href).toMatch(/^\//);
       expect(c.icon).toBeDefined();
+      // The translation file must carry a title + description for every key.
+      const entry = welcomeMessages.cards[c.key as keyof typeof welcomeMessages.cards];
+      expect(entry).toBeDefined();
+      expect(entry.title.length).toBeGreaterThan(0);
+      expect(entry.description.length).toBeGreaterThan(0);
     }
   });
 
@@ -70,18 +72,16 @@ describe('getDashboardCards', () => {
   });
 });
 
-describe('getDashboardWelcome', () => {
-  it('returns a role-specific tagline for each role', () => {
-    const owner = getDashboardWelcome('owner');
-    const admin = getDashboardWelcome('admin');
-    const editor = getDashboardWelcome('editor');
-    const viewer = getDashboardWelcome('viewer');
-
-    // All four are distinct so each role gets tailored copy.
-    const taglines = new Set([owner.tagline, admin.tagline, editor.tagline, viewer.tagline]);
+describe('settings.welcome translations', () => {
+  it('has a distinct tagline for each role', () => {
+    const taglines = new Set([
+      welcomeMessages.welcome.owner.tagline,
+      welcomeMessages.welcome.admin.tagline,
+      welcomeMessages.welcome.editor.tagline,
+      welcomeMessages.welcome.viewer.tagline,
+    ]);
     expect(taglines.size).toBe(4);
-
-    expect(owner.title.toLowerCase()).toMatch(/owner|manage|settings/);
-    expect(viewer.title.length).toBeGreaterThan(0);
+    expect(welcomeMessages.welcome.owner.title.toLowerCase()).toMatch(/owner|manage|settings/);
+    expect(welcomeMessages.welcome.viewer.title.length).toBeGreaterThan(0);
   });
 });

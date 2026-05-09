@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { DeleteConfirmationDialog } from './delete-confirmation-dialog';
 import { ExportButton } from './export-button';
@@ -40,6 +41,7 @@ function buildScope(selection: SelectionState, filters: PersonsFilters): BulkSco
 
 export function SelectionBar({ selection, total, filters, onClear }: SelectionBarProps) {
   const router = useRouter();
+  const t = useTranslations('persons.selectionBar');
   const [isPending, startTransition] = useTransition();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [serverConfirmedCount, setServerConfirmedCount] = useState<number | null>(null);
@@ -78,7 +80,7 @@ export function SelectionBar({ selection, total, filters, onClear }: SelectionBa
 
     if (!res.ok) {
       const text = await res.text();
-      toast.error(`Delete failed: ${text || res.statusText}`);
+      toast.error(t('deleteFailed', { message: text || res.statusText }));
       return;
     }
 
@@ -89,7 +91,7 @@ export function SelectionBar({ selection, total, filters, onClear }: SelectionBa
       // Bulk-by-filter: we don't have the deleted ids, so mark all stale.
       personDetailCache.invalidateAll();
     }
-    toast.success(`Deleted ${data.affected} ${data.affected === 1 ? 'person' : 'persons'}`);
+    toast.success(t('deleted', { count: data.affected }));
     setDialogOpen(false);
     setServerConfirmedCount(null);
     onClear();
@@ -101,10 +103,10 @@ export function SelectionBar({ selection, total, filters, onClear }: SelectionBa
       <div
         className="flex items-center justify-between gap-2 rounded-md border bg-muted/40 px-3 py-2 text-sm"
         role="region"
-        aria-label="Bulk selection actions"
+        aria-label={t('ariaLabel')}
       >
         <span className="font-medium">
-          {displayCount.toLocaleString()} selected
+          {t('countSelected', { count: displayCount.toLocaleString() })}
         </span>
         <div className="flex items-center gap-2">
           <ExportButton selection={selection} filters={filters} />
@@ -115,16 +117,16 @@ export function SelectionBar({ selection, total, filters, onClear }: SelectionBa
             disabled={isPending}
             className="h-7"
           >
-            <Trash2 className="mr-1 h-3 w-3" aria-hidden /> Delete
+            <Trash2 className="mr-1 h-3 w-3" aria-hidden /> {t('delete')}
           </Button>
           <Button
             variant="ghost"
             size="sm"
             onClick={onClear}
-            aria-label="Clear selection"
+            aria-label={t('clearAriaLabel')}
             className="h-7 text-xs"
           >
-            <X className="mr-1 h-3 w-3" aria-hidden /> Clear
+            <X className="mr-1 h-3 w-3" aria-hidden /> {t('clear')}
           </Button>
         </div>
       </div>

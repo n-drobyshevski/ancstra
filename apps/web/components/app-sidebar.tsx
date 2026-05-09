@@ -17,10 +17,12 @@ import {
   ShieldCheck,
   type LucideIcon,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import type { Permission } from '@ancstra/auth/types';
 import { hasPermission } from '@ancstra/auth/permissions';
 import { PlatformAdminOnly } from '@/components/auth/platform-admin-only';
 import { LensSelector } from '@/components/sidebar/lens-selector';
+import { LocaleSwitcher } from '@/components/sidebar/locale-switcher';
 import { useEffectiveMembership } from '@/lib/auth/use-has-permission';
 import { useIsHydrated } from '@/hooks/use-is-hydrated';
 import { signOut } from 'next-auth/react';
@@ -39,8 +41,19 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 
+type NavItemKey =
+  | 'dashboard'
+  | 'people'
+  | 'tree'
+  | 'research'
+  | 'factsheets'
+  | 'importExport'
+  | 'activity'
+  | 'dataQuality';
+
 interface NavItem {
-  title: string;
+  /** Translation key under `navigation.items.*` */
+  key: NavItemKey;
   href: string;
   icon: LucideIcon;
   badge?: number;
@@ -56,15 +69,15 @@ interface NavItem {
 }
 
 const coreItems: NavItem[] = [
-  { title: 'Dashboard', href: '/dashboard', icon: Home },
-  { title: 'People', href: '/persons', icon: Users },
-  { title: 'Tree', href: '/tree', icon: GitBranch, permission: 'tree:view' },
+  { key: 'dashboard', href: '/dashboard', icon: Home },
+  { key: 'people', href: '/persons', icon: Users },
+  { key: 'tree', href: '/tree', icon: GitBranch, permission: 'tree:view' },
 ];
 
 const researchItems: NavItem[] = [
-  { title: 'Research', href: '/research', icon: Microscope, permission: 'ai:research' },
+  { key: 'research', href: '/research', icon: Microscope, permission: 'ai:research' },
   {
-    title: 'Factsheets',
+    key: 'factsheets',
     href: '/research/factsheets',
     icon: FileStack,
     permission: 'ai:research',
@@ -73,19 +86,19 @@ const researchItems: NavItem[] = [
 
 const dataItems: NavItem[] = [
   {
-    title: 'Import / Export',
+    key: 'importExport',
     href: '/data',
     icon: ArrowLeftRight,
     // Visible if the user can do EITHER side — page itself routes to the
     // correct tab based on which permission they hold.
     permission: ['gedcom:import', 'gedcom:export'],
   },
-  { title: 'Activity', href: '/activity', icon: Activity, permission: 'activity:view' },
+  { key: 'activity', href: '/activity', icon: Activity, permission: 'activity:view' },
 ];
 
 const analyticsItems: NavItem[] = [
   {
-    title: 'Data Quality',
+    key: 'dataQuality',
     href: '/analytics/quality',
     icon: BarChart3,
     permission: 'activity:view',
@@ -124,6 +137,7 @@ function NavGroup({
   pathname: string;
 }) {
   const { setOpenMobile } = useSidebar();
+  const t = useTranslations('navigation.items');
   const visible = useVisibleNavItems(items);
 
   // Collapse the entire group when nothing is visible. Avoids a stranded
@@ -142,17 +156,18 @@ function NavGroup({
               pathname.startsWith(other.href)
           );
           const isActive = pathname.startsWith(item.href) && !hasMoreSpecificMatch;
+          const title = t(item.key);
 
           return (
             <SidebarMenuItem key={item.href}>
               <SidebarMenuButton
                 asChild
                 isActive={isActive}
-                tooltip={item.title}
+                tooltip={title}
               >
                 <Link href={item.href} onClick={() => setOpenMobile(false)}>
                   <item.icon />
-                  <span>{item.title}</span>
+                  <span>{title}</span>
                 </Link>
               </SidebarMenuButton>
               {item.badge != null && item.badge > 0 && (
@@ -175,6 +190,10 @@ interface AppSidebarProps {
 export function AppSidebar({ factsheetCount = 0 }: AppSidebarProps) {
   const pathname = usePathname();
   const { setOpenMobile } = useSidebar();
+  const tNav = useTranslations('navigation');
+  const tGroups = useTranslations('navigation.groups');
+  const tItems = useTranslations('navigation.items');
+  const tTooltips = useTranslations('navigation.tooltips');
 
   // Inject live badge counts into nav items
   const researchWithBadges = researchItems.map((item) => {
@@ -183,7 +202,7 @@ export function AppSidebar({ factsheetCount = 0 }: AppSidebarProps) {
   });
 
   return (
-    <Sidebar collapsible="icon" role="navigation" aria-label="Main navigation">
+    <Sidebar collapsible="icon" role="navigation" aria-label={tNav('ariaLabel')}>
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
@@ -192,7 +211,7 @@ export function AppSidebar({ factsheetCount = 0 }: AppSidebarProps) {
                 <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                   <span className="text-sm font-bold">A</span>
                 </div>
-                <span className="font-semibold">Ancstra</span>
+                <span className="font-semibold">{tNav('brand')}</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -200,50 +219,51 @@ export function AppSidebar({ factsheetCount = 0 }: AppSidebarProps) {
       </SidebarHeader>
       <SidebarContent>
         <NavGroup items={coreItems} pathname={pathname} />
-        <NavGroup label="Research" items={researchWithBadges} pathname={pathname} />
-        <NavGroup label="Data" items={dataItems} pathname={pathname} />
-        <NavGroup label="Analytics" items={analyticsItems} pathname={pathname} />
+        <NavGroup label={tGroups('research')} items={researchWithBadges} pathname={pathname} />
+        <NavGroup label={tGroups('data')} items={dataItems} pathname={pathname} />
+        <NavGroup label={tGroups('analytics')} items={analyticsItems} pathname={pathname} />
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>
           <PlatformAdminOnly>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild tooltip="Platform Admin">
+              <SidebarMenuButton asChild tooltip={tTooltips('platformAdmin')}>
                 <Link href="/admin" onClick={() => setOpenMobile(false)}>
                   <ShieldCheck />
-                  <span>Platform</span>
+                  <span>{tItems('platform')}</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </PlatformAdminOnly>
           <LensSelector />
+          <LocaleSwitcher />
           <SidebarMenuItem>
-            <SidebarMenuButton asChild tooltip="Settings">
+            <SidebarMenuButton asChild tooltip={tTooltips('settings')}>
               <Link href="/settings" onClick={() => setOpenMobile(false)}>
                 <Settings />
-                <span>Settings</span>
+                <span>{tItems('settings')}</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild tooltip="Help">
+            <SidebarMenuButton asChild tooltip={tTooltips('help')}>
               <a
                 href={process.env.NEXT_PUBLIC_DOCS_URL || 'https://ancstra-docs.vercel.app'}
                 target="_blank"
                 rel="noopener noreferrer"
               >
                 <ExternalLink />
-                <span>Help</span>
+                <span>{tItems('help')}</span>
               </a>
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton
-              tooltip="Sign Out"
+              tooltip={tTooltips('signOut')}
               onClick={() => signOut({ callbackUrl: '/login' })}
             >
               <LogOut />
-              <span>Sign Out</span>
+              <span>{tItems('signOut')}</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

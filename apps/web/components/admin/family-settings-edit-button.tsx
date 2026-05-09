@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Loader2, Pencil, Save } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { trpc } from '@/lib/trpc/client';
 import { Button } from '@/components/ui/button';
 import {
@@ -32,6 +33,7 @@ interface Props {
 }
 
 export function FamilySettingsEditButton({ familyId, initial }: Props) {
+  const t = useTranslations('admin.familySettingsEdit');
   const [open, setOpen] = useState(false);
 
   return (
@@ -39,17 +41,16 @@ export function FamilySettingsEditButton({ familyId, initial }: Props) {
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
           <Pencil className="size-4" />
-          Edit settings
+          {t('trigger')}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Edit family settings</DialogTitle>
+          <DialogTitle>{t('title')}</DialogTitle>
           <DialogDescription>
-            Platform-admin override. Changes are written to the audit log.
+            {t('description')}
           </DialogDescription>
         </DialogHeader>
-        {/* Remount on each open so initial values are re-seeded without an effect. */}
         {open ? (
           <FamilySettingsEditForm
             key={`${initial.name}|${initial.maxMembers}|${initial.monthlyAiBudgetUsd}|${initial.moderationEnabled}`}
@@ -71,6 +72,8 @@ interface FormProps {
 
 function FamilySettingsEditForm({ familyId, initial, onClose }: FormProps) {
   const router = useRouter();
+  const t = useTranslations('admin.familySettingsEdit');
+  const tValidations = useTranslations('admin.familySettingsEdit.validations');
   const [name, setName] = useState(initial.name);
   const [maxMembers, setMaxMembers] = useState(String(initial.maxMembers));
   const [aiBudget, setAiBudget] = useState(initial.monthlyAiBudgetUsd.toFixed(2));
@@ -79,15 +82,15 @@ function FamilySettingsEditForm({ familyId, initial, onClose }: FormProps) {
   const update = trpc.platformAdmin.updateFamilySettings.useMutation({
     onSuccess: ({ changed }) => {
       if (changed.length === 0) {
-        toast.info('No changes to save.');
+        toast.info(t('noChanges'));
       } else {
-        toast.success(`Saved (${changed.length} change${changed.length === 1 ? '' : 's'})`);
+        toast.success(t('saved', { count: changed.length }));
       }
       onClose();
       router.refresh();
     },
     onError: (err) => {
-      toast.error(err.message || 'Failed to save settings');
+      toast.error(err.message || t('saveFailed'));
     },
   });
 
@@ -96,11 +99,11 @@ function FamilySettingsEditForm({ familyId, initial, onClose }: FormProps) {
     const max = Number(maxMembers);
     const budget = Number(aiBudget);
     if (!Number.isFinite(max) || max < 1) {
-      toast.error('Member limit must be a positive number.');
+      toast.error(tValidations('memberLimit'));
       return;
     }
     if (!Number.isFinite(budget) || budget < 0) {
-      toast.error('AI budget must be zero or positive.');
+      toast.error(tValidations('budget'));
       return;
     }
 
@@ -116,7 +119,7 @@ function FamilySettingsEditForm({ familyId, initial, onClose }: FormProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       <div className="space-y-2">
-        <Label htmlFor="admin-family-name">Name</Label>
+        <Label htmlFor="admin-family-name">{t('nameLabel')}</Label>
         <Input
           id="admin-family-name"
           value={name}
@@ -129,7 +132,7 @@ function FamilySettingsEditForm({ familyId, initial, onClose }: FormProps) {
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="admin-max-members">Member limit</Label>
+          <Label htmlFor="admin-max-members">{t('memberLimitLabel')}</Label>
           <Input
             id="admin-max-members"
             type="number"
@@ -141,7 +144,7 @@ function FamilySettingsEditForm({ familyId, initial, onClose }: FormProps) {
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="admin-ai-budget">Monthly AI budget (USD)</Label>
+          <Label htmlFor="admin-ai-budget">{t('budgetLabel')}</Label>
           <Input
             id="admin-ai-budget"
             type="number"
@@ -157,10 +160,10 @@ function FamilySettingsEditForm({ familyId, initial, onClose }: FormProps) {
       <div className="flex items-center justify-between gap-3 rounded-md border border-border px-4 py-3">
         <div>
           <Label htmlFor="admin-moderation" className="text-sm font-medium">
-            Editor moderation
+            {t('moderationLabel')}
           </Label>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Queue editor changes for review.
+            {t('moderationDescription')}
           </p>
         </div>
         <Switch
@@ -178,18 +181,18 @@ function FamilySettingsEditForm({ familyId, initial, onClose }: FormProps) {
           onClick={onClose}
           disabled={update.isPending}
         >
-          Cancel
+          {t('cancel')}
         </Button>
         <Button type="submit" disabled={update.isPending}>
           {update.isPending ? (
             <>
               <Loader2 className="size-4 animate-spin" />
-              Saving…
+              {t('saving')}
             </>
           ) : (
             <>
               <Save className="size-4" />
-              Save changes
+              {t('save')}
             </>
           )}
         </Button>

@@ -1,10 +1,13 @@
 import withBundleAnalyzer from '@next/bundle-analyzer';
 import { withSentryConfig } from '@sentry/nextjs';
+import createNextIntlPlugin from 'next-intl/plugin';
 import type { NextConfig } from 'next';
 
 const withAnalyzer = withBundleAnalyzer({
   enabled: process.env.ANALYZE === 'true',
 });
+
+const withNextIntl = createNextIntlPlugin('./i18n/request.ts');
 
 const nextConfig: NextConfig = {
   serverExternalPackages: ['better-sqlite3'],
@@ -57,8 +60,8 @@ const nextConfig: NextConfig = {
 const isDev = process.env.NODE_ENV === 'development';
 
 export default isDev
-  ? withAnalyzer(nextConfig)
-  : withSentryConfig(withAnalyzer(nextConfig), {
+  ? withNextIntl(withAnalyzer(nextConfig))
+  : withSentryConfig(withNextIntl(withAnalyzer(nextConfig)), {
       org: process.env.SENTRY_ORG,
       project: process.env.SENTRY_PROJECT,
 

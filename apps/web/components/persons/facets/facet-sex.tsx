@@ -1,15 +1,14 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { Checkbox } from '@/components/ui/checkbox';
 import { FacetBlock } from './facet-block';
 import { usePersonsFilters, useFilterUpdate } from '../use-persons-filters';
 import { SEX_VALUES } from '@/lib/persons/search-params';
 
-const SEX_LABELS: Record<typeof SEX_VALUES[number], string> = {
-  M: 'Male', F: 'Female', U: 'Unknown',
-};
-
 export function FacetSex() {
+  const t = useTranslations('persons.facets.sex');
+  const tValues = useTranslations('persons.facets.sex.values');
   const { filters } = usePersonsFilters();
   const update = useFilterUpdate();
   const active = filters.sex.length > 0 && filters.sex.length < SEX_VALUES.length;
@@ -22,14 +21,14 @@ export function FacetSex() {
   };
 
   return (
-    <FacetBlock label="Sex" defaultOpen active={active}>
+    <FacetBlock label={t('label')} defaultOpen active={active}>
       <div className="space-y-1.5">
         {SEX_VALUES.map((v) => {
           const id = `sex-${v}`;
           return (
             <label key={v} htmlFor={id} className="flex items-center gap-2 text-sm cursor-pointer">
               <Checkbox id={id} checked={filters.sex.includes(v)} onCheckedChange={() => toggle(v)} />
-              <span>{SEX_LABELS[v]}</span>
+              <span>{tValues(v)}</span>
             </label>
           );
         })}

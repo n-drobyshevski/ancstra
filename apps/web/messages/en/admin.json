@@ -1,0 +1,337 @@
+{
+  "layout": {
+    "header": "Platform Admin",
+    "subheader": "Cross-family ops"
+  },
+  "nav": {
+    "backToApp": "Back to App",
+    "platform": "Platform",
+    "items": {
+      "dashboard": "Dashboard",
+      "users": "Users",
+      "families": "Family trees",
+      "audit": "Audit Log"
+    }
+  },
+  "page": {
+    "heading": "Dashboard",
+    "tagline": "Cross-family snapshot of the Ancstra platform."
+  },
+  "dashboardCards": {
+    "users": "Users",
+    "families": "Family trees",
+    "memberships": "Active memberships",
+    "signups": "Signups (last 7 days)",
+    "platformAdmins": "Platform admins",
+    "pendingInvites": "Pending invites"
+  },
+  "recentActivity": {
+    "title": "Recent platform activity",
+    "viewAll": "View all",
+    "empty": "No platform-admin activity yet."
+  },
+  "audit": {
+    "page": {
+      "heading": "Audit Log",
+      "tagline": "Platform-admin actions and cross-family overrides. Read-only."
+    },
+    "filters": {
+      "actionLabel": "Action",
+      "allActions": "All actions",
+      "targetTypeLabel": "Target type",
+      "allTargets": "All targets",
+      "user": "User",
+      "family": "Family",
+      "actorIdLabel": "Actor user ID",
+      "actorIdPlaceholder": "Filter by actor user ID…",
+      "clear": "Clear"
+    },
+    "entryCount": "{count, plural, one {# entry} other {# entries}}",
+    "refreshAriaLabel": "Refresh",
+    "headers": {
+      "when": "When",
+      "actor": "Actor",
+      "action": "Action",
+      "target": "Target",
+      "summary": "Summary",
+      "details": "Details"
+    },
+    "loadFailed": "Failed to load audit log",
+    "retry": "Retry",
+    "noMatch": "No entries match the selected filters.",
+    "empty": "No audit entries yet.",
+    "loadMore": "Load more",
+    "loading": "Loading…",
+    "details": {
+      "title": "Audit entry details",
+      "when": "When",
+      "actor": "Actor",
+      "target": "Target",
+      "summary": "Summary",
+      "metadata": "Metadata",
+      "emDash": "—"
+    }
+  },
+  "families": {
+    "page": {
+      "heading": "Family trees",
+      "tagline": "All family trees registered on the platform.",
+      "searchPlaceholder": "Search by family name…"
+    },
+    "notFound": "Family tree not found",
+    "metadataSuffix": "{name} — Admin",
+    "addDialog": {
+      "trigger": "Add family",
+      "title": "Add new family",
+      "description": "Provision a new family tree on behalf of an existing user. They become the owner. This action is logged in the platform audit log.",
+      "nameLabel": "Family name",
+      "namePlaceholder": "e.g. Smith Family Tree",
+      "advancedToggle": "Advanced settings",
+      "memberCapLabel": "Member cap",
+      "memberCapHint": "Default is {default}. Increase for large extended families. Range 1–10000.",
+      "memberCapValidation": "Enter a whole number between 1 and 10000.",
+      "cancel": "Cancel",
+      "create": "Create family",
+      "creating": "Creating…",
+      "created": "Created family \"{name}\" with {owner} as owner",
+      "createFailed": "Failed to create family"
+    },
+    "table": {
+      "empty": "No families found.",
+      "headers": {
+        "family": "Family",
+        "owner": "Owner",
+        "members": "Members",
+        "pendingInvites": "Pending invites",
+        "created": "Created",
+        "actions": "Actions"
+      }
+    },
+    "rowActions": {
+      "ariaLabel": "Actions for {name}",
+      "open": "Open family",
+      "copyId": "Copy family ID",
+      "copyOwnerEmail": "Copy owner email",
+      "idCopied": "Family ID copied",
+      "ownerCopied": "Owner email copied",
+      "copyFailed": "Copy failed"
+    },
+    "detail": {
+      "back": "Back to family trees",
+      "moderationOn": "Moderation on",
+      "maxMembers": "Max members",
+      "monthlyBudget": "Monthly AI budget",
+      "dbFilename": "DB filename",
+      "created": "Created",
+      "pendingInvitations": "Pending invitations",
+      "pendingCount": "{count, plural, one {# pending invite} other {# pending invites}}",
+      "membersCount": "Members ({count})",
+      "noMembers": "No members.",
+      "headers": {
+        "user": "User",
+        "role": "Role",
+        "joined": "Joined",
+        "lastSeen": "Last seen",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "inactive": "inactive"
+    },
+    "pendingInvitations": {
+      "title": "Pending invitations",
+      "countSuffix": "({count})",
+      "refreshAriaLabel": "Refresh",
+      "loading": "Loading...",
+      "loadFailed": "Failed to load invitations",
+      "retry": "Retry",
+      "empty": "No pending invitations.",
+      "headers": {
+        "recipient": "Recipient",
+        "role": "Role",
+        "expires": "Expires",
+        "invitedBy": "Invited by",
+        "actions": "Actions"
+      },
+      "anyoneWithLink": "Anyone with link",
+      "actionsAriaLabel": "Actions for invitation to {recipient}",
+      "copyLink": "Copy invite link",
+      "revoke": "Revoke",
+      "linkCopied": "Invite link copied to clipboard",
+      "copyFailed": "Could not copy to clipboard",
+      "revokeTitle": "Revoke invitation?",
+      "revokeDescription": "The invitation link to <b>{recipient}</b> will stop working immediately. Anyone who hasn't accepted yet will not be able to use it.",
+      "revokeAction": "Revoke",
+      "revoking": "Revoking…",
+      "revoked": "Invitation revoked",
+      "alreadyRevoked": "Invitation already revoked",
+      "revokeFailed": "Failed to revoke invitation"
+    }
+  },
+  "users": {
+    "page": {
+      "heading": "Users",
+      "tagline": "Every account in the central registry.",
+      "searchPlaceholder": "Search by name or email…"
+    },
+    "notFound": "User not found",
+    "metadataSuffix": "{name} — Admin",
+    "addDialog": {
+      "trigger": "Add user",
+      "title": "Add new user",
+      "description": "Provision a new account. You set the initial password and share it with the user. The account is marked email-verified. This action is logged in the platform audit log.",
+      "nameLabel": "Name",
+      "emailLabel": "Email",
+      "passwordLabel": "Password",
+      "passwordHint": "At least 8 characters. Hashed server-side with bcrypt.",
+      "alsoAddToFamily": "Also add to a family",
+      "roleLabel": "Role at family",
+      "roles": {
+        "admin": "Admin",
+        "adminHint": "Full management except owner-only ops",
+        "editor": "Editor",
+        "editorHint": "Can edit data; not membership",
+        "viewer": "Viewer",
+        "viewerHint": "Read-only access"
+      },
+      "cancel": "Cancel",
+      "create": "Create user",
+      "creating": "Creating…",
+      "createdAddedToFamily": "Created {email} and added to {family}",
+      "createdAddedOverCap": "Created {email} and added to {family} (now over the member cap)",
+      "createdUser": "Created user {email}",
+      "createFailed": "Failed to create user"
+    },
+    "table": {
+      "empty": "No users found.",
+      "headers": {
+        "user": "User",
+        "email": "Email",
+        "families": "Family trees",
+        "owned": "Owned",
+        "joined": "Joined",
+        "platformAdmin": "Platform admin",
+        "actions": "Actions"
+      },
+      "unverified": "unverified",
+      "adminBadge": "Admin"
+    },
+    "rowActions": {
+      "ariaLabel": "Actions for {name}",
+      "open": "Open user",
+      "promote": "Promote to admin",
+      "demote": "Demote from admin",
+      "addToFamily": "Add to another family…",
+      "moveToFamily": "Move to another family…",
+      "copyId": "Copy user ID",
+      "copyEmail": "Copy email",
+      "promoteTitle": "Grant platform admin access?",
+      "demoteTitle": "Revoke platform admin access?",
+      "promoteDescription": "{name} will gain access to the /admin console and be able to view all users and families across the platform.",
+      "demoteSelfDescription": "You'll lose access to /admin immediately after this. Make sure another platform admin exists first.",
+      "demoteOtherDescription": "{name} will no longer be able to access the /admin console.",
+      "promoted": "Promoted {name}",
+      "demoted": "Demoted {name}",
+      "updateFailed": "Failed to update platform admin status",
+      "idCopied": "User ID copied",
+      "emailCopied": "Email copied",
+      "copyFailed": "Copy failed"
+    },
+    "detail": {
+      "back": "Back to users",
+      "platformAdminBadge": "Platform admin",
+      "emailUnverified": "Email unverified",
+      "you": "You",
+      "joinedDate": "Joined {date}",
+      "updatedDate": "Updated {date}",
+      "membershipsTitle": "Family memberships ({count})",
+      "noMemberships": "This user has not joined any families.",
+      "headers": {
+        "family": "Family",
+        "role": "Role",
+        "joined": "Joined",
+        "lastSeen": "Last seen",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "inactive": "inactive"
+    }
+  },
+  "familyMemberActions": {
+    "ariaLabel": "Actions for {name}",
+    "ownerLabel": "Owner — limited actions",
+    "platformOverrideLabel": "Platform-admin override",
+    "changeRole": "Change role",
+    "roles": {
+      "admin": "admin",
+      "editor": "editor",
+      "viewer": "viewer"
+    },
+    "current": "current",
+    "forceTransfer": "Force transfer ownership",
+    "addToFamily": "Add to another family…",
+    "moveToFamily": "Move to another family…",
+    "ownerDisabledReason": "owner",
+    "remove": "Remove member",
+    "removeTitle": "Remove {name}?",
+    "removeDescription": "They will lose access to <b>{family}</b> immediately. The action is logged in the audit log and the family activity feed.",
+    "transferTitle": "Force transfer ownership to {name}?",
+    "transferDescription": "The current owner will be demoted to admin. This is a platform-admin override and is logged in the audit log and the family activity feed.",
+    "typeFamilyToConfirm": "Type the family name <b>{family}</b> to confirm",
+    "removed": "Removed {name}",
+    "removeFailed": "Failed to remove member",
+    "transferred": "Ownership transferred to {name}",
+    "noChange": "No change",
+    "transferFailed": "Failed to transfer ownership",
+    "roleUpdated": "Role updated",
+    "roleUnchanged": "Role unchanged",
+    "roleUpdateFailed": "Failed to update role"
+  },
+  "togglePlatformAdmin": {
+    "promote": "Promote to admin",
+    "demote": "Demote from admin",
+    "promoteTitle": "Grant platform admin access?",
+    "demoteTitle": "Revoke platform admin access?",
+    "promoteDescription": "{name} will gain access to the /admin console and be able to view all users and families across the platform.",
+    "demoteSelfDescription": "You'll lose access to /admin immediately after this. Make sure another platform admin exists first.",
+    "demoteOtherDescription": "{name} will no longer be able to access the /admin console.",
+    "promoted": "Promoted {name}",
+    "demoted": "Demoted {name}",
+    "updateFailed": "Failed to update platform admin status"
+  },
+  "familySettingsEdit": {
+    "trigger": "Edit settings",
+    "title": "Edit family settings",
+    "description": "Platform-admin override. Changes are written to the audit log.",
+    "nameLabel": "Name",
+    "memberLimitLabel": "Member limit",
+    "budgetLabel": "Monthly AI budget (USD)",
+    "moderationLabel": "Editor moderation",
+    "moderationDescription": "Queue editor changes for review.",
+    "cancel": "Cancel",
+    "save": "Save changes",
+    "saving": "Saving…",
+    "saved": "{count, plural, one {Saved (# change)} other {Saved (# changes)}}",
+    "noChanges": "No changes to save.",
+    "saveFailed": "Failed to save settings",
+    "validations": {
+      "memberLimit": "Member limit must be a positive number.",
+      "budget": "AI budget must be zero or positive."
+    }
+  },
+  "dataTable": {
+    "searchPlaceholder": "Search…",
+    "search": "Search",
+    "clear": "Clear",
+    "results": "{count, plural, one {# result} other {# results}}",
+    "pageOf": "Page {page} of {pageCount}",
+    "previousAriaLabel": "Previous page",
+    "previous": "Previous",
+    "nextAriaLabel": "Next page",
+    "next": "Next"
+  },
+  "error": {
+    "heading": "Something went wrong",
+    "fallbackMessage": "An error occurred while loading this page.",
+    "tryAgain": "Try again"
+  }
+}

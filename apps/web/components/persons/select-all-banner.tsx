@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import type { SelectionState } from './use-selection';
 
@@ -18,6 +19,8 @@ export function SelectAllBanner({
   onSelectAllMatching,
   onClear,
 }: SelectAllBannerProps) {
+  const t = useTranslations('persons.selectAllBanner');
+
   if (selection.kind === 'matching') {
     const excludedCount = selection.exclude.size;
     const effectiveCount = total - excludedCount;
@@ -28,11 +31,16 @@ export function SelectAllBanner({
         aria-live="polite"
       >
         <span>
-          All {effectiveCount.toLocaleString()} matching persons selected
-          {excludedCount > 0 && <span className="text-muted-foreground"> ({excludedCount} excluded)</span>}.
+          {t('allMatchingSelected', { count: effectiveCount.toLocaleString() })}
+          {excludedCount > 0 && (
+            <span className="text-muted-foreground">
+              {t('excludedSuffix', { count: excludedCount })}
+            </span>
+          )}
+          {t('trailingPeriod')}
         </span>
         <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={onClear}>
-          Clear selection
+          {t('clearSelection')}
         </Button>
       </div>
     );
@@ -52,10 +60,10 @@ export function SelectAllBanner({
       aria-live="polite"
     >
       <span className="text-muted-foreground">
-        All {pageIds.length} on this page selected.
+        {t('allOnPageSelected', { count: pageIds.length })}
       </span>
       <Button variant="link" size="sm" className="h-7 text-xs" onClick={onSelectAllMatching}>
-        Select all {total.toLocaleString()} matching
+        {t('selectAllMatching', { count: total.toLocaleString() })}
       </Button>
     </div>
   );

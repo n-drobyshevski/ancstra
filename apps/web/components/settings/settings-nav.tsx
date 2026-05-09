@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { useEffectiveMembership } from '@/lib/auth/use-has-permission';
 import { useIsHydrated } from '@/hooks/use-is-hydrated';
 import { cn } from '@/lib/utils';
@@ -29,13 +30,15 @@ export function useVisibleSettingsSections(): NavSection[] {
 export function SettingsNav() {
   const pathname = usePathname();
   const sections = useVisibleSettingsSections();
+  const tSection = useTranslations('settings.nav.sectionTitles');
+  const tItems = useTranslations('settings.nav.items');
 
   return (
     <nav className="hidden md:block w-[220px] shrink-0 border-r border-border pr-4 space-y-6">
       {sections.map((section) => (
         <div key={section.tier} className="space-y-1">
           <div className="px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            {section.title}
+            {tSection(section.tier)}
           </div>
           {section.items.map((item) => {
             const isActive = pathname.startsWith(item.href);
@@ -51,7 +54,7 @@ export function SettingsNav() {
                 )}
               >
                 <item.icon className="size-4 shrink-0" />
-                {item.title}
+                {tItems(item.key)}
               </Link>
             );
           })}

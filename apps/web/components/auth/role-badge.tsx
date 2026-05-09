@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { Badge } from '@/components/ui/badge';
 import type { Role } from '@ancstra/auth';
 
@@ -15,9 +16,10 @@ const ROLE_COLORS: Record<Role, string> = {
 };
 
 export function RoleBadge({ role }: { role: Role }) {
+  const t = useTranslations('common.lens.roles');
   return (
     <Badge variant="secondary" className={ROLE_COLORS[role]}>
-      {role}
+      {t(role)}
     </Badge>
   );
 }

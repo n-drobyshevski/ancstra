@@ -1,6 +1,7 @@
 'use client';
 
 import { ChevronDown, Columns } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -15,21 +16,14 @@ import {
   type TreeHidableColumn,
 } from '@/lib/tree/search-params';
 
-const COLUMN_LABELS: Record<TreeHidableColumn, string> = {
-  sex: 'Sex',
-  status: 'Status',
-  completeness: 'Completeness',
-  parents: 'Parents',
-  spouses: 'Spouses',
-  children: 'Children',
-};
-
 interface TreeColumnsDropdownProps {
   hidden: readonly TreeHidableColumn[];
   onChange: (next: TreeHidableColumn[]) => void;
 }
 
 export function TreeColumnsDropdown({ hidden, onChange }: TreeColumnsDropdownProps) {
+  const t = useTranslations('tree.columnsDropdown');
+  const tLabels = useTranslations('tree.columnsDropdown.labels');
   const hiddenSet = new Set(hidden);
 
   const toggle = (col: TreeHidableColumn) => {
@@ -41,14 +35,14 @@ export function TreeColumnsDropdown({ hidden, onChange }: TreeColumnsDropdownPro
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="h-7 text-xs" aria-label="Toggle columns">
+        <Button variant="outline" size="sm" className="h-7 text-xs" aria-label={t('ariaLabel')}>
           <Columns className="mr-1.5 h-3.5 w-3.5" aria-hidden />
-          Columns
+          {t('label')}
           <ChevronDown className="ml-1 h-3.5 w-3.5" aria-hidden />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-44">
-        <DropdownMenuLabel>Visible columns</DropdownMenuLabel>
+        <DropdownMenuLabel>{t('visibleColumns')}</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {TREE_HIDABLE_COLUMNS.map((col) => (
           <DropdownMenuCheckboxItem
@@ -56,7 +50,7 @@ export function TreeColumnsDropdown({ hidden, onChange }: TreeColumnsDropdownPro
             checked={!hiddenSet.has(col)}
             onCheckedChange={() => toggle(col)}
           >
-            {COLUMN_LABELS[col]}
+            {tLabels(col)}
           </DropdownMenuCheckboxItem>
         ))}
       </DropdownMenuContent>

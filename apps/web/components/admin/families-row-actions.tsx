@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { Copy, ExternalLink, MoreHorizontal } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -21,12 +22,14 @@ interface Props {
 }
 
 export function FamiliesRowActions({ family }: Props) {
-  async function copy(value: string, label: string) {
+  const t = useTranslations('admin.families.rowActions');
+
+  async function copy(value: string, kind: 'idCopied' | 'ownerCopied') {
     try {
       await navigator.clipboard.writeText(value);
-      toast.success(`${label} copied`);
+      toast.success(t(kind));
     } catch {
-      toast.error('Copy failed');
+      toast.error(t('copyFailed'));
     }
   }
 
@@ -36,7 +39,7 @@ export function FamiliesRowActions({ family }: Props) {
         <Button
           variant="ghost"
           size="icon"
-          aria-label={`Actions for ${family.name}`}
+          aria-label={t('ariaLabel', { name: family.name })}
         >
           <MoreHorizontal className="size-4" />
         </Button>
@@ -45,17 +48,17 @@ export function FamiliesRowActions({ family }: Props) {
         <DropdownMenuItem asChild>
           <Link href={`/admin/families/${family.id}`}>
             <ExternalLink className="size-4" />
-            Open family
+            {t('open')}
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => copy(family.id, 'Family ID')}>
+        <DropdownMenuItem onClick={() => copy(family.id, 'idCopied')}>
           <Copy className="size-4" />
-          Copy family ID
+          {t('copyId')}
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => copy(family.ownerEmail, 'Owner email')}>
+        <DropdownMenuItem onClick={() => copy(family.ownerEmail, 'ownerCopied')}>
           <Copy className="size-4" />
-          Copy owner email
+          {t('copyOwnerEmail')}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

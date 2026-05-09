@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Loader2, Save } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { trpc } from '@/lib/trpc/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -38,26 +39,21 @@ interface Props {
   initialPrefs: PrefsShape;
 }
 
-const DENSITIES = [
-  { value: 'comfortable', label: 'Comfortable', hint: 'Spacious — Quick View default' },
-  { value: 'compact', label: 'Compact', hint: 'Dense — Research View' },
-] as const;
-
 // A short, opinionated locale list. Full BCP-47 input is allowed via the
 // underlying server validator (z.string), but most users will pick from here.
-const LOCALES = [
-  { value: 'en-US', label: 'English (United States)' },
-  { value: 'en-GB', label: 'English (United Kingdom)' },
-  { value: 'de-DE', label: 'Deutsch (Deutschland)' },
-  { value: 'fr-FR', label: 'Français (France)' },
-  { value: 'es-ES', label: 'Español (España)' },
-  { value: 'it-IT', label: 'Italiano (Italia)' },
-  { value: 'nl-NL', label: 'Nederlands' },
-  { value: 'pt-BR', label: 'Português (Brasil)' },
-  { value: 'ru-RU', label: 'Русский' },
-  { value: 'ja-JP', label: '日本語' },
-  { value: 'zh-CN', label: '简体中文' },
-];
+const LOCALE_VALUES = [
+  'en-US',
+  'en-GB',
+  'de-DE',
+  'fr-FR',
+  'es-ES',
+  'it-IT',
+  'nl-NL',
+  'pt-BR',
+  'ru-RU',
+  'ja-JP',
+  'zh-CN',
+] as const;
 
 function getTimezones(): string[] {
   const intl = Intl as unknown as { supportedValuesOf?: (k: string) => string[] };
@@ -83,6 +79,8 @@ function getTimezones(): string[] {
 
 export function ProfileForm({ initialProfile, initialPrefs }: Props) {
   const router = useRouter();
+  const t = useTranslations('settings.profile.form');
+  const tLocales = useTranslations('settings.profile.locales');
 
   const [name, setName] = useState(initialProfile.name);
   const [avatarUrl, setAvatarUrl] = useState(initialProfile.avatarUrl ?? '');
@@ -119,7 +117,7 @@ export function ProfileForm({ initialProfile, initialPrefs }: Props) {
 
     const trimmedName = name.trim();
     if (trimmedName.length === 0) {
-      toast.error('Display name cannot be empty.');
+      toast.error(t('errors.displayNameEmpty'));
       return;
     }
     const trimmedAvatar = avatarUrl.trim();
@@ -127,7 +125,7 @@ export function ProfileForm({ initialProfile, initialPrefs }: Props) {
       try {
         new URL(trimmedAvatar);
       } catch {
-        toast.error('Avatar URL must be a valid URL.');
+        toast.error(t('errors.avatarInvalid'));
         return;
       }
     }
@@ -158,22 +156,24 @@ export function ProfileForm({ initialProfile, initialPrefs }: Props) {
       }
 
       await Promise.all(ops);
-      toast.success('Saved.');
+      toast.success(t('saved'));
       router.refresh();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to save.');
+      toast.error(err instanceof Error ? err.message : t('errors.saveFailed'));
     }
   }
+
+  type LocaleKey = Parameters<typeof tLocales>[0];
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Account</CardTitle>
+          <CardTitle>{t('accountHeading')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="space-y-2">
-            <Label htmlFor="profile-name">Display name</Label>
+            <Label htmlFor="profile-name">{t('displayNameLabel')}</Label>
             <Input
               id="profile-name"
               value={name}
@@ -183,12 +183,12 @@ export function ProfileForm({ initialProfile, initialPrefs }: Props) {
               disabled={isSaving}
             />
             <p className="text-xs text-muted-foreground">
-              Shown next to your contributions and on your avatar.
+              {t('displayNameHint')}
             </p>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="profile-email">Email</Label>
+            <Label htmlFor="profile-email">{t('emailLabel')}</Label>
             <Input
               id="profile-email"
               type="email"
@@ -197,12 +197,12 @@ export function ProfileForm({ initialProfile, initialPrefs }: Props) {
               readOnly
             />
             <p className="text-xs text-muted-foreground">
-              Email is set at sign-up and not editable here.
+              {t('emailHint')}
             </p>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="profile-avatar">Avatar URL</Label>
+            <Label htmlFor="profile-avatar">{t('avatarUrlLabel')}</Label>
             <Input
               id="profile-avatar"
               type="url"
@@ -213,7 +213,7 @@ export function ProfileForm({ initialProfile, initialPrefs }: Props) {
               disabled={isSaving}
             />
             <p className="text-xs text-muted-foreground">
-              Leave blank to fall back to a generated avatar.
+              {t('avatarUrlHint')}
             </p>
           </div>
         </CardContent>
@@ -221,20 +221,20 @@ export function ProfileForm({ initialProfile, initialPrefs }: Props) {
 
       <Card>
         <CardHeader>
-          <CardTitle>Region</CardTitle>
+          <CardTitle>{t('regionHeading')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="grid gap-5 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="profile-locale">Language</Label>
+              <Label htmlFor="profile-locale">{t('languageLabel')}</Label>
               <Select value={locale} onValueChange={setLocale} disabled={isSaving}>
                 <SelectTrigger id="profile-locale">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {LOCALES.map((l) => (
-                    <SelectItem key={l.value} value={l.value}>
-                      {l.label}
+                  {LOCALE_VALUES.map((v) => (
+                    <SelectItem key={v} value={v}>
+                      {tLocales(v as LocaleKey)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -242,7 +242,7 @@ export function ProfileForm({ initialProfile, initialPrefs }: Props) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="profile-tz">Time zone</Label>
+              <Label htmlFor="profile-tz">{t('timezoneLabel')}</Label>
               <Select value={timezone} onValueChange={setTimezone} disabled={isSaving}>
                 <SelectTrigger id="profile-tz">
                   <SelectValue />
@@ -262,25 +262,29 @@ export function ProfileForm({ initialProfile, initialPrefs }: Props) {
 
       <Card>
         <CardHeader>
-          <CardTitle>Display density</CardTitle>
+          <CardTitle>{t('densityHeading')}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
-            {DENSITIES.map((d) => (
+            {(['comfortable', 'compact'] as const).map((d) => (
               <button
                 type="button"
-                key={d.value}
-                onClick={() => setDensity(d.value)}
+                key={d}
+                onClick={() => setDensity(d)}
                 disabled={isSaving}
                 className={cn(
                   'flex-1 rounded-lg border p-4 text-left transition-colors',
-                  density === d.value
+                  density === d
                     ? 'border-primary bg-primary/5 ring-1 ring-primary'
                     : 'border-input hover:bg-muted/50',
                 )}
               >
-                <div className="font-medium">{d.label}</div>
-                <div className="text-xs text-muted-foreground mt-1">{d.hint}</div>
+                <div className="font-medium">
+                  {d === 'comfortable' ? t('densityComfortable') : t('densityCompact')}
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {d === 'comfortable' ? t('densityComfortableHint') : t('densityCompactHint')}
+                </div>
               </button>
             ))}
           </div>
@@ -289,16 +293,16 @@ export function ProfileForm({ initialProfile, initialPrefs }: Props) {
 
       <Card>
         <CardHeader>
-          <CardTitle>Notifications</CardTitle>
+          <CardTitle>{t('notificationsHeading')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between gap-4">
             <div>
               <Label htmlFor="notify-email" className="text-base">
-                Email notifications
+                {t('emailNotificationsLabel')}
               </Label>
               <p className="text-xs text-muted-foreground mt-1">
-                Important account changes and invitations.
+                {t('emailNotificationsHint')}
               </p>
             </div>
             <Switch
@@ -312,10 +316,10 @@ export function ProfileForm({ initialProfile, initialPrefs }: Props) {
           <div className="flex items-center justify-between gap-4">
             <div>
               <Label htmlFor="notify-activity" className="text-base">
-                Activity feed
+                {t('activityFeedLabel')}
               </Label>
               <p className="text-xs text-muted-foreground mt-1">
-                Edits and contributions in families you belong to.
+                {t('activityFeedHint')}
               </p>
             </div>
             <Switch
@@ -333,17 +337,17 @@ export function ProfileForm({ initialProfile, initialPrefs }: Props) {
           {isSaving ? (
             <>
               <Loader2 className="size-4 animate-spin" />
-              Saving…
+              {t('saving')}
             </>
           ) : (
             <>
               <Save className="size-4" />
-              Save changes
+              {t('saveChanges')}
             </>
           )}
         </Button>
         {dirty ? (
-          <span className="text-xs text-muted-foreground">Unsaved changes</span>
+          <span className="text-xs text-muted-foreground">{t('unsavedChanges')}</span>
         ) : null}
       </div>
     </form>

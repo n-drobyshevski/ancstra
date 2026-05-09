@@ -14,6 +14,7 @@ import {
   ShieldOff,
   UserPlus,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { trpc } from '@/lib/trpc/client';
 import {
   AlertDialog,
@@ -47,6 +48,8 @@ interface Props {
 
 export function UsersRowActions({ user, currentUserId }: Props) {
   const router = useRouter();
+  const t = useTranslations('admin.users.rowActions');
+  const tCommon = useTranslations('common');
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [transferMode, setTransferMode] = useState<'add' | 'move' | null>(null);
   const isSelf = user.id === currentUserId;
@@ -54,26 +57,26 @@ export function UsersRowActions({ user, currentUserId }: Props) {
 
   const toggle = trpc.platformAdmin.togglePlatformAdmin.useMutation({
     onSuccess: () => {
-      toast.success(promoting ? `Promoted ${user.name}` : `Demoted ${user.name}`);
+      toast.success(promoting ? t('promoted', { name: user.name }) : t('demoted', { name: user.name }));
       setConfirmOpen(false);
       router.refresh();
     },
     onError: (err) =>
-      toast.error(err.message || 'Failed to update platform admin status'),
+      toast.error(err.message || t('updateFailed')),
   });
 
-  async function copy(value: string, label: string) {
+  async function copy(value: string, kind: 'idCopied' | 'emailCopied') {
     try {
       await navigator.clipboard.writeText(value);
-      toast.success(`${label} copied`);
+      toast.success(t(kind));
     } catch {
-      toast.error('Copy failed');
+      toast.error(t('copyFailed'));
     }
   }
 
   const isPending = toggle.isPending;
   const ToggleIcon = promoting ? ShieldCheck : ShieldOff;
-  const toggleLabel = promoting ? 'Promote to admin' : 'Demote from admin';
+  const toggleLabel = promoting ? t('promote') : t('demote');
 
   return (
     <>
@@ -82,7 +85,7 @@ export function UsersRowActions({ user, currentUserId }: Props) {
           <Button
             variant="ghost"
             size="icon"
-            aria-label={`Actions for ${user.name}`}
+            aria-label={t('ariaLabel', { name: user.name })}
             disabled={isPending}
           >
             {isPending ? (
@@ -96,7 +99,7 @@ export function UsersRowActions({ user, currentUserId }: Props) {
           <DropdownMenuItem asChild>
             <Link href={`/admin/users/${user.id}`}>
               <ExternalLink className="size-4" />
-              Open user
+              {t('open')}
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem
@@ -109,20 +112,20 @@ export function UsersRowActions({ user, currentUserId }: Props) {
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => setTransferMode('add')}>
             <UserPlus className="size-4" />
-            Add to another family…
+            {t('addToFamily')}
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => setTransferMode('move')}>
             <ArrowLeftRight className="size-4" />
-            Move to another family…
+            {t('moveToFamily')}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => copy(user.id, 'User ID')}>
+          <DropdownMenuItem onClick={() => copy(user.id, 'idCopied')}>
             <Copy className="size-4" />
-            Copy user ID
+            {t('copyId')}
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => copy(user.email, 'Email')}>
+          <DropdownMenuItem onClick={() => copy(user.email, 'emailCopied')}>
             <Copy className="size-4" />
-            Copy email
+            {t('copyEmail')}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -140,21 +143,19 @@ export function UsersRowActions({ user, currentUserId }: Props) {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {promoting
-                ? 'Grant platform admin access?'
-                : 'Revoke platform admin access?'}
+              {promoting ? t('promoteTitle') : t('demoteTitle')}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {promoting
-                ? `${user.name} will gain access to the /admin console and be able to view all users and families across the platform.`
+                ? t('promoteDescription', { name: user.name })
                 : isSelf
-                  ? `You'll lose access to /admin immediately after this. Make sure another platform admin exists first.`
-                  : `${user.name} will no longer be able to access the /admin console.`}
+                  ? t('demoteSelfDescription')
+                  : t('demoteOtherDescription', { name: user.name })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={toggle.isPending}>
-              Cancel
+              {tCommon('buttons.cancel')}
             </AlertDialogCancel>
             <AlertDialogAction
               disabled={toggle.isPending}
@@ -171,7 +172,7 @@ export function UsersRowActions({ user, currentUserId }: Props) {
               {toggle.isPending ? (
                 <>
                   <Loader2 className="size-4 animate-spin" />
-                  Saving…
+                  {tCommon('states.loading')}
                 </>
               ) : (
                 toggleLabel

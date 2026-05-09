@@ -9,6 +9,7 @@ import {
   Archive,
   AlertTriangle,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -37,6 +38,9 @@ function formatBytes(bytes: number): string {
 }
 
 export function DataSettings({ onDataChanged }: DataSettingsProps) {
+  const tBackup = useTranslations('settings.data.backup');
+  const tCache = useTranslations('settings.data.cache');
+  const tDanger = useTranslations('settings.data.danger');
   const [backupLoading, setBackupLoading] = useState(false);
   const [cacheLoading, setCacheLoading] = useState(false);
   const [archiveLoading, setArchiveLoading] = useState(false);
@@ -62,9 +66,9 @@ export function DataSettings({ onDataChanged }: DataSettingsProps) {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
-      toast.success('Backup downloaded');
+      toast.success(tBackup('downloaded'));
     } catch {
-      toast.error('Failed to create backup');
+      toast.error(tBackup('downloadFailed'));
     } finally {
       setBackupLoading(false);
     }
@@ -81,11 +85,11 @@ export function DataSettings({ onDataChanged }: DataSettingsProps) {
       });
       if (!res.ok) throw new Error('Restore failed');
 
-      toast.success('Database restored. Reloading...');
+      toast.success(tBackup('restored'));
       onDataChanged();
       setTimeout(() => window.location.reload(), 1500);
     } catch {
-      toast.error('Failed to restore database');
+      toast.error(tBackup('restoreFailed'));
     }
   }
 
@@ -95,10 +99,10 @@ export function DataSettings({ onDataChanged }: DataSettingsProps) {
       const res = await fetch('/api/settings/cache', { method: 'DELETE' });
       if (!res.ok) throw new Error('Clear cache failed');
       const data = await res.json();
-      toast.success(`Cleared ${data.cleared} dismissed research items`);
+      toast.success(tCache('cleared', { count: data.cleared }));
       onDataChanged();
     } catch {
-      toast.error('Failed to clear cache');
+      toast.error(tCache('clearFailed'));
     } finally {
       setCacheLoading(false);
     }
@@ -110,10 +114,10 @@ export function DataSettings({ onDataChanged }: DataSettingsProps) {
       const res = await fetch('/api/settings/archives', { method: 'DELETE' });
       if (!res.ok) throw new Error('Clear archives failed');
       const data = await res.json();
-      toast.success(`Freed ${formatBytes(data.freedBytes)} of archive storage`);
+      toast.success(tDanger('freed', { size: formatBytes(data.freedBytes) }));
       onDataChanged();
     } catch {
-      toast.error('Failed to clear archives');
+      toast.error(tDanger('clearArchivesFailed'));
     } finally {
       setArchiveLoading(false);
     }
@@ -126,11 +130,11 @@ export function DataSettings({ onDataChanged }: DataSettingsProps) {
         fetch('/api/settings/cache', { method: 'DELETE' }),
         fetch('/api/settings/archives', { method: 'DELETE' }),
       ]);
-      toast.success('All data cleared. Reloading...');
+      toast.success(tDanger('allCleared'));
       onDataChanged();
       setTimeout(() => window.location.reload(), 1500);
     } catch {
-      toast.error('Failed to delete all data');
+      toast.error(tDanger('deleteAllFailed'));
     }
   }
 
@@ -138,7 +142,7 @@ export function DataSettings({ onDataChanged }: DataSettingsProps) {
     <div className="space-y-6">
       {/* Backup & Restore */}
       <div className="space-y-3">
-        <h3 className="text-sm font-medium">Backup & Restore</h3>
+        <h3 className="text-sm font-medium">{tBackup('heading')}</h3>
         <div className="flex gap-2">
           <RoleGate permission="settings:manage">
             <Button
@@ -148,7 +152,7 @@ export function DataSettings({ onDataChanged }: DataSettingsProps) {
               disabled={backupLoading}
             >
               <Download className="size-4" data-icon="inline-start" />
-              {backupLoading ? 'Creating backup...' : 'Download Backup'}
+              {backupLoading ? tBackup('creating') : tBackup('download')}
             </Button>
           </RoleGate>
 
@@ -157,20 +161,18 @@ export function DataSettings({ onDataChanged }: DataSettingsProps) {
               <AlertDialogTrigger asChild>
                 <Button variant="outline" className="flex-1">
                   <Upload className="size-4" data-icon="inline-start" />
-                  Restore Backup
+                  {tBackup('restore')}
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Restore Database</AlertDialogTitle>
+                  <AlertDialogTitle>{tBackup('restoreTitle')}</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This will replace your entire database with the uploaded file.
-                    This action cannot be undone. Make sure you have a current
-                    backup before proceeding.
+                    {tBackup('restoreDescription')}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogCancel>{tBackup('cancel')}</AlertDialogCancel>
                   <AlertDialogAction
                     variant="destructive"
                     onClick={() => {
@@ -184,7 +186,7 @@ export function DataSettings({ onDataChanged }: DataSettingsProps) {
                       input.click();
                     }}
                   >
-                    Choose File & Restore
+                    {tBackup('chooseAndRestore')}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
@@ -195,9 +197,9 @@ export function DataSettings({ onDataChanged }: DataSettingsProps) {
 
       {/* Clear Cache */}
       <div className="space-y-3">
-        <h3 className="text-sm font-medium">Cache</h3>
+        <h3 className="text-sm font-medium">{tCache('heading')}</h3>
         <p className="text-sm text-muted-foreground">
-          Remove dismissed research items from the database.
+          {tCache('description')}
         </p>
         <RoleGate permission="settings:manage">
           <Button
@@ -207,17 +209,16 @@ export function DataSettings({ onDataChanged }: DataSettingsProps) {
             disabled={cacheLoading}
           >
             <Trash2 className="size-4" data-icon="inline-start" />
-            {cacheLoading ? 'Clearing...' : 'Clear Search Cache'}
+            {cacheLoading ? tCache('clearing') : tCache('clear')}
           </Button>
         </RoleGate>
       </div>
 
       {/* Danger Zone */}
       <div className="space-y-3">
-        <h3 className="text-sm font-medium text-destructive">Danger Zone</h3>
+        <h3 className="text-sm font-medium text-destructive">{tDanger('heading')}</h3>
         <p className="text-sm text-muted-foreground">
-          Permanently delete all cached data and web archives. This cannot be
-          undone.
+          {tDanger('archivesDescription')}
         </p>
         <div className="flex gap-2">
           <RoleGate permission="settings:manage">
@@ -225,25 +226,23 @@ export function DataSettings({ onDataChanged }: DataSettingsProps) {
               <AlertDialogTrigger asChild>
                 <Button variant="destructive" className="flex-1" disabled={archiveLoading}>
                   <Archive className="size-4" data-icon="inline-start" />
-                  {archiveLoading ? 'Clearing...' : 'Clear Web Archives'}
+                  {archiveLoading ? tDanger('clearing') : tDanger('clearArchives')}
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Clear Web Archives</AlertDialogTitle>
+                  <AlertDialogTitle>{tDanger('clearArchivesTitle')}</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This will permanently delete all saved HTML archives and
-                    screenshots. Research items will be kept but their archive
-                    references will be removed.
+                    {tDanger('clearArchivesDescription')}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogCancel>{tBackup('cancel')}</AlertDialogCancel>
                   <AlertDialogAction
                     variant="destructive"
                     onClick={handleClearArchives}
                   >
-                    Delete Archives
+                    {tDanger('deleteArchives')}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
@@ -259,30 +258,31 @@ export function DataSettings({ onDataChanged }: DataSettingsProps) {
               <AlertDialogTrigger asChild>
                 <Button variant="destructive" className="flex-1">
                   <AlertTriangle className="size-4" data-icon="inline-start" />
-                  Delete All Data
+                  {tDanger('deleteAll')}
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Delete All Data</AlertDialogTitle>
+                  <AlertDialogTitle>{tDanger('deleteAllTitle')}</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This will permanently delete all cached research items and web
-                    archives. Type <strong>DELETE</strong> below to confirm.
+                    {tDanger.rich('deleteAllDescription', {
+                      b: (chunks) => <strong>{chunks}</strong>,
+                    })}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <Input
-                  placeholder="Type DELETE to confirm"
+                  placeholder={tDanger('deleteConfirmPlaceholder')}
                   value={deleteConfirmText}
                   onChange={(e) => setDeleteConfirmText(e.target.value)}
                 />
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogCancel>{tBackup('cancel')}</AlertDialogCancel>
                   <AlertDialogAction
                     variant="destructive"
                     disabled={deleteConfirmText !== 'DELETE'}
                     onClick={handleDeleteAll}
                   >
-                    Delete Everything
+                    {tDanger('deleteEverything')}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>

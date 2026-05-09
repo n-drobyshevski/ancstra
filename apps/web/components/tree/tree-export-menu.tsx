@@ -7,10 +7,12 @@ import {
   MenubarItem,
 } from '@/components/ui/menubar';
 import { Download } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useTreeExport } from '@/lib/tree/use-tree-export';
 import { RoleGate } from '@/components/auth/role-gate';
 
 export function TreeExportMenu() {
+  const t = useTranslations('tree.exportMenu');
   const { exporting, exportPng, exportSvg, exportPdf } = useTreeExport();
 
   // Gate the whole MenubarMenu (trigger + content) rather than each item
@@ -21,17 +23,17 @@ export function TreeExportMenu() {
       <MenubarMenu>
         <MenubarTrigger className="gap-1 text-xs" disabled={exporting}>
           <Download className="size-3.5" aria-hidden />
-          {exporting ? 'Exporting…' : 'Export'}
+          {exporting ? t('exporting') : t('label')}
         </MenubarTrigger>
         <MenubarContent align="end">
           <MenubarItem onSelect={() => void exportPng()}>
-            Export as PNG
+            {t('png')}
           </MenubarItem>
           <MenubarItem onSelect={() => void exportSvg()}>
-            Export as SVG
+            {t('svg')}
           </MenubarItem>
           <MenubarItem onSelect={() => void exportPdf()}>
-            Export as PDF
+            {t('pdf')}
           </MenubarItem>
         </MenubarContent>
       </MenubarMenu>

@@ -1,6 +1,7 @@
 'use client';
 
 import { X } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { FacetSearch } from './facets/facet-search';
@@ -23,6 +24,8 @@ interface PersonsSidebarProps {
 }
 
 export function PersonsSidebar({ yearBounds }: PersonsSidebarProps) {
+  const t = useTranslations('persons.sidebar');
+  const tFacets = useTranslations('persons.sidebar.facetLabels');
   const { filters, setFilters } = usePersonsFilters();
   const activeCount = countActiveFilters(filters);
 
@@ -42,14 +45,14 @@ export function PersonsSidebar({ yearBounds }: PersonsSidebarProps) {
   };
 
   return (
-    <aside aria-label="Filter people" className="flex flex-col h-full">
+    <aside aria-label={t('ariaLabel')} className="flex flex-col h-full">
       <div className="flex items-center justify-between px-3 py-2 border-b">
         <span className="text-sm font-medium">
-          Filters {activeCount > 0 && <span className="text-muted-foreground">· {activeCount}</span>}
+          {t('filtersLabel')} {activeCount > 0 && <span className="text-muted-foreground">· {activeCount}</span>}
         </span>
         {activeCount > 0 && (
           <Button variant="ghost" size="sm" onClick={clearAll} className="h-7 text-xs">
-            <X className="mr-1 h-3 w-3" aria-hidden /> Clear all
+            <X className="mr-1 h-3 w-3" aria-hidden /> {t('clearAll')}
           </Button>
         )}
       </div>
@@ -58,8 +61,8 @@ export function PersonsSidebar({ yearBounds }: PersonsSidebarProps) {
         <FacetSex />
         <FacetLiving />
         <FacetValidation />
-        <FacetYearRange label="Born" fromKey="bornFrom" toKey="bornTo" defaultOpen visualBounds={visualBounds} />
-        <FacetYearRange label="Died" fromKey="diedFrom" toKey="diedTo" visualBounds={visualBounds} />
+        <FacetYearRange label={tFacets('born')} fromKey="bornFrom" toKey="bornTo" defaultOpen visualBounds={visualBounds} />
+        <FacetYearRange label={tFacets('died')} fromKey="diedFrom" toKey="diedTo" visualBounds={visualBounds} />
         <FacetPlace />
         <FacetCitations />
         <FacetCompleteness />

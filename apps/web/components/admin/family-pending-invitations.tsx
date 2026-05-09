@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { Copy, Loader2, Mail, MoreHorizontal, RefreshCcw, Trash2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { trpc } from '@/lib/trpc/client';
 import { useIsHydrated } from '@/hooks/use-is-hydrated';
 import {
@@ -53,6 +54,9 @@ function formatExpiry(iso: string): { label: string; warn: boolean } {
 export function FamilyPendingInvitations({ familyId }: Props) {
   const router = useRouter();
   const hydrated = useIsHydrated();
+  const t = useTranslations('admin.families.pendingInvitations');
+  const tHeaders = useTranslations('admin.families.pendingInvitations.headers');
+  const tCommon = useTranslations('common');
   const [revokeTarget, setRevokeTarget] = useState<{ id: string; label: string } | null>(null);
 
   const query = trpc.platformAdmin.listInvitations.useQuery({
@@ -60,20 +64,16 @@ export function FamilyPendingInvitations({ familyId }: Props) {
     status: 'pending',
   });
 
-  // Gate fetch-status with `hydrated` so SSR and the first client paint
-  // produce identical attribute output (the SSR pass evaluates this
-  // differently from the post-hydration client and warns on `disabled`
-  // and the icon swap).
   const showFetching = hydrated && query.isFetching;
 
   const revoke = trpc.platformAdmin.revokeInvite.useMutation({
     onSuccess: ({ revoked }) => {
-      toast.success(revoked ? 'Invitation revoked' : 'Invitation already revoked');
+      toast.success(revoked ? t('revoked') : t('alreadyRevoked'));
       setRevokeTarget(null);
       query.refetch();
       router.refresh();
     },
-    onError: (err) => toast.error(err.message || 'Failed to revoke invitation'),
+    onError: (err) => toast.error(err.message || t('revokeFailed')),
   });
 
   const items = query.data ?? [];
@@ -83,9 +83,9 @@ export function FamilyPendingInvitations({ familyId }: Props) {
     const link = `${baseUrl}/invite/${token}`;
     try {
       await navigator.clipboard.writeText(link);
-      toast.success('Invite link copied to clipboard');
+      toast.success(t('linkCopied'));
     } catch {
-      toast.error('Could not copy to clipboard');
+      toast.error(t('copyFailed'));
     }
   }
 
@@ -94,10 +94,10 @@ export function FamilyPendingInvitations({ familyId }: Props) {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
           <CardTitle className="text-base">
-            Pending invitations
+            {t('title')}
             {items.length > 0 ? (
               <span className="ml-2 text-xs text-muted-foreground">
-                ({items.length})
+                {t('countSuffix', { count: items.length })}
               </span>
             ) : null}
           </CardTitle>
@@ -106,7 +106,7 @@ export function FamilyPendingInvitations({ familyId }: Props) {
             size="sm"
             onClick={() => query.refetch()}
             disabled={showFetching}
-            aria-label="Refresh"
+            aria-label={t('refreshAriaLabel')}
           >
             {showFetching ? (
               <Loader2 className="size-4 animate-spin" />
@@ -123,32 +123,32 @@ export function FamilyPendingInvitations({ familyId }: Props) {
           ) : query.isError ? (
             <div className="py-4 text-center">
               <p className="text-sm text-destructive">
-                {query.error?.message ?? 'Failed to load invitations'}
+                {query.error?.message ?? t('loadFailed')}
               </p>
               <Button variant="outline" size="sm" className="mt-2" onClick={() => query.refetch()}>
-                Retry
+                {t('retry')}
               </Button>
             </div>
           ) : items.length === 0 ? (
             <p className="py-4 text-center text-sm text-muted-foreground">
-              No pending invitations.
+              {t('empty')}
             </p>
           ) : (
             <div className="rounded-md border border-border">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Recipient</TableHead>
-                    <TableHead className="w-[100px]">Role</TableHead>
-                    <TableHead className="w-[160px]">Expires</TableHead>
-                    <TableHead className="w-[180px]">Invited by</TableHead>
-                    <TableHead className="w-[60px]" aria-label="Actions" />
+                    <TableHead>{tHeaders('recipient')}</TableHead>
+                    <TableHead className="w-[100px]">{tHeaders('role')}</TableHead>
+                    <TableHead className="w-[160px]">{tHeaders('expires')}</TableHead>
+                    <TableHead className="w-[180px]">{tHeaders('invitedBy')}</TableHead>
+                    <TableHead className="w-[60px]" aria-label={tHeaders('actions')} />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {items.map((inv) => {
                     const expiry = formatExpiry(inv.expiresAt);
-                    const recipient = inv.email ?? 'Anyone with link';
+                    const recipient = inv.email ?? t('anyoneWithLink');
                     return (
                       <TableRow key={inv.id}>
                         <TableCell>
@@ -181,7 +181,7 @@ export function FamilyPendingInvitations({ familyId }: Props) {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                aria-label={`Actions for invitation to ${recipient}`}
+                                aria-label={t('actionsAriaLabel', { recipient })}
                                 disabled={revoke.isPending}
                               >
                                 <MoreHorizontal className="size-4" />
@@ -190,7 +190,7 @@ export function FamilyPendingInvitations({ familyId }: Props) {
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem onClick={() => copyLink(inv.token)}>
                                 <Copy className="size-4 mr-2" />
-                                Copy invite link
+                                {t('copyLink')}
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
@@ -200,7 +200,7 @@ export function FamilyPendingInvitations({ familyId }: Props) {
                                 }
                               >
                                 <Trash2 className="size-4 mr-2" />
-                                Revoke
+                                {t('revoke')}
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -218,15 +218,16 @@ export function FamilyPendingInvitations({ familyId }: Props) {
       <AlertDialog open={!!revokeTarget} onOpenChange={(o) => !o && setRevokeTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Revoke invitation?</AlertDialogTitle>
+            <AlertDialogTitle>{t('revokeTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              The invitation link to <strong>{revokeTarget?.label}</strong> will
-              stop working immediately. Anyone who hasn&rsquo;t accepted yet will
-              not be able to use it.
+              {t.rich('revokeDescription', {
+                recipient: revokeTarget?.label ?? '',
+                b: (chunks) => <strong>{chunks}</strong>,
+              })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={revoke.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={revoke.isPending}>{tCommon('buttons.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => {
                 e.preventDefault();
@@ -239,10 +240,10 @@ export function FamilyPendingInvitations({ familyId }: Props) {
               {revoke.isPending ? (
                 <>
                   <Loader2 className="size-4 animate-spin" />
-                  Revoking…
+                  {t('revoking')}
                 </>
               ) : (
-                'Revoke'
+                t('revokeAction')
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

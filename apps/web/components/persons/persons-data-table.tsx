@@ -9,6 +9,7 @@ import {
   type VisibilityState,
 } from '@tanstack/react-table';
 import { useQueryStates } from 'nuqs';
+import { useTranslations } from 'next-intl';
 import {
   Table,
   TableBody,
@@ -20,7 +21,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { personsParsers, type HidableColumn, type PersonsFilters } from '@/lib/persons/search-params';
 import {
-  personsColumns,
+  usePersonsColumns,
   getAriaSort,
   COLUMN_ID_TO_SORT_KEY,
   SORT_KEY_TO_COLUMN_ID,
@@ -79,6 +80,8 @@ export function PersonsDataTable({
   const pageIds = useMemo(() => data.map((p) => p.id), [data]);
 
   const pageCount = Math.max(1, Math.ceil(total / filters.size));
+  const personsColumns = usePersonsColumns();
+  const tTable = useTranslations('persons.table');
 
   const table = useReactTable({
     data,
@@ -162,13 +165,13 @@ export function PersonsDataTable({
               <TableRow>
                 <TableCell colSpan={personsColumns.length} className="h-24 text-center">
                   <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
-                    <p>No persons match these filters.</p>
+                    <p>{tTable('noPersonsMatch')}</p>
                     <Button
                       variant="link"
                       size="sm"
                       onClick={() => void setFilters(defaultClearFilters())}
                     >
-                      Clear all filters
+                      {tTable('clearAllFilters')}
                     </Button>
                   </div>
                 </TableCell>
@@ -194,7 +197,7 @@ export function PersonsDataTable({
         aria-live="polite"
       >
         <span>
-          Page {filters.page} of {pageCount} ({total.toLocaleString()} total)
+          {tTable('pageOf', { page: filters.page, total: pageCount, count: total.toLocaleString() })}
         </span>
         <div className="flex gap-2">
           <Button
@@ -203,7 +206,7 @@ export function PersonsDataTable({
             disabled={filters.page <= 1}
             onClick={() => void setFilters({ page: filters.page - 1 })}
           >
-            Previous
+            {tTable('previous')}
           </Button>
           <Button
             variant="outline"
@@ -211,7 +214,7 @@ export function PersonsDataTable({
             disabled={filters.page >= pageCount}
             onClick={() => void setFilters({ page: filters.page + 1 })}
           >
-            Next
+            {tTable('next')}
           </Button>
         </div>
       </div>

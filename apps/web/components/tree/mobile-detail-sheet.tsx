@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Network, UserPlus } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import type { PersonListItem, TreeData } from '@ancstra/shared';
 import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer';
 import {
@@ -28,13 +29,7 @@ import { PersonCreateDialog } from '@/components/person-create-dialog';
 import { PersonLinkDialog, type RelationType } from '@/components/person-link-dialog';
 import { personDetailCache } from '@/lib/tree/person-detail-cache';
 
-const ADD_RELATION_GROUPS: Array<{ relation: RelationType; label: string }> = [
-  { relation: 'spouse', label: 'Spouse' },
-  { relation: 'father', label: 'Father' },
-  { relation: 'mother', label: 'Mother' },
-  { relation: 'child', label: 'Child' },
-  { relation: 'sibling', label: 'Sibling' },
-];
+const ADD_RELATION_KEYS: RelationType[] = ['spouse', 'father', 'mother', 'child', 'sibling'];
 
 /* -------------------------------------------------------------------------- */
 /*  Props                                                                      */
@@ -66,6 +61,10 @@ function SheetContent({
   onSeeOnTree: (personId: string) => void;
 }) {
   const router = useRouter();
+  const tMobile = useTranslations('tree.mobile');
+  const tAdd = useTranslations('tree.mobile.addRelation');
+  const tRelations = useTranslations('tree.mobile.addRelation.relations');
+  const tSex = useTranslations('tree.mobile.sex');
   const { person: fullPerson, events, citationCount, isLoading } = usePersonDetail(person.id);
   const isFullSnap = snap === 0.85;
   const [dialog, setDialog] = useState<{
@@ -100,30 +99,30 @@ function SheetContent({
           {/* Sex badge */}
           {!isLoading && fullPerson && (
             <span className="inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-              {fullPerson.sex === 'M' ? 'Male' : fullPerson.sex === 'F' ? 'Female' : 'Unknown'}
+              {tSex(fullPerson.sex)}
             </span>
           )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                aria-label="Add a relation to this person"
+                aria-label={tAdd('ariaLabel')}
                 className="ml-auto inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium text-foreground hover:bg-muted active:bg-muted"
               >
                 <UserPlus className="size-3" aria-hidden />
-                Add
+                {tAdd('label')}
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              {ADD_RELATION_GROUPS.map(({ relation, label }) => (
+              {ADD_RELATION_KEYS.map((relation) => (
                 <DropdownMenuSub key={relation}>
-                  <DropdownMenuSubTrigger>Add {label}</DropdownMenuSubTrigger>
+                  <DropdownMenuSubTrigger>{tAdd('subTrigger', { label: tRelations(relation) })}</DropdownMenuSubTrigger>
                   <DropdownMenuSubContent>
                     <DropdownMenuItem onSelect={() => setDialog({ kind: 'link', relation })}>
-                      Link existing
+                      {tAdd('linkExisting')}
                     </DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => setDialog({ kind: 'create', relation })}>
-                      + New
+                      {tAdd('newPerson')}
                     </DropdownMenuItem>
                   </DropdownMenuSubContent>
                 </DropdownMenuSub>
@@ -133,11 +132,11 @@ function SheetContent({
           <button
             type="button"
             onClick={() => onSeeOnTree(person.id)}
-            aria-label={`Focus ${person.givenName} ${person.surname} on tree`}
+            aria-label={tMobile('treeButtonAriaLabel', { name: `${person.givenName} ${person.surname}` })}
             className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium text-foreground hover:bg-muted active:bg-muted"
           >
             <Network className="size-3" aria-hidden />
-            Tree
+            {tMobile('treeButton')}
           </button>
         </div>
       </div>

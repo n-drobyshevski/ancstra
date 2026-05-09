@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
 import { Eye, Loader2, RefreshCcw, X } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { trpc } from '@/lib/trpc/client';
 import { useIsHydrated } from '@/hooks/use-is-hydrated';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -47,11 +48,7 @@ type AuditEntry = {
   createdAt: string;
 };
 
-const TARGET_TYPE_OPTIONS = [
-  { value: 'all', label: 'All targets' },
-  { value: 'user', label: 'User' },
-  { value: 'family', label: 'Family' },
-] as const;
+const TARGET_TYPES = ['all', 'user', 'family'] as const;
 
 function initials(name: string, email: string): string {
   const source = name?.trim() || email;
@@ -68,6 +65,10 @@ function formatWhen(iso: string): string {
 }
 
 export function AuditLogTable() {
+  const t = useTranslations('admin.audit');
+  const tFilters = useTranslations('admin.audit.filters');
+  const tHeaders = useTranslations('admin.audit.headers');
+  const tDetails = useTranslations('admin.audit.details');
   const hydrated = useIsHydrated();
   const [actionFilter, setActionFilter] = useState<string>('all');
   const [targetTypeFilter, setTargetTypeFilter] = useState<string>('all');
@@ -101,12 +102,19 @@ export function AuditLogTable() {
   const hasFilters =
     actionFilter !== 'all' || targetTypeFilter !== 'all' || actorFilter.trim() !== '';
 
+  const targetLabel = (key: string): string => {
+    if (key === 'all') return tFilters('allTargets');
+    if (key === 'user') return tFilters('user');
+    if (key === 'family') return tFilters('family');
+    return key;
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end gap-2">
         <div className="space-y-1">
           <label className="text-xs text-muted-foreground" htmlFor="audit-action">
-            Action
+            {tFilters('actionLabel')}
           </label>
           <Select
             value={actionFilter}
@@ -114,10 +122,10 @@ export function AuditLogTable() {
             disabled={hydrated && actionsQuery.isLoading}
           >
             <SelectTrigger id="audit-action" className="w-[220px]">
-              <SelectValue placeholder="All actions" />
+              <SelectValue placeholder={tFilters('allActions')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All actions</SelectItem>
+              <SelectItem value="all">{tFilters('allActions')}</SelectItem>
               {(actionsQuery.data ?? []).map((a) => (
                 <SelectItem key={a} value={a}>
                   <code className="text-xs">{a}</code>
@@ -129,16 +137,16 @@ export function AuditLogTable() {
 
         <div className="space-y-1">
           <label className="text-xs text-muted-foreground" htmlFor="audit-target-type">
-            Target type
+            {tFilters('targetTypeLabel')}
           </label>
           <Select value={targetTypeFilter} onValueChange={setTargetTypeFilter}>
             <SelectTrigger id="audit-target-type" className="w-[160px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {TARGET_TYPE_OPTIONS.map((o) => (
-                <SelectItem key={o.value} value={o.value}>
-                  {o.label}
+              {TARGET_TYPES.map((value) => (
+                <SelectItem key={value} value={value}>
+                  {targetLabel(value)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -147,13 +155,13 @@ export function AuditLogTable() {
 
         <div className="space-y-1">
           <label className="text-xs text-muted-foreground" htmlFor="audit-actor">
-            Actor user ID
+            {tFilters('actorIdLabel')}
           </label>
           <Input
             id="audit-actor"
             value={actorFilter}
             onChange={(e) => setActorFilter(e.target.value)}
-            placeholder="Filter by actor user ID…"
+            placeholder={tFilters('actorIdPlaceholder')}
             className="w-[260px]"
           />
         </div>
@@ -169,20 +177,20 @@ export function AuditLogTable() {
             }}
           >
             <X className="size-4" />
-            Clear
+            {tFilters('clear')}
           </Button>
         ) : null}
 
         <div className="ml-auto flex items-center gap-2">
           <span className="text-xs text-muted-foreground tabular-nums">
-            {items.length} entr{items.length === 1 ? 'y' : 'ies'}
+            {t('entryCount', { count: items.length })}
           </span>
           <Button
             variant="ghost"
             size="sm"
             onClick={() => query.refetch()}
             disabled={hydrated && query.isFetching}
-            aria-label="Refresh"
+            aria-label={t('refreshAriaLabel')}
           >
             {hydrated && query.isFetching && !query.isFetchingNextPage ? (
               <Loader2 className="size-4 animate-spin" />
@@ -197,12 +205,12 @@ export function AuditLogTable() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[140px]">When</TableHead>
-              <TableHead className="w-[220px]">Actor</TableHead>
-              <TableHead className="w-[200px]">Action</TableHead>
-              <TableHead className="w-[180px]">Target</TableHead>
-              <TableHead>Summary</TableHead>
-              <TableHead className="w-[60px]" aria-label="Details" />
+              <TableHead className="w-[140px]">{tHeaders('when')}</TableHead>
+              <TableHead className="w-[220px]">{tHeaders('actor')}</TableHead>
+              <TableHead className="w-[200px]">{tHeaders('action')}</TableHead>
+              <TableHead className="w-[180px]">{tHeaders('target')}</TableHead>
+              <TableHead>{tHeaders('summary')}</TableHead>
+              <TableHead className="w-[60px]" aria-label={tHeaders('details')} />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -216,7 +224,7 @@ export function AuditLogTable() {
               <TableRow>
                 <TableCell colSpan={6} className="py-8 text-center">
                   <p className="text-sm text-destructive">
-                    {query.error?.message ?? 'Failed to load audit log'}
+                    {query.error?.message ?? t('loadFailed')}
                   </p>
                   <Button
                     variant="outline"
@@ -224,16 +232,14 @@ export function AuditLogTable() {
                     className="mt-2"
                     onClick={() => query.refetch()}
                   >
-                    Retry
+                    {t('retry')}
                   </Button>
                 </TableCell>
               </TableRow>
             ) : items.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
-                  {hasFilters
-                    ? 'No entries match the selected filters.'
-                    : 'No audit entries yet.'}
+                  {hasFilters ? t('noMatch') : t('empty')}
                 </TableCell>
               </TableRow>
             ) : (
@@ -292,7 +298,7 @@ export function AuditLogTable() {
                       variant="ghost"
                       size="icon"
                       onClick={() => setDetailEntry(entry)}
-                      aria-label="View entry details"
+                      aria-label={tHeaders('details')}
                       disabled={!entry.metadata}
                     >
                       <Eye className="size-4" />
@@ -315,10 +321,10 @@ export function AuditLogTable() {
             {query.isFetchingNextPage ? (
               <>
                 <Loader2 className="size-4 animate-spin" />
-                Loading…
+                {t('loading')}
               </>
             ) : (
-              'Load more'
+              t('loadMore')
             )}
           </Button>
         </div>
@@ -330,7 +336,7 @@ export function AuditLogTable() {
       >
         <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
           <SheetHeader>
-            <SheetTitle>Audit entry details</SheetTitle>
+            <SheetTitle>{tDetails('title')}</SheetTitle>
             <SheetDescription>
               <code className="text-xs">{detailEntry?.action}</code>
             </SheetDescription>
@@ -338,18 +344,18 @@ export function AuditLogTable() {
           {detailEntry ? (
             <div className="mt-6 space-y-4 px-4 pb-6 text-sm">
               <div>
-                <dt className="text-xs uppercase tracking-wider text-muted-foreground">When</dt>
+                <dt className="text-xs uppercase tracking-wider text-muted-foreground">{tDetails('when')}</dt>
                 <dd className="font-medium tabular-nums">{detailEntry.createdAt}</dd>
               </div>
               <div>
-                <dt className="text-xs uppercase tracking-wider text-muted-foreground">Actor</dt>
+                <dt className="text-xs uppercase tracking-wider text-muted-foreground">{tDetails('actor')}</dt>
                 <dd>
                   {detailEntry.actorName}{' '}
                   <span className="text-muted-foreground">({detailEntry.actorEmail})</span>
                 </dd>
               </div>
               <div>
-                <dt className="text-xs uppercase tracking-wider text-muted-foreground">Target</dt>
+                <dt className="text-xs uppercase tracking-wider text-muted-foreground">{tDetails('target')}</dt>
                 <dd>
                   <Badge variant="outline" className="capitalize mr-1.5">
                     {detailEntry.targetType}
@@ -358,18 +364,18 @@ export function AuditLogTable() {
                 </dd>
               </div>
               <div>
-                <dt className="text-xs uppercase tracking-wider text-muted-foreground">Summary</dt>
+                <dt className="text-xs uppercase tracking-wider text-muted-foreground">{tDetails('summary')}</dt>
                 <dd>{detailEntry.summary}</dd>
               </div>
               <div>
-                <dt className="text-xs uppercase tracking-wider text-muted-foreground">Metadata</dt>
+                <dt className="text-xs uppercase tracking-wider text-muted-foreground">{tDetails('metadata')}</dt>
                 <dd>
                   {detailEntry.metadata ? (
                     <pre className="mt-1 rounded-md border bg-muted/50 p-3 text-xs overflow-x-auto">
                       {JSON.stringify(detailEntry.metadata, null, 2)}
                     </pre>
                   ) : (
-                    <span className="text-muted-foreground">—</span>
+                    <span className="text-muted-foreground">{tDetails('emDash')}</span>
                   )}
                 </dd>
               </div>

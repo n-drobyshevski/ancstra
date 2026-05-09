@@ -2,26 +2,28 @@
 
 import { useTheme } from 'next-themes';
 import { Sun, Moon, Monitor } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 const themes = [
-  { value: 'light', label: 'Light', icon: Sun },
-  { value: 'dark', label: 'Dark', icon: Moon },
-  { value: 'system', label: 'System', icon: Monitor },
+  { value: 'light', icon: Sun },
+  { value: 'dark', icon: Moon },
+  { value: 'system', icon: Monitor },
 ] as const;
 
 export function ThemeSelector() {
   const { theme, setTheme } = useTheme();
+  const t = useTranslations('settings.appearance.theme');
 
   return (
     <div className="space-y-2">
-      <h3 className="text-sm font-medium">Theme</h3>
+      <h3 className="text-sm font-medium">{t('label')}</h3>
       <p className="text-sm text-muted-foreground">
-        Choose how Ancstra looks to you.
+        {t('hint')}
       </p>
       <div className="flex gap-1 rounded-lg border border-input p-1 w-full md:w-fit">
-        {themes.map(({ value, label, icon: Icon }) => (
+        {themes.map(({ value, icon: Icon }) => (
           <Button
             key={value}
             variant={theme === value ? 'default' : 'ghost'}
@@ -33,7 +35,7 @@ export function ThemeSelector() {
             )}
           >
             <Icon className="size-3.5" />
-            {label}
+            {t(value)}
           </Button>
         ))}
       </div>

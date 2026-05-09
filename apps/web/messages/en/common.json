@@ -1,0 +1,83 @@
+{
+  "appName": "Ancstra",
+  "accessDenied": {
+    "title": "You don’t have permission to view that page",
+    "description": "Your role or active lens does not include this access."
+  },
+  "lens": {
+    "viewingAs": "Viewing as {role}",
+    "yourView": "Your view",
+    "tooltipActive": "Lens active: {role} — click to change",
+    "tooltipYourView": "Lens: your view",
+    "viewAs": "View this family as",
+    "youPrefix": "You: {role}",
+    "resetLabel": "Reset to your view",
+    "activated": "Now viewing as {role}",
+    "activatedDescription": "Permissions are temporarily downgraded.",
+    "reset": "Lens reset",
+    "resetDescription": "Restored your {role} access.",
+    "banner": {
+      "message": "Viewing as {role} — only what a {roleLower} can see is shown",
+      "exitAriaLabel": "Exit lens and restore your full access",
+      "exit": "Exit"
+    },
+    "roles": {
+      "owner": "Owner",
+      "admin": "Admin",
+      "editor": "Editor",
+      "viewer": "Viewer"
+    }
+  },
+  "sexLabels": {
+    "M": "Male",
+    "F": "Female",
+    "U": "Unknown"
+  },
+  "commandPalette": {
+    "placeholder": "Search people or type a command...",
+    "searching": "Searching...",
+    "noResults": "No results found.",
+    "groupPeople": "People",
+    "groupActions": "Actions",
+    "birthPrefix": "b. {date}",
+    "actions": {
+      "addPerson": "Add New Person",
+      "importGedcom": "Import GEDCOM",
+      "exportGedcom": "Export GEDCOM",
+      "goToTree": "Go to Tree",
+      "goToPeople": "Go to People",
+      "goToDashboard": "Go to Dashboard"
+    }
+  },
+  "buttons": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "tryAgain": "Try again",
+    "loadMore": "Load more"
+  },
+  "states": {
+    "loading": "Loading…",
+    "somethingWentWrong": "Something went wrong"
+  },
+  "relativeTime": {
+    "justNow": "just now",
+    "minutesAgo": "{count}m ago",
+    "hoursAgo": "{count}h ago",
+    "daysAgo": "{count}d ago",
+    "monthsAgo": "{count}mo ago",
+    "yearsAgo": "{count}y ago"
+  },
+  "dateBuckets": {
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "thisWeek": "This week",
+    "earlierThisMonth": "Earlier this month",
+    "earlier": "Earlier"
+  },
+  "theme": {
+    "toggle": "Toggle theme",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  }
+}

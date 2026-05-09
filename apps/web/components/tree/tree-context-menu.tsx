@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 import {
   Pencil,
   FlaskConical,
@@ -167,13 +168,7 @@ function Body(
 // Single-node menu
 // ---------------------------------------------------------------------------
 
-const ADD_RELATION_GROUPS: Array<{ relation: RelationType; label: string }> = [
-  { relation: 'spouse', label: 'Spouse' },
-  { relation: 'father', label: 'Father' },
-  { relation: 'mother', label: 'Mother' },
-  { relation: 'child', label: 'Child' },
-  { relation: 'sibling', label: 'Sibling' },
-];
+const ADD_RELATION_KEYS: RelationType[] = ['spouse', 'father', 'mother', 'child', 'sibling'];
 
 function NodeItems({
   surface,
@@ -185,6 +180,9 @@ function NodeItems({
   onSetTopologyAnchor,
 }: TreeContextMenuProps & { surface: { kind: 'node'; nodeId: string } }) {
   const router = useRouter();
+  const t = useTranslations('tree.contextMenu');
+  const tRelations = useTranslations('tree.contextMenu.relations');
+  const tToasts = useTranslations('tree.contextMenu.toasts');
   const person = persons.find((p) => p.id === surface.nodeId);
   if (!person) return null;
 
@@ -204,7 +202,7 @@ function NodeItems({
     <>
       <DropdownMenuLabel className="flex flex-col gap-0.5 px-2 py-1.5">
         <span className="text-sm font-medium text-foreground truncate">
-          {fullName || '(unnamed)'}
+          {fullName || t('unnamed')}
         </span>
         {lifespan && (
           <span className="text-[11px] text-muted-foreground">{lifespan}</span>
@@ -216,7 +214,7 @@ function NodeItems({
       {/* Navigate group */}
       <DropdownMenuItem onSelect={onClose}>
         <Eye />
-        <span>View details</span>
+        <span>{t('viewDetails')}</span>
       </DropdownMenuItem>
       <RoleGate permission="person:edit">
         <DropdownMenuItem
@@ -226,7 +224,7 @@ function NodeItems({
           }}
         >
           <Pencil />
-          <span>Edit person</span>
+          <span>{t('editPerson')}</span>
           <DropdownMenuShortcut>{formatShortcut('E')}</DropdownMenuShortcut>
         </DropdownMenuItem>
       </RoleGate>
@@ -237,7 +235,7 @@ function NodeItems({
         }}
       >
         <FlaskConical />
-        <span>Research this person</span>
+        <span>{t('research')}</span>
       </DropdownMenuItem>
 
       <DropdownMenuSeparator />
@@ -247,27 +245,27 @@ function NodeItems({
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>
             <UserPlus />
-            <span>Add relation</span>
+            <span>{t('addRelation')}</span>
           </DropdownMenuSubTrigger>
           <DropdownMenuSubContent className="min-w-44">
-            {ADD_RELATION_GROUPS.map(({ relation, label }) => (
+            {ADD_RELATION_KEYS.map((relation) => (
               <DropdownMenuSub key={relation}>
                 <DropdownMenuSubTrigger>
-                  <span>{label}</span>
+                  <span>{tRelations(relation)}</span>
                 </DropdownMenuSubTrigger>
                 <DropdownMenuSubContent className="min-w-40">
                   <RoleGate permission="family:create">
                     <DropdownMenuItem
                       onSelect={() => requestAddRelation('link', relation)}
                     >
-                      <span>Link existing…</span>
+                      <span>{t('linkExisting')}</span>
                     </DropdownMenuItem>
                   </RoleGate>
                   <RoleGate permission="person:create">
                     <DropdownMenuItem
                       onSelect={() => requestAddRelation('create', relation)}
                     >
-                      <span>+ New person</span>
+                      <span>{t('newPerson')}</span>
                     </DropdownMenuItem>
                   </RoleGate>
                 </DropdownMenuSubContent>
@@ -287,7 +285,7 @@ function NodeItems({
         }}
       >
         <Target />
-        <span>Focus on person</span>
+        <span>{t('focusOnPerson')}</span>
       </DropdownMenuItem>
       <DropdownMenuItem
         onSelect={() => {
@@ -296,7 +294,7 @@ function NodeItems({
         }}
       >
         <ArrowUpToLine />
-        <span>Show ancestors only</span>
+        <span>{t('showAncestorsOnly')}</span>
       </DropdownMenuItem>
       <DropdownMenuItem
         onSelect={() => {
@@ -305,7 +303,7 @@ function NodeItems({
         }}
       >
         <ArrowDownToLine />
-        <span>Show descendants only</span>
+        <span>{t('showDescendantsOnly')}</span>
       </DropdownMenuItem>
       <DropdownMenuItem
         onSelect={() => {
@@ -314,7 +312,7 @@ function NodeItems({
         }}
       >
         <Table2 />
-        <span>See in table view</span>
+        <span>{t('seeInTableView')}</span>
       </DropdownMenuItem>
 
       <DropdownMenuSeparator />
@@ -324,30 +322,30 @@ function NodeItems({
         onSelect={async () => {
           try {
             await navigator.clipboard.writeText(person.id);
-            toast.success('Person ID copied');
+            toast.success(tToasts('personIdCopied'));
           } catch {
-            toast.error('Could not copy to clipboard');
+            toast.error(tToasts('copyFailed'));
           }
           onClose();
         }}
       >
         <Hash />
-        <span>Copy person ID</span>
+        <span>{t('copyPersonId')}</span>
       </DropdownMenuItem>
       <DropdownMenuItem
         onSelect={async () => {
           try {
             const link = `${window.location.origin}/persons/${person.id}`;
             await navigator.clipboard.writeText(link);
-            toast.success('Share link copied');
+            toast.success(tToasts('shareLinkCopied'));
           } catch {
-            toast.error('Could not copy to clipboard');
+            toast.error(tToasts('copyFailed'));
           }
           onClose();
         }}
       >
         <Link2 />
-        <span>Copy share link</span>
+        <span>{t('copyShareLink')}</span>
       </DropdownMenuItem>
       <DropdownMenuItem
         onSelect={() => {
@@ -356,7 +354,7 @@ function NodeItems({
         }}
       >
         <ExternalLink />
-        <span>Open in new tab</span>
+        <span>{t('openInNewTab')}</span>
       </DropdownMenuItem>
 
       <DropdownMenuSeparator />
@@ -372,7 +370,7 @@ function NodeItems({
           }}
         >
           <Trash2 />
-          <span>Delete person…</span>
+          <span>{t('deletePerson')}</span>
         </DropdownMenuItem>
       </RoleGate>
     </>
@@ -389,12 +387,13 @@ function MultiSelectItems({
   onRequestBulkDelete,
   onExportSelection,
 }: TreeContextMenuProps & { trigger: ContextMenuTrigger }) {
+  const t = useTranslations('tree.contextMenu');
   const ids = trigger.selectionIds;
   return (
     <>
       <DropdownMenuLabel className="px-2 py-1.5">
         <span className="text-sm font-medium text-foreground">
-          Selected ({ids.length}) people
+          {t('selectedCount', { count: ids.length })}
         </span>
       </DropdownMenuLabel>
       <DropdownMenuSeparator />
@@ -402,7 +401,7 @@ function MultiSelectItems({
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>
             <Download />
-            <span>Bulk export</span>
+            <span>{t('bulkExport')}</span>
           </DropdownMenuSubTrigger>
           <DropdownMenuSubContent className="min-w-32">
             {(['png', 'svg', 'pdf'] as const).map((fmt) => (
@@ -427,7 +426,7 @@ function MultiSelectItems({
           onSelect={() => onRequestBulkDelete(ids)}
         >
           <Trash2 />
-          <span>Delete {ids.length} people…</span>
+          <span>{t('deletePeopleCount', { count: ids.length })}</span>
         </DropdownMenuItem>
       </RoleGate>
     </>
@@ -449,6 +448,7 @@ function EdgeItems({
     edgeFamilyId?: string;
   };
 }) {
+  const t = useTranslations('tree.contextMenu');
   // Note: the previously-considered "Edit relationship details" item
   // (router.push(`/families/${familyId}`)) was dropped — only an API
   // route exists at /api/families/[id]; there's no UI page, so the
@@ -464,7 +464,7 @@ function EdgeItems({
           }}
         >
           <Trash2 />
-          <span>Delete relationship</span>
+          <span>{t('deleteRelationship')}</span>
         </DropdownMenuItem>
       </RoleGate>
     </>
@@ -482,6 +482,7 @@ function PaneItems({
   onToggleMinimap,
   onAddPerson,
 }: TreeContextMenuProps) {
+  const t = useTranslations('tree.contextMenu');
   return (
     <>
       <RoleGate permission="person:create">
@@ -492,7 +493,7 @@ function PaneItems({
           }}
         >
           <UserPlus />
-          <span>Add person</span>
+          <span>{t('addPerson')}</span>
         </DropdownMenuItem>
       </RoleGate>
       <DropdownMenuSeparator />
@@ -503,7 +504,7 @@ function PaneItems({
         }}
       >
         <Maximize />
-        <span>Fit view</span>
+        <span>{t('fitView')}</span>
         <DropdownMenuShortcut>{formatShortcut('F')}</DropdownMenuShortcut>
       </DropdownMenuItem>
       <DropdownMenuItem
@@ -513,7 +514,7 @@ function PaneItems({
         }}
       >
         <RefreshCw />
-        <span>Reset zoom</span>
+        <span>{t('resetZoom')}</span>
         <DropdownMenuShortcut>{formatShortcut('0')}</DropdownMenuShortcut>
       </DropdownMenuItem>
       <DropdownMenuItem
@@ -523,7 +524,7 @@ function PaneItems({
         }}
       >
         <MapIcon />
-        <span>Toggle minimap</span>
+        <span>{t('toggleMinimap')}</span>
         <DropdownMenuShortcut>{formatShortcut('Mod M')}</DropdownMenuShortcut>
       </DropdownMenuItem>
     </>

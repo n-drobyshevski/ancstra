@@ -1,6 +1,7 @@
 'use client';
 
 import { Filter } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import {
   Drawer,
   DrawerContent,
@@ -20,6 +21,7 @@ import type { TreeYearBounds } from '@/lib/persons/year-bounds';
 // rendered inside a Drawer triggered by a Filters button. Used by the
 // mobile view bar in table mode.
 export function TreeMobileFiltersDrawer({ yearBounds }: { yearBounds: TreeYearBounds }) {
+  const t = useTranslations('tree.mobile.filtersDrawer');
   const { filters } = useTreeTableFilters();
   const activeCount = countActiveTreeFilters(filters);
 
@@ -30,10 +32,14 @@ export function TreeMobileFiltersDrawer({ yearBounds }: { yearBounds: TreeYearBo
           variant="ghost"
           size="sm"
           className="h-8 px-2"
-          aria-label={`Open filters${activeCount > 0 ? ` (${activeCount} active)` : ''}`}
+          aria-label={
+            activeCount > 0
+              ? t('openLabelWithCount', { count: activeCount })
+              : t('openLabel')
+          }
         >
           <Filter className="mr-1 h-4 w-4" aria-hidden />
-          <span className="text-xs">Filters</span>
+          <span className="text-xs">{t('filtersChip')}</span>
           {activeCount > 0 && (
             <Badge className="ml-1 h-4 px-1 text-[10px]" aria-hidden>
               {activeCount}
@@ -43,7 +49,7 @@ export function TreeMobileFiltersDrawer({ yearBounds }: { yearBounds: TreeYearBo
       </DrawerTrigger>
       <DrawerContent>
         <DrawerHeader className="text-left">
-          <DrawerTitle>Filter people</DrawerTitle>
+          <DrawerTitle>{t('drawerTitle')}</DrawerTitle>
         </DrawerHeader>
         <ScrollArea className="max-h-[70vh] pb-8">
           <TreeSidebar yearBounds={yearBounds} />

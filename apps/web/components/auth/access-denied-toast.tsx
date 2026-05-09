@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 
 /**
  * Surfaces a single error toast when a server-side page guard redirected the
@@ -19,6 +20,7 @@ export function AccessDeniedToast() {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
+  const t = useTranslations('common.accessDenied');
   const fired = useRef(false);
 
   useEffect(() => {
@@ -27,15 +29,15 @@ export function AccessDeniedToast() {
     if (fired.current) return;
     fired.current = true;
 
-    toast.error("You don't have permission to view that page", {
-      description: 'Your role or active lens does not include this access.',
+    toast.error(t('title'), {
+      description: t('description'),
     });
 
     const next = new URLSearchParams(searchParams.toString());
     next.delete('denied');
     const qs = next.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname);
-  }, [searchParams, pathname, router]);
+  }, [searchParams, pathname, router, t]);
 
   return null;
 }

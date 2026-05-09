@@ -5,6 +5,7 @@ import type { FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Eye, EyeOff, Loader2, UserPlus } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { trpc } from '@/lib/trpc/client';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -27,30 +28,20 @@ import {
 } from '@/components/admin/family-picker-field';
 
 type Role = 'admin' | 'editor' | 'viewer';
-
-const ROLE_OPTIONS: ReadonlyArray<{
-  value: Role;
-  label: string;
-  description: string;
-}> = [
-  { value: 'admin', label: 'Admin', description: 'Full management except owner-only ops' },
-  { value: 'editor', label: 'Editor', description: 'Can edit data; not membership' },
-  { value: 'viewer', label: 'Viewer', description: 'Read-only access' },
-];
+const ROLE_VALUES: Role[] = ['admin', 'editor', 'viewer'];
 
 export function AddUserDialog() {
+  const t = useTranslations('admin.users.addDialog');
   const [open, setOpen] = useState(false);
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button size="sm">
           <UserPlus className="size-4" />
-          Add user
+          {t('trigger')}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">
-        {/* Remount on each open so state is fresh — same pattern
-            move-or-add-member-dialog uses. */}
         {open ? <AddUserForm onClose={() => setOpen(false)} /> : null}
       </DialogContent>
     </Dialog>
@@ -59,6 +50,8 @@ export function AddUserDialog() {
 
 function AddUserForm({ onClose }: { onClose: () => void }) {
   const router = useRouter();
+  const t = useTranslations('admin.users.addDialog');
+  const tRoles = useTranslations('admin.users.addDialog.roles');
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -72,18 +65,16 @@ function AddUserForm({ onClose }: { onClose: () => void }) {
   const createUser = trpc.platformAdmin.createUser.useMutation({
     onSuccess: ({ email: createdEmail, addedToFamily, capExceeded }) => {
       if (addedToFamily && capExceeded) {
-        toast.warning(
-          `Created ${createdEmail} and added to ${addedToFamily.name} (now over the member cap)`,
-        );
+        toast.warning(t('createdAddedOverCap', { email: createdEmail, family: addedToFamily.name }));
       } else if (addedToFamily) {
-        toast.success(`Created ${createdEmail} and added to ${addedToFamily.name}`);
+        toast.success(t('createdAddedToFamily', { email: createdEmail, family: addedToFamily.name }));
       } else {
-        toast.success(`Created user ${createdEmail}`);
+        toast.success(t('createdUser', { email: createdEmail }));
       }
       onClose();
       router.refresh();
     },
-    onError: (err) => toast.error(err.message || 'Failed to create user'),
+    onError: (err) => toast.error(err.message || t('createFailed')),
   });
 
   const trimmedName = name.trim();
@@ -114,17 +105,15 @@ function AddUserForm({ onClose }: { onClose: () => void }) {
   return (
     <form onSubmit={handleSubmit}>
       <DialogHeader>
-        <DialogTitle>Add new user</DialogTitle>
+        <DialogTitle>{t('title')}</DialogTitle>
         <DialogDescription>
-          Provision a new account. You set the initial password and share it
-          with the user. The account is marked email-verified. This action is
-          logged in the platform audit log.
+          {t('description')}
         </DialogDescription>
       </DialogHeader>
 
       <div className="space-y-4 py-2">
         <div className="space-y-2">
-          <Label htmlFor="add-user-name">Name</Label>
+          <Label htmlFor="add-user-name">{t('nameLabel')}</Label>
           <Input
             id="add-user-name"
             value={name}
@@ -137,7 +126,7 @@ function AddUserForm({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="add-user-email">Email</Label>
+          <Label htmlFor="add-user-email">{t('emailLabel')}</Label>
           <Input
             id="add-user-email"
             type="email"
@@ -150,7 +139,7 @@ function AddUserForm({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="add-user-password">Password</Label>
+          <Label htmlFor="add-user-password">{t('passwordLabel')}</Label>
           <div className="relative">
             <Input
               id="add-user-password"
@@ -178,7 +167,7 @@ function AddUserForm({ onClose }: { onClose: () => void }) {
             </button>
           </div>
           <p className="text-xs text-muted-foreground">
-            At least 8 characters. Hashed server-side with bcrypt.
+            {t('passwordHint')}
           </p>
         </div>
 
@@ -189,7 +178,7 @@ function AddUserForm({ onClose }: { onClose: () => void }) {
               onCheckedChange={(v) => setAddToFamily(v === true)}
               disabled={createUser.isPending}
             />
-            <span>Also add to a family</span>
+            <span>{t('alsoAddToFamily')}</span>
           </label>
         </div>
 
@@ -203,32 +192,32 @@ function AddUserForm({ onClose }: { onClose: () => void }) {
 
             {selectedFamily ? (
               <div className="space-y-2">
-                <Label>Role at family</Label>
+                <Label>{t('roleLabel')}</Label>
                 <RadioGroup
                   value={role}
                   onValueChange={(v: Role) => setRole(v)}
                   className="grid grid-cols-3 gap-2"
                   disabled={createUser.isPending}
                 >
-                  {ROLE_OPTIONS.map((opt) => (
+                  {ROLE_VALUES.map((r) => (
                     <Label
-                      key={opt.value}
-                      htmlFor={`add-user-role-${opt.value}`}
+                      key={r}
+                      htmlFor={`add-user-role-${r}`}
                       className={cn(
                         'flex cursor-pointer flex-col gap-1 rounded-md border border-input p-3 transition-colors hover:bg-accent/50',
-                        role === opt.value && 'border-primary bg-primary/5',
+                        role === r && 'border-primary bg-primary/5',
                         createUser.isPending && 'cursor-not-allowed opacity-60',
                       )}
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-sm font-medium">{opt.label}</span>
+                        <span className="text-sm font-medium">{tRoles(r)}</span>
                         <RadioGroupItem
-                          value={opt.value}
-                          id={`add-user-role-${opt.value}`}
+                          value={r}
+                          id={`add-user-role-${r}`}
                         />
                       </div>
                       <span className="text-xs text-muted-foreground">
-                        {opt.description}
+                        {tRoles(`${r}Hint` as const)}
                       </span>
                     </Label>
                   ))}
@@ -246,18 +235,18 @@ function AddUserForm({ onClose }: { onClose: () => void }) {
           onClick={onClose}
           disabled={createUser.isPending}
         >
-          Cancel
+          {t('cancel')}
         </Button>
         <Button type="submit" disabled={!canSubmit}>
           {createUser.isPending ? (
             <>
               <Loader2 className="size-4 animate-spin" />
-              Creating…
+              {t('creating')}
             </>
           ) : (
             <>
               <UserPlus className="size-4" />
-              Create user
+              {t('create')}
             </>
           )}
         </Button>

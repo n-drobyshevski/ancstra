@@ -16,6 +16,7 @@ import {
   MenubarSubContent,
 } from '@/components/ui/menubar';
 import { Star } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import type { NodeStyle } from './tree-utils';
 import type { Coloring, ColoringStyle, EdgeStyle } from '@/lib/tree/view-prefs-storage';
 import { formatShortcut } from '@/lib/tree/format-shortcut';
@@ -109,128 +110,138 @@ export function TreeViewMenu(props: TreeViewMenuProps) {
     onDeleteLayout,
     onAutoLayout,
   } = props;
+  const t = useTranslations('tree.viewMenu');
+  const tGroups = useTranslations('tree.viewMenu.groups');
+  const tNodeStyle = useTranslations('tree.viewMenu.nodeStyle');
+  const tShowOnNodes = useTranslations('tree.viewMenu.showOnNodes');
+  const tOverlays = useTranslations('tree.viewMenu.overlays');
+  const tColoring = useTranslations('tree.viewMenu.coloring');
+  const tApplyAs = useTranslations('tree.viewMenu.applyAs');
+  const tEdges = useTranslations('tree.viewMenu.edges');
+  const tCamera = useTranslations('tree.viewMenu.camera');
+  const tLayouts = useTranslations('tree.viewMenu.savedLayouts');
 
   return (
     <MenubarMenu>
-      <MenubarTrigger className="text-xs">View</MenubarTrigger>
+      <MenubarTrigger className="text-xs">{t('trigger')}</MenubarTrigger>
       <MenubarContent align="start">
-        <MenubarLabel>Node style</MenubarLabel>
+        <MenubarLabel>{tGroups('nodeStyle')}</MenubarLabel>
         <MenubarRadioGroup
           value={nodeStyle}
           onValueChange={(v) => onNodeStyleChange(v as NodeStyle)}
         >
           <MenubarRadioItem value="wide">
-            Wide
+            {tNodeStyle('wide')}
             <MenubarShortcut>{formatShortcut('Mod Alt 1')}</MenubarShortcut>
           </MenubarRadioItem>
           <MenubarRadioItem value="compact">
-            Compact
+            {tNodeStyle('compact')}
             <MenubarShortcut>{formatShortcut('Mod Alt 2')}</MenubarShortcut>
           </MenubarRadioItem>
         </MenubarRadioGroup>
 
         <MenubarSeparator />
 
-        <MenubarLabel>Show on nodes</MenubarLabel>
+        <MenubarLabel>{tGroups('showOnNodes')}</MenubarLabel>
         <MenubarCheckboxItem
           checked={showDates}
           onCheckedChange={onShowDatesChange}
         >
-          Lifespan dates
+          {tShowOnNodes('lifespanDates')}
         </MenubarCheckboxItem>
         <MenubarCheckboxItem
           checked={showLivingIndicator}
           onCheckedChange={onShowLivingIndicatorChange}
         >
-          Living indicator
+          {tShowOnNodes('livingIndicator')}
         </MenubarCheckboxItem>
 
         <MenubarSeparator />
 
-        <MenubarLabel>Overlays</MenubarLabel>
+        <MenubarLabel>{tGroups('overlays')}</MenubarLabel>
         <MenubarCheckboxItem
           checked={showMinimap}
           onCheckedChange={onShowMinimapChange}
         >
-          Minimap
+          {tOverlays('minimap')}
           <MenubarShortcut>{formatShortcut('Mod M')}</MenubarShortcut>
         </MenubarCheckboxItem>
         <MenubarCheckboxItem
           checked={showDataQuality}
           onCheckedChange={onShowDataQualityChange}
         >
-          Data Quality heatmap
+          {tOverlays('dataQuality')}
           <MenubarShortcut>{formatShortcut('Mod G')}</MenubarShortcut>
         </MenubarCheckboxItem>
         <MenubarCheckboxItem
           checked={showProposals}
           onCheckedChange={onShowProposalsChange}
         >
-          Pending proposals
+          {tOverlays('proposals')}
         </MenubarCheckboxItem>
         <MenubarCheckboxItem
           checked={showCitations}
           onCheckedChange={onShowCitationsChange}
         >
-          Citation indicators
+          {tOverlays('citations')}
         </MenubarCheckboxItem>
 
         <MenubarSeparator />
 
-        <MenubarLabel>Coloring</MenubarLabel>
+        <MenubarLabel>{tGroups('coloring')}</MenubarLabel>
         <MenubarRadioGroup
           value={coloring}
           onValueChange={(v) => onColoringChange(v as Coloring)}
         >
-          <MenubarRadioItem value="off">Off</MenubarRadioItem>
-          <MenubarRadioItem value="generation">Generation</MenubarRadioItem>
+          <MenubarRadioItem value="off">{tColoring('off')}</MenubarRadioItem>
+          <MenubarRadioItem value="generation">{tColoring('generation')}</MenubarRadioItem>
           <MenubarRadioItem value="branch">
-            Paternal / maternal branch
+            {tColoring('branch')}
           </MenubarRadioItem>
-          <MenubarRadioItem value="living">Living status</MenubarRadioItem>
+          <MenubarRadioItem value="living">{tColoring('living')}</MenubarRadioItem>
         </MenubarRadioGroup>
 
-        <MenubarLabel>Apply as</MenubarLabel>
+        <MenubarLabel>{tGroups('applyAs')}</MenubarLabel>
         <MenubarRadioGroup
           value={coloringStyle}
           onValueChange={(v) => onColoringStyleChange(v as ColoringStyle)}
         >
-          <MenubarRadioItem value="fill">Fill</MenubarRadioItem>
-          <MenubarRadioItem value="border">Border</MenubarRadioItem>
+          <MenubarRadioItem value="fill">{tApplyAs('fill')}</MenubarRadioItem>
+          <MenubarRadioItem value="border">{tApplyAs('border')}</MenubarRadioItem>
         </MenubarRadioGroup>
 
         <MenubarSeparator />
 
-        <MenubarLabel>Edges</MenubarLabel>
+        <MenubarLabel>{tGroups('edges')}</MenubarLabel>
         <MenubarRadioGroup
           value={edges}
           onValueChange={(v) => onEdgesChange(v as EdgeStyle)}
         >
-          <MenubarRadioItem value="curved">Curved</MenubarRadioItem>
-          <MenubarRadioItem value="stepped">Stepped</MenubarRadioItem>
-          <MenubarRadioItem value="straight">Straight</MenubarRadioItem>
+          <MenubarRadioItem value="curved">{tEdges('curved')}</MenubarRadioItem>
+          <MenubarRadioItem value="stepped">{tEdges('stepped')}</MenubarRadioItem>
+          <MenubarRadioItem value="straight">{tEdges('straight')}</MenubarRadioItem>
         </MenubarRadioGroup>
 
         <MenubarSeparator />
 
-        <MenubarLabel>Camera</MenubarLabel>
+        <MenubarLabel>{tGroups('camera')}</MenubarLabel>
         <MenubarItem onSelect={onFitToScreen}>
-          Fit to screen
+          {tCamera('fitToScreen')}
           <MenubarShortcut>F</MenubarShortcut>
         </MenubarItem>
         <MenubarItem onSelect={onCenterOnSelected} disabled={!hasSelection}>
-          Center on selected
+          {tCamera('centerOnSelected')}
           <MenubarShortcut>C</MenubarShortcut>
         </MenubarItem>
         <MenubarItem onSelect={onResetZoom}>
-          Reset zoom
+          {tCamera('resetZoom')}
           <MenubarShortcut>0</MenubarShortcut>
         </MenubarItem>
 
         <MenubarSeparator />
 
         <MenubarSub>
-          <MenubarSubTrigger>Saved layouts</MenubarSubTrigger>
+          <MenubarSubTrigger>{tLayouts('label')}</MenubarSubTrigger>
           <MenubarSubContent>
             {layouts.map((layout) => (
               <MenubarItem
@@ -247,17 +258,17 @@ export function TreeViewMenu(props: TreeViewMenuProps) {
               </MenubarItem>
             ))}
             {layouts.length > 0 && <MenubarSeparator />}
-            <MenubarItem onSelect={onSaveAsNew}>Save current as…</MenubarItem>
+            <MenubarItem onSelect={onSaveAsNew}>{tLayouts('saveAsNew')}</MenubarItem>
             {activeLayoutId && (
               <>
                 <MenubarItem onSelect={onUpdateLayout}>
-                  Update &ldquo;{activeLayoutName}&rdquo;
+                  {tLayouts('updateNamed', { name: activeLayoutName ?? '' })}
                 </MenubarItem>
                 <MenubarSeparator />
-                <MenubarItem onSelect={onSetDefault}>Set as default</MenubarItem>
-                <MenubarItem onSelect={onRenameLayout}>Rename</MenubarItem>
+                <MenubarItem onSelect={onSetDefault}>{tLayouts('setDefault')}</MenubarItem>
+                <MenubarItem onSelect={onRenameLayout}>{tLayouts('rename')}</MenubarItem>
                 <MenubarItem variant="destructive" onSelect={onDeleteLayout}>
-                  Delete
+                  {tLayouts('delete')}
                 </MenubarItem>
               </>
             )}
@@ -265,7 +276,7 @@ export function TreeViewMenu(props: TreeViewMenuProps) {
         </MenubarSub>
 
         <MenubarItem onSelect={onAutoLayout}>
-          Auto Layout
+          {t('autoLayout')}
           <MenubarShortcut>{formatShortcut('Mod Shift L')}</MenubarShortcut>
         </MenubarItem>
       </MenubarContent>

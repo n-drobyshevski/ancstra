@@ -1,0 +1,195 @@
+{
+  "page": {
+    "title": "Люди",
+    "addNewPerson": "Добавить нового человека",
+    "metadataPerson": "Человек",
+    "metadataNotFound": "Человек не найден"
+  },
+  "toolbar": {
+    "filtersLabel": "Фильтры",
+    "openFilters": "Открыть фильтры",
+    "openFiltersWithCount": "Открыть фильтры ({count} активных)",
+    "drawerTitle": "Фильтр людей"
+  },
+  "sidebar": {
+    "ariaLabel": "Фильтр людей",
+    "filtersLabel": "Фильтры",
+    "clearAll": "Очистить всё",
+    "facetLabels": {
+      "born": "Рождён",
+      "died": "Умер"
+    }
+  },
+  "facets": {
+    "filterActiveAriaLabel": "фильтр активен",
+    "search": {
+      "label": "Поиск",
+      "placeholder": "Имя, место, заметки...",
+      "ariaLabel": "Поиск людей"
+    },
+    "sex": {
+      "label": "Пол",
+      "values": {
+        "M": "Мужской",
+        "F": "Женский",
+        "U": "Неизвестно"
+      }
+    },
+    "living": {
+      "label": "Статус",
+      "values": {
+        "alive": "Живой",
+        "deceased": "Умерший"
+      }
+    },
+    "validation": {
+      "label": "Проверка",
+      "values": {
+        "confirmed": "Подтверждён",
+        "proposed": "Предложен / спорный"
+      }
+    },
+    "yearRange": {
+      "yearRangeAriaLabel": "Диапазон годов {label}",
+      "fromYearAriaLabel": "Год {label} с",
+      "toYearAriaLabel": "Год {label} по",
+      "fromPlaceholder": "С",
+      "toPlaceholder": "По"
+    },
+    "place": {
+      "label": "Место",
+      "containsAriaLabel": "Место содержит",
+      "placeholder": "напр. Москва",
+      "scopeAriaLabel": "Область поиска места",
+      "scopes": {
+        "birth": "Только рождение",
+        "any": "Любое событие"
+      }
+    },
+    "citations": {
+      "label": "Источники",
+      "groupAriaLabel": "Количество цитирований источников",
+      "values": {
+        "any": "Любое",
+        "none": "Без источников",
+        "gte1": "1 или больше",
+        "gte3": "3 или больше"
+      }
+    },
+    "completeness": {
+      "label": "Полнота",
+      "minPrefix": "Мин:",
+      "minAriaLabel": "Минимальная полнота"
+    },
+    "hasProposals": {
+      "label": "ИИ-предложения",
+      "description": "Только люди с открытыми ИИ-предложениями"
+    }
+  },
+  "table": {
+    "headers": {
+      "name": "Имя",
+      "sex": "Пол",
+      "birth": "Рождение",
+      "death": "Смерть",
+      "completeness": "Полнота",
+      "sources": "Источники",
+      "validation": "Проверка",
+      "lastEdited": "Последнее изменение"
+    },
+    "sex": {
+      "M": "Мужской",
+      "F": "Женский",
+      "U": "Неизвестно"
+    },
+    "validation": {
+      "proposed": "Предложен",
+      "confirmed": "Подтверждён"
+    },
+    "selectAllOnPage": "Выбрать всех на странице",
+    "deselectAllOnPage": "Снять выделение со всех на странице",
+    "selectPerson": "Выбрать {name}",
+    "deselectPerson": "Снять выделение с {name}",
+    "emDash": "—",
+    "noPersonsMatch": "Нет людей, соответствующих этим фильтрам.",
+    "clearAllFilters": "Очистить все фильтры",
+    "pageOf": "Страница {page} из {total} (всего {count})",
+    "previous": "Назад",
+    "next": "Вперёд"
+  },
+  "activeFilters": {
+    "ariaLabel": "Активные фильтры",
+    "removeChipAriaLabel": "Убрать фильтр: {label}",
+    "search": "Поиск: «{value}»",
+    "sex": "Пол: {values}",
+    "living": "Статус: {value}",
+    "validation": "Проверка: {value}",
+    "born": "Рождение: {from}–{to}",
+    "died": "Смерть: {from}–{to}",
+    "place": "Место: «{value}» {scope}",
+    "placeScopeBirth": "(рождение)",
+    "placeScopeAny": "(любое)",
+    "citationsNone": "Без источников",
+    "citationsGte1": "≥ 1 источник",
+    "citationsGte3": "≥ 3 источника",
+    "completeness": "Полнота: ≥ {value}%",
+    "hasProposals": "ИИ-предложения открыты",
+    "openEllipsis": "…"
+  },
+  "selectionBar": {
+    "ariaLabel": "Действия с массовым выделением",
+    "countSelected": "Выбрано: {count}",
+    "delete": "Удалить",
+    "clear": "Очистить",
+    "clearAriaLabel": "Очистить выделение",
+    "deleteFailed": "Удаление не удалось: {message}",
+    "deleted": "{count, plural, =0 {Никто не удалён} one {Удалён # человек} few {Удалено # человека} many {Удалено # человек} other {Удалено # человек}}"
+  },
+  "selectAllBanner": {
+    "allMatchingSelected": "Выбраны все {count} подходящих людей",
+    "excludedSuffix": " (исключено: {count})",
+    "trailingPeriod": ".",
+    "allOnPageSelected": "Выбраны все {count} на этой странице.",
+    "selectAllMatching": "Выбрать все {count} подходящих",
+    "clearSelection": "Очистить выделение"
+  },
+  "deleteDialog": {
+    "title": "{count, plural, one {Удалить # человека?} few {Удалить # человека?} many {Удалить # человек?} other {Удалить # человек?}}",
+    "description": "Это мягко удалит выбранных людей. Их семейные и событийные связи останутся, но сами люди больше не будут отображаться в древе, списках или результатах поиска. Вы можете восстановить их, откатив базу данных. UI-отмены нет.",
+    "echoPrompt": "Введите <code>{count}</code> для подтверждения:",
+    "cancel": "Отмена",
+    "deleting": "Удаление…",
+    "delete": "Удалить"
+  },
+  "exportButton": {
+    "label": "Экспорт",
+    "csv": "CSV",
+    "gedcom": "GEDCOM",
+    "tooManyExplicit": "Невозможно экспортировать {count} явных выделений. Используйте «Выбрать все подходящие» или уточните фильтры."
+  },
+  "columnsDropdown": {
+    "ariaLabel": "Переключить столбцы",
+    "label": "Столбцы",
+    "visibleColumns": "Видимые столбцы",
+    "labels": {
+      "sex": "Пол",
+      "birthDate": "Рождение",
+      "deathDate": "Смерть",
+      "completeness": "Полнота",
+      "sourcesCount": "Источники",
+      "validation": "Проверка",
+      "updatedAt": "Последнее изменение"
+    }
+  },
+  "completenessCell": {
+    "ariaLabel": "Полнота {value}%",
+    "tooltipTitle": "Полнота {value}%",
+    "fields": {
+      "name": "Имя",
+      "birth": "Дата рождения",
+      "birthPlace": "Место рождения",
+      "death": "Дата смерти",
+      "source": "Источник"
+    }
+  }
+}

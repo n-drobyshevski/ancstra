@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { NextRequest } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
+
+// Mock next-intl/middleware to a no-op passthrough.
+vi.mock('next-intl/middleware', () => ({
+  default: () => () => NextResponse.next(),
+}));
 
 // Spy on bumpLastSeenAt BEFORE importing proxy (hoisted by vi.mock)
 const bumpLastSeenAtMock = vi.fn().mockResolvedValue(true);

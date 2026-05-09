@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { ArrowRight, History } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import type { AuditLogEntry } from '@ancstra/auth/admin';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -18,16 +19,17 @@ function initials(name: string, email: string): string {
 }
 
 export function RecentActivityWidget({ items }: Props) {
+  const t = useTranslations('admin.recentActivity');
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
         <div className="flex items-center gap-2">
           <History className="size-4 text-muted-foreground" />
-          <CardTitle className="text-sm font-medium">Recent platform activity</CardTitle>
+          <CardTitle className="text-sm font-medium">{t('title')}</CardTitle>
         </div>
         <Button asChild variant="ghost" size="sm">
           <Link href="/admin/audit">
-            View all
+            {t('viewAll')}
             <ArrowRight className="size-4" />
           </Link>
         </Button>
@@ -35,7 +37,7 @@ export function RecentActivityWidget({ items }: Props) {
       <CardContent>
         {items.length === 0 ? (
           <p className="py-6 text-center text-sm text-muted-foreground">
-            No platform-admin activity yet.
+            {t('empty')}
           </p>
         ) : (
           <ol className="space-y-3">

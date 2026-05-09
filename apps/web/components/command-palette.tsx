@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import {
   CommandDialog,
   CommandEmpty,
@@ -14,20 +15,35 @@ import { Badge } from '@/components/ui/badge';
 import type { PersonListItem } from '@ancstra/shared';
 import { personDetailCache } from '@/lib/tree/person-detail-cache';
 
-const actions = [
-  { label: 'Add New Person', href: '/persons/new', keywords: ['add', 'create', 'new', 'person'] },
-  { label: 'Import GEDCOM', href: '/data', keywords: ['import', 'gedcom', 'upload'] },
-  { label: 'Export GEDCOM', href: '/data?tab=export', keywords: ['export', 'gedcom', 'download'] },
-  { label: 'Go to Tree', href: '/tree', keywords: ['tree', 'canvas', 'visualization'] },
-  { label: 'Go to People', href: '/persons', keywords: ['people', 'persons', 'list'] },
-  { label: 'Go to Dashboard', href: '/dashboard', keywords: ['dashboard', 'home'] },
-];
+type ActionKey =
+  | 'addPerson'
+  | 'importGedcom'
+  | 'exportGedcom'
+  | 'goToTree'
+  | 'goToPeople'
+  | 'goToDashboard';
 
-const sexLabel = { M: 'Male', F: 'Female', U: 'Unknown' } as const;
+interface ActionDef {
+  key: ActionKey;
+  href: string;
+  keywords: string[];
+}
+
+const actions: ActionDef[] = [
+  { key: 'addPerson', href: '/persons/new', keywords: ['add', 'create', 'new', 'person'] },
+  { key: 'importGedcom', href: '/data', keywords: ['import', 'gedcom', 'upload'] },
+  { key: 'exportGedcom', href: '/data?tab=export', keywords: ['export', 'gedcom', 'download'] },
+  { key: 'goToTree', href: '/tree', keywords: ['tree', 'canvas', 'visualization'] },
+  { key: 'goToPeople', href: '/persons', keywords: ['people', 'persons', 'list'] },
+  { key: 'goToDashboard', href: '/dashboard', keywords: ['dashboard', 'home'] },
+];
 
 export function CommandPalette() {
   const router = useRouter();
   const pathname = usePathname();
+  const t = useTranslations('common.commandPalette');
+  const tActions = useTranslations('common.commandPalette.actions');
+  const tSex = useTranslations('common.sexLabels');
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<PersonListItem[]>([]);
@@ -92,30 +108,30 @@ export function CommandPalette() {
     [router, pathname],
   );
 
-  // Filter actions client-side
+  // Filter actions client-side. Match against the (translated) label and the
+  // English keyword set so legacy keyword muscle-memory still works in any
+  // locale.
   const filteredActions = query.trim()
     ? actions.filter((a) => {
         const q = query.toLowerCase();
-        return (
-          a.label.toLowerCase().includes(q) ||
-          a.keywords.some((k) => k.includes(q))
-        );
+        const label = tActions(a.key).toLowerCase();
+        return label.includes(q) || a.keywords.some((k) => k.includes(q));
       })
     : actions;
 
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
       <CommandInput
-        placeholder="Search people or type a command..."
+        placeholder={t('placeholder')}
         value={query}
         onValueChange={setQuery}
       />
       <CommandList>
         <CommandEmpty>
-          {searching ? 'Searching...' : 'No results found.'}
+          {searching ? t('searching') : t('noResults')}
         </CommandEmpty>
         {results.length > 0 && (
-          <CommandGroup heading="People">
+          <CommandGroup heading={t('groupPeople')}>
             {results.map((person) => (
               <CommandItem
                 key={person.id}
@@ -129,11 +145,11 @@ export function CommandPalette() {
                     {person.givenName} {person.surname}
                   </span>
                   <Badge variant="secondary" className="text-[10px]">
-                    {sexLabel[person.sex]}
+                    {tSex(person.sex)}
                   </Badge>
                   {person.birthDate && (
                     <span className="text-xs text-muted-foreground ml-auto">
-                      b. {person.birthDate}
+                      {t('birthPrefix', { date: person.birthDate })}
                     </span>
                   )}
                 </div>
@@ -141,14 +157,14 @@ export function CommandPalette() {
             ))}
           </CommandGroup>
         )}
-        <CommandGroup heading="Actions">
+        <CommandGroup heading={t('groupActions')}>
           {filteredActions.map((action) => (
             <CommandItem
               key={action.href}
-              value={action.label}
+              value={tActions(action.key)}
               onSelect={() => handleSelect(action.href)}
             >
-              {action.label}
+              {tActions(action.key)}
             </CommandItem>
           ))}
         </CommandGroup>

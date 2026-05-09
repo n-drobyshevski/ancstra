@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { BarChart3, Rows2, Rows3, Rows4 } from 'lucide-react';
@@ -25,10 +26,10 @@ interface TreeTableToolbarProps {
   onHiddenColumnsChange?: (next: TreeHidableColumn[]) => void;
 }
 
-const DENSITY_OPTIONS: { value: TreeDensity; label: string; icon: typeof Rows2 }[] = [
-  { value: 'compact', label: 'Compact', icon: Rows4 },
-  { value: 'comfortable', label: 'Comfortable', icon: Rows3 },
-  { value: 'spacious', label: 'Spacious', icon: Rows2 },
+const DENSITY_OPTIONS: { value: TreeDensity; icon: typeof Rows2 }[] = [
+  { value: 'compact', icon: Rows4 },
+  { value: 'comfortable', icon: Rows3 },
+  { value: 'spacious', icon: Rows2 },
 ];
 
 export function TreeTableToolbar({
@@ -44,6 +45,8 @@ export function TreeTableToolbar({
   hiddenColumns,
   onHiddenColumnsChange,
 }: TreeTableToolbarProps) {
+  const t = useTranslations('tree.tableToolbar');
+  const tDensity = useTranslations('tree.tableToolbar.density');
   const isTableView = view === 'table';
 
   const handleDensity = useCallback(
@@ -76,7 +79,7 @@ export function TreeTableToolbar({
             onClick={onToggleGaps}
           >
             <BarChart3 className="size-3.5" />
-            Data Quality
+            {t('dataQuality')}
           </Button>
 
           {isTableView && onDensityChange && (
@@ -85,11 +88,12 @@ export function TreeTableToolbar({
               <div
                 className="flex items-center rounded-md border bg-background overflow-hidden"
                 role="radiogroup"
-                aria-label="Row density"
+                aria-label={t('rowDensityAriaLabel')}
               >
                 {DENSITY_OPTIONS.map((opt, i) => {
                   const Icon = opt.icon;
                   const active = density === opt.value;
+                  const optLabel = tDensity(opt.value);
                   return (
                     <Button
                       key={opt.value}
@@ -97,7 +101,7 @@ export function TreeTableToolbar({
                       size="sm"
                       role="radio"
                       aria-checked={active}
-                      aria-label={`${opt.label} density`}
+                      aria-label={t('densityAriaLabel', { label: optLabel })}
                       className={
                         'h-7 w-7 p-0 rounded-none ' +
                         (i === 0 ? 'rounded-l-md ' : '') +

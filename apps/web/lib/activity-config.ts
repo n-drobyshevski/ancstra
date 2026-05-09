@@ -19,89 +19,99 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 
-export const ACTIVITY_ACTION_CONFIG: Record<
-  string,
-  { icon: LucideIcon; color: string; label: string }
-> = {
+export interface ActivityActionConfig {
+  icon: LucideIcon;
+  /** Saturated foreground color for the icon (and the dashboard pulse dot). */
+  color: string;
+  /** Subtle tinted background for the activity-entry badge. */
+  badgeBgClass: string;
+}
+
+/**
+ * Visual config per activity action. The human-readable label is sourced from
+ * the `activity.actions.<key>` translation namespace (see messages/<locale>/activity.json),
+ * not from this map.
+ */
+export const ACTIVITY_ACTION_CONFIG: Record<string, ActivityActionConfig> = {
   person_added: {
     icon: UserPlus,
-    color: 'text-emerald-600',
-    label: 'Person added',
+    color: 'text-status-success-text',
+    badgeBgClass: 'bg-status-success-bg',
   },
   person_edited: {
     icon: Pencil,
-    color: 'text-blue-600',
-    label: 'Person edited',
+    color: 'text-status-info-text',
+    badgeBgClass: 'bg-status-info-bg',
   },
   person_deleted: {
     icon: Trash2,
-    color: 'text-destructive',
-    label: 'Person deleted',
+    color: 'text-status-error-text',
+    badgeBgClass: 'bg-status-error-bg',
   },
   relationship_added: {
     icon: Link2,
-    color: 'text-violet-600',
-    label: 'Relationship added',
+    color: 'text-status-info-text',
+    badgeBgClass: 'bg-status-info-bg',
   },
   media_uploaded: {
     icon: ImagePlus,
-    color: 'text-amber-600',
-    label: 'Media uploaded',
+    color: 'text-status-warning-text',
+    badgeBgClass: 'bg-status-warning-bg',
   },
   gedcom_imported: {
     icon: FileDown,
-    color: 'text-primary',
-    label: 'GEDCOM imported',
+    color: 'text-status-merged-text',
+    badgeBgClass: 'bg-status-merged-bg',
   },
   invite_sent: {
     icon: Mail,
-    color: 'text-sky-600',
-    label: 'Invite sent',
+    color: 'text-status-info-text',
+    badgeBgClass: 'bg-status-info-bg',
   },
   invite_accepted: {
     icon: UserCheck,
-    color: 'text-emerald-600',
-    label: 'Invite accepted',
+    color: 'text-status-success-text',
+    badgeBgClass: 'bg-status-success-bg',
   },
   role_changed: {
     icon: Shield,
-    color: 'text-orange-600',
-    label: 'Role changed',
+    color: 'text-status-warning-text',
+    badgeBgClass: 'bg-status-warning-bg',
   },
   member_removed: {
     icon: UserMinus,
-    color: 'text-destructive',
-    label: 'Member removed',
+    color: 'text-status-error-text',
+    badgeBgClass: 'bg-status-error-bg',
   },
   contribution_submitted: {
     icon: FileText,
-    color: 'text-blue-600',
-    label: 'Contribution submitted',
+    color: 'text-status-info-text',
+    badgeBgClass: 'bg-status-info-bg',
   },
   contribution_approved: {
     icon: CheckCircle2,
-    color: 'text-emerald-600',
-    label: 'Contribution approved',
+    color: 'text-status-success-text',
+    badgeBgClass: 'bg-status-success-bg',
   },
   contribution_rejected: {
     icon: XCircle,
-    color: 'text-destructive',
-    label: 'Contribution rejected',
+    color: 'text-status-error-text',
+    badgeBgClass: 'bg-status-error-bg',
   },
   owner_transferred: {
     icon: Crown,
-    color: 'text-amber-600',
-    label: 'Ownership transferred',
+    color: 'text-status-warning-text',
+    badgeBgClass: 'bg-status-warning-bg',
   },
   invite_revoked: {
     icon: MailX,
-    color: 'text-orange-600',
-    label: 'Invite revoked',
+    color: 'text-status-warning-text',
+    badgeBgClass: 'bg-status-warning-bg',
   },
   family_settings_updated: {
     icon: Settings,
-    color: 'text-muted-foreground',
-    label: 'Settings updated',
+    color: 'text-status-neutral-text',
+    badgeBgClass: 'bg-status-neutral-bg',
   },
 };
 
@@ -116,54 +126,43 @@ export type ActivityCategoryKey =
 
 export interface ActivityCategory {
   key: ActivityCategoryKey;
-  label: string;
   actions: string[] | null;
 }
 
 export const ACTIVITY_CATEGORIES: ActivityCategory[] = [
-  { key: 'all', label: 'All', actions: null },
+  { key: 'all', actions: null },
   {
     key: 'people',
-    label: 'People',
     actions: ['person_added', 'person_edited', 'person_deleted', 'relationship_added'],
   },
   {
     key: 'media',
-    label: 'Media',
     actions: ['media_uploaded'],
   },
   {
     key: 'members',
-    label: 'Members',
     actions: ['invite_sent', 'invite_accepted', 'invite_revoked', 'role_changed', 'member_removed', 'owner_transferred'],
   },
   {
     key: 'settings',
-    label: 'Settings',
     actions: ['family_settings_updated'],
   },
   {
     key: 'import',
-    label: 'Import',
     actions: ['gedcom_imported'],
   },
   {
     key: 'contrib',
-    label: 'Contributions',
     actions: ['contribution_submitted', 'contribution_approved', 'contribution_rejected'],
   },
 ];
 
-const FALLBACK_CONFIG: { icon: LucideIcon; color: string; label: string } = {
+const FALLBACK_CONFIG: ActivityActionConfig = {
   icon: Activity,
-  color: 'text-muted-foreground',
-  label: 'Activity',
+  color: 'text-status-neutral-text',
+  badgeBgClass: 'bg-status-neutral-bg',
 };
 
-export function getActionConfig(action: string): {
-  icon: LucideIcon;
-  color: string;
-  label: string;
-} {
+export function getActionConfig(action: string): ActivityActionConfig {
   return ACTIVITY_ACTION_CONFIG[action] ?? FALLBACK_CONFIG;
 }

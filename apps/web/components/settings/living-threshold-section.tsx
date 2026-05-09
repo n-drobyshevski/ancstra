@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Loader2, Save } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { trpc } from '@/lib/trpc/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,19 +25,20 @@ const MAX_YEARS = 150;
  */
 export function LivingThresholdSection({ initialThreshold }: Props) {
   const router = useRouter();
+  const t = useTranslations('settings.privacy.livingThreshold');
   const [value, setValue] = useState<number>(initialThreshold);
 
   const update = trpc.family.updateSettings.useMutation({
     onSuccess: ({ changed }) => {
       if (changed.includes('livingThresholdYears')) {
-        toast.success(`Living-person threshold saved (${value} years)`);
+        toast.success(t('saved', { count: value }));
         router.refresh();
       } else {
-        toast.info('No change to save.');
+        toast.info(t('noChange'));
       }
     },
     onError: (err) => {
-      toast.error(err.message || 'Failed to save threshold');
+      toast.error(err.message || t('saveFailed'));
     },
   });
 
@@ -52,11 +54,10 @@ export function LivingThresholdSection({ initialThreshold }: Props) {
     <section className="space-y-4">
       <div>
         <Label htmlFor="living-threshold-years" className="text-base">
-          Living-person threshold
+          {t('label')}
         </Label>
         <p className="mt-1 text-sm text-muted-foreground max-w-2xl">
-          Persons born within this many years, with no recorded death, are
-          presumed living and redacted from viewers. Range {MIN_YEARS}–{MAX_YEARS} years.
+          {t('description', { min: MIN_YEARS, max: MAX_YEARS })}
         </p>
       </div>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -75,7 +76,7 @@ export function LivingThresholdSection({ initialThreshold }: Props) {
             disabled={update.isPending}
             className="w-24"
           />
-          <span className="text-sm text-muted-foreground">years</span>
+          <span className="text-sm text-muted-foreground">{t('yearsSuffix')}</span>
         </div>
         <Button
           type="button"
@@ -85,21 +86,21 @@ export function LivingThresholdSection({ initialThreshold }: Props) {
           {update.isPending ? (
             <>
               <Loader2 className="size-4 animate-spin" />
-              Saving…
+              {t('saving')}
             </>
           ) : (
             <>
               <Save className="size-4" />
-              Save
+              {t('save')}
             </>
           )}
         </Button>
         {!valid ? (
           <span className="text-xs text-destructive">
-            Must be between {MIN_YEARS} and {MAX_YEARS}.
+            {t('validation', { min: MIN_YEARS, max: MAX_YEARS })}
           </span>
         ) : dirty ? (
-          <span className="text-xs text-muted-foreground">Unsaved change</span>
+          <span className="text-xs text-muted-foreground">{t('unsaved')}</span>
         ) : null}
       </div>
     </section>

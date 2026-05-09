@@ -80,11 +80,14 @@ describe('getVisibleSettingsSections', () => {
   });
 
   describe('section metadata', () => {
-    it('every section has title and items', () => {
+    it('every section has a tier and items', () => {
       const sections = getVisibleSettingsSections('owner', true);
       for (const s of sections) {
-        expect(s.title.length).toBeGreaterThan(0);
+        expect(s.tier.length).toBeGreaterThan(0);
         expect(s.items.length).toBeGreaterThan(0);
+        for (const item of s.items) {
+          expect(item.key.length).toBeGreaterThan(0);
+        }
       }
     });
   });

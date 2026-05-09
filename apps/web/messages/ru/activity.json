@@ -1,0 +1,75 @@
+{
+  "page": {
+    "title": "Активность",
+    "noActivityHere": "Здесь нет активности",
+    "tryClearingFilters": "Попробуйте очистить фильтры или вернитесь, когда ваше семейное древо изменится.",
+    "loadFailed": "Не удалось загрузить активность",
+    "loadMoreFailed": "Не удалось загрузить ещё"
+  },
+  "welcome": {
+    "owner": "Всё, что происходит в вашем семейном древе, в одном месте.",
+    "admin": "Изменения членов, вклады и обновления древа, за которыми вы следите.",
+    "editor": "Правки древа, медиа, вклады и импорты, с которыми вы можете работать.",
+    "viewer": "Недавние добавления и обновления к древу, к которому у вас есть доступ."
+  },
+  "actions": {
+    "person_added": "Человек добавлен",
+    "person_edited": "Человек изменён",
+    "person_deleted": "Человек удалён",
+    "relationship_added": "Связь добавлена",
+    "media_uploaded": "Медиа загружено",
+    "gedcom_imported": "GEDCOM импортирован",
+    "invite_sent": "Приглашение отправлено",
+    "invite_accepted": "Приглашение принято",
+    "role_changed": "Роль изменена",
+    "member_removed": "Член удалён",
+    "contribution_submitted": "Вклад отправлен",
+    "contribution_approved": "Вклад одобрен",
+    "contribution_rejected": "Вклад отклонён",
+    "owner_transferred": "Владение передано",
+    "invite_revoked": "Приглашение отозвано",
+    "family_settings_updated": "Настройки обновлены",
+    "fallback": "Активность"
+  },
+  "categories": {
+    "all": "Все",
+    "people": "Люди",
+    "media": "Медиа",
+    "members": "Члены",
+    "settings": "Настройки",
+    "import": "Импорт",
+    "contrib": "Вклады"
+  },
+  "stats": {
+    "summaryAriaLabel": "Сводка активности",
+    "today": "Сегодня",
+    "thisWeek": "На этой неделе",
+    "topContributor": "Топ-контрибьютор",
+    "lastUpdate": "Последнее обновление",
+    "noActivityYet": "Пока нет активности",
+    "eventCount": "{count, plural, =0 {Нет событий} one {# событие} few {# события} many {# событий} other {# события}}",
+    "eventCountThisWeek": "{count, plural, =0 {Нет событий} one {# событие} few {# события} many {# событий} other {# события}} на этой неделе",
+    "emDash": "—"
+  },
+  "filters": {
+    "searchPlaceholder": "Поиск активности",
+    "searchAriaLabel": "Поиск активности",
+    "memberFilterAriaLabel": "Фильтр по члену",
+    "byAnyone": "От: Любой",
+    "byMember": "От: {name}",
+    "dateLabel": "Дата: {value}",
+    "dateRangeAriaLabel": "Диапазон дат",
+    "datePresets": {
+      "all": "За всё время",
+      "24h": "Последние 24 часа",
+      "7d": "Последние 7 дней",
+      "30d": "Последние 30 дней"
+    },
+    "moreFiltersAriaLabel": "Ещё фильтры",
+    "moreFilters": "Фильтры",
+    "sheetTitle": "Фильтры",
+    "chipQuoted": "«{value}»",
+    "removeFilterAriaLabel": "Убрать фильтр {label}",
+    "memberFallback": "член"
+  }
+}

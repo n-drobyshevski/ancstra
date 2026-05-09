@@ -1,8 +1,9 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import type { PersonListItem } from '@ancstra/shared';
 import { Badge } from '@/components/ui/badge';
-import { sexTokens, getInitials, computeLifespan } from './detail-sections';
+import { sexTokens, getInitials, useComputeLifespan } from './detail-sections';
 
 interface TreePersonCardProps {
   person: PersonListItem;
@@ -11,15 +12,18 @@ interface TreePersonCardProps {
 }
 
 export function TreePersonCard({ person, birthPlace, onSelect }: TreePersonCardProps) {
+  const t = useTranslations('tree.personCard');
   const tokens = sexTokens[person.sex];
-  const lifespan = computeLifespan(person.birthDate, person.deathDate);
+  const formatLifespan = useComputeLifespan();
+  const lifespan = formatLifespan(person.birthDate, person.deathDate);
+  const fullName = `${person.givenName} ${person.surname}`;
 
   return (
     <button
       type="button"
       className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/50 active:bg-muted border-b border-border"
       onClick={onSelect}
-      aria-label={`${person.givenName} ${person.surname}${lifespan ? `, ${lifespan}` : ''}`}
+      aria-label={lifespan ? t('ariaLabelWithLifespan', { name: fullName, lifespan }) : t('ariaLabel', { name: fullName })}
     >
       {/* Avatar */}
       <div

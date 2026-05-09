@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -33,6 +34,11 @@ export function MobileTreeToolbar({
   onExportSvg,
   onExportPdf,
 }: MobileTreeToolbarProps) {
+  const tMobile = useTranslations('tree.mobile');
+  const tMenu = useTranslations('tree.mobile.toolbarMenu');
+  const tSex = useTranslations('tree.toolbar.sex');
+  const tLiving = useTranslations('tree.toolbar.living');
+  const tViewMenu = useTranslations('tree.viewMenu');
   const hasActiveFilter =
     !filterState.sex.M ||
     !filterState.sex.F ||
@@ -44,7 +50,7 @@ export function MobileTreeToolbar({
   return (
     <div className="flex h-11 items-center gap-1 border-b bg-background px-2">
       {/* Title */}
-      <span className="flex-1 truncate text-sm font-semibold px-1">Family Tree</span>
+      <span className="flex-1 truncate text-sm font-semibold px-1">{tMobile('title')}</span>
 
       {/* Overflow menu */}
       <DropdownMenu>
@@ -53,7 +59,7 @@ export function MobileTreeToolbar({
             variant="ghost"
             size="icon"
             className="size-8 relative"
-            aria-label="More options"
+            aria-label={tMobile('moreOptions')}
           >
             <EllipsisVertical className="size-4" />
             {hasActiveFilter && (
@@ -68,19 +74,19 @@ export function MobileTreeToolbar({
             checked={filterState.sex.M}
             onCheckedChange={() => onToggleFilter('sex', 'M')}
           >
-            M
+            {tSex('M')}
           </DropdownMenuCheckboxItem>
           <DropdownMenuCheckboxItem
             checked={filterState.sex.F}
             onCheckedChange={() => onToggleFilter('sex', 'F')}
           >
-            F
+            {tSex('F')}
           </DropdownMenuCheckboxItem>
           <DropdownMenuCheckboxItem
             checked={filterState.sex.U}
             onCheckedChange={() => onToggleFilter('sex', 'U')}
           >
-            U
+            {tSex('U')}
           </DropdownMenuCheckboxItem>
 
           <DropdownMenuSeparator />
@@ -90,13 +96,13 @@ export function MobileTreeToolbar({
             checked={filterState.living.living}
             onCheckedChange={() => onToggleFilter('living', 'living')}
           >
-            Living
+            {tLiving('living')}
           </DropdownMenuCheckboxItem>
           <DropdownMenuCheckboxItem
             checked={filterState.living.deceased}
             onCheckedChange={() => onToggleFilter('living', 'deceased')}
           >
-            Deceased
+            {tLiving('deceased')}
           </DropdownMenuCheckboxItem>
 
           <DropdownMenuSeparator />
@@ -104,13 +110,13 @@ export function MobileTreeToolbar({
           {/* Data quality toggle */}
           <DropdownMenuCheckboxItem checked={showGaps} onCheckedChange={onToggleGaps}>
             <BarChart3 className="mr-2 size-4" />
-            Data Quality
+            {tMenu('dataQuality')}
           </DropdownMenuCheckboxItem>
 
           {/* Auto layout */}
           <DropdownMenuItem onSelect={onAutoLayout}>
             <LayoutGrid className="mr-2 size-4" />
-            Auto Layout
+            {tViewMenu('autoLayout')}
           </DropdownMenuItem>
 
           <DropdownMenuSeparator />
@@ -118,15 +124,15 @@ export function MobileTreeToolbar({
           {/* Export options */}
           <DropdownMenuItem onSelect={onExportPng}>
             <Download className="mr-2 size-4" />
-            Export PNG
+            {tMenu('exportPng')}
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={onExportSvg}>
             <Download className="mr-2 size-4" />
-            Export SVG
+            {tMenu('exportSvg')}
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={onExportPdf}>
             <Download className="mr-2 size-4" />
-            Export PDF
+            {tMenu('exportPdf')}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

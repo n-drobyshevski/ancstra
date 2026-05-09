@@ -1,0 +1,58 @@
+{
+  "title": "Добро пожаловать в Ancstra",
+  "personCount": "{count, plural, =0 {Нет людей} one {# человек} few {# человека} many {# человек} other {# человек}} в вашем древе.",
+  "addNewPerson": "Добавить нового человека",
+  "empty": {
+    "heading": "Ваше семейное древо пусто",
+    "tagline": "Начните с добавления первого члена семьи или импорта существующего файла GEDCOM.",
+    "addFirstPerson": "Добавить первого человека",
+    "importGedcom": "Импортировать GEDCOM"
+  },
+  "quickActions": {
+    "addPerson": "Добавить человека",
+    "importData": "Импортировать данные",
+    "aiResearch": "ИИ-исследование",
+    "viewTree": "Посмотреть древо"
+  },
+  "recentActivity": {
+    "title": "Недавняя активность",
+    "viewAll": "Посмотреть всё",
+    "none": "Нет недавней активности"
+  },
+  "statCards": {
+    "peopleInTree": "Людей в древе",
+    "families": "Семьи",
+    "dataQuality": "Качество данных",
+    "last30Days": "Последние 30 дней"
+  },
+  "recentPersons": {
+    "title": "Недавние люди",
+    "viewAll": "Посмотреть всё",
+    "emptyHeading": "Начните строить своё древо",
+    "emptyTagline": "Добавьте первого члена семьи или импортируйте существующий файл GEDCOM",
+    "addFirstPerson": "Добавить первого человека",
+    "importGedcom": "Импортировать GEDCOM",
+    "birthPrefix": "р. {date}"
+  },
+  "qualityWidget": {
+    "title": "Качество данных",
+    "details": "Подробнее",
+    "completeness": "полнота",
+    "scoreAriaLabel": "Оценка качества данных"
+  },
+  "mobileAddButton": {
+    "ariaLabel": "Добавить нового человека"
+  },
+  "inviteToast": {
+    "welcomeNamed": "Добро пожаловать в {familyName}",
+    "welcomeFallback": "Добро пожаловать в вашу новую семью"
+  },
+  "welcomeCard": {
+    "title": "Добро пожаловать в Ancstra!",
+    "tagline": "Вот с чего начать:",
+    "dismiss": "Скрыть приветствие",
+    "importGedcom": "Импортировать файл GEDCOM",
+    "addPerson": "Добавить человека",
+    "aiResearch": "ИИ-исследование"
+  }
+}

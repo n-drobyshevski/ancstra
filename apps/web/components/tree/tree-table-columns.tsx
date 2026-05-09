@@ -1,6 +1,8 @@
 'use client';
 
+import { useMemo } from 'react';
 import { ArrowDown, ArrowUp, Network, ShieldAlert, ShieldCheck, Sprout } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import type { ColumnDef, SortDirection } from '@tanstack/react-table';
 import type { PersonListItem } from '@ancstra/shared';
 import { Button } from '@/components/ui/button';
@@ -33,15 +35,24 @@ declare module '@tanstack/react-table' {
   }
 }
 
-/** Compact lifespan string: "1842 – 1917" / "b. 1842" / "d. 1917" / "—". */
-function compactLifespan(birthDate?: string | null, deathDate?: string | null, isLiving?: boolean): string {
+/**
+ * Compact lifespan string. Caller supplies translated labels so this stays
+ * pure and locale-aware. Returns "1842 – 1917" / "1842 – Living" / "b. 1842"
+ * / "d. 1917" / em-dash fallback.
+ */
+function compactLifespan(
+  birthDate: string | null | undefined,
+  deathDate: string | null | undefined,
+  isLiving: boolean | undefined,
+  s: { living: string; birthPrefix: (year: string) => string; deathPrefix: (year: string) => string; emDash: string },
+): string {
   const by = birthDate?.match(/\b(\d{4})\b/)?.[1];
   const dy = deathDate?.match(/\b(\d{4})\b/)?.[1];
-  if (by && dy) return `${by} \u2013 ${dy}`;
-  if (by && isLiving) return `${by} \u2013 Living`;
-  if (by) return `b. ${by}`;
-  if (dy) return `d. ${dy}`;
-  return '\u2014';
+  if (by && dy) return `${by} – ${dy}`;
+  if (by && isLiving) return `${by} – ${s.living}`;
+  if (by) return s.birthPrefix(by);
+  if (dy) return s.deathPrefix(dy);
+  return s.emDash;
 }
 
 /** Year accessor for sorting; undefined sorts last. */
@@ -83,263 +94,285 @@ export function getAriaSort(direction: false | SortDirection): 'ascending' | 'de
   return 'none';
 }
 
-export const treeTableColumns: ColumnDef<TreePersonRow>[] = [
-  {
-    id: 'name',
-    accessorFn: (row) => `${row.surname} ${row.givenName}`,
-    header: ({ column }) => (
-      <SortableHeader
-        label="Name"
-        isSorted={column.getIsSorted()}
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-      />
-    ),
-    cell: ({ row }) => {
-      const p = row.original;
-      const tokens = sexTokens[p.sex];
-      return (
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div
-            className="size-7 shrink-0 rounded-full flex items-center justify-center text-[10px] font-semibold"
-            style={{ backgroundColor: tokens.bg, color: tokens.text }}
-            aria-hidden
-          >
-            {getInitials(p.givenName, p.surname)}
-          </div>
-          <span className="font-medium truncate">
-            {p.givenName} {p.surname}
-          </span>
-        </div>
-      );
-    },
-    enableSorting: true,
-    size: 240,
-  },
-  {
-    id: 'lifespan',
-    accessorFn: birthYearAccessor,
-    header: ({ column }) => (
-      <SortableHeader
-        label="Lifespan"
-        isSorted={column.getIsSorted()}
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-      />
-    ),
-    cell: ({ row }) => {
-      const p = row.original;
-      return (
-        <span className="text-muted-foreground tabular-nums text-xs">
-          {compactLifespan(p.birthDate, p.deathDate, p.isLiving)}
-        </span>
-      );
-    },
-    sortUndefined: 'last',
-    enableSorting: true,
-    size: 140,
-  },
-  {
-    id: 'sex',
-    accessorKey: 'sex',
-    header: ({ column }) => (
-      <SortableHeader
-        label="Sex"
-        isSorted={column.getIsSorted()}
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-      />
-    ),
-    cell: ({ row }) => {
-      const p = row.original;
-      const colorVar =
-        p.sex === 'M' ? 'var(--sex-male)' : p.sex === 'F' ? 'var(--sex-female)' : 'var(--sex-unknown)';
-      const label = p.sex === 'M' ? 'Male' : p.sex === 'F' ? 'Female' : 'Unknown';
-      return (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span
-              className="inline-block size-2 rounded-full"
-              style={{ backgroundColor: colorVar }}
-              aria-label={label}
+/**
+ * Builds the tree-table column definitions with translated headers, status
+ * badges, and lifespan strings. Hook form so it can read translations from
+ * the React tree.
+ */
+export function useTreeTableColumns(): ColumnDef<TreePersonRow>[] {
+  const tHeaders = useTranslations('tree.table.headers');
+  const tSex = useTranslations('tree.table.sex');
+  const tStatus = useTranslations('tree.table.status');
+  const tLifespan = useTranslations('tree.table.lifespan');
+  const tTable = useTranslations('tree.table');
+
+  return useMemo<ColumnDef<TreePersonRow>[]>(() => {
+    const lifespanStrings = {
+      living: tLifespan('living'),
+      birthPrefix: (year: string) => tLifespan('birthPrefix', { year }),
+      deathPrefix: (year: string) => tLifespan('deathPrefix', { year }),
+      emDash: tLifespan('emDash'),
+    };
+
+    return [
+      {
+        id: 'name',
+        accessorFn: (row) => `${row.surname} ${row.givenName}`,
+        header: ({ column }) => (
+          <SortableHeader
+            label={tHeaders('name')}
+            isSorted={column.getIsSorted()}
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          />
+        ),
+        cell: ({ row }) => {
+          const p = row.original;
+          const tokens = sexTokens[p.sex];
+          return (
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div
+                className="size-7 shrink-0 rounded-full flex items-center justify-center text-[10px] font-semibold"
+                style={{ backgroundColor: tokens.bg, color: tokens.text }}
+                aria-hidden
+              >
+                {getInitials(p.givenName, p.surname)}
+              </div>
+              <span className="font-medium truncate">
+                {p.givenName} {p.surname}
+              </span>
+            </div>
+          );
+        },
+        enableSorting: true,
+        size: 240,
+      },
+      {
+        id: 'lifespan',
+        accessorFn: birthYearAccessor,
+        header: ({ column }) => (
+          <SortableHeader
+            label={tHeaders('lifespan')}
+            isSorted={column.getIsSorted()}
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          />
+        ),
+        cell: ({ row }) => {
+          const p = row.original;
+          return (
+            <span className="text-muted-foreground tabular-nums text-xs">
+              {compactLifespan(p.birthDate, p.deathDate, p.isLiving, lifespanStrings)}
+            </span>
+          );
+        },
+        sortUndefined: 'last',
+        enableSorting: true,
+        size: 140,
+      },
+      {
+        id: 'sex',
+        accessorKey: 'sex',
+        header: ({ column }) => (
+          <SortableHeader
+            label={tHeaders('sex')}
+            isSorted={column.getIsSorted()}
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          />
+        ),
+        cell: ({ row }) => {
+          const p = row.original;
+          const colorVar =
+            p.sex === 'M' ? 'var(--sex-male)' : p.sex === 'F' ? 'var(--sex-female)' : 'var(--sex-unknown)';
+          const label = tSex(p.sex);
+          return (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span
+                  className="inline-block size-2 rounded-full"
+                  style={{ backgroundColor: colorVar }}
+                  aria-label={label}
+                />
+              </TooltipTrigger>
+              <TooltipContent>{label}</TooltipContent>
+            </Tooltip>
+          );
+        },
+        enableSorting: true,
+        size: 56,
+      },
+      {
+        id: 'status',
+        enableSorting: false,
+        size: 64,
+        header: () => (
+          <span className="sr-only">{tHeaders('status')}</span>
+        ),
+        cell: ({ row }) => {
+          const p = row.original;
+          return (
+            <div className="flex items-center gap-1">
+              {p.validation === 'proposed' ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <ShieldAlert
+                      className="size-3.5"
+                      style={{ color: 'var(--status-proposed)' }}
+                      aria-label={tStatus('proposedAria')}
+                    />
+                  </TooltipTrigger>
+                  <TooltipContent>{tStatus('proposedTooltip')}</TooltipContent>
+                </Tooltip>
+              ) : (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <ShieldCheck
+                      className="size-3.5"
+                      style={{ color: 'var(--status-confirmed)' }}
+                      aria-label={tStatus('confirmedAria')}
+                    />
+                  </TooltipTrigger>
+                  <TooltipContent>{tStatus('confirmedTooltip')}</TooltipContent>
+                </Tooltip>
+              )}
+              {p.isLiving && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Sprout
+                      className="size-3.5"
+                      style={{ color: 'var(--status-confirmed)' }}
+                      aria-label={tStatus('livingAria')}
+                    />
+                  </TooltipTrigger>
+                  <TooltipContent>{tStatus('livingTooltip')}</TooltipContent>
+                </Tooltip>
+              )}
+            </div>
+          );
+        },
+      },
+      {
+        id: 'completeness',
+        accessorKey: 'completeness',
+        header: ({ column }) => (
+          <SortableHeader
+            label={tHeaders('completeness')}
+            isSorted={column.getIsSorted()}
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          />
+        ),
+        cell: ({ row }) => <CompletenessCell person={row.original} />,
+        enableSorting: true,
+        size: 128,
+      },
+      {
+        id: 'parents',
+        enableSorting: false,
+        size: 160,
+        header: () => tHeaders('parents'),
+        cell: ({ row, table }) => {
+          const list = table.options.meta?.relationships?.parents[row.original.id] ?? [];
+          const onPick = table.options.meta?.onSelectRelative;
+          if (list.length === 0) return <span className="text-muted-foreground">{tTable('noRelatives')}</span>;
+          return (
+            <span className="truncate inline-block max-w-[160px]">
+              {list.map((p, i) => (
+                <span key={p.id}>
+                  {i > 0 && <span className="text-muted-foreground">, </span>}
+                  <button
+                    type="button"
+                    className="text-primary underline-offset-2 hover:underline"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onPick?.(p.id);
+                    }}
+                  >
+                    {p.name}
+                  </button>
+                </span>
+              ))}
+            </span>
+          );
+        },
+      },
+      {
+        id: 'spouses',
+        enableSorting: false,
+        size: 160,
+        header: () => tHeaders('spouses'),
+        cell: ({ row, table }) => {
+          const list = table.options.meta?.relationships?.spouses[row.original.id] ?? [];
+          const onPick = table.options.meta?.onSelectRelative;
+          if (list.length === 0) return <span className="text-muted-foreground">{tTable('noRelatives')}</span>;
+          return (
+            <span className="truncate inline-block max-w-[160px]">
+              {list.map((s, i) => (
+                <span key={s.id}>
+                  {i > 0 && <span className="text-muted-foreground">, </span>}
+                  <button
+                    type="button"
+                    className="text-primary underline-offset-2 hover:underline"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onPick?.(s.id);
+                    }}
+                  >
+                    {s.name}
+                  </button>
+                </span>
+              ))}
+            </span>
+          );
+        },
+      },
+      {
+        id: 'children',
+        accessorKey: 'childCount',
+        header: ({ column }) => (
+          <div className="text-right">
+            <SortableHeader
+              label={tHeaders('children')}
+              isSorted={column.getIsSorted()}
+              onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
             />
-          </TooltipTrigger>
-          <TooltipContent>{label}</TooltipContent>
-        </Tooltip>
-      );
-    },
-    enableSorting: true,
-    size: 56,
-  },
-  {
-    id: 'status',
-    enableSorting: false,
-    size: 64,
-    header: () => (
-      <span className="sr-only">Status</span>
-    ),
-    cell: ({ row }) => {
-      const p = row.original;
-      return (
-        <div className="flex items-center gap-1">
-          {p.validation === 'proposed' ? (
+          </div>
+        ),
+        cell: ({ row }) => (
+          <div className="text-right tabular-nums">{row.original.childCount}</div>
+        ),
+        enableSorting: true,
+        size: 80,
+      },
+      {
+        id: 'seeOnTree',
+        enableSorting: false,
+        size: 48,
+        header: () => <span className="sr-only">{tHeaders('focus')}</span>,
+        cell: ({ row, table }) => {
+          const p = row.original;
+          const onSeeOnTree = table.options.meta?.onSeeOnTree;
+          if (!onSeeOnTree) return null;
+          return (
             <Tooltip>
               <TooltipTrigger asChild>
-                <ShieldAlert
-                  className="size-3.5"
-                  style={{ color: 'var(--status-proposed)' }}
-                  aria-label="Proposed"
-                />
+                <button
+                  type="button"
+                  aria-label={tTable('mobile.focusAriaLabel', { name: `${p.givenName} ${p.surname}` })}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSeeOnTree(p.id);
+                  }}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-opacity hover:bg-muted hover:text-foreground focus-visible:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary md:opacity-0 md:group-hover/row:opacity-100"
+                >
+                  <Network className="size-4" aria-hidden />
+                </button>
               </TooltipTrigger>
-              <TooltipContent>Proposed — needs review</TooltipContent>
+              <TooltipContent>{tHeaders('focus')}</TooltipContent>
             </Tooltip>
-          ) : (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <ShieldCheck
-                  className="size-3.5"
-                  style={{ color: 'var(--status-confirmed)' }}
-                  aria-label="Confirmed"
-                />
-              </TooltipTrigger>
-              <TooltipContent>Confirmed</TooltipContent>
-            </Tooltip>
-          )}
-          {p.isLiving && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Sprout
-                  className="size-3.5"
-                  style={{ color: 'var(--status-confirmed)' }}
-                  aria-label="Living"
-                />
-              </TooltipTrigger>
-              <TooltipContent>Presumed living</TooltipContent>
-            </Tooltip>
-          )}
-        </div>
-      );
-    },
-  },
-  {
-    id: 'completeness',
-    accessorKey: 'completeness',
-    header: ({ column }) => (
-      <SortableHeader
-        label="Completeness"
-        isSorted={column.getIsSorted()}
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-      />
-    ),
-    cell: ({ row }) => <CompletenessCell person={row.original} />,
-    enableSorting: true,
-    size: 128,
-  },
-  {
-    id: 'parents',
-    enableSorting: false,
-    size: 160,
-    header: () => 'Parents',
-    cell: ({ row, table }) => {
-      const list = table.options.meta?.relationships?.parents[row.original.id] ?? [];
-      const onPick = table.options.meta?.onSelectRelative;
-      if (list.length === 0) return <span className="text-muted-foreground">—</span>;
-      return (
-        <span className="truncate inline-block max-w-[160px]">
-          {list.map((p, i) => (
-            <span key={p.id}>
-              {i > 0 && <span className="text-muted-foreground">, </span>}
-              <button
-                type="button"
-                className="text-primary underline-offset-2 hover:underline"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onPick?.(p.id);
-                }}
-              >
-                {p.name}
-              </button>
-            </span>
-          ))}
-        </span>
-      );
-    },
-  },
-  {
-    id: 'spouses',
-    enableSorting: false,
-    size: 160,
-    header: () => 'Spouses',
-    cell: ({ row, table }) => {
-      const list = table.options.meta?.relationships?.spouses[row.original.id] ?? [];
-      const onPick = table.options.meta?.onSelectRelative;
-      if (list.length === 0) return <span className="text-muted-foreground">—</span>;
-      return (
-        <span className="truncate inline-block max-w-[160px]">
-          {list.map((s, i) => (
-            <span key={s.id}>
-              {i > 0 && <span className="text-muted-foreground">, </span>}
-              <button
-                type="button"
-                className="text-primary underline-offset-2 hover:underline"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onPick?.(s.id);
-                }}
-              >
-                {s.name}
-              </button>
-            </span>
-          ))}
-        </span>
-      );
-    },
-  },
-  {
-    id: 'children',
-    accessorKey: 'childCount',
-    header: ({ column }) => (
-      <div className="text-right">
-        <SortableHeader
-          label="Children"
-          isSorted={column.getIsSorted()}
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-        />
-      </div>
-    ),
-    cell: ({ row }) => (
-      <div className="text-right tabular-nums">{row.original.childCount}</div>
-    ),
-    enableSorting: true,
-    size: 80,
-  },
-  {
-    id: 'seeOnTree',
-    enableSorting: false,
-    size: 48,
-    header: () => <span className="sr-only">Focus</span>,
-    cell: ({ row, table }) => {
-      const p = row.original;
-      const onSeeOnTree = table.options.meta?.onSeeOnTree;
-      if (!onSeeOnTree) return null;
-      return (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              aria-label={`Focus ${p.givenName} ${p.surname} on tree`}
-              onClick={(e) => {
-                e.stopPropagation();
-                onSeeOnTree(p.id);
-              }}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-opacity hover:bg-muted hover:text-foreground focus-visible:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary md:opacity-0 md:group-hover/row:opacity-100"
-            >
-              <Network className="size-4" aria-hidden />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent>Focus</TooltipContent>
-        </Tooltip>
-      );
-    },
-  },
-];
+          );
+        },
+      },
+    ];
+  }, [tHeaders, tSex, tStatus, tLifespan, tTable]);
+}
 
 export const TREE_SORT_KEY_TO_COLUMN_ID: Record<string, string> = {
   name: 'name',
