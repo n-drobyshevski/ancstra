@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef } from 'react';
+import Link from 'next/link';
 import { Loader2, ClipboardPaste, X, ChevronDown, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer';
@@ -183,7 +184,7 @@ export function ItemContent({ item, onNotesChange, onRefresh, onScrapeJobStarted
               <p className="text-xs text-muted-foreground">
                 {error?.message ?? 'Could not extract text automatically. Try pasting text from the page instead.'}
                 {' '}
-                <a href="/settings" className="text-primary hover:underline">Configure scrape worker</a>
+                <Link href="/settings" className="text-primary hover:underline">Configure scrape worker</Link>
               </p>
             )}
             <div className="flex items-center justify-center gap-2">

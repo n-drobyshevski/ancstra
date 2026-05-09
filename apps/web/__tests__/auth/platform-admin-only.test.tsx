@@ -44,7 +44,7 @@ describe('<PlatformAdminOnly>', () => {
     mockUseSession.mockReturnValue(makeSession(true));
     render(
       <PlatformAdminOnly>
-        <a href="/admin">Platform</a>
+        <span>Platform</span>
       </PlatformAdminOnly>,
     );
     expect(screen.getByText('Platform')).toBeDefined();
@@ -54,7 +54,7 @@ describe('<PlatformAdminOnly>', () => {
     mockUseSession.mockReturnValue(makeSession(false));
     const { container } = render(
       <PlatformAdminOnly>
-        <a href="/admin">Platform</a>
+        <span>Platform</span>
       </PlatformAdminOnly>,
     );
     expect(container.textContent).toBe('');
@@ -64,7 +64,7 @@ describe('<PlatformAdminOnly>', () => {
     mockUseSession.mockReturnValue({ data: null, status: 'unauthenticated', update: vi.fn() });
     const { container } = render(
       <PlatformAdminOnly>
-        <a href="/admin">Platform</a>
+        <span>Platform</span>
       </PlatformAdminOnly>,
     );
     expect(container.textContent).toBe('');
@@ -80,7 +80,7 @@ describe('<PlatformAdminOnly>', () => {
     });
     const { container } = render(
       <PlatformAdminOnly>
-        <a href="/admin">Platform</a>
+        <span>Platform</span>
       </PlatformAdminOnly>,
     );
     expect(container.textContent).toBe('');
@@ -96,7 +96,7 @@ describe('<PlatformAdminOnly>', () => {
     });
     const { container } = render(
       <PlatformAdminOnly>
-        <a href="/admin">Platform</a>
+        <span>Platform</span>
       </PlatformAdminOnly>,
     );
     expect(container.textContent).toBe('');
@@ -112,7 +112,7 @@ describe('<PlatformAdminOnly>', () => {
     });
     const { container } = render(
       <PlatformAdminOnly>
-        <a href="/admin">Platform</a>
+        <span>Platform</span>
       </PlatformAdminOnly>,
     );
     expect(container.textContent).toBe('');
@@ -128,7 +128,7 @@ describe('<PlatformAdminOnly>', () => {
     });
     render(
       <PlatformAdminOnly fallback={<span>placeholder</span>}>
-        <a href="/admin">Platform</a>
+        <span>Platform</span>
       </PlatformAdminOnly>,
     );
     expect(screen.getByText('placeholder')).toBeDefined();
@@ -139,7 +139,7 @@ describe('<PlatformAdminOnly>', () => {
     mockUseSession.mockReturnValue(makeSession(false));
     render(
       <PlatformAdminOnly fallback={<span>placeholder</span>}>
-        <a href="/admin">Platform</a>
+        <span>Platform</span>
       </PlatformAdminOnly>,
     );
     expect(screen.getByText('placeholder')).toBeDefined();
