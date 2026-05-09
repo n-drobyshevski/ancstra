@@ -25,6 +25,12 @@ const LOCALE_FLAGS: Record<Locale, string> = {
   ru: '🇷🇺',
 };
 
+const LOCALE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
+
+function writeLocaleCookie(locale: Locale): void {
+  document.cookie = `NEXT_LOCALE=${locale}; path=/; max-age=${LOCALE_COOKIE_MAX_AGE}; samesite=lax`;
+}
+
 /**
  * Locale switcher rendered in the sidebar footer (next to lens-selector).
  *
@@ -49,6 +55,15 @@ export function LocaleSwitcher() {
       next === routing.defaultLocale
         ? cleanPath
         : `/${next}${cleanPath === '/' ? '' : cleanPath}`;
+
+    // Sync NEXT_LOCALE cookie BEFORE navigation. Switching ru → en sends
+    // the request to /foo (no prefix); next-intl middleware then runs
+    // resolveLocaleFromPrefix which falls through to the cookie. A stale
+    // 'ru' cookie causes a 307 redirect /foo → /ru/foo, trapping the user
+    // in the old locale. Updating the cookie first lets the middleware
+    // resolve to the new locale and pass through.
+    writeLocaleCookie(next);
+
     startTransition(() => {
       router.replace(targetPath);
       // Hard refresh so server components re-render with the new locale
