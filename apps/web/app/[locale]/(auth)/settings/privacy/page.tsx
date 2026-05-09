@@ -2,14 +2,21 @@ import { Suspense } from 'react';
 import Link from 'next/link';
 import { eq } from 'drizzle-orm';
 import { ArrowRight } from 'lucide-react';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { centralSchema } from '@ancstra/db';
 import { getCentralDb } from '@/lib/db-singleton';
+import type { Locale } from '@/i18n/routing';
 import { LivingThresholdSection } from '@/components/settings/living-threshold-section';
 import { SettingsMobileHeader } from '@/components/settings/settings-mobile-header';
 import { requirePagePermission } from '@/lib/auth/page-guard';
 
-async function PrivacyContent() {
+interface PrivacyPageProps {
+  params: Promise<{ locale: Locale }>;
+}
+
+async function PrivacyContent({ params }: PrivacyPageProps) {
+  const { locale } = await params;
+  setRequestLocale(locale);
   // Family-wide privacy controls are owner-only (settings:manage).
   const ctx = await requirePagePermission('settings:manage');
   const db = await getCentralDb();
@@ -47,10 +54,10 @@ async function PrivacyContent() {
   );
 }
 
-export default function PrivacyPage() {
+export default function PrivacyPage({ params }: PrivacyPageProps) {
   return (
     <Suspense fallback={null}>
-      <PrivacyContent />
+      <PrivacyContent params={params} />
     </Suspense>
   );
 }

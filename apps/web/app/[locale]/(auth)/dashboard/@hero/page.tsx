@@ -1,10 +1,11 @@
 import { Suspense } from 'react';
 import Link from 'next/link';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { hasPermission } from '@ancstra/auth';
 import { getAuthContext } from '@/lib/auth/context';
 import { getCachedStatCards } from '@/lib/cache/dashboard';
 import { isDashboardV2Enabled } from '@/lib/flags/dashboard-v2';
+import type { Locale } from '@/i18n/routing';
 import { selectHeroVariant } from '@/lib/dashboard/hero-variant';
 import { selectStatKeys } from '@/lib/dashboard/stat-cards';
 import { Button } from '@/components/ui/button';
@@ -37,7 +38,13 @@ import { StatCardsSkeleton } from '@/components/skeletons/stat-cards-skeleton';
  *
  * StatCards + QuickActions only render when the tree isn't empty (same as v1).
  */
-export default async function HeroSlot() {
+export default async function HeroSlot({
+  params,
+}: {
+  params: Promise<{ locale: Locale }>;
+}) {
+  const { locale } = await params;
+  setRequestLocale(locale);
   if (!isDashboardV2Enabled()) return null;
 
   const ctx = await getAuthContext();

@@ -2,20 +2,30 @@ import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { eq } from 'drizzle-orm';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { hasPermission } from '@ancstra/auth';
 import { centralSchema } from '@ancstra/db';
 import { getCentralDb } from '@/lib/db-singleton';
 import { requireAuthContext } from '@/lib/auth/context';
+import type { Locale } from '@/i18n/routing';
 import { FamilySettingsForm } from '@/components/family/family-settings-form';
 import { FamilySettingsFormSkeleton } from '@/components/skeletons/family-settings-form-skeleton';
 
-export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations('settings.family');
+interface FamilySettingsPageProps {
+  params: Promise<{ locale: Locale }>;
+}
+
+export async function generateMetadata({
+  params,
+}: FamilySettingsPageProps): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: 'settings.family' });
   return { title: t('metadataTitle') };
 }
 
-async function FamilySettingsContent() {
+async function FamilySettingsContent({ params }: FamilySettingsPageProps) {
+  const { locale } = await params;
+  setRequestLocale(locale);
   const ctx = await requireAuthContext();
 
   // Read view requires members:manage; editors/viewers don't see this page.
@@ -62,10 +72,10 @@ async function FamilySettingsContent() {
   );
 }
 
-export default function FamilySettingsPage() {
+export default function FamilySettingsPage({ params }: FamilySettingsPageProps) {
   return (
     <Suspense fallback={<FamilySettingsFormSkeleton />}>
-      <FamilySettingsContent />
+      <FamilySettingsContent params={params} />
     </Suspense>
   );
 }

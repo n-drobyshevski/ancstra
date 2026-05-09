@@ -1,7 +1,9 @@
 import { Suspense } from 'react';
+import { setRequestLocale } from 'next-intl/server';
 import { getAuthContext } from '@/lib/auth/context';
 import { getCachedStatCards } from '@/lib/cache/dashboard';
 import { isDashboardV2Enabled } from '@/lib/flags/dashboard-v2';
+import type { Locale } from '@/i18n/routing';
 import { QualityWidget } from '@/components/dashboard/quality-widget';
 import { RecentActivity } from '@/components/dashboard/recent-activity';
 import { WhatsNewMilestones } from '@/components/dashboard/whats-new-milestones';
@@ -22,7 +24,13 @@ import { RecentActivitySkeleton } from '@/components/skeletons/recent-activity-s
  * Suppressed by the layout when totalPersons===0; we still short-circuit
  * defensively in case the layout's gate ever loosens.
  */
-export default async function AsideSlot() {
+export default async function AsideSlot({
+  params,
+}: {
+  params: Promise<{ locale: Locale }>;
+}) {
+  const { locale } = await params;
+  setRequestLocale(locale);
   if (!isDashboardV2Enabled()) return null;
 
   const ctx = await getAuthContext();

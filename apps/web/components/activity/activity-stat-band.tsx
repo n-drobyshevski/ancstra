@@ -9,10 +9,12 @@ import {
 } from '@/lib/cache/activity';
 import type { ActivityVisibility } from '@/lib/activity-visibility';
 import { filterEntriesByVisibility } from '@/lib/activity-visibility';
+import type { Locale } from '@/i18n/routing';
 
 interface ActivityStatBandProps {
   familyId: string;
   visibility: ActivityVisibility;
+  locale: Locale;
 }
 
 interface ContributorAggregate {
@@ -95,6 +97,7 @@ function StatCard({ label, value, hint, icon }: StatCardProps) {
 export async function ActivityStatBand({
   familyId,
   visibility,
+  locale,
 }: ActivityStatBandProps) {
   const counts = await getCachedActivityCounts(familyId);
   const visibleRows = filterEntriesByVisibility(counts.recentEntries, visibility);
@@ -159,7 +162,7 @@ export async function ActivityStatBand({
       <StatCard
         label={t('lastUpdate')}
         value={last ? formatRelative(last) : t('emDash')}
-        hint={last ? new Date(last).toLocaleDateString() : t('noActivityYet')}
+        hint={last ? new Date(last).toLocaleDateString(locale) : t('noActivityYet')}
         icon={<Clock className="size-4" />}
       />
     </section>

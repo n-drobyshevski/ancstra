@@ -1,19 +1,32 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { eq } from 'drizzle-orm';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { centralSchema } from '@ancstra/db';
 import { getCentralDb } from '@/lib/db-singleton';
 import { requirePagePermission } from '@/lib/auth/page-guard';
+import type { Locale } from '@/i18n/routing';
 import { SettingsMobileHeader } from '@/components/settings/settings-mobile-header';
 import { EditorDefaultsForm } from '@/components/settings/editor-defaults-form';
 
-export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations('settings.editorDefaults.page');
+interface EditorDefaultsPageProps {
+  params: Promise<{ locale: Locale }>;
+}
+
+export async function generateMetadata({
+  params,
+}: EditorDefaultsPageProps): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({
+    locale,
+    namespace: 'settings.editorDefaults.page',
+  });
   return { title: t('metadataTitle') };
 }
 
-async function EditorDefaultsContent() {
+async function EditorDefaultsContent({ params }: EditorDefaultsPageProps) {
+  const { locale } = await params;
+  setRequestLocale(locale);
   // Editor+ tier — anyone who can create persons benefits from setting these.
   const ctx = await requirePagePermission('person:create');
   const db = await getCentralDb();
@@ -50,10 +63,10 @@ async function EditorDefaultsContent() {
   );
 }
 
-export default function EditorDefaultsPage() {
+export default function EditorDefaultsPage({ params }: EditorDefaultsPageProps) {
   return (
     <Suspense fallback={null}>
-      <EditorDefaultsContent />
+      <EditorDefaultsContent params={params} />
     </Suspense>
   );
 }

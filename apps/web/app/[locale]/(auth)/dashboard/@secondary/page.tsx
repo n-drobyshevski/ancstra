@@ -1,7 +1,9 @@
+import { setRequestLocale } from 'next-intl/server';
 import { hasPermission } from '@ancstra/auth';
 import { getAuthContext } from '@/lib/auth/context';
 import { getCachedStatCards } from '@/lib/cache/dashboard';
 import { isDashboardV2Enabled } from '@/lib/flags/dashboard-v2';
+import type { Locale } from '@/i18n/routing';
 import { ContributionQueue } from '@/components/moderation/contribution-queue';
 import { FactsheetsRecent } from '@/components/dashboard/factsheets-recent';
 import { FeaturedAncestorCard } from '@/components/dashboard/featured-ancestor-card';
@@ -21,7 +23,13 @@ import { FeaturedAncestorCard } from '@/components/dashboard/featured-ancestor-c
  * the family has no deceased persons, so a viewer with only living relatives
  * sees an empty secondary slot rather than an empty card.
  */
-export default async function SecondarySlot() {
+export default async function SecondarySlot({
+  params,
+}: {
+  params: Promise<{ locale: Locale }>;
+}) {
+  const { locale } = await params;
+  setRequestLocale(locale);
   if (!isDashboardV2Enabled()) return null;
 
   const ctx = await getAuthContext();

@@ -1,20 +1,30 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { eq } from 'drizzle-orm';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { centralSchema } from '@ancstra/db';
 import { getCentralDb } from '@/lib/db-singleton';
 import { requireAuthContext } from '@/lib/auth/context';
+import type { Locale } from '@/i18n/routing';
 import { SettingsMobileHeader } from '@/components/settings/settings-mobile-header';
 import { ProfileForm } from '@/components/settings/profile-form';
 import { ProfileFormSkeleton } from '@/components/skeletons/profile-form-skeleton';
 
-export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations('settings.nav.items');
+interface ProfilePageProps {
+  params: Promise<{ locale: Locale }>;
+}
+
+export async function generateMetadata({
+  params,
+}: ProfilePageProps): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: 'settings.nav.items' });
   return { title: t('profile') };
 }
 
-async function ProfileContent() {
+async function ProfileContent({ params }: ProfilePageProps) {
+  const { locale } = await params;
+  setRequestLocale(locale);
   const ctx = await requireAuthContext();
   const db = await getCentralDb();
   const t = await getTranslations('settings.profile.page');
@@ -68,10 +78,10 @@ async function ProfileContent() {
   );
 }
 
-export default function ProfilePage() {
+export default function ProfilePage({ params }: ProfilePageProps) {
   return (
     <Suspense fallback={<ProfileFormSkeleton />}>
-      <ProfileContent />
+      <ProfileContent params={params} />
     </Suspense>
   );
 }

@@ -1,8 +1,15 @@
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
+import type { Locale } from '@/i18n/routing';
 import { ThemeSelector } from '@/components/settings/theme-selector';
 import { SettingsMobileHeader } from '@/components/settings/settings-mobile-header';
 
-export default async function AppearancePage() {
+export default async function AppearancePage({
+  params,
+}: {
+  params: Promise<{ locale: Locale }>;
+}) {
+  const { locale } = await params;
+  setRequestLocale(locale);
   const t = await getTranslations('settings.appearance.page');
   const tNav = await getTranslations('settings.nav.items');
   return (

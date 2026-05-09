@@ -1,28 +1,33 @@
 import { Suspense } from 'react';
 import Link from 'next/link';
 import type { SearchParams } from 'nuqs/server';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Button } from '@/components/ui/button';
 import { getAuthContext } from '@/lib/auth/context';
 import { PagePadding } from '@/components/page-padding';
 import { getCachedPersonsList, getCachedTreeYearBounds } from '@/lib/cache/person';
 import { personsCache } from '@/lib/persons/search-params';
+import type { Locale } from '@/i18n/routing';
 import { PersonsSidebarClient } from '@/components/persons/persons-sidebar-client';
 import { PersonsTableClient } from '@/components/persons/persons-table-client';
 import { PersonsSidebarSkeleton } from '@/components/skeletons/persons-sidebar-skeleton';
 import { PersonsTableSkeleton } from '@/components/skeletons/persons-table-skeleton';
 import { RoleGate } from '@/components/auth/role-gate';
 
-// Lightweight async shell — only awaits the locale-bound `getTranslations`
-// at the top level. next-intl resolves it from the request scope before the
-// dynamic data scope, which is fine under cacheComponents (verified via PPR
-// analysis: this route prerenders as `◐` Partial Prerender). Sidebar and
-// table stream independently behind their own Suspense boundaries.
+// Lightweight async shell — awaits locale + setRequestLocale before any
+// `getTranslations` so the call resolves against the request locale rather
+// than falling back to the default. The Suspense'd sidebar/table subtrees
+// don't translate on the server (they hand off to client components that
+// read from <NextIntlClientProvider>), so they don't need the dance.
 export default async function PersonsPage({
+  params,
   searchParams,
 }: {
+  params: Promise<{ locale: Locale }>;
   searchParams: Promise<SearchParams>;
 }) {
+  const { locale } = await params;
+  setRequestLocale(locale);
   const t = await getTranslations('persons.page');
   return (
     <PagePadding>

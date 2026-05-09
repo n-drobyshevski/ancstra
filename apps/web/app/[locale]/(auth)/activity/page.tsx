@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { eq, and } from 'drizzle-orm';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { requireAuthContext } from '@/lib/auth/context';
 import { ActivityFeed, type ActivityFeedMember } from '@/components/activity/activity-feed';
 import { ActivityPageHeader } from '@/components/activity/activity-page-header';
@@ -12,13 +12,21 @@ import { ActivityFeedSkeleton } from '@/components/skeletons/activity-feed-skele
 import { Skeleton } from '@/components/ui/skeleton';
 import { getCentralDb } from '@/lib/db-singleton';
 import { centralSchema } from '@ancstra/db';
+import type { Locale } from '@/i18n/routing';
 import {
   getActivityVisibility,
   filterEntriesByVisibility,
 } from '@/lib/activity-visibility';
 
-export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations('activity.page');
+interface ActivityPageProps {
+  params: Promise<{ locale: Locale }>;
+}
+
+export async function generateMetadata({
+  params,
+}: ActivityPageProps): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: 'activity.page' });
   return { title: t('title') };
 }
 
@@ -49,18 +57,34 @@ async function getFamilyMembers(familyId: string): Promise<ActivityFeedMember[]>
 // `headers()` are React-cached per request, so the duplication is effectively
 // free — and it keeps the page sync so cacheComponents can stream the layout
 // without waiting on cookies/headers (Next.js 16 blocking-route diagnostic).
-async function ActivityHeaderSection() {
+//
+// Each Suspense'd async section calls `setRequestLocale` itself: under
+// cacheComponents the layout's setRequestLocale call doesn't propagate
+// through Suspense boundaries to deferred async children.
+async function ActivityHeaderSection({ params }: ActivityPageProps) {
+  const { locale } = await params;
+  setRequestLocale(locale);
   const ctx = await requireAuthContext();
   return <ActivityPageHeader role={ctx.role} />;
 }
 
-async function ActivityStatBandSection() {
+async function ActivityStatBandSection({ params }: ActivityPageProps) {
+  const { locale } = await params;
+  setRequestLocale(locale);
   const ctx = await requireAuthContext();
   const visibility = getActivityVisibility(ctx.role);
-  return <ActivityStatBand familyId={ctx.familyId} visibility={visibility} />;
+  return (
+    <ActivityStatBand
+      familyId={ctx.familyId}
+      visibility={visibility}
+      locale={locale}
+    />
+  );
 }
 
-async function ActivityFeedSection() {
+async function ActivityFeedSection({ params }: ActivityPageProps) {
+  const { locale } = await params;
+  setRequestLocale(locale);
   const ctx = await requireAuthContext();
   const visibility = getActivityVisibility(ctx.role);
   const [feed, members] = await Promise.all([
@@ -102,20 +126,20 @@ function StatBandSkeleton() {
   );
 }
 
-export default function ActivityPage() {
+export default function ActivityPage({ params }: ActivityPageProps) {
   return (
     <PagePadding>
       <div className="space-y-6">
         <Suspense fallback={<HeaderSkeleton />}>
-          <ActivityHeaderSection />
+          <ActivityHeaderSection params={params} />
         </Suspense>
 
         <Suspense fallback={<StatBandSkeleton />}>
-          <ActivityStatBandSection />
+          <ActivityStatBandSection params={params} />
         </Suspense>
 
         <Suspense fallback={<ActivityFeedSkeleton />}>
-          <ActivityFeedSection />
+          <ActivityFeedSection params={params} />
         </Suspense>
       </div>
     </PagePadding>

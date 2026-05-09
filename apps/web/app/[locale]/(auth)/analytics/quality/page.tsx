@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { MetricCards } from '@/components/quality/metric-cards';
 import { CompletenessChart } from '@/components/quality/completeness-chart';
 import { MissingDataChart } from '@/components/quality/missing-data-chart';
@@ -8,9 +8,16 @@ import { getQualitySummary } from '@ancstra/db';
 import { requirePagePermission } from '@/lib/auth/page-guard';
 import { getFamilyDb } from '@/lib/db';
 import { PagePadding } from '@/components/page-padding';
+import type { Locale } from '@/i18n/routing';
 import { QualityChartsSkeleton } from '@/components/skeletons/quality-charts-skeleton';
 
-async function QualityContent() {
+interface QualityPageProps {
+  params: Promise<{ locale: Locale }>;
+}
+
+async function QualityContent({ params }: QualityPageProps) {
+  const { locale } = await params;
+  setRequestLocale(locale);
   const t = await getTranslations('analytics.page');
   // Quality metrics are read-only; viewer holds activity:view, so they see them too.
   // Lensed-down users below activity:view (none today) would get redirected.
@@ -49,10 +56,10 @@ async function QualityContent() {
   );
 }
 
-export default function QualityPage() {
+export default function QualityPage({ params }: QualityPageProps) {
   return (
     <Suspense fallback={<QualityChartsSkeleton />}>
-      <QualityContent />
+      <QualityContent params={params} />
     </Suspense>
   );
 }

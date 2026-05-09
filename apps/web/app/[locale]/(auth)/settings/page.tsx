@@ -2,18 +2,28 @@ import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { requireAuthContext } from '@/lib/auth/context';
 import { cn } from '@/lib/utils';
+import type { Locale } from '@/i18n/routing';
 import { getDashboardCards } from '@/components/settings/settings-dashboard-cards';
 import { SettingsMobileNav } from './settings-mobile-nav';
 
-export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations('settings.page');
+interface SettingsPageProps {
+  params: Promise<{ locale: Locale }>;
+}
+
+export async function generateMetadata({
+  params,
+}: SettingsPageProps): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: 'settings.page' });
   return { title: t('title') };
 }
 
-async function SettingsDashboardSection() {
+async function SettingsDashboardSection({ params }: SettingsPageProps) {
+  const { locale } = await params;
+  setRequestLocale(locale);
   const ctx = await requireAuthContext();
   const tWelcome = await getTranslations('settings.welcome');
   const tCards = await getTranslations('settings.cards');
@@ -76,10 +86,10 @@ async function SettingsDashboardSection() {
   );
 }
 
-export default function SettingsPage() {
+export default function SettingsPage({ params }: SettingsPageProps) {
   return (
     <Suspense fallback={null}>
-      <SettingsDashboardSection />
+      <SettingsDashboardSection params={params} />
     </Suspense>
   );
 }

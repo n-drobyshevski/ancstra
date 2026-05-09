@@ -1,8 +1,10 @@
 import { Suspense } from 'react';
+import { setRequestLocale } from 'next-intl/server';
 import { hasPermission } from '@ancstra/auth';
 import { getAuthContext } from '@/lib/auth/context';
 import { getCachedStatCards } from '@/lib/cache/dashboard';
 import { isDashboardV2Enabled } from '@/lib/flags/dashboard-v2';
+import type { Locale } from '@/i18n/routing';
 import { RecentPersons } from '@/components/dashboard/recent-persons';
 import { EmptyDashboard } from '@/components/dashboard/empty-dashboard';
 import { ContributionQueue } from '@/components/moderation/contribution-queue';
@@ -23,7 +25,13 @@ import { RecentPersonsSkeleton } from '@/components/skeletons/recent-persons-ske
  * `id="contribution-queue"` matches the anchor used by ModerationHero's
  * "Review" CTA so clicking it scrolls down to the queue.
  */
-export default async function PrimarySlot() {
+export default async function PrimarySlot({
+  params,
+}: {
+  params: Promise<{ locale: Locale }>;
+}) {
+  const { locale } = await params;
+  setRequestLocale(locale);
   if (!isDashboardV2Enabled()) return null;
 
   const ctx = await getAuthContext();

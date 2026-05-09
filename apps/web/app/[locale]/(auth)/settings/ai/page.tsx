@@ -1,10 +1,17 @@
 import { Suspense } from 'react';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
+import type { Locale } from '@/i18n/routing';
 import { AiBudgetSettings } from '@/components/settings/ai-budget-settings';
 import { SettingsMobileHeader } from '@/components/settings/settings-mobile-header';
 import { requirePagePermission } from '@/lib/auth/page-guard';
 
-async function AiSettingsContent() {
+interface AiSettingsPageProps {
+  params: Promise<{ locale: Locale }>;
+}
+
+async function AiSettingsContent({ params }: AiSettingsPageProps) {
+  const { locale } = await params;
+  setRequestLocale(locale);
   // Owner-only: AI budget configuration is part of family settings.
   await requirePagePermission('settings:manage');
   const t = await getTranslations('settings.ai.page');
@@ -23,10 +30,10 @@ async function AiSettingsContent() {
   );
 }
 
-export default function AiSettingsPage() {
+export default function AiSettingsPage({ params }: AiSettingsPageProps) {
   return (
     <Suspense fallback={null}>
-      <AiSettingsContent />
+      <AiSettingsContent params={params} />
     </Suspense>
   );
 }

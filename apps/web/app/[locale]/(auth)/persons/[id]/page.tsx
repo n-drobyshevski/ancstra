@@ -1,20 +1,23 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { getCachedPersonDetail } from '@/lib/cache/person';
 import { WorkspaceShell } from '@/components/research/workspace/workspace-shell';
 import { getAuthContext } from '@/lib/auth/context';
 import { PagePadding } from '@/components/page-padding';
+import type { Locale } from '@/i18n/routing';
 import { WorkspaceShellSkeleton } from '@/components/skeletons/workspace-shell-skeleton';
+
+interface PersonPageProps {
+  params: Promise<{ locale: Locale; id: string }>;
+}
 
 export async function generateMetadata({
   params,
-}: {
-  params: Promise<{ id: string }>;
-}): Promise<Metadata> {
-  const { id } = await params;
-  const t = await getTranslations('persons.page');
+}: PersonPageProps): Promise<Metadata> {
+  const { locale, id } = await params;
+  const t = await getTranslations({ locale, namespace: 'persons.page' });
   const authContext = await getAuthContext();
   if (!authContext) return { title: t('metadataPerson') };
   const person = await getCachedPersonDetail(authContext.dbFilename, id);
@@ -26,8 +29,9 @@ export async function generateMetadata({
   return { title: name || t('metadataPerson') };
 }
 
-async function PersonContent({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+async function PersonContent({ params }: PersonPageProps) {
+  const { locale, id } = await params;
+  setRequestLocale(locale);
   const authContext = await getAuthContext();
   if (!authContext) return null;
   const person = await getCachedPersonDetail(authContext.dbFilename, id);
@@ -35,11 +39,7 @@ async function PersonContent({ params }: { params: Promise<{ id: string }> }) {
   return <PagePadding><WorkspaceShell person={person} /></PagePadding>;
 }
 
-export default function PersonPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default function PersonPage({ params }: PersonPageProps) {
   return (
     <Suspense fallback={<WorkspaceShellSkeleton />}>
       <PersonContent params={params} />

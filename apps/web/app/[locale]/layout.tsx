@@ -13,7 +13,7 @@ import { ServiceWorkerRegister } from "@/components/sw-register";
 import { WebVitalsReporter } from '../web-vitals';
 import { NuqsAdapter } from 'nuqs/adapters/next/app';
 import { TRPCReactProvider } from '@/lib/trpc/provider';
-import { routing } from '@/i18n/routing';
+import { routing, type Locale } from '@/i18n/routing';
 import { getCachedMessages } from '@/i18n/cached-messages';
 
 const inter = Inter({
@@ -56,38 +56,55 @@ export default async function LocaleLayout({
   // `useSession()` content gate themselves with `useIsHydrated` so SSR and
   // first client render both produce the fallback (matching tree shape).
   //
-  // For the same reason we use getCachedMessages(locale) rather than
-  // next-intl's getMessages(): the latter reads the request locale (dynamic
-  // input) and trips the same blocking-route warning. Our wrapper is
-  // 'use cache' + cacheLife('max'), so it prerenders per locale.
-  const messages = await getCachedMessages(locale);
+  // The await on getCachedMessages + the (server) <NextIntlClientProvider>
+  // (which itself awaits formats/now/timeZone from request.ts) live inside
+  // <IntlShell>, wrapped in <Suspense> below. Top-level awaits of those in
+  // the layout body would gate the static shell on dynamic data and trip the
+  // blocking-route diagnostic under cacheComponents.
 
   return (
     <html lang={locale} suppressHydrationWarning className={cn("h-full", "antialiased", "font-sans", inter.variable)}>
       <body className={inter.variable}>
-        <NextIntlClientProvider locale={locale} messages={messages}>
-          <NuqsAdapter>
-            <ThemeProvider
-              attribute="class"
-              defaultTheme="system"
-              enableSystem
-              disableTransitionOnChange
-            >
-              <Suspense>
-                <WebVitalsReporter />
-              </Suspense>
-              <TRPCReactProvider>
-                {children}
-              </TRPCReactProvider>
-              <Suspense>
-                <CommandPalette />
-              </Suspense>
-              <Toaster />
-              <ServiceWorkerRegister />
-            </ThemeProvider>
-          </NuqsAdapter>
-        </NextIntlClientProvider>
+        <Suspense>
+          <IntlShell locale={locale}>
+            <NuqsAdapter>
+              <ThemeProvider
+                attribute="class"
+                defaultTheme="system"
+                enableSystem
+                disableTransitionOnChange
+              >
+                <Suspense>
+                  <WebVitalsReporter />
+                </Suspense>
+                <TRPCReactProvider>
+                  {children}
+                </TRPCReactProvider>
+                <Suspense>
+                  <CommandPalette />
+                </Suspense>
+                <Toaster />
+                <ServiceWorkerRegister />
+              </ThemeProvider>
+            </NuqsAdapter>
+          </IntlShell>
+        </Suspense>
       </body>
     </html>
+  );
+}
+
+async function IntlShell({
+  locale,
+  children,
+}: {
+  locale: Locale;
+  children: React.ReactNode;
+}) {
+  const messages = await getCachedMessages(locale);
+  return (
+    <NextIntlClientProvider locale={locale} messages={messages}>
+      {children}
+    </NextIntlClientProvider>
   );
 }

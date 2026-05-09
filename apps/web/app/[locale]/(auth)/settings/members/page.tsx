@@ -4,13 +4,20 @@ import { hasPermission } from '@ancstra/auth';
 import { redirect } from 'next/navigation';
 import { createCentralDb, centralSchema } from '@ancstra/db';
 import { eq } from 'drizzle-orm';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
+import type { Locale } from '@/i18n/routing';
 import { MemberList } from '@/components/members/member-list';
 import { InviteDialog } from '@/components/members/invite-dialog';
 import { PendingInvites } from '@/components/members/pending-invites';
 import { MembersListSkeleton } from '@/components/skeletons/members-list-skeleton';
 
-async function MembersContent() {
+interface MembersPageProps {
+  params: Promise<{ locale: Locale }>;
+}
+
+async function MembersContent({ params }: MembersPageProps) {
+  const { locale } = await params;
+  setRequestLocale(locale);
   const ctx = await requireAuthContext();
   if (!hasPermission(ctx.role, 'members:manage')) {
     redirect('/dashboard');
@@ -47,10 +54,10 @@ async function MembersContent() {
   );
 }
 
-export default function MembersPage() {
+export default function MembersPage({ params }: MembersPageProps) {
   return (
     <Suspense fallback={<MembersListSkeleton />}>
-      <MembersContent />
+      <MembersContent params={params} />
     </Suspense>
   );
 }
