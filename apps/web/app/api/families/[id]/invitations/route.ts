@@ -75,7 +75,7 @@ export async function POST(
     });
 
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
-    const link = `${baseUrl}/invite/${invitation.token}`;
+    const link = `${baseUrl}/join?token=${invitation.token}`;
 
     await logActivity(centralDb, {
       familyId,

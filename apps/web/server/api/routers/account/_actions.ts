@@ -7,6 +7,7 @@ import { accountRouter } from '../account';
 import { createCallerFactory } from '../../trpc';
 import { createTRPCContext } from '../../init';
 import { signUpSchema } from '@/lib/validation';
+import { safeCallbackPath } from '@/lib/auth/safe-callback-url';
 
 export type SignUpState = {
   errors?: {
@@ -46,5 +47,7 @@ export async function signUpAction(
     password: parsed.data.password,
     redirect: false,
   });
-  redirect('/create-family');
+
+  const target = safeCallbackPath(formData.get('callbackUrl') as string | null) ?? '/create-family';
+  redirect(target);
 }

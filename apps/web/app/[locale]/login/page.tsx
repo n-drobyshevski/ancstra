@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { signIn } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,9 +10,12 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { OAuthButtons } from '@/components/auth/oauth-buttons';
+import { safeCallbackPath } from '@/lib/auth/safe-callback-url';
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const callbackUrl = safeCallbackPath(searchParams.get('callbackUrl')) ?? undefined;
   const t = useTranslations('auth.login');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -33,7 +36,7 @@ export default function LoginPage() {
       setError(t('invalidCredentials'));
       setLoading(false);
     } else {
-      router.push('/dashboard');
+      router.push(callbackUrl ?? '/dashboard');
       router.refresh();
     }
   }
@@ -72,10 +75,13 @@ export default function LoginPage() {
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? t('signingIn') : t('signIn')}
             </Button>
-            <OAuthButtons />
+            <OAuthButtons callbackUrl={callbackUrl} />
             <p className="text-center text-sm text-muted-foreground">
               {t('noAccountPrompt')}{' '}
-              <Link href="/signup" className="text-primary underline">
+              <Link
+                href={callbackUrl ? `/signup?callbackUrl=${encodeURIComponent(callbackUrl)}` : '/signup'}
+                className="text-primary underline"
+              >
                 {t('createOne')}
               </Link>
             </p>
@@ -83,5 +89,13 @@ export default function LoginPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
   );
 }

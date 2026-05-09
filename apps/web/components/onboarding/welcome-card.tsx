@@ -8,15 +8,20 @@ import Link from 'next/link';
 import { X } from 'lucide-react';
 import { RoleGate } from '@/components/auth/role-gate';
 
-const DISMISSED_KEY = 'ancstra-welcome-dismissed';
+const DISMISSED_KEY_PREFIX = 'ancstra-welcome-dismissed';
 
-export function WelcomeCard() {
+interface WelcomeCardProps {
+  familyId: string;
+}
+
+export function WelcomeCard({ familyId }: WelcomeCardProps) {
   const [dismissed, setDismissed] = useState(true);
   const t = useTranslations('dashboard.welcomeCard');
+  const dismissKey = `${DISMISSED_KEY_PREFIX}:${familyId}`;
 
   useEffect(() => {
-    setDismissed(localStorage.getItem(DISMISSED_KEY) === 'true');
-  }, []);
+    setDismissed(localStorage.getItem(dismissKey) === 'true');
+  }, [dismissKey]);
 
   if (dismissed) return null;
 
@@ -27,7 +32,7 @@ export function WelcomeCard() {
         size="icon"
         className="absolute right-2 top-2"
         onClick={() => {
-          localStorage.setItem(DISMISSED_KEY, 'true');
+          localStorage.setItem(dismissKey, 'true');
           setDismissed(true);
         }}
         aria-label={t('dismiss')}

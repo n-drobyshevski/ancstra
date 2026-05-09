@@ -1,7 +1,8 @@
 'use client';
 
-import { useActionState } from 'react';
+import { Suspense, useActionState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { signUpAction as signUp, type SignUpState } from '@/server/api/routers/account/_actions';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,9 +10,12 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { OAuthButtons } from '@/components/auth/oauth-buttons';
+import { safeCallbackPath } from '@/lib/auth/safe-callback-url';
 
-export default function SignUpPage() {
+function SignUpForm() {
   const t = useTranslations('auth.signup');
+  const searchParams = useSearchParams();
+  const callbackUrl = safeCallbackPath(searchParams.get('callbackUrl')) ?? undefined;
   const [state, action, pending] = useActionState<SignUpState, FormData>(
     signUp,
     undefined
@@ -26,6 +30,9 @@ export default function SignUpPage() {
         </CardHeader>
         <CardContent>
           <form action={action} className="space-y-4">
+            {callbackUrl && (
+              <input type="hidden" name="callbackUrl" value={callbackUrl} />
+            )}
             <div className="space-y-2">
               <Label htmlFor="name">{t('nameLabel')}</Label>
               <Input id="name" name="name" placeholder={t('namePlaceholder')} required />
@@ -67,10 +74,13 @@ export default function SignUpPage() {
             <Button type="submit" className="w-full" disabled={pending}>
               {pending ? t('creatingAccount') : t('createAccount')}
             </Button>
-            <OAuthButtons />
+            <OAuthButtons callbackUrl={callbackUrl} />
             <p className="text-center text-sm text-muted-foreground">
               {t('haveAccountPrompt')}{' '}
-              <Link href="/login" className="text-primary underline">
+              <Link
+                href={callbackUrl ? `/login?callbackUrl=${encodeURIComponent(callbackUrl)}` : '/login'}
+                className="text-primary underline"
+              >
                 {t('signIn')}
               </Link>
             </p>
@@ -78,5 +88,13 @@ export default function SignUpPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function SignUpPage() {
+  return (
+    <Suspense fallback={null}>
+      <SignUpForm />
+    </Suspense>
   );
 }

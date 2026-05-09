@@ -69,7 +69,7 @@ export default async function HeroSlot({
 
   return (
     <div className="space-y-4 md:space-y-6">
-      {showWelcomeCard && <WelcomeCard />}
+      {showWelcomeCard && <WelcomeCard familyId={ctx.familyId} />}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold">{t('title')}</h1>
