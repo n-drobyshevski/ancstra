@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import { eq } from 'drizzle-orm';
 import { getTranslations } from 'next-intl/server';
 import { centralSchema } from '@ancstra/db';
@@ -6,13 +7,14 @@ import { getCentralDb } from '@/lib/db-singleton';
 import { requireAuthContext } from '@/lib/auth/context';
 import { SettingsMobileHeader } from '@/components/settings/settings-mobile-header';
 import { ProfileForm } from '@/components/settings/profile-form';
+import { ProfileFormSkeleton } from '@/components/skeletons/profile-form-skeleton';
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations('settings.nav.items');
   return { title: t('profile') };
 }
 
-export default async function ProfilePage() {
+async function ProfileContent() {
   const ctx = await requireAuthContext();
   const db = await getCentralDb();
   const t = await getTranslations('settings.profile.page');
@@ -63,5 +65,13 @@ export default async function ProfilePage() {
         initialPrefs={initialPrefs}
       />
     </div>
+  );
+}
+
+export default function ProfilePage() {
+  return (
+    <Suspense fallback={<ProfileFormSkeleton />}>
+      <ProfileContent />
+    </Suspense>
   );
 }

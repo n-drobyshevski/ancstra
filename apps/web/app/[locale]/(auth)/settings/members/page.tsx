@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { requireAuthContext } from '@/lib/auth/context';
 import { hasPermission } from '@ancstra/auth';
 import { redirect } from 'next/navigation';
@@ -7,8 +8,9 @@ import { getTranslations } from 'next-intl/server';
 import { MemberList } from '@/components/members/member-list';
 import { InviteDialog } from '@/components/members/invite-dialog';
 import { PendingInvites } from '@/components/members/pending-invites';
+import { MembersListSkeleton } from '@/components/skeletons/members-list-skeleton';
 
-export default async function MembersPage() {
+async function MembersContent() {
   const ctx = await requireAuthContext();
   if (!hasPermission(ctx.role, 'members:manage')) {
     redirect('/dashboard');
@@ -42,5 +44,13 @@ export default async function MembersPage() {
       />
       <PendingInvites familyId={ctx.familyId} />
     </div>
+  );
+}
+
+export default function MembersPage() {
+  return (
+    <Suspense fallback={<MembersListSkeleton />}>
+      <MembersContent />
+    </Suspense>
   );
 }

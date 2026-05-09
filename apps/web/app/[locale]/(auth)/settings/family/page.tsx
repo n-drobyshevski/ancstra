@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { eq } from 'drizzle-orm';
 import { getTranslations } from 'next-intl/server';
@@ -7,13 +8,14 @@ import { centralSchema } from '@ancstra/db';
 import { getCentralDb } from '@/lib/db-singleton';
 import { requireAuthContext } from '@/lib/auth/context';
 import { FamilySettingsForm } from '@/components/family/family-settings-form';
+import { FamilySettingsFormSkeleton } from '@/components/skeletons/family-settings-form-skeleton';
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations('settings.family');
   return { title: t('metadataTitle') };
 }
 
-export default async function FamilySettingsPage() {
+async function FamilySettingsContent() {
   const ctx = await requireAuthContext();
 
   // Read view requires members:manage; editors/viewers don't see this page.
@@ -57,5 +59,13 @@ export default async function FamilySettingsPage() {
       </div>
       <FamilySettingsForm initialSettings={settings} canEdit={canEdit} />
     </div>
+  );
+}
+
+export default function FamilySettingsPage() {
+  return (
+    <Suspense fallback={<FamilySettingsFormSkeleton />}>
+      <FamilySettingsContent />
+    </Suspense>
   );
 }
