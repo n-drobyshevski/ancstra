@@ -134,6 +134,10 @@ export const userPreferences = sqliteTable('user_preferences', {
   // meaning "respect master switch with all features on by default" — only an
   // explicit `false` value disables a single feature.
   experimentalFeatures: text('experimental_features').notNull().default('{}'),
+  // Tree visualization: when on, switching node-style mode (compact ↔ wide)
+  // nudges any overlapping nodes apart per rank. Default ON — fixes a real
+  // overlap bug; opt-out for users who prefer the unmodified positions.
+  treeAutoSpread: integer('tree_auto_spread').notNull().default(1),
   updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
 });
 

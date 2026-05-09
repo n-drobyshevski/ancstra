@@ -323,9 +323,12 @@ export async function ensureCentralSchema(db: CentralDatabase, dbKey?: string): 
 
   // Experimental features gating (2026-05-09). Per-user opt-in columns plus
   // platform-wide policy singleton. See packages/auth/src/experimental.ts.
+  // Tree visualization preferences (2026-05-09): per-user toggle for
+  // anti-overlap behavior on node-style mode switch.
   for (const col of [
     'experimental_enabled INTEGER NOT NULL DEFAULT 0',
     "experimental_features TEXT NOT NULL DEFAULT '{}'",
+    'tree_auto_spread INTEGER NOT NULL DEFAULT 1',
   ]) {
     try {
       await db.run(sql.raw(`ALTER TABLE user_preferences ADD COLUMN ${col}`));

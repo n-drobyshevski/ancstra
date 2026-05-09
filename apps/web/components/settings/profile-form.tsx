@@ -32,6 +32,7 @@ interface PrefsShape {
   density: 'comfortable' | 'compact';
   notifyEmail: boolean;
   notifyActivity: boolean;
+  treeAutoSpread: boolean;
 }
 
 interface Props {
@@ -90,6 +91,7 @@ export function ProfileForm({ initialProfile, initialPrefs }: Props) {
   const [density, setDensity] = useState<'comfortable' | 'compact'>(initialPrefs.density);
   const [notifyEmail, setNotifyEmail] = useState(initialPrefs.notifyEmail);
   const [notifyActivity, setNotifyActivity] = useState(initialPrefs.notifyActivity);
+  const [treeAutoSpread, setTreeAutoSpread] = useState(initialPrefs.treeAutoSpread);
 
   const timezones = useMemo(() => getTimezones(), []);
 
@@ -107,7 +109,8 @@ export function ProfileForm({ initialProfile, initialPrefs }: Props) {
     timezone !== initialPrefs.timezone ||
     density !== initialPrefs.density ||
     notifyEmail !== initialPrefs.notifyEmail ||
-    notifyActivity !== initialPrefs.notifyActivity;
+    notifyActivity !== initialPrefs.notifyActivity ||
+    treeAutoSpread !== initialPrefs.treeAutoSpread;
 
   const dirty = profileDirty || prefsDirty;
 
@@ -151,6 +154,7 @@ export function ProfileForm({ initialProfile, initialPrefs }: Props) {
             ...(density !== initialPrefs.density ? { density } : {}),
             ...(notifyEmail !== initialPrefs.notifyEmail ? { notifyEmail } : {}),
             ...(notifyActivity !== initialPrefs.notifyActivity ? { notifyActivity } : {}),
+            ...(treeAutoSpread !== initialPrefs.treeAutoSpread ? { treeAutoSpread } : {}),
           }),
         );
       }
@@ -326,6 +330,30 @@ export function ProfileForm({ initialProfile, initialPrefs }: Props) {
               id="notify-activity"
               checked={notifyActivity}
               onCheckedChange={setNotifyActivity}
+              disabled={isSaving}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('treeHeading')}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <Label htmlFor="tree-auto-spread" className="text-base">
+                {t('treeAutoSpreadLabel')}
+              </Label>
+              <p className="text-xs text-muted-foreground mt-1">
+                {t('treeAutoSpreadHint')}
+              </p>
+            </div>
+            <Switch
+              id="tree-auto-spread"
+              checked={treeAutoSpread}
+              onCheckedChange={setTreeAutoSpread}
               disabled={isSaving}
             />
           </div>

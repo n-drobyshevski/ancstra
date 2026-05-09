@@ -47,6 +47,7 @@ import {
   applyDagreLayout,
   applyPositionMap,
   extractPositions,
+  relaxOverlapsByRank,
   validateConnection,
   parseLayoutData,
   serializeLayoutData,
@@ -56,6 +57,7 @@ import {
   applyFilters,
   applyEdgeFilters,
 } from './tree-utils';
+import { trpc } from '@/lib/trpc/client';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { useQualityData } from '@/lib/tree/use-quality-data';
@@ -208,6 +210,13 @@ function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focus
   const setFilterState = onFilterStateChange ?? setInternalFilterState;
   const prefs = useTreeViewPrefs();
   const { showMinimap } = prefs;
+  // Server-stored user preference: nudge overlapping nodes apart on
+  // node-style mode switch. Loaded once and cached by tRPC; reads `?? true`
+  // so the spread runs on first switch even before the query resolves
+  // (matches the DB default of 1).
+  const { data: userPrefs } = trpc.userPreferences.get.useQuery(undefined, {
+    staleTime: 60_000,
+  });
   // Canvas reads showGaps directly from prefs (localStorage). Parent's showGaps
   // prop is accepted (legacy) but ignored on canvas. Table view manages its own
   // showGaps via the parent state. v1 limitation: canvas/table toggles do not
@@ -449,9 +458,41 @@ function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focus
   const handleNodeStyleChange = useCallback((style: NodeStyle) => {
     setNodeStyle(style);
     writeNodeStylePreference(style);
-    setNodes(nds => nds.map(n => n.type === 'person' ? { ...n, data: { ...n.data, nodeStyle: style, showDates: prefs.showDates, showLivingIndicator: prefs.showLivingIndicator, showCitations: prefs.showCitations } } : n));
+    const autoSpreadEnabled = userPrefs?.treeAutoSpread ?? true;
+    let nudgedNodes: Node[] = [];
+    setNodes(nds => {
+      const restyled = nds.map(n =>
+        n.type === 'person'
+          ? {
+              ...n,
+              data: {
+                ...n.data,
+                nodeStyle: style,
+                showDates: prefs.showDates,
+                showLivingIndicator: prefs.showLivingIndicator,
+                showCitations: prefs.showCitations,
+              },
+            }
+          : n,
+      );
+      const next = autoSpreadEnabled ? relaxOverlapsByRank(restyled, edges, style) : restyled;
+      nudgedNodes = next;
+      return next;
+    });
+    // Persist the spread to the active saved layout so it survives reload.
+    // Position-change events from setNodes don't fire React Flow's
+    // `position` change type (it only fires on user drag), so the
+    // debounced auto-save in handleNodesChange would miss this update.
+    if (autoSpreadEnabled && activeLayoutId && nudgedNodes.length > 0) {
+      const positions = extractPositions(nudgedNodes);
+      void fetch(`/api/layouts/${activeLayoutId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ layoutData: serializeLayoutData(positions) }),
+      });
+    }
     setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 50);
-  }, [setNodes, fitView, prefs.showDates, prefs.showLivingIndicator, prefs.showCitations]);
+  }, [setNodes, fitView, edges, activeLayoutId, userPrefs?.treeAutoSpread, prefs.showDates, prefs.showLivingIndicator, prefs.showCitations]);
 
   const handleLoadLayout = useCallback(
     (id: string) => {

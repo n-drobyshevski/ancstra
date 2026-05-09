@@ -120,6 +120,7 @@ CREATE TABLE IF NOT EXISTS user_preferences (
   notify_activity INTEGER NOT NULL DEFAULT 1,
   experimental_enabled INTEGER NOT NULL DEFAULT 0,
   experimental_features TEXT NOT NULL DEFAULT '{}',
+  tree_auto_spread INTEGER NOT NULL DEFAULT 1,
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

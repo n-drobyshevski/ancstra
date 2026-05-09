@@ -122,6 +122,38 @@ function orderByMotherLeft(a: Node, b: Node): { left: Node; right: Node } {
   return { left: a, right: b };
 }
 
+function pairKey(a: string, b: string): string {
+  return [a, b].sort().join(':');
+}
+
+/** Returns the set of unordered pair keys (`[a, b].sort().join(':')`) for every
+ * partner pair in the graph: explicit partner edges + parents sharing a child. */
+function collectPartnerPairKeys(edges: Edge[], nodeIds: Set<string>): Set<string> {
+  const keys = new Set<string>();
+
+  for (const e of edges) {
+    if (e.type === 'partner' && nodeIds.has(e.source) && nodeIds.has(e.target)) {
+      keys.add(pairKey(e.source, e.target));
+    }
+  }
+
+  const parentsByChild = new Map<string, string[]>();
+  for (const e of edges) {
+    if (e.type === 'parentChild') {
+      const list = parentsByChild.get(e.target) ?? [];
+      list.push(e.source);
+      parentsByChild.set(e.target, list);
+    }
+  }
+  for (const parents of parentsByChild.values()) {
+    if (parents.length === 2 && nodeIds.has(parents[0]) && nodeIds.has(parents[1])) {
+      keys.add(pairKey(parents[0], parents[1]));
+    }
+  }
+
+  return keys;
+}
+
 export function applyDagreLayout(
   nodes: Node[],
   edges: Edge[],
@@ -165,51 +197,18 @@ export function applyDagreLayout(
     };
   });
 
-  // Build set of pairs already handled (by partner edges)
-  const handledPairs = new Set<string>();
-
-  // Collect all co-parent pairs: partners + parents sharing a child
-  const pairs: { left: typeof positioned[0]; right: typeof positioned[0] }[] = [];
-
-  // From partner edges
-  const partnerEdges = edges.filter((e) => e.type === 'partner');
-  for (const pe of partnerEdges) {
-    const a = positioned.find((n) => n.id === pe.source);
-    const b = positioned.find((n) => n.id === pe.target);
-    if (a && b) {
-      const pairKey = [a.id, b.id].sort().join(':');
-      if (!handledPairs.has(pairKey)) {
-        handledPairs.add(pairKey);
-        pairs.push(orderByMotherLeft(a, b));
-      }
-    }
-  }
-
-  // From co-parents (multiple parentChild edges to same child)
-  const parentsByChild = new Map<string, string[]>();
-  for (const edge of edges) {
-    if (edge.type === 'parentChild') {
-      const parents = parentsByChild.get(edge.target) ?? [];
-      parents.push(edge.source);
-      parentsByChild.set(edge.target, parents);
-    }
-  }
-  for (const parents of parentsByChild.values()) {
-    if (parents.length === 2) {
-      const a = positioned.find((n) => n.id === parents[0]);
-      const b = positioned.find((n) => n.id === parents[1]);
-      if (a && b) {
-        const pairKey = [a.id, b.id].sort().join(':');
-        if (!handledPairs.has(pairKey)) {
-          handledPairs.add(pairKey);
-          pairs.push(orderByMotherLeft(a, b));
-        }
-      }
-    }
-  }
-
-  // Position each pair side-by-side (mother left, father right)
-  for (const { left, right } of pairs) {
+  // Position each pair side-by-side (mother left, father right). Use the
+  // shared partner-pair detection helper so this list stays in sync with
+  // `relaxOverlapsByRank` below.
+  const nodeIdSet = new Set(positioned.map((n) => n.id));
+  const partnerKeys = collectPartnerPairKeys(edges, nodeIdSet);
+  const byId = new Map(positioned.map((n) => [n.id, n] as const));
+  for (const key of partnerKeys) {
+    const [aId, bId] = key.split(':');
+    const a = byId.get(aId);
+    const b = byId.get(bId);
+    if (!a || !b) continue;
+    const { left, right } = orderByMotherLeft(a, b);
     const midX = (left.position.x + right.position.x) / 2;
     const midY = (left.position.y + right.position.y) / 2;
     left.position = { x: midX - (width + partnerGap) / 2, y: midY };
@@ -217,6 +216,97 @@ export function applyDagreLayout(
   }
 
   return positioned;
+}
+
+/**
+ * Per-rank linear relaxation that nudges overlapping nodes apart on the X axis.
+ *
+ * Use case: when the user switches node-style mode (compact ↔ wide), CSS card
+ * width changes (120 ↔ 240 px) but Dagre layout is not recomputed — sibling
+ * cards positioned for the old width can overlap. This function does a single
+ * left-to-right pass per rank, pushing only nodes that actually conflict (and
+ * cascading later siblings to preserve relative order). It is a no-op when no
+ * overlaps exist.
+ *
+ * Y is grouped with a small tolerance so manually-dragged nodes that drifted
+ * a few pixels off rank still get treated as same-generation.
+ *
+ * Pure: returns a new `Node[]`; does not mutate input.
+ */
+export function relaxOverlapsByRank(
+  nodes: Node[],
+  edges: Edge[],
+  nodeStyle: NodeStyle,
+): Node[] {
+  if (nodes.length === 0) return nodes;
+
+  const isCompact = nodeStyle === 'compact';
+  const width = isCompact ? COMPACT_NODE_WIDTH : NODE_WIDTH;
+  const partnerGap = isCompact ? COMPACT_PARTNER_GAP : PARTNER_GAP;
+  const minHorizontalGap = isCompact ? 50 : 80; // matches Dagre's `nodesep`
+
+  const Y_TOLERANCE = 5;
+
+  // Only consider person nodes for relaxation. Drafts/pending nodes are
+  // user-driven placements and should stay where the user put them.
+  const personNodes = nodes.filter((n) => n.type === 'person');
+  if (personNodes.length === 0) return nodes;
+
+  const nodeIdSet = new Set(personNodes.map((n) => n.id));
+  const partnerKeys = collectPartnerPairKeys(edges, nodeIdSet);
+
+  // Group by rank. We anchor each new rank to the first node we encounter in
+  // sort order, then absorb anything within Y_TOLERANCE of that anchor.
+  const sortedByY = [...personNodes].sort((a, b) => a.position.y - b.position.y);
+  const ranks: Node[][] = [];
+  let currentRank: Node[] = [];
+  let anchorY = Number.NEGATIVE_INFINITY;
+  for (const n of sortedByY) {
+    if (currentRank.length === 0 || Math.abs(n.position.y - anchorY) <= Y_TOLERANCE) {
+      if (currentRank.length === 0) anchorY = n.position.y;
+      currentRank.push(n);
+    } else {
+      ranks.push(currentRank);
+      currentRank = [n];
+      anchorY = n.position.y;
+    }
+  }
+  if (currentRank.length > 0) ranks.push(currentRank);
+
+  // Build a map of node id → next-position. Start with original positions and
+  // update only the IDs we move; everything else is preserved.
+  const nextX = new Map<string, number>();
+  for (const n of personNodes) nextX.set(n.id, n.position.x);
+
+  for (const rank of ranks) {
+    const sorted = [...rank].sort(
+      (a, b) => (nextX.get(a.id)! - nextX.get(b.id)!),
+    );
+    for (let i = 1; i < sorted.length; i += 1) {
+      const prev = sorted[i - 1];
+      const curr = sorted[i];
+      const isPair = partnerKeys.has(pairKey(prev.id, curr.id));
+      const gap = isPair ? partnerGap : minHorizontalGap;
+      const requiredX = nextX.get(prev.id)! + width + gap;
+      const currX = nextX.get(curr.id)!;
+      if (currX < requiredX) {
+        const deficit = requiredX - currX;
+        // Push curr and all subsequent siblings in this rank by deficit so
+        // their relative ordering is preserved.
+        for (let j = i; j < sorted.length; j += 1) {
+          const id = sorted[j].id;
+          nextX.set(id, nextX.get(id)! + deficit);
+        }
+      }
+    }
+  }
+
+  return nodes.map((n) => {
+    if (n.type !== 'person') return n;
+    const x = nextX.get(n.id);
+    if (x === undefined || x === n.position.x) return n;
+    return { ...n, position: { x, y: n.position.y } };
+  });
 }
 
 export function applyPositionMap(

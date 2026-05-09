@@ -55,6 +55,7 @@ async function ProfileContent({ params }: ProfilePageProps) {
     density: (prefsRow?.density ?? 'comfortable') as 'comfortable' | 'compact',
     notifyEmail: prefsRow ? prefsRow.notifyEmail === 1 : true,
     notifyActivity: prefsRow ? prefsRow.notifyActivity === 1 : true,
+    treeAutoSpread: prefsRow ? prefsRow.treeAutoSpread === 1 : true,
   };
 
   return (
