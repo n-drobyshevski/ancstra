@@ -1,7 +1,6 @@
-// Fallback for the implicit `children` slot when Next.js cannot recover
-// the active page state on hard refresh. See:
-// https://nextjs.org/docs/app/api-reference/file-conventions/parallel-routes#defaultjs
-//
-// We re-export the page so `/dashboard` always resolves consistently whether
-// the user soft-navigates or reloads.
-export { default } from './page';
+// Children-slot fallback. The dashboard page itself has no recoverable
+// state worth rebuilding (just toast + FAB); render null and let the slots
+// composed by the layout drive the page on hard refresh.
+export default function Default() {
+  return null;
+}

@@ -1,3 +1,6 @@
-// Hard-refresh fallback for the @hero slot. The page handles the legacy-flag
-// short-circuit, so re-export it to keep behavior consistent.
-export { default } from './page';
+// Slot fallback for unmatched/recovery state. Returns null so the slot stays
+// empty when the dashboard route isn't active; per Next.js 16 upgrade guide,
+// re-exporting the page caused stale slot rendering on unrelated routes.
+export default function Default() {
+  return null;
+}

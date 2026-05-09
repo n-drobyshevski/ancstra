@@ -48,6 +48,12 @@ export default async function LocaleLayout({
     notFound();
   }
   setRequestLocale(locale);
+  // We deliberately do NOT pre-fetch the session here to seed
+  // <SessionProvider>. Doing so triggers Next.js 16's blocking-route warning
+  // because `auth()` reads cookies (uncached dynamic data) and would gate
+  // the entire layout on it. Instead, components that branch on
+  // `useSession()` content gate themselves with `useIsHydrated` so SSR and
+  // first client render both produce the fallback (matching tree shape).
   const messages = await getMessages();
 
   return (

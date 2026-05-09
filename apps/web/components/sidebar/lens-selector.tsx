@@ -17,13 +17,23 @@ import {
 import { SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { useLens } from '@/lib/lens/provider';
 import { LENS_THEME, type LensableRole } from '@/lib/lens/theme';
+import { useIsHydrated } from '@/hooks/use-is-hydrated';
 import { cn } from '@/lib/utils';
 
 export function LensSelector() {
+  const isHydrated = useIsHydrated();
   const { actualRole, lens, setLens, familyId } = useLens();
   const t = useTranslations('common.lens');
   const tRoles = useTranslations('common.lens.roles');
 
+  // Hide on SSR + first client render: actualRole is derived from
+  // useSession(), which returns the resolved session on SSR but null/loading
+  // on first client render (SessionProvider isn't seeded with a server
+  // session — see `[locale]/layout.tsx` for why). Without this gate, the
+  // server emits the lens trigger button and the client renders nothing,
+  // shifting LocaleSwitcher into LensSelector's DOM slot. Same gating as
+  // `useVisibleNavItems` in app-sidebar.tsx.
+  if (!isHydrated) return null;
   // Hide entirely when there's nothing meaningful to show:
   //  - no current family context
   //  - actual role is viewer (no roles below)

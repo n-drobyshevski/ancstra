@@ -29,15 +29,41 @@ function isAdminPath(pathname: string): boolean {
   return canonicalPath(pathname).startsWith('/admin');
 }
 
-function isApiPath(pathname: string): boolean {
-  return pathname.startsWith('/api/');
+function isApiPath(pathname: string | null | undefined): boolean {
+  // Defensive: NextAuth's wrapper occasionally passes a request whose
+  // `nextUrl.pathname` is undefined (observed during hot-reload of dev
+  // server during error recovery). Treat unknown paths as non-API so the
+  // rewrite header is propagated — page routes need it; the worst case for
+  // a misclassified API path is a 404 which is the same as the bug we're
+  // fixing.
+  return typeof pathname === 'string' && pathname.startsWith('/api/');
 }
 
-/** Copy locale-related cookies from the intl response onto a downstream response. */
-function mergeIntlCookies(target: NextResponse, intlResponse: NextResponse): NextResponse {
+/**
+ * Merge next-intl's response into our downstream response.
+ *
+ * We must propagate two things from intl middleware:
+ *   1. Locale cookies — so the user's preferred locale persists.
+ *   2. `x-middleware-rewrite` header for *page* routes — `localePrefix:
+ *      'as-needed'` rewrites unprefixed default-locale URLs (e.g. `/dashboard`)
+ *      to the `/[locale]/dashboard` internal form. Without forwarding this,
+ *      Next.js routes `/dashboard` as `/[locale]/page` with `locale='dashboard'`
+ *      and the locale-layout's `hasLocale` check 404s.
+ *
+ * API routes (e.g. `/api/trpc/...`) must NOT carry the rewrite — they live
+ * outside the `[locale]` segment, and forwarding the rewrite would point
+ * Next.js at a non-existent `/en/api/trpc/...` path and 404.
+ */
+function mergeIntlCookies(target: NextResponse, intlResponse: NextResponse, pathname: string): NextResponse {
   intlResponse.cookies.getAll().forEach((c) => {
     target.cookies.set(c);
   });
+  if (!isApiPath(pathname)) {
+    const rewriteUrl = intlResponse.headers.get('x-middleware-rewrite');
+    if (rewriteUrl) {
+      target.headers.set('x-middleware-rewrite', rewriteUrl);
+    }
+  }
   return target;
 }
 
@@ -52,17 +78,25 @@ async function fetchMembershipsVersion(userId: string): Promise<number> {
 }
 
 export const proxy = auth(async (request) => {
-  // ── 1. Run next-intl first to handle locale routing ────────────────────
-  // Intl middleware may redirect (unsupported locale) or rewrite internally
-  // (locale prefix → [locale] segment). For redirects, honor immediately.
-  const intlResponse = handleI18n(request);
-  const intlLocation = intlResponse.headers.get('location');
-  if (intlLocation && intlResponse.status >= 300 && intlResponse.status < 400) {
-    return intlResponse;
-  }
-
   const pathname = request.nextUrl.pathname;
   const session = request.auth;
+
+  // ── 1. Run next-intl first to handle locale routing ────────────────────
+  // Intl middleware may redirect (unsupported locale) or rewrite internally
+  // (locale prefix → [locale] segment). For redirects, honor immediately —
+  // EXCEPT on API routes: intl treats `/api/trpc` like a page and tries to
+  // redirect to `/ru/api/trpc`, which 404s. API routes live outside the
+  // [locale] segment and must keep their unprefixed URL.
+  const intlResponse = handleI18n(request);
+  const intlLocation = intlResponse.headers.get('location');
+  if (
+    intlLocation &&
+    intlResponse.status >= 300 &&
+    intlResponse.status < 400 &&
+    !isApiPath(pathname)
+  ) {
+    return intlResponse;
+  }
 
   // ── 2. Public routes (login/signup/join/create-family) — no auth check ─
   // These pages handle their own authentication flow. Return intl response
@@ -136,7 +170,7 @@ export const proxy = auth(async (request) => {
         maxAge: 60,
       });
     }
-    return mergeIntlCookies(adminResponse, intlResponse);
+    return mergeIntlCookies(adminResponse, intlResponse, pathname);
   }
 
   // ── 8. No-membership user → /create-family ─────────────────────────────
@@ -222,7 +256,7 @@ export const proxy = auth(async (request) => {
     });
   }
 
-  return mergeIntlCookies(response, intlResponse);
+  return mergeIntlCookies(response, intlResponse, pathname);
 });
 
 // Matcher: include all UI routes (so intl middleware fires) but skip api/auth,

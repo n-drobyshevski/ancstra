@@ -1,6 +1,5 @@
 import Link from 'next/link';
 import { Users, Heart, BarChart3, TrendingUp, ShieldAlert } from 'lucide-react';
-import { cacheLife, cacheTag } from 'next/cache';
 import { getTranslations } from 'next-intl/server';
 import {
   Card,
@@ -34,13 +33,10 @@ const GRID_COLS_LG: Record<number, string> = {
 };
 
 export async function StatCards({ dbFilename, keys = DEFAULT_KEYS }: StatCardsProps) {
-  'use cache';
-  cacheLife('dashboard');
-  // Tags mirror the inner data fns so any revalidateTag() invalidates this too.
-  // `contributions` is included unconditionally because the cached fragment
-  // would otherwise survive a queue change made *after* it was first rendered
-  // for an admin and stayed stale.
-  cacheTag('dashboard-stats', 'persons', 'quality', 'contributions');
+  // No `'use cache'` at the component level: `getTranslations()` reads locale
+  // from request headers, and Next.js 16 cacheComponents forbids `headers()`
+  // inside a cache scope. The inner `getCached*` helpers (below) are still
+  // cached individually — that's where the DB-hit caching belongs.
 
   const needsPending = keys.includes('pendingContributions');
   const [stats, overallQualityScore, moderation, t] = await Promise.all([

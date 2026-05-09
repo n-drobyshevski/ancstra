@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { cacheLife, cacheTag } from 'next/cache';
 import { getTranslations } from 'next-intl/server';
 import { Card, CardContent, CardHeader, CardTitle, CardAction } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,10 +12,9 @@ interface RecentPersonsProps {
 }
 
 export async function RecentPersons({ dbFilename }: RecentPersonsProps) {
-  'use cache';
-  cacheLife('dashboard');
-  cacheTag('dashboard-recent', 'dashboard-stats', 'persons');
-
+  // No `'use cache'` here: `getTranslations()` reads request headers, which
+  // Next.js 16 cacheComponents forbids inside cache scope. The DB reads are
+  // cached at the helper level (`getCachedRecentPersons`, `getCachedStatCards`).
   const [recentPersons, { totalPersons }, t, tSex] = await Promise.all([
     getCachedRecentPersons(dbFilename),
     getCachedStatCards(dbFilename),

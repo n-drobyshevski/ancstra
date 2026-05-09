@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { cacheLife, cacheTag } from 'next/cache';
 import { getTranslations } from 'next-intl/server';
 import { Card, CardContent, CardHeader, CardTitle, CardAction } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,10 +10,9 @@ interface QualityWidgetProps {
 }
 
 export async function QualityWidget({ dbFilename }: QualityWidgetProps) {
-  'use cache';
-  cacheLife('genealogy');
-  cacheTag('quality');
-
+  // No `'use cache'` here: `getTranslations()` reads request headers, which
+  // Next.js 16 cacheComponents forbids inside cache scope. The score itself
+  // is cached at the helper level (`getCachedQualityScore`).
   const [score, t] = await Promise.all([
     getCachedQualityScore(dbFilename),
     getTranslations('dashboard.qualityWidget'),

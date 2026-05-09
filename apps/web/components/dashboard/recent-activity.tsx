@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { cacheLife, cacheTag } from 'next/cache';
 import { Card, CardContent, CardHeader, CardTitle, CardAction } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { getTranslations } from 'next-intl/server';
@@ -12,10 +11,10 @@ interface RecentActivityProps {
 }
 
 export async function RecentActivity({ familyId }: RecentActivityProps) {
-  'use cache: private';
-  cacheLife('activity');
-  cacheTag('activity', `activity-${familyId}`);
-
+  // No `'use cache: private'` here: `getTranslations()` and
+  // `getFormatRelativeTime()` both read request headers, which Next.js 16
+  // cacheComponents forbids inside cache scope. The feed itself is cached at
+  // the helper level (`getCachedActivityFeed`).
   const feed = await getCachedActivityFeed(familyId, 5);
   const items = feed.items;
   const formatRelative = await getFormatRelativeTime();

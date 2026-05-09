@@ -59,6 +59,11 @@ function TRPCInner({ children }: { children: React.ReactNode }) {
 }
 
 export function TRPCReactProvider({ children }: { children: React.ReactNode }) {
+  // No `session` prop: pre-fetching `auth()` in the root layout to seed
+  // <SessionProvider> triggers Next.js 16's blocking-route warning under
+  // `cacheComponents`. Components that branch on `useSession()` content
+  // (LensSelector, PlatformAdminOnly) gate with `useIsHydrated` instead so
+  // SSR + first client render produce the same tree shape.
   return (
     <AppSessionProvider>
       <TRPCInner>{children}</TRPCInner>
