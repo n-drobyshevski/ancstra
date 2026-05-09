@@ -48,6 +48,7 @@ import {
   applyPositionMap,
   extractPositions,
   relaxOverlapsByRank,
+  tightenRankSpacing,
   validateConnection,
   parseLayoutData,
   serializeLayoutData,
@@ -503,7 +504,19 @@ function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focus
             }
           : n,
       );
-      const next = autoSpreadEnabled ? relaxOverlapsByRank(restyled, edges, style) : restyled;
+      // Two passes when treeAutoSpread is on:
+      //   1. relax — push apart on enlarge (compact→wide direction).
+      //   2. tighten — pull together on shrink (wide→compact direction).
+      // Each pass is a no-op in the direction the other handles, so the
+      // composition produces exact width+nodesep / width+partnerGap
+      // spacing per adjacent pair regardless of switch direction.
+      const next = autoSpreadEnabled
+        ? tightenRankSpacing(
+            relaxOverlapsByRank(restyled, edges, style),
+            edges,
+            style,
+          )
+        : restyled;
       nudgedNodes = next;
       return next;
     });

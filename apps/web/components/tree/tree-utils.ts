@@ -730,6 +730,118 @@ export function relaxOverlapsByRank(
   });
 }
 
+/**
+ * Per-rank linear tightening that pulls oversized horizontal gaps closed.
+ *
+ * The inverse of `relaxOverlapsByRank`: it acts only when the gap between
+ * adjacent siblings exceeds the expected gap for the active node-style
+ * mode. Use case: switching wide→compact shrinks each card from 240→120 px,
+ * which leaves ~120 px of dead space between adjacent siblings; this pass
+ * pulls them back together.
+ *
+ * Each rank is anchored to its ORIGINAL CENTER (not its leftmost node) so
+ * the canvas doesn't drift left as content compresses — the rank collapses
+ * symmetrically inward.
+ *
+ * Composition: in the canvas's mode-switch handler, run `relaxOverlapsByRank`
+ * first (push apart on enlarge), then this (pull closer on shrink). Each
+ * one is a no-op in the direction the other handles, so applying both
+ * always yields exact `width + nodesep` (or `width + partnerGap` for
+ * partner pairs) spacing per adjacent pair.
+ *
+ * Pure: returns a new `Node[]`; does not mutate input.
+ */
+export function tightenRankSpacing(
+  nodes: Node[],
+  edges: Edge[],
+  nodeStyle: NodeStyle,
+): Node[] {
+  if (nodes.length === 0) return nodes;
+
+  const isCompact = nodeStyle === 'compact';
+  const width = isCompact ? COMPACT_NODE_WIDTH : NODE_WIDTH;
+  const partnerGap = isCompact ? COMPACT_PARTNER_GAP : PARTNER_GAP;
+  const expectedSiblingGap = isCompact ? 50 : 80; // matches Dagre's `nodesep`
+
+  const Y_TOLERANCE = 5;
+
+  const personNodes = nodes.filter((n) => n.type === 'person');
+  if (personNodes.length === 0) return nodes;
+
+  const nodeIdSet = new Set(personNodes.map((n) => n.id));
+  const partnerKeys = collectPartnerPairKeys(edges, nodeIdSet);
+
+  // Group by rank (same logic as relaxOverlapsByRank).
+  const sortedByY = [...personNodes].sort(
+    (a, b) => a.position.y - b.position.y,
+  );
+  const ranks: Node[][] = [];
+  let currentRank: Node[] = [];
+  let anchorY = Number.NEGATIVE_INFINITY;
+  for (const n of sortedByY) {
+    if (currentRank.length === 0 || Math.abs(n.position.y - anchorY) <= Y_TOLERANCE) {
+      if (currentRank.length === 0) anchorY = n.position.y;
+      currentRank.push(n);
+    } else {
+      ranks.push(currentRank);
+      currentRank = [n];
+      anchorY = n.position.y;
+    }
+  }
+  if (currentRank.length > 0) ranks.push(currentRank);
+
+  const nextX = new Map<string, number>();
+  for (const n of personNodes) nextX.set(n.id, n.position.x);
+
+  for (const rank of ranks) {
+    if (rank.length <= 1) continue;
+
+    const sorted = [...rank].sort(
+      (a, b) => nextX.get(a.id)! - nextX.get(b.id)!,
+    );
+
+    // Remember the original center so we can preserve it after tightening.
+    const origLeftmostX = nextX.get(sorted[0].id)!;
+    const origRightmostX = nextX.get(sorted[sorted.length - 1].id)!;
+    const origCenter = (origLeftmostX + origRightmostX) / 2;
+
+    // Pass 1: pull excess gaps closed (anchored at the leftmost node).
+    for (let i = 1; i < sorted.length; i += 1) {
+      const prev = sorted[i - 1];
+      const curr = sorted[i];
+      const isPair = partnerKeys.has(pairKey(prev.id, curr.id));
+      const expectedGap = isPair ? partnerGap : expectedSiblingGap;
+      const expectedX = nextX.get(prev.id)! + width + expectedGap;
+      const currX = nextX.get(curr.id)!;
+      if (currX > expectedX) {
+        const excess = currX - expectedX;
+        for (let j = i; j < sorted.length; j += 1) {
+          const id = sorted[j].id;
+          nextX.set(id, nextX.get(id)! - excess);
+        }
+      }
+    }
+
+    // Pass 2: re-center the rank around its original center so the canvas
+    // doesn't drift leftward as content compresses.
+    const newRightmostX = nextX.get(sorted[sorted.length - 1].id)!;
+    const newCenter = (origLeftmostX + newRightmostX) / 2;
+    const shift = origCenter - newCenter;
+    if (shift !== 0) {
+      for (const node of sorted) {
+        nextX.set(node.id, nextX.get(node.id)! + shift);
+      }
+    }
+  }
+
+  return nodes.map((n) => {
+    if (n.type !== 'person') return n;
+    const x = nextX.get(n.id);
+    if (x === undefined || x === n.position.x) return n;
+    return { ...n, position: { x, y: n.position.y } };
+  });
+}
+
 export function applyPositionMap(
   nodes: Node[],
   positions: Record<string, { x: number; y: number }>,
