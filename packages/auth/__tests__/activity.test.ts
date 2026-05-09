@@ -173,19 +173,38 @@ describe('redactActivityForViewer', () => {
 
   const livingPersonIds = new Set(['living-1']);
 
-  it('replaces summary for living person entries', () => {
+  it('flags living-person entries as redacted in metadata', () => {
     const result = redactActivityForViewer(entries, livingPersonIds);
+    expect(result[0].metadata).toEqual({ redacted: true });
+    // English summary preserved as a fallback for stale clients / missing translations.
     expect(result[0].summary).toBe('A family member had activity recorded');
   });
 
   it('does not modify entries for deceased persons', () => {
     const result = redactActivityForViewer(entries, livingPersonIds);
     expect(result[1].summary).toBe('Added Jane Doe to the tree');
+    expect(result[1].metadata).toBeNull();
   });
 
   it('does not modify entries without entityId', () => {
     const result = redactActivityForViewer(entries, livingPersonIds);
     expect(result[2].summary).toBe('Imported GEDCOM file');
+    expect(result[2].metadata).toBeNull();
+  });
+
+  it('preserves existing metadata fields when redacting', () => {
+    const entriesWithMeta: ActivityEntry[] = [
+      {
+        ...entries[0],
+        metadata: { source: 'manual', personId: 'living-1' },
+      },
+    ];
+    const result = redactActivityForViewer(entriesWithMeta, livingPersonIds);
+    expect(result[0].metadata).toEqual({
+      source: 'manual',
+      personId: 'living-1',
+      redacted: true,
+    });
   });
 
   it('does not mutate the original entries', () => {

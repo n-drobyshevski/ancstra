@@ -152,12 +152,17 @@ export async function getActivityFeed(
 }
 
 /**
- * Redact activity entries for viewer role: replace summary with generic text
- * for entries whose entityId refers to a living person.
+ * Redact activity entries for viewer role: flag entries whose entityId refers
+ * to a living person so the client renders a generic translated summary
+ * instead of the action-specific one.
  *
  * Caller contract: run this AFTER any role-based visibility filter
  * (e.g. `filterEntriesByVisibility`) so redaction only targets entries the
  * viewer is allowed to see in the first place.
+ *
+ * The English `summary` is preserved as a fallback for stale clients or when
+ * the `activity.summaries.redacted` translation key is missing. The
+ * `metadata.redacted` sentinel is what new clients render against.
  */
 export function redactActivityForViewer(
   entries: ActivityEntry[],
@@ -168,6 +173,7 @@ export function redactActivityForViewer(
       return {
         ...entry,
         summary: 'A family member had activity recorded',
+        metadata: { ...(entry.metadata ?? {}), redacted: true },
       };
     }
     return entry;

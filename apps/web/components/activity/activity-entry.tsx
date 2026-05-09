@@ -19,6 +19,22 @@ export interface ActivityEntryProps {
   metadata?: Record<string, unknown> | null;
 }
 
+const ROLE_PARAM_KEYS = ['role', 'newRole', 'oldRole', 'previousRole'] as const;
+
+// Some action templates need to vary on metadata presence (e.g. invite_sent
+// reads differently when no email was supplied). Centralised here so the
+// renderer stays declarative.
+function pickSummaryKey(
+  action: string,
+  metadata: Record<string, unknown> | null | undefined,
+): string {
+  if (metadata?.redacted === true) return 'redacted';
+  if (action === 'invite_sent' && (!metadata || !metadata.email)) {
+    return 'invite_sent_no_email';
+  }
+  return action;
+}
+
 export function ActivityEntry({
   userName,
   userAvatarUrl,
@@ -30,7 +46,9 @@ export function ActivityEntry({
   metadata,
 }: ActivityEntryProps) {
   const formatRelative = useFormatRelativeTime();
-  const t = useTranslations('activity.actions');
+  const tActions = useTranslations('activity.actions');
+  const tSummaries = useTranslations('activity.summaries');
+  const tRoles = useTranslations('common.lens.roles');
   const initials = userName
     .split(' ')
     .map((n) => n[0])
@@ -41,10 +59,37 @@ export function ActivityEntry({
   const config = getActionConfig(action);
   const ActionIcon = config.icon;
   // Narrow the dynamic action string into the literal union next-intl wants.
-  type ActionKey = Parameters<typeof t>[0];
+  type ActionKey = Parameters<typeof tActions>[0];
   const actionLabel = action in ACTIVITY_ACTION_CONFIG
-    ? t(action as ActionKey)
-    : t('fallback');
+    ? tActions(action as ActionKey)
+    : tActions('fallback');
+
+  // Translate the human-readable summary line. Falls back to the server-stored
+  // English `summary` when the action has no template, ICU args are missing,
+  // or next-intl throws — keeping older feed rows readable while newly logged
+  // actions render in the active locale.
+  type SumKey = Parameters<typeof tSummaries.has>[0];
+  type RoleKey = Parameters<typeof tRoles.has>[0];
+  let renderedSummary = summary;
+  const summaryKey = pickSummaryKey(action, metadata);
+  if (tSummaries.has(summaryKey as SumKey)) {
+    try {
+      const params: Record<string, unknown> = { ...(metadata ?? {}) };
+      for (const k of ROLE_PARAM_KEYS) {
+        const v = params[k];
+        if (typeof v === 'string') {
+          const lowered = v.toLowerCase() as RoleKey;
+          if (tRoles.has(lowered)) params[k] = tRoles(lowered);
+        }
+      }
+      renderedSummary = tSummaries(
+        summaryKey as SumKey,
+        params as Parameters<typeof tSummaries>[1],
+      );
+    } catch {
+      // ICU param mismatch / formatter error — keep the English fallback.
+    }
+  }
 
   const isClickable = entityType === 'person' && entityId;
   const hasMetadata = metadata && Object.keys(metadata).length > 0;
@@ -65,7 +110,7 @@ export function ActivityEntry({
       </div>
 
       <div className="min-w-0 flex-1">
-        <p className="text-sm leading-snug line-clamp-2">{summary}</p>
+        <p className="text-sm leading-snug line-clamp-2">{renderedSummary}</p>
         <p className="mt-0.5 text-xs text-muted-foreground">
           <span className="font-medium text-foreground/80">{userName}</span>
           {' · '}

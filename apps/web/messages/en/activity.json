@@ -71,5 +71,61 @@
     "chipQuoted": "“{value}”",
     "removeFilterAriaLabel": "Remove filter {label}",
     "memberFallback": "member"
+  },
+  "error": {
+    "heading": "Something went wrong",
+    "fallbackMessage": "Failed to load activity feed.",
+    "tryAgain": "Try again"
+  },
+  "metadata": {
+    "showDetails": "Show details",
+    "hideDetails": "Hide details"
+  },
+  "metadataLabels": {
+    "contributionId": "Contribution ID",
+    "comment": "Comment",
+    "email": "Email",
+    "role": "Role",
+    "invitationId": "Invitation ID",
+    "targetUserId": "Target user ID",
+    "oldRole": "Previous role",
+    "newRole": "New role",
+    "previousOwnerId": "Previous owner ID",
+    "newOwnerId": "New owner ID",
+    "changed": "Changed fields",
+    "after": "Updated values",
+    "persons": "People",
+    "families": "Families",
+    "events": "Events",
+    "byPlatformAdmin": "By platform admin",
+    "ownerUserId": "Owner user ID",
+    "maxMembers": "Member limit",
+    "reactivated": "Reactivated",
+    "movedToFamilyId": "Moved to family ID",
+    "movedFromFamilyId": "Moved from family ID",
+    "createdNewUser": "Created new user"
+  },
+  "summaries": {
+    "person_added": "Added a person",
+    "person_edited": "Edited a person",
+    "person_deleted": "Deleted a person",
+    "relationship_added": "Added a relationship",
+    "media_uploaded": "Uploaded media",
+    "gedcom_imported": "Imported GEDCOM file ({persons, plural, =0 {no people} one {# person} other {# people}}, {families, plural, =0 {no families} one {# family} other {# families}})",
+    "invite_sent": "Sent an invitation to {email} as {role}",
+    "invite_sent_no_email": "Sent an invitation as {role}",
+    "invite_accepted": "Joined the family",
+    "invite_revoked": "Revoked an invitation",
+    "role_changed": "Changed a member's role to {newRole}",
+    "member_removed": "Removed a member from the family",
+    "member_added": "Added a member as {role}",
+    "owner_transferred": "Transferred ownership to a new owner",
+    "contribution_submitted": "Submitted a contribution",
+    "contribution_approved": "Approved a contribution",
+    "contribution_rejected": "Rejected a contribution",
+    "family_settings_updated": "Updated family settings",
+    "family_editor_defaults_updated": "Updated editor defaults",
+    "family_created": "Created a family",
+    "redacted": "A family member had activity recorded"
   }
 }

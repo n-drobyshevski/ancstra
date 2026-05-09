@@ -71,5 +71,61 @@
     "chipQuoted": "«{value}»",
     "removeFilterAriaLabel": "Убрать фильтр {label}",
     "memberFallback": "член"
+  },
+  "error": {
+    "heading": "Что-то пошло не так",
+    "fallbackMessage": "Не удалось загрузить ленту активности.",
+    "tryAgain": "Попробовать снова"
+  },
+  "metadata": {
+    "showDetails": "Показать детали",
+    "hideDetails": "Скрыть детали"
+  },
+  "metadataLabels": {
+    "contributionId": "ID вклада",
+    "comment": "Комментарий",
+    "email": "Эл. почта",
+    "role": "Роль",
+    "invitationId": "ID приглашения",
+    "targetUserId": "ID пользователя",
+    "oldRole": "Прежняя роль",
+    "newRole": "Новая роль",
+    "previousOwnerId": "ID прежнего владельца",
+    "newOwnerId": "ID нового владельца",
+    "changed": "Изменённые поля",
+    "after": "Новые значения",
+    "persons": "Людей",
+    "families": "Семей",
+    "events": "Событий",
+    "byPlatformAdmin": "Администратором платформы",
+    "ownerUserId": "ID владельца",
+    "maxMembers": "Лимит участников",
+    "reactivated": "Восстановлен",
+    "movedToFamilyId": "ID семьи назначения",
+    "movedFromFamilyId": "ID исходной семьи",
+    "createdNewUser": "Создан новый пользователь"
+  },
+  "summaries": {
+    "person_added": "Добавлен человек",
+    "person_edited": "Изменён человек",
+    "person_deleted": "Удалён человек",
+    "relationship_added": "Добавлена связь",
+    "media_uploaded": "Загружено медиа",
+    "gedcom_imported": "Импортирован GEDCOM ({persons, plural, =0 {нет людей} one {# человек} few {# человека} many {# человек} other {# человека}}, {families, plural, =0 {нет семей} one {# семья} few {# семьи} many {# семей} other {# семьи}})",
+    "invite_sent": "Отправлено приглашение на {email} как {role}",
+    "invite_sent_no_email": "Отправлено приглашение как {role}",
+    "invite_accepted": "Присоединение к семье",
+    "invite_revoked": "Приглашение отозвано",
+    "role_changed": "Роль участника изменена на {newRole}",
+    "member_removed": "Участник удалён из семьи",
+    "member_added": "Добавлен участник как {role}",
+    "owner_transferred": "Владение передано",
+    "contribution_submitted": "Вклад отправлен",
+    "contribution_approved": "Вклад одобрен",
+    "contribution_rejected": "Вклад отклонён",
+    "family_settings_updated": "Настройки семьи обновлены",
+    "family_editor_defaults_updated": "Умолчания редактора обновлены",
+    "family_created": "Семья создана",
+    "redacted": "Зафиксирована активность одного из участников семьи"
   }
 }

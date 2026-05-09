@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 
 interface ActivityMetadataRevealProps {
@@ -32,8 +33,19 @@ function humaniseKey(key: string): string {
  */
 export function ActivityMetadataReveal({ metadata }: ActivityMetadataRevealProps) {
   const [open, setOpen] = useState(false);
-  const entries = Object.entries(metadata);
+  const t = useTranslations('activity.metadata');
+  const tLabels = useTranslations('activity.metadataLabels');
+  // Filter sentinel keys (e.g. `redacted`) that signal rendering hints to the
+  // entry component but shouldn't surface as "Redacted: true" in the reveal.
+  const HIDDEN_KEYS = new Set(['redacted']);
+  const entries = Object.entries(metadata).filter(([k]) => !HIDDEN_KEYS.has(k));
   if (entries.length === 0) return null;
+
+  type LabelKey = Parameters<typeof tLabels.has>[0];
+  // Unknown metadata keys (forward-compat for new logActivity callers) fall
+  // back to runtime humanisation rather than throwing on a missing message.
+  const labelFor = (key: string): string =>
+    tLabels.has(key as LabelKey) ? tLabels(key as LabelKey) : humaniseKey(key);
 
   return (
     <div className="mt-1.5">
@@ -51,13 +63,13 @@ export function ActivityMetadataReveal({ metadata }: ActivityMetadataRevealProps
         <ChevronDown
           className={`size-3 transition-transform ${open ? 'rotate-180' : ''}`}
         />
-        {open ? 'Hide details' : 'Show details'}
+        {open ? t('hideDetails') : t('showDetails')}
       </Button>
       {open ? (
         <dl className="mt-1.5 grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1 rounded-md border bg-muted/40 px-3 py-2 text-xs animate-fade-slide-in">
           {entries.map(([k, v]) => (
             <div key={k} className="contents">
-              <dt className="font-medium text-muted-foreground">{humaniseKey(k)}</dt>
+              <dt className="font-medium text-muted-foreground">{labelFor(k)}</dt>
               <dd className="break-words font-mono text-[11px] text-foreground/90">
                 {formatValue(v)}
               </dd>
