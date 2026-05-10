@@ -1,6 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
+import type { TreeData } from '@ancstra/shared';
 import { Button } from '@/components/ui/button';
 import { Menubar } from '@/components/ui/menubar';
 import { Separator } from '@/components/ui/separator';
@@ -10,6 +11,9 @@ import type { TreeViewMenuProps } from './tree-view-menu';
 import { TreeViewToggle } from './tree-view-toggle';
 import { TreeViewMenu } from './tree-view-menu';
 import { TreeExportMenu } from './tree-export-menu';
+import { TreeSurnameHighlightPopover } from './tree-surname-highlight-popover';
+import { TreeFiltersTrigger } from './tree-filters-trigger';
+import type { SurnameHighlightStyle } from '@/lib/tree/view-prefs-storage';
 
 interface TreeToolbarProps extends TreeViewMenuProps {
   // Palette
@@ -23,13 +27,25 @@ interface TreeToolbarProps extends TreeViewMenuProps {
   // Filters (right side)
   filterState: FilterState;
   onToggleFilter: (category: 'sex' | 'living', key: string) => void;
+
+  // Filter panel — controlled by the canvas (which mounts the panel inside
+  // its viewport). The trigger here just toggles the canvas's state.
+  filtersOpen: boolean;
+  onFiltersOpenChange: (open: boolean) => void;
+
+  // Surname-branch highlight (right cluster, before filter pills)
+  treeData: TreeData;
+  activeHighlightSurname: string | null;
+  onHighlightSurnameChange: (surname: string | null) => void;
+  surnameHighlightStyle: SurnameHighlightStyle;
+  onSurnameHighlightStyleChange: (s: SurnameHighlightStyle) => void;
 }
 
 export function TreeToolbar(props: TreeToolbarProps) {
   // Partition: pull toolbar-only props out so they are NOT forwarded into
   // <TreeViewMenu />. The rest is structurally `TreeViewMenuProps` because
-  // `TreeToolbarProps extends TreeViewMenuProps` plus the six toolbar-only
-  // fields below — removing them leaves exactly the menu's prop surface.
+  // `TreeToolbarProps extends TreeViewMenuProps` plus the toolbar-only fields
+  // below — removing them leaves exactly the menu's prop surface.
   const {
     onTogglePalette,
     paletteOpen,
@@ -37,6 +53,13 @@ export function TreeToolbar(props: TreeToolbarProps) {
     onSetView,
     filterState,
     onToggleFilter,
+    filtersOpen,
+    onFiltersOpenChange,
+    treeData,
+    activeHighlightSurname,
+    onHighlightSurnameChange,
+    surnameHighlightStyle,
+    onSurnameHighlightStyleChange,
     ...viewMenuProps
   } = props;
   const t = useTranslations('tree.toolbar');
@@ -72,6 +95,23 @@ export function TreeToolbar(props: TreeToolbarProps) {
         <Button variant="secondary" size="sm" disabled>
           {t('search')}
         </Button>
+
+        <TreeSurnameHighlightPopover
+          treeData={treeData}
+          activeSurname={activeHighlightSurname}
+          onChangeSurname={onHighlightSurnameChange}
+          highlightStyle={surnameHighlightStyle}
+          onChangeHighlightStyle={onSurnameHighlightStyleChange}
+        />
+
+        <Separator orientation="vertical" className="h-5 mx-0.5" />
+
+        <TreeFiltersTrigger
+          open={filtersOpen}
+          onOpenChange={onFiltersOpenChange}
+        />
+
+        <Separator orientation="vertical" className="h-5 mx-0.5" />
 
         <Button
           variant={filterState.sex.M ? 'secondary' : 'outline'}

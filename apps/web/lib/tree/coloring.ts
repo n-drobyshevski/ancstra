@@ -53,6 +53,17 @@ const LIVING_TONES = {
 };
 
 /**
+ * Tone applied to nodes matched by the surname-branch highlight when the
+ * apply-mode is `replace`. Surname highlight is a separate axis — it does
+ * not extend the `Coloring` enum; the canvas overrides `coloringTone`
+ * directly when surname highlight is active in replace mode.
+ */
+export const SURNAME_TONE: ColorTone = {
+  bg: 'var(--tree-coloring-surname)',
+  border: 'var(--tree-coloring-surname-border)',
+};
+
+/**
  * Compute the per-person color tone for the active coloring mode. Returns an
  * empty map for `'off'` and for `'branch'` without a `focusPersonId` (visual
  * no-op, matches the spec's deferred-focus behavior).

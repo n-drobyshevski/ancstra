@@ -65,6 +65,11 @@ export const treeTableParsers = {
   citations: parseAsStringLiteral(TREE_CITATIONS_VALUES).withDefault('any'),
   hasProposals: parseAsBoolean.withDefault(false),
   complGte: parseAsInteger,
+  // Surname-branch highlight. Lowercase normalized surname (or empty for off).
+  // The canvas resolves the patrilineal-component membership locally; the
+  // server doesn't act on this filter, but lifting it to the URL keeps the
+  // highlight shareable and bookmark-able. Empty string = feature off.
+  highlightSurname: parseAsString.withDefault(''),
 };
 
 export const treeTableCache = createSearchParamsCache(treeTableParsers);

@@ -10,7 +10,27 @@
     "living": {
       "living": "Живые",
       "deceased": "Умершие"
+    },
+    "surnameHighlight": {
+      "triggerLabel": "Выделить ветвь по фамилии",
+      "triggerEmpty": "Выделить",
+      "searchPlaceholder": "Поиск фамилий…",
+      "emptyResults": "Фамилии не найдены.",
+      "groupHeading": "{count, plural, one {1 фамилия} few {# фамилии} many {# фамилий} other {# фамилий}}",
+      "applyAsLabel": "Применить как:",
+      "applyAsOverlay": "Поверх",
+      "applyAsReplace": "Заменить",
+      "applyAsFadeOut": "Приглушить",
+      "clear": "Сбросить"
     }
+  },
+  "canvasFiltersPanel": {
+    "triggerLabel": "Фильтры",
+    "triggerLabelWithCount": "Фильтры ({count} активных)",
+    "panelTitle": "Фильтр людей",
+    "panelDescription": "Не подходящие под фильтр люди на холсте затемняются. Фильтры общие с табличным видом.",
+    "emptyState": "Фильтры не заданы — отображаются все люди.",
+    "closeAriaLabel": "Закрыть панель фильтров"
   },
   "viewToggle": {
     "canvas": "Холст",
@@ -433,6 +453,8 @@
     "showAncestorsOnly": "Показать только предков",
     "showDescendantsOnly": "Показать только потомков",
     "seeInTableView": "Посмотреть в табличном виде",
+    "highlightSurnameBranch": "Выделить ветвь {surname}",
+    "clearSurnameHighlight": "Снять выделение ветви",
     "copyPersonId": "Копировать ID человека",
     "copyShareLink": "Копировать ссылку для общего доступа",
     "openInNewTab": "Открыть в новой вкладке",

@@ -11,6 +11,7 @@ import {
 } from '@/lib/graph/validate-connection';
 import type { ColorTone } from '@/lib/tree/coloring';
 import type { ColoringStyle } from '@/lib/tree/view-prefs-storage';
+import type { TreeTableFilters } from '@/lib/tree/search-params';
 
 const NODE_WIDTH = 240;
 const NODE_HEIGHT = 70;
@@ -45,6 +46,17 @@ export interface PersonNodeData extends PersonListItem {
   showCitations?: boolean;
   coloringTone?: ColorTone;
   coloringStyle?: ColoringStyle;
+  /** Surname-branch highlight state for this node, set by the canvas when
+   *  the surname highlight is active. `undefined` = feature is off OR
+   *  this node should render exactly like baseline (used for matches in
+   *  fadeOut mode and for all nodes when no highlight is active).
+   *  - `'match'`: in overlay/replace mode, render the accent ring (overlay)
+   *    or have coloringTone overridden (replace).
+   *  - `'nonmatch'`: in overlay/replace mode, render dim (opacity 0.3,
+   *    click-blocked) — same path that filter mismatches use.
+   *  - `'fadeNonmatch'`: in fadeOut mode, render desaturated and softly
+   *    faded (grayscale + opacity 0.5) but keep pointer-events. */
+  surnameHighlight?: 'match' | 'nonmatch' | 'fadeNonmatch';
   [key: string]: unknown;
 }
 
@@ -1013,6 +1025,11 @@ export function validateConnection(
   return { valid: true };
 }
 
+/** Legacy nested-boolean shape used by the toolbar's inline sex/living buttons
+ *  and the mobile view bar. The canvas's dim pipeline uses CanvasFilterInput
+ *  (the URL shape) directly — this type exists only as a UI-derivation helper
+ *  for components that render per-key toggle states. Derive via
+ *  `deriveLegacyFilterState(filters)`. */
 export interface FilterState {
   sex: { M: boolean; F: boolean; U: boolean };
   living: { living: boolean; deceased: boolean };
@@ -1023,15 +1040,145 @@ export const DEFAULT_FILTERS: FilterState = {
   living: { living: true, deceased: true },
 };
 
-export function applyFilters(nodes: Node[], filterState: FilterState): Node[] {
+/** Subset of TreeTableFilters that the canvas evaluates locally to set the
+ *  `dimmed` flag on person nodes. Topology is excluded — it's already handled
+ *  via xyflow's `hidden` prop in the canvas's decoration pass.
+ *
+ *  Empty arrays / `null` / default literals all mean "no constraint" so the
+ *  predicate short-circuits to PASS in those cases. Undated and missing-
+ *  field nodes also pass year/place/completeness predicates rather than
+ *  being punished for incomplete data. */
+export type CanvasFilterInput = Pick<
+  TreeTableFilters,
+  | 'q'
+  | 'sex'
+  | 'living'
+  | 'validation'
+  | 'bornFrom'
+  | 'bornTo'
+  | 'diedFrom'
+  | 'diedTo'
+  | 'place'
+  | 'placeScope'
+  | 'citations'
+  | 'hasProposals'
+  | 'complGte'
+>;
+
+/** Derive the toolbar/MobileViewBar's nested-boolean view from the URL filter
+ *  arrays. Empty sex/living arrays mean "all selected" (no filter active). */
+export function deriveLegacyFilterState(
+  filters: Pick<CanvasFilterInput, 'sex' | 'living'>,
+): FilterState {
+  const sexAll = filters.sex.length === 0;
+  const livingAll = filters.living.length === 0;
+  return {
+    sex: {
+      M: sexAll || filters.sex.includes('M'),
+      F: sexAll || filters.sex.includes('F'),
+      U: sexAll || filters.sex.includes('U'),
+    },
+    living: {
+      living: livingAll || filters.living.includes('living'),
+      deceased: livingAll || filters.living.includes('deceased'),
+    },
+  };
+}
+
+/** Extract a 4-digit year from a (possibly fuzzy) date string, or null if no
+ *  year can be parsed. Used by the canvas year-range predicates so undated
+ *  nodes pass any range filter (rather than being punished for missing data). */
+function parseYear(date: string | null | undefined): number | null {
+  if (!date) return null;
+  const m = date.match(/(\d{4})/);
+  return m ? Number.parseInt(m[1], 10) : null;
+}
+
+function lower(s: string | null | undefined): string {
+  return (s ?? '').toLowerCase();
+}
+
+/** True when the node passes every active dimension. Empty / default values
+ *  on a dimension cause that dimension to short-circuit to true. */
+export function matchesCanvasFilters(
+  data: PersonNodeData,
+  filters: CanvasFilterInput,
+  proposedPersonIds?: Set<string>,
+): boolean {
+  // sex: empty array OR all 3 selected means pass.
+  if (filters.sex.length > 0 && filters.sex.length < 3) {
+    if (!filters.sex.includes(data.sex as 'M' | 'F' | 'U')) return false;
+  }
+  // living: empty OR both selected means pass.
+  if (filters.living.length === 1) {
+    const want = filters.living[0] === 'living';
+    if (!!data.isLiving !== want) return false;
+  }
+  // validation: empty OR both selected means pass.
+  if (filters.validation.length === 1) {
+    if (data.validation !== filters.validation[0]) return false;
+  }
+  // born range — undated nodes pass.
+  if (filters.bornFrom !== null || filters.bornTo !== null) {
+    const y = parseYear(data.birthDate);
+    if (y !== null) {
+      if (filters.bornFrom !== null && y < filters.bornFrom) return false;
+      if (filters.bornTo !== null && y > filters.bornTo) return false;
+    }
+  }
+  // died range — undated nodes pass.
+  if (filters.diedFrom !== null || filters.diedTo !== null) {
+    const y = parseYear(data.deathDate);
+    if (y !== null) {
+      if (filters.diedFrom !== null && y < filters.diedFrom) return false;
+      if (filters.diedTo !== null && y > filters.diedTo) return false;
+    }
+  }
+  // place — canvas matches against `birthPlace` only regardless of placeScope
+  // (no per-event place data on canvas nodes; the panel surfaces a hint).
+  if (filters.place.trim() !== '') {
+    const needle = lower(filters.place.trim());
+    if (!lower(data.birthPlace).includes(needle)) return false;
+  }
+  // citations: bucket against sourcesCount.
+  if (filters.citations !== 'any') {
+    const c = data.sourcesCount ?? 0;
+    if (filters.citations === 'none' && c !== 0) return false;
+    if (filters.citations === 'gte1' && c < 1) return false;
+    if (filters.citations === 'gte3' && c < 3) return false;
+  }
+  // hasProposals: silent no-op if the canvas didn't pass a proposed-id set
+  // (e.g. proposedRelationships not threaded through). When the set IS
+  // provided, only members pass.
+  if (filters.hasProposals && proposedPersonIds) {
+    if (!proposedPersonIds.has(data.id as string)) return false;
+  }
+  // completeness threshold.
+  if (filters.complGte !== null) {
+    const c = data.completeness ?? 0;
+    if (c < filters.complGte) return false;
+  }
+  // q: free-text substring match against givenName + surname.
+  if (filters.q.trim() !== '') {
+    const needle = lower(filters.q.trim());
+    const hay = `${lower(data.givenName)} ${lower(data.surname)}`;
+    if (!hay.includes(needle)) return false;
+  }
+  return true;
+}
+
+/** Decorate every non-draft person node with `dimmed = !matches(filters)`.
+ *  Passes drafts through untouched. Pure: returns a new node array with
+ *  fresh data objects. */
+export function applyFilters(
+  nodes: Node[],
+  filters: CanvasFilterInput,
+  proposedPersonIds?: Set<string>,
+): Node[] {
   return nodes.map((node) => {
     if (node.type === 'draftPerson') return node;
     const data = node.data as PersonNodeData;
-    const sexVisible = filterState.sex[data.sex as 'M' | 'F' | 'U'] ?? true;
-    const livingVisible = data.isLiving
-      ? filterState.living.living
-      : filterState.living.deceased;
-    const dimmed = !sexVisible || !livingVisible;
+    const dimmed = !matchesCanvasFilters(data, filters, proposedPersonIds);
     return { ...node, data: { ...data, dimmed } };
   });
 }

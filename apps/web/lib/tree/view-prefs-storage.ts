@@ -11,6 +11,19 @@
 export type Coloring = 'off' | 'generation' | 'branch' | 'living';
 export type ColoringStyle = 'fill' | 'border';
 export type EdgeStyle = 'curved' | 'stepped' | 'straight';
+/** How the surname highlight composes with the active Coloring mode.
+ *  - `overlay`: matched nodes get an accent ring + non-matches dim
+ *    (opacity 0.3, click-blocked), while the underlying coloring mode
+ *    keeps painting fills/borders.
+ *  - `replace`: matched nodes get the surname tone (overrides current
+ *    coloring), non-matches go neutral and dim. Useful for purely
+ *    focusing on a single branch without other tones competing.
+ *  - `fadeOut`: matches stay completely unchanged (no ring, no tone
+ *    override); non-matches are desaturated and softly faded
+ *    (grayscale + opacity 0.5) but stay readable and clickable. The
+ *    "subtractive" mode — useful when accent rings on a large match
+ *    set feel noisy. */
+export type SurnameHighlightStyle = 'overlay' | 'replace' | 'fadeOut';
 
 const KEY_SHOW_DATES = 'ancstra-tree-show-dates';
 const KEY_SHOW_LIVING_INDICATOR = 'ancstra-tree-show-living-indicator';
@@ -21,6 +34,7 @@ const KEY_SHOW_CITATIONS = 'ancstra-tree-show-citations';
 const KEY_COLORING = 'ancstra-tree-coloring';
 const KEY_COLORING_STYLE = 'ancstra-tree-coloring-style';
 const KEY_EDGES = 'ancstra-tree-edges';
+const KEY_SURNAME_HIGHLIGHT_STYLE = 'ancstra-tree-surname-highlight-style';
 
 function readBool(key: string): boolean | null {
   if (typeof window === 'undefined') return null;
@@ -118,6 +132,25 @@ export function writeEdgeStyle(value: EdgeStyle): void {
   if (typeof window === 'undefined') return;
   try {
     window.localStorage.setItem(KEY_EDGES, value);
+  } catch {
+    // Silent.
+  }
+}
+
+export function readSurnameHighlightStyle(): SurnameHighlightStyle | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const v = window.localStorage.getItem(KEY_SURNAME_HIGHLIGHT_STYLE);
+    return v === 'overlay' || v === 'replace' || v === 'fadeOut' ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+export function writeSurnameHighlightStyle(value: SurnameHighlightStyle): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(KEY_SURNAME_HIGHLIGHT_STYLE, value);
   } catch {
     // Silent.
   }

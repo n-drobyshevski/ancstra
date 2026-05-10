@@ -28,7 +28,7 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { LayoutGrid, Download } from 'lucide-react';
-import { type FilterState } from './tree-utils';
+import { deriveLegacyFilterState } from './tree-utils';
 import { computeAncestors, computeDescendants } from '@/lib/tree/topology';
 import {
   treeTableParsers,
@@ -39,6 +39,12 @@ import {
   type TreeSortDir,
   type TreeHidableColumn,
 } from '@/lib/tree/search-params';
+import {
+  readSurnameHighlightStyle,
+  writeSurnameHighlightStyle,
+  type SurnameHighlightStyle,
+} from '@/lib/tree/view-prefs-storage';
+import { normalizeSurname } from '@/lib/tree/surname-highlight';
 import type { TreePersonRow } from './tree-table-columns';
 import type { TreeTableRelationships } from '@/lib/persons/query-tree-table-rows';
 import type { TreeYearBounds } from '@/lib/persons/year-bounds';
@@ -47,25 +53,6 @@ import type { ProposedRelationshipForCanvas } from '@/lib/queries';
 import { personDetailCache } from '@/lib/tree/person-detail-cache';
 
 const DENSITY_STORAGE_KEY = 'tree-table-density';
-
-function deriveFilterState(
-  sex: readonly TreeSexValue[],
-  living: readonly TreeLivingValue[],
-): FilterState {
-  const sexAll = sex.length === 0;
-  const livingAll = living.length === 0;
-  return {
-    sex: {
-      M: sexAll || sex.includes('M'),
-      F: sexAll || sex.includes('F'),
-      U: sexAll || sex.includes('U'),
-    },
-    living: {
-      living: livingAll || living.includes('living'),
-      deceased: livingAll || living.includes('deceased'),
-    },
-  };
-}
 
 function readStoredDensity(): TreeDensity | null {
   if (typeof window === 'undefined') return null;
@@ -149,10 +136,12 @@ export function TreeLayout({ viewData, focusPersonId }: TreeLayoutProps) {
     startTransition: startFiltersTransition,
   });
 
-  // FilterState shape (used by canvas) derived from URL. Table view filters
-  // server-side; this is only consumed by the canvas tinting/topology UI.
+  // Legacy FilterState shape (nested booleans) needed by MobileViewBar's
+  // inline sex/living toggles. The canvas reads URL filter state directly via
+  // useTreeTableFilters() and computes its own derivation; this one is for
+  // the parent-level mobile view bar only.
   const filterState = useMemo(
-    () => deriveFilterState(filters.sex, filters.living),
+    () => deriveLegacyFilterState({ sex: filters.sex, living: filters.living }),
     [filters.sex, filters.living],
   );
 
@@ -175,6 +164,41 @@ export function TreeLayout({ viewData, focusPersonId }: TreeLayoutProps) {
   }, []);
 
   const [showGaps, setShowGaps] = useState(false);
+
+  // Surname-branch highlight state.
+  // - Active surname lives in the URL (shareable, history-friendly) — empty
+  //   string means "no highlight".
+  // - Apply-as preference (overlay vs replace) is a long-lived UI choice and
+  //   lives in localStorage. Hydration-safe pattern: start with `'overlay'`
+  //   on the server render, then sync from storage post-mount.
+  // `highlightSurname` parser has `withDefault('')`, but the actual nuqs
+  // runtime briefly returns undefined under Turbopack HMR after sibling
+  // hooks re-bind to the same parsers. Guarding here keeps the page from
+  // crashing while keeping the typed contract elsewhere.
+  const rawHighlightSurname = filters.highlightSurname ?? '';
+  const activeHighlightSurname = rawHighlightSurname.trim()
+    ? normalizeSurname(rawHighlightSurname)
+    : null;
+  const [surnameHighlightStyle, setSurnameHighlightStyleState] =
+    useState<SurnameHighlightStyle>('overlay');
+  useEffect(() => {
+    const stored = readSurnameHighlightStyle();
+    if (stored) setSurnameHighlightStyleState(stored);
+  }, []);
+  const handleSurnameHighlightStyleChange = useCallback(
+    (next: SurnameHighlightStyle) => {
+      setSurnameHighlightStyleState(next);
+      writeSurnameHighlightStyle(next);
+    },
+    [],
+  );
+  const handleHighlightSurnameChange = useCallback(
+    (next: string | null) => {
+      const normalized = next ? normalizeSurname(next) : '';
+      void setFilters({ highlightSurname: normalized, page: 1 });
+    },
+    [setFilters],
+  );
 
   // Topology lifted to URL (phase 2): the server uses the anchor + mode to
   // restrict the table page via the closure table; the canvas reads the same
@@ -356,24 +380,6 @@ export function TreeLayout({ viewData, focusPersonId }: TreeLayoutProps) {
     [setFilters],
   );
 
-  const handleFilterStateChange = useCallback(
-    (next: FilterState) => {
-      const sex: TreeSexValue[] = [];
-      if (next.sex.M) sex.push('M');
-      if (next.sex.F) sex.push('F');
-      if (next.sex.U) sex.push('U');
-      const living: TreeLivingValue[] = [];
-      if (next.living.living) living.push('living');
-      if (next.living.deceased) living.push('deceased');
-      void setFilters({
-        sex: sex.length === 3 ? [] : sex,
-        living: living.length === 2 ? [] : living,
-        page: 1,
-      });
-    },
-    [setFilters],
-  );
-
   const handleFocusNode = useCallback(
     (personId: string) => {
       if (viewData.kind !== 'canvas') return;
@@ -530,13 +536,15 @@ export function TreeLayout({ viewData, focusPersonId }: TreeLayoutProps) {
             view={view}
             onSetView={setView}
             isMobile={false}
-            filterState={filterState}
-            onFilterStateChange={handleFilterStateChange}
             showGaps={showGaps}
             onShowGapsChange={setShowGaps}
             onFocusPerson={handleFocusNode}
             onSetTopologyAnchor={handleSetTopologyAnchor}
             topologyVisibleIds={topologyVisibleIds}
+            activeHighlightSurname={activeHighlightSurname}
+            onHighlightSurnameChange={handleHighlightSurnameChange}
+            highlightStyle={surnameHighlightStyle}
+            onHighlightStyleChange={handleSurnameHighlightStyleChange}
           />
         ) : (
           <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
@@ -632,13 +640,15 @@ export function TreeLayout({ viewData, focusPersonId }: TreeLayoutProps) {
               onSetView={setView}
               isMobile
               detailSnap={selectedPerson ? detailSnap : null}
-              filterState={filterState}
-              onFilterStateChange={handleFilterStateChange}
               showGaps={showGaps}
               onShowGapsChange={setShowGaps}
               onFocusPerson={handleFocusNode}
               onSetTopologyAnchor={handleSetTopologyAnchor}
               topologyVisibleIds={topologyVisibleIds}
+              activeHighlightSurname={activeHighlightSurname}
+              onHighlightSurnameChange={handleHighlightSurnameChange}
+              highlightStyle={surnameHighlightStyle}
+              onHighlightStyleChange={handleSurnameHighlightStyleChange}
               mobileToolbarSlot={(canvasActions) => (
                 <MobileViewBar
                   view={view}

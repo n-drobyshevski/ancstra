@@ -4,20 +4,10 @@ import { X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { FacetSearch } from './facets/facet-search';
-import { FacetSex } from './facets/facet-sex';
-import { FacetLiving } from './facets/facet-living';
-import { FacetValidation } from './facets/facet-validation';
-import { FacetYearRange } from './facets/facet-year-range';
-import { FacetPlace } from './facets/facet-place';
-import { FacetCitations } from './facets/facet-citations';
-import { FacetCompleteness } from './facets/facet-completeness';
-import { FacetHasProposals } from './facets/facet-has-proposals';
+import { TreeFiltersList } from './tree-filters-list';
 import { useTreeTableFilters } from './use-tree-table-filters';
 import { countActiveTreeFilters } from '@/lib/tree/active-filter-count';
 import type { TreeYearBounds } from '@/lib/persons/year-bounds';
-
-const FALLBACK_BOUNDS = { minYear: 1700, maxYear: new Date().getFullYear() };
 
 interface TreeSidebarProps {
   yearBounds: TreeYearBounds;
@@ -25,14 +15,8 @@ interface TreeSidebarProps {
 
 export function TreeSidebar({ yearBounds }: TreeSidebarProps) {
   const t = useTranslations('tree.sidebar');
-  const tFacets = useTranslations('tree.sidebar.facetLabels');
   const { filters, setFilters } = useTreeTableFilters();
   const activeCount = countActiveTreeFilters(filters);
-
-  const visualBounds = {
-    minYear: yearBounds.minYear ?? FALLBACK_BOUNDS.minYear,
-    maxYear: yearBounds.maxYear ?? FALLBACK_BOUNDS.maxYear,
-  };
 
   // Resets every server-driven filter to its default plus page=1. Topology is
   // included because the sidebar is the canonical "all filters" surface for
@@ -71,16 +55,7 @@ export function TreeSidebar({ yearBounds }: TreeSidebarProps) {
         )}
       </div>
       <ScrollArea className="flex-1">
-        <FacetSearch />
-        <FacetSex />
-        <FacetLiving />
-        <FacetValidation />
-        <FacetYearRange label={tFacets('born')} fromKey="bornFrom" toKey="bornTo" defaultOpen visualBounds={visualBounds} />
-        <FacetYearRange label={tFacets('died')} fromKey="diedFrom" toKey="diedTo" visualBounds={visualBounds} />
-        <FacetPlace />
-        <FacetCitations />
-        <FacetCompleteness />
-        <FacetHasProposals />
+        <TreeFiltersList yearBounds={yearBounds} />
       </ScrollArea>
     </aside>
   );

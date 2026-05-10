@@ -26,6 +26,7 @@ import { PartnerEdge } from './partner-edge';
 import { ParentChildEdge } from './parent-child-edge';
 import { ProposedEdge } from './proposed-edge';
 import { TreeToolbar } from './tree-toolbar';
+import { TreeFiltersPanel } from './tree-filters-panel';
 import { TreeContextMenu, type ContextMenuTrigger } from './tree-context-menu';
 import {
   AlertDialog,
@@ -52,12 +53,19 @@ import {
   validateConnection,
   parseLayoutData,
   serializeLayoutData,
-  type FilterState,
   type NodeStyle,
-  DEFAULT_FILTERS,
   applyFilters,
   applyEdgeFilters,
+  deriveLegacyFilterState,
 } from './tree-utils';
+import {
+  useTreeTableFilters,
+  useTreeFilterUpdate,
+} from './use-tree-table-filters';
+import type {
+  TreeSexValue,
+  TreeLivingValue,
+} from '@/lib/tree/search-params';
 import { trpc } from '@/lib/trpc/client';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -73,7 +81,9 @@ import type { DefaultTreeLayout } from '@/lib/cache/tree';
 import type { ProposedRelationshipForCanvas } from '@/lib/queries';
 import { useTreeViewPrefs } from '@/lib/tree/use-tree-view-prefs';
 import { useTreeExport } from '@/lib/tree/use-tree-export';
-import { computeColoringMap } from '@/lib/tree/coloring';
+import { computeColoringMap, SURNAME_TONE } from '@/lib/tree/coloring';
+import { computeSurnameHighlightSet } from '@/lib/tree/surname-highlight';
+import type { SurnameHighlightStyle } from '@/lib/tree/view-prefs-storage';
 
 const nodeTypes = { person: PersonNode, draftPerson: DraftPersonNode, draftFactsheet: DraftFactsheetNode };
 const edgeTypes = { partner: PartnerEdge, parentChild: ParentChildEdge, proposed: ProposedEdge };
@@ -117,9 +127,6 @@ interface TreeCanvasProps {
    *  `number | string` (string forms like "200px" are also legal); we treat
    *  string snaps as the peek default. */
   detailSnap?: number | string | null;
-  /** External filter state — when provided, canvas uses these instead of internal state */
-  filterState?: FilterState;
-  onFilterStateChange?: (fs: FilterState) => void;
   showGaps?: boolean;
   onShowGapsChange?: (v: boolean) => void;
   mobileToolbarSlot?: (props: {
@@ -143,9 +150,20 @@ interface TreeCanvasProps {
    *  Set are hidden via xyflow's native `hidden` flag, along with any
    *  edge that touches a hidden endpoint. Drafts are unaffected. */
   topologyVisibleIds?: Set<string> | null;
+  /** Currently active surname for the patrilineal-branch highlight feature
+   *  (lowercase, normalized). `null` = feature off. Members of the active
+   *  branch render with a spotlight tone (replace mode) or accent ring
+   *  (overlay mode); non-members dim. */
+  activeHighlightSurname?: string | null;
+  /** Set/clear the active surname highlight. Wired to the toolbar popover
+   *  AND to each PersonNode's right-click context menu. */
+  onHighlightSurnameChange?: (surname: string | null) => void;
+  /** How the surname highlight composes with the active Coloring mode. */
+  highlightStyle?: SurnameHighlightStyle;
+  onHighlightStyleChange?: (s: SurnameHighlightStyle) => void;
 }
 
-function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focusPersonId, focusKey, paletteOpen, onTogglePalette, onSelectPerson, view, onSetView, isMobile, detailSnap, filterState: externalFilterState, onFilterStateChange, showGaps: externalShowGaps, onShowGapsChange: _onShowGapsChange, mobileToolbarSlot, onFocusPerson, onSetTopologyAnchor, topologyVisibleIds }: TreeCanvasProps) {
+function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focusPersonId, focusKey, paletteOpen, onTogglePalette, onSelectPerson, view, onSetView, isMobile, detailSnap, showGaps: externalShowGaps, onShowGapsChange: _onShowGapsChange, mobileToolbarSlot, onFocusPerson, onSetTopologyAnchor, topologyVisibleIds, activeHighlightSurname = null, onHighlightSurnameChange, highlightStyle = 'overlay', onHighlightStyleChange }: TreeCanvasProps) {
   void _onShowGapsChange;
   const reactFlow = useReactFlow();
   const { fitView, screenToFlowPosition, getNodes } = reactFlow;
@@ -248,11 +266,16 @@ function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focus
   const [activeLayoutId, setActiveLayoutId] = useState<string | null>(null);
   const [activeLayoutName, setActiveLayoutName] = useState<string | null>(null);
 
-  const [internalFilterState, setInternalFilterState] = useState<FilterState>(DEFAULT_FILTERS);
-
-  // Use external state when provided, otherwise fall back to internal
-  const filterState = externalFilterState ?? internalFilterState;
-  const setFilterState = onFilterStateChange ?? setInternalFilterState;
+  // URL-driven filter state (single source of truth; shared with table view).
+  // The legacy nested-boolean shape is derived for the toolbar's inline
+  // sex/living toggle buttons; the canvas's dim pipeline uses the URL filters
+  // directly via applyFilters().
+  const { filters } = useTreeTableFilters();
+  const updateFilters = useTreeFilterUpdate();
+  const filterState = useMemo(
+    () => deriveLegacyFilterState(filters),
+    [filters],
+  );
   const prefs = useTreeViewPrefs();
   const { showMinimap } = prefs;
   // Canvas reads showGaps directly from prefs (localStorage). Parent's showGaps
@@ -311,16 +334,38 @@ function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focus
     });
   }, [treeData, rawNodes, rawEdges, setNodes, setEdges, showGaps, effectiveNodeStyle, prefs.showDates, prefs.showLivingIndicator, prefs.showCitations, genealogicalOrdering]);
 
-  const handleToggleFilter = useCallback((category: 'sex' | 'living', key: string) => {
-    const next = {
-      ...filterState,
-      [category]: {
-        ...filterState[category],
-        [key]: !filterState[category][key as keyof typeof filterState[typeof category]],
-      },
-    };
-    setFilterState(next);
-  }, [filterState, setFilterState]);
+  // Toggle one key in either the sex or living facet, mirroring the URL-array
+  // semantics from tree-layout's mobile bar: empty array OR full array means
+  // "all selected" (no filter active).
+  const handleToggleFilter = useCallback(
+    (category: 'sex' | 'living', key: string) => {
+      if (category === 'sex') {
+        const all: TreeSexValue[] = ['M', 'F', 'U'];
+        const k = key as TreeSexValue;
+        const baseVisible = filters.sex.length === 0 ? all : filters.sex;
+        const isVisible = baseVisible.includes(k);
+        const nextVisible = isVisible
+          ? baseVisible.filter((v) => v !== k)
+          : [...baseVisible, k];
+        updateFilters({
+          sex: nextVisible.length === all.length ? [] : nextVisible,
+        });
+      } else {
+        const all: TreeLivingValue[] = ['living', 'deceased'];
+        const k = key as TreeLivingValue;
+        const baseVisible =
+          filters.living.length === 0 ? all : filters.living;
+        const isVisible = baseVisible.includes(k);
+        const nextVisible = isVisible
+          ? baseVisible.filter((v) => v !== k)
+          : [...baseVisible, k];
+        updateFilters({
+          living: nextVisible.length === all.length ? [] : nextVisible,
+        });
+      }
+    },
+    [filters.sex, filters.living, updateFilters],
+  );
 
   const autoSaveRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -939,9 +984,23 @@ function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focus
     [treeData, prefs.coloring, branchColoringRoot],
   );
 
+  // Person ids that have at least one open AI proposal pointing at them.
+  // Used to evaluate the canvas's "AI proposals open" filter against the
+  // already-loaded proposed-relationship list (no extra fetch). When
+  // `proposedRelationships` is undefined the set is empty and applyFilters
+  // makes the dimension a silent no-op.
+  const proposedPersonIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const p of proposedRelationships ?? []) {
+      ids.add(p.person1Id);
+      ids.add(p.person2Id);
+    }
+    return ids;
+  }, [proposedRelationships]);
+
   // Apply filters, quality data, and nodeStyle in a single pass
   useEffect(() => {
-    setNodes(nds => applyFilters(nds, filterState).map(node => {
+    setNodes(nds => applyFilters(nds, filters, proposedPersonIds).map(node => {
       if (node.type !== 'person') return node;
       const q = qualityData.get(node.id);
       return {
@@ -958,7 +1017,16 @@ function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focus
         },
       };
     }));
-  }, [filterState, showGaps, qualityData, effectiveNodeStyle, setNodes, prefs.showDates, prefs.showLivingIndicator, prefs.showCitations]);
+  }, [filters, proposedPersonIds, showGaps, qualityData, effectiveNodeStyle, setNodes, prefs.showDates, prefs.showLivingIndicator, prefs.showCitations]);
+
+  // Surname-branch highlight: compute the patrilineal-component membership
+  // for the currently active surname. Empty set when no surname is active,
+  // which makes the downstream decoration loop a cheap no-op.
+  const surnameHighlightSet = useMemo(
+    () => computeSurnameHighlightSet(treeData, activeHighlightSurname),
+    [treeData, activeHighlightSurname],
+  );
+  const isSurnameHighlightActive = !!activeHighlightSurname;
 
   // Render-phase decoration: inject coloring fields onto every person node,
   // and apply the topology filter (Show ancestors only / Show descendants
@@ -972,17 +1040,58 @@ function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focus
       if (n.type !== 'person') return n;
       const hiddenByTopology =
         topologyVisibleIds != null && !topologyVisibleIds.has(n.id);
+      // Surname highlight axis. Three modes diverge here:
+      // - overlay: matches get the accent ring (rendered in person-node);
+      //   non-matches dim hard (opacity 0.3, click-blocked).
+      // - replace: matches get the spotlight tone (overrides coloring);
+      //   non-matches go neutral and dim.
+      // - fadeOut: matches stay exactly as baseline (no ring, no tone
+      //   change); non-matches are softly faded (grayscale + opacity 0.5,
+      //   click-preserved). The "subtractive" mode.
+      // When the feature is off, surnameHighlight stays undefined and the
+      // node renders normally.
+      let surnameHighlight: 'match' | 'nonmatch' | 'fadeNonmatch' | undefined;
+      let coloringTone = coloringMap.get(n.id);
+      if (isSurnameHighlightActive) {
+        const isMatch = surnameHighlightSet.has(n.id);
+        if (highlightStyle === 'fadeOut') {
+          // Matches: leave everything baseline. Non-matches: mark for the
+          // soft grayscale treatment in person-node.
+          if (!isMatch) surnameHighlight = 'fadeNonmatch';
+        } else if (isMatch) {
+          surnameHighlight = 'match';
+          if (highlightStyle === 'replace') {
+            coloringTone = SURNAME_TONE;
+          }
+        } else {
+          surnameHighlight = 'nonmatch';
+          if (highlightStyle === 'replace') {
+            // Replace mode: non-matches go neutral so the spotlight tone
+            // is the only color on the canvas.
+            coloringTone = undefined;
+          }
+        }
+      }
       return {
         ...n,
         hidden: hiddenByTopology,
         data: {
           ...n.data,
-          coloringTone: coloringMap.get(n.id),
+          coloringTone,
           coloringStyle: prefs.coloringStyle,
+          surnameHighlight,
         },
       };
     }),
-    [nodes, coloringMap, prefs.coloringStyle, topologyVisibleIds],
+    [
+      nodes,
+      coloringMap,
+      prefs.coloringStyle,
+      topologyVisibleIds,
+      surnameHighlightSet,
+      isSurnameHighlightActive,
+      highlightStyle,
+    ],
   );
 
   // Compute filtered edges (dimmed based on node dimmed status), inject the
@@ -1314,6 +1423,73 @@ function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focus
 
   const hasSelection = reactFlow.getNodes().some((n) => n.selected);
 
+  // Filter panel open/closed — local state, not persisted across sessions.
+  // Lives here (rather than in TreeToolbar) so the panel can be mounted
+  // inside the canvas viewport `<div className="flex-1 relative …">` while
+  // the trigger remains in the toolbar.
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
+  // Cmd/Ctrl + \ toggles the panel. This is Figma's universal sidebar
+  // shortcut and the closest thing to a de-facto standard for canvas-style
+  // editors. Cmd+\ is unbound by Chrome/Firefox/Safari at the browser level
+  // so we don't fight the platform. Listener stays mounted for the lifetime
+  // of the canvas so the shortcut works regardless of panel state.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === '\\' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        setFiltersOpen((o) => !o);
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, []);
+
+  // Escape closes the panel. Listener attaches only while open so we don't
+  // intercept keystrokes for unrelated callers (e.g. the canvas's own
+  // delete-key handling). Pointer-events on the closed panel are blocked
+  // by the `inert` attribute set inside TreeFiltersPanel.
+  useEffect(() => {
+    if (!filtersOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setFiltersOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [filtersOpen]);
+
+  // Topology anchor display name for the active-filter chip strip in the
+  // canvas filter panel. Mirrors the lookup tree-layout does for the table
+  // view; computed locally here so the panel doesn't need a prop bridge.
+  const topologyReferenceName = useMemo(() => {
+    const id = filters.topologyAnchor;
+    if (!id) return null;
+    const person = treeData.persons.find((p) => p.id === id);
+    return person ? `${person.givenName} ${person.surname}` : null;
+  }, [filters.topologyAnchor, treeData]);
+
+  // Year bounds for the canvas filter panel's born/died range sliders. The
+  // canvas doesn't receive server-precomputed bounds (those are a table-mode
+  // concern), so we derive a coarse range from the loaded persons. nulls
+  // fall back to FALLBACK_BOUNDS inside the facet.
+  const canvasYearBounds = useMemo(() => {
+    let minYear: number | null = null;
+    let maxYear: number | null = null;
+    const consume = (date: string | null | undefined) => {
+      if (!date) return;
+      const m = date.match(/(\d{4})/);
+      if (!m) return;
+      const y = Number.parseInt(m[1], 10);
+      minYear = minYear === null ? y : Math.min(minYear, y);
+      maxYear = maxYear === null ? y : Math.max(maxYear, y);
+    };
+    for (const p of treeData.persons) {
+      consume(p.birthDate);
+      consume(p.deathDate);
+    }
+    return { minYear, maxYear };
+  }, [treeData]);
+
   // (Bridge effect removed — `showGaps` now reads directly from `prefs.showDataQuality`.)
 
   return (
@@ -1330,6 +1506,13 @@ function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focus
         onSetView={onSetView}
         filterState={filterState}
         onToggleFilter={handleToggleFilter}
+        filtersOpen={filtersOpen}
+        onFiltersOpenChange={setFiltersOpen}
+        treeData={treeData}
+        activeHighlightSurname={activeHighlightSurname}
+        onHighlightSurnameChange={onHighlightSurnameChange ?? (() => {})}
+        surnameHighlightStyle={highlightStyle}
+        onSurnameHighlightStyleChange={onHighlightStyleChange ?? (() => {})}
         layouts={layouts}
         activeLayoutId={activeLayoutId}
         activeLayoutName={activeLayoutName}
@@ -1470,6 +1653,8 @@ function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focus
           onToggleMinimap={handleToggleMinimapFromMenu}
           onAddPerson={handleAddPersonFromMenu}
           onExportSelection={handleBulkExport}
+          activeHighlightSurname={activeHighlightSurname}
+          onHighlightSurnameChange={onHighlightSurnameChange}
         />
 
         <AlertDialog
@@ -1547,6 +1732,19 @@ function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focus
                 ? { label: 'Switch to person', onClick: (linkedId) => onFocusPerson(linkedId) }
                 : undefined
             }
+          />
+        )}
+
+        {/* Filter panel — left-docked overlay inside the canvas viewport.
+            Slides in from the left edge via translateX, no backdrop, doesn't
+            block canvas interaction (Figma layers-panel pattern). The
+            ReactFlow Controls live at bottom-right so they never overlap. */}
+        {!isMobile && (
+          <TreeFiltersPanel
+            open={filtersOpen}
+            onOpenChange={setFiltersOpen}
+            yearBounds={canvasYearBounds}
+            topologyReferenceName={topologyReferenceName}
           />
         )}
       </div>
