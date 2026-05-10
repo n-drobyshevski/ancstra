@@ -125,3 +125,24 @@ export {
   deleteStaleJobs,
 } from './items/scrape-jobs';
 export type { CreateScrapeJobInput } from './items/scrape-jobs';
+
+// ==================== THREADS ====================
+export {
+  createThread,
+  addEvent,
+  getThreadTimeline,
+  listThreads,
+  getThread,
+  pauseThread,
+  resolveThread,
+  abandonThread,
+  updateThread,
+} from './threads';
+export type {
+  ThreadStatus,
+  ThreadEventType,
+  CreateThreadInput,
+  UpdateThreadInput,
+  AddEventInput,
+  ListThreadsFilters,
+} from './threads';
