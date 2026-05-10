@@ -147,6 +147,14 @@ async function ensureFamilySchemaInner(db: FamilyDatabase): Promise<void> {
     await db.run(sql`CREATE INDEX IF NOT EXISTS idx_research_facts_factsheet ON research_facts(factsheet_id)`);
   } catch { /* index already exists */ }
 
+  // Research Threads Phase 1 (2026-05): link factsheets back to the thread
+  // that spawned them. Nullable — factsheets created before threads existed
+  // have no thread. No FK constraint at SQLite level (research_threads table
+  // may not exist on older DBs; drizzle migration creates it on fresh DBs).
+  try {
+    await db.run(sql`ALTER TABLE factsheets ADD COLUMN created_thread_id TEXT`);
+  } catch { /* column already exists */ }
+
   await db.run(sql`
     CREATE TABLE IF NOT EXISTS person_summary (
       person_id TEXT PRIMARY KEY REFERENCES persons(id) ON DELETE CASCADE,
