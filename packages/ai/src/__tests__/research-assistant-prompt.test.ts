@@ -33,7 +33,7 @@ describe('buildSystemPrompt active-thread block', () => {
       ],
     };
     const prompt = buildSystemPrompt(minimalTree, ctx);
-    expect(prompt).toContain("Find John's parents");
+    expect(prompt).toContain("Find John&apos;s parents");
     expect(prompt).toContain('status="active"');
     expect(prompt).toContain('Summary: Working through marriage cert');
     expect(prompt).toContain('thread_started');
@@ -47,5 +47,22 @@ describe('buildSystemPrompt active-thread block', () => {
     const prompt = buildSystemPrompt(minimalTree, ctx);
     expect(prompt).toContain('<active_thread');
     expect(prompt).toContain('(no events yet)');
+  });
+
+  it('escapes XML-special characters in title, status, summary, and reason', () => {
+    const ctx: ActiveThreadContext = {
+      id: 'tid',
+      title: `Find John's "Maria" & <Stefan>`,
+      status: 'active',
+      summary: 'Investigating <names>',
+      recentEvents: [
+        { eventType: 'note_added', reason: `wife "Maria" mentioned in <cert>`, occurredAt: '2026-05-10T00:00:00Z' },
+      ],
+    };
+    const prompt = buildSystemPrompt(minimalTree, ctx);
+    expect(prompt).toContain(`title="Find John&apos;s &quot;Maria&quot; &amp; &lt;Stefan&gt;"`);
+    expect(prompt).toContain('Summary: Investigating &lt;names&gt;');
+    expect(prompt).toContain('wife &quot;Maria&quot; mentioned in &lt;cert&gt;');
+    expect(prompt).not.toContain('"Maria"'); // raw double-quote did not survive
   });
 });

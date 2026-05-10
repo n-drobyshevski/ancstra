@@ -12,15 +12,25 @@ export interface ActiveThreadContext {
   }>;
 }
 
+/** Escapes XML/HTML special characters to prevent attribute breakage and prompt injection. */
+function escapeXml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
 /** Renders the <active_thread> XML-style block. Empty string when no context. */
 function buildActiveThreadBlock(ctx: ActiveThreadContext | null | undefined): string {
   if (!ctx) return '';
   const eventLines = ctx.recentEvents.map(e =>
-    `  - [${e.occurredAt}] ${e.eventType}${e.reason ? `: ${e.reason}` : ''}`
+    `  - [${escapeXml(e.occurredAt)}] ${escapeXml(e.eventType)}${e.reason ? `: ${escapeXml(e.reason)}` : ''}`
   ).join('\n');
   return `\n## Active Research Thread
-<active_thread title="${ctx.title}" status="${ctx.status}">
-${ctx.summary ? `Summary: ${ctx.summary}\n` : ''}Recent events:
+<active_thread title="${escapeXml(ctx.title)}" status="${escapeXml(ctx.status)}">
+${ctx.summary ? `Summary: ${escapeXml(ctx.summary)}\n` : ''}Recent events:
 ${eventLines || '  (no events yet)'}
 </active_thread>
 `;
