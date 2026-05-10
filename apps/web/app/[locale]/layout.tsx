@@ -3,7 +3,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { NextIntlClientProvider, hasLocale } from 'next-intl';
 import { setRequestLocale } from 'next-intl/server';
-import { redirect } from 'next/navigation';
+import { notFound } from 'next/navigation';
 import "../globals.css";
 import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/sonner";
@@ -63,19 +63,15 @@ export default async function LocaleLayout({
 }) {
   const { locale } = await params;
   if (!hasLocale(routing.locales, locale)) {
-    // Unknown first segment (typo'd path like `/researchs`). Calling
-    // notFound() here aborts this layout and drops Next.js into its built-in
-    // <DefaultLayout>, which renders a bare <html> without
-    // suppressHydrationWarning — that trips browser-extension hydration
-    // warnings (e.g. LanguageTool's `data-lt-installed`). Instead, redirect
-    // the segment under the default locale's prefix; it then falls through
-    // to [locale]/not-found.tsx INSIDE this layout's <html> wrapper.
-    //
-    // Note: only the first path segment is preserved (Next.js 16 doesn't
-    // expose the full pathname in server layouts without middleware). For
-    // multi-segment paths the trailing segments are dropped — the user
-    // still sees a properly wrapped 404, just at the first-segment URL.
-    redirect(`/${routing.defaultLocale}/${locale}`);
+    // In practice this branch never fires because next-intl middleware
+    // (proxy.ts) rewrites unprefixed paths to `/[defaultLocale]/...`
+    // before this layout runs, so `locale` is always one of the supported
+    // locales. Kept as defense in depth. Redirecting here would loop
+    // against `localePrefix: 'as-needed'` (which strips the default
+    // prefix back), so we call notFound() — the catch-all route at
+    // `[...notFound]/page.tsx` is what actually drives the 404 UI for
+    // unmatched paths inside this layout's <html suppressHydrationWarning>.
+    notFound();
   }
   setRequestLocale(locale);
   // We deliberately do NOT pre-fetch the session here to seed
