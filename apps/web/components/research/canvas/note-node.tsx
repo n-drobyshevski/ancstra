@@ -3,6 +3,7 @@
 import { memo, useState, useRef, useEffect, useCallback } from 'react';
 import { Handle, Position, type Node, type NodeProps } from '@xyflow/react';
 import { X } from 'lucide-react';
+import { useIsHydrated } from '@/hooks/use-is-hydrated';
 import type { CanvasNodeData } from './canvas-utils';
 
 type NoteNodeType = Node<CanvasNodeData, 'note'>;
@@ -29,10 +30,13 @@ function NoteNodeComponent({ data, selected, id }: NodeProps<NoteNodeType>) {
     }
   }, [id, text]);
 
-  // Load from localStorage when the node id changes — done in render via
-  // prev-compare so it doesn't trip react-hooks/set-state-in-effect.
+  // Load from localStorage when the node id changes. Gated on
+  // `useIsHydrated` so the first client render still matches the server
+  // output (just `data.noteText`); the localStorage value lands on the
+  // post-hydration render, avoiding any hydration-mismatch warning.
+  const isHydrated = useIsHydrated();
   const [hydratedForId, setHydratedForId] = useState<string | null>(null);
-  if (hydratedForId !== id && typeof window !== 'undefined') {
+  if (isHydrated && hydratedForId !== id) {
     setHydratedForId(id);
     const stored = localStorage.getItem(`canvas-note-${id}`);
     if (stored) setText(stored);
