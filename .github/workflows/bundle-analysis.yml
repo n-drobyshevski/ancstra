@@ -1,0 +1,147 @@
+name: Bundle Analysis
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  # ──────────────────────────────────────────────────────────────────────────
+  # PR job: build with ANALYZE=true, diff against cached main baseline,
+  # post a soft-warn sticky comment. Always exits 0 — no hard CI failure.
+  # ──────────────────────────────────────────────────────────────────────────
+  analyze:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Build the web app with ANALYZE=true so @next/bundle-analyzer activates
+      # webpack and writes HTML reports to apps/web/.next/analyze/.
+      - name: Build with bundle analyzer
+        run: ANALYZE=true pnpm --filter web exec next build
+        env:
+          # Provide minimal stubs so the build succeeds without real secrets.
+          SKIP_DB_CONNECT: "true"
+          AUTH_SECRET: ci-placeholder-not-used
+          NEXT_TELEMETRY_DISABLED: "1"
+
+      # Read the Next.js build output and produce __bundle_analysis.json with
+      # per-route First Load JS sizes (raw bytes + gzip estimate).
+      - name: Extract bundle sizes
+        run: node scripts/extract-bundle-sizes.mjs --next-dir apps/web/.next
+
+      # Restore the saved main-branch baseline (may be a cache miss on first run).
+      - name: Restore main baseline
+        id: restore-baseline
+        uses: actions/cache@v5
+        with:
+          path: /tmp/bundle-baseline
+          key: bundle-baseline-main
+          restore-keys: bundle-baseline-
+
+      # Diff current against baseline and write bundle-report.md.
+      # The script exits 0 even when no baseline exists — it posts a friendly
+      # "no baseline yet" message in that case.
+      - name: Generate bundle report
+        run: |
+          node scripts/bundle-report.mjs \
+            --current  apps/web/.next/analyze/__bundle_analysis.json \
+            --baseline /tmp/bundle-baseline/__bundle_analysis.json \
+            --output   bundle-report.md
+
+      # Upsert a sticky PR comment identified by <!-- ancstra-bundle-report -->.
+      # Never creates a second comment on the same PR — always finds-and-updates.
+      - name: Post sticky PR comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('bundle-report.md', 'utf8');
+            const marker = '<!-- ancstra-bundle-report -->';
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const existing = comments.find(c => c.body.includes(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+              console.log(`Updated existing comment #${existing.id}`);
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+              console.log('Created new bundle-report comment');
+            }
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Push-to-main job: build with ANALYZE=true and cache the bundle sizes as
+  # the new baseline for future PR comparisons.
+  # ──────────────────────────────────────────────────────────────────────────
+  baseline:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build with bundle analyzer
+        run: ANALYZE=true pnpm --filter web exec next build
+        env:
+          SKIP_DB_CONNECT: "true"
+          AUTH_SECRET: ci-placeholder-not-used
+          NEXT_TELEMETRY_DISABLED: "1"
+
+      - name: Extract bundle sizes
+        run: node scripts/extract-bundle-sizes.mjs --next-dir apps/web/.next
+
+      - name: Save bundle baseline
+        run: |
+          mkdir -p /tmp/bundle-baseline
+          cp apps/web/.next/analyze/__bundle_analysis.json /tmp/bundle-baseline/__bundle_analysis.json
+
+      # Cache key uses branch name so 'main' and 'master' both work.
+      # The 'analyze' job restores with key 'bundle-baseline-main' first,
+      # then falls back to 'bundle-baseline-' to handle the master alias.
+      - name: Cache bundle baseline
+        uses: actions/cache@v5
+        with:
+          path: /tmp/bundle-baseline
+          key: bundle-baseline-${{ github.ref_name }}
