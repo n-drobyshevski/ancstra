@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ChatMessage } from './chat-message';
 import { CostBadge } from './cost-badge';
+import { useActiveThread } from '@/lib/research/active-thread';
 
 const STARTER_PROMPTS = [
   { label: 'What gaps exist in my tree?', icon: AlertTriangle },
@@ -35,6 +36,8 @@ export function ChatPanel({ focusPersonId, initialPrompt, onPromptConsumed, sear
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const [input, setInput] = useState('');
+  const { thread: activeThread } = useActiveThread();
+  const threadId = activeThread?.id ?? null;
 
   const {
     messages,
@@ -64,6 +67,7 @@ export function ChatPanel({ focusPersonId, initialPrompt, onPromptConsumed, sear
         {
           body: {
             focusPersonId,
+            threadId,
             ...(searchContext && {
               searchContext: `User was searching for: "${searchContext.query}". Top results: ${searchContext.topResults.map((r) => `${r.title} (${r.providerId})`).join(', ')}`,
             }),
@@ -85,6 +89,7 @@ export function ChatPanel({ focusPersonId, initialPrompt, onPromptConsumed, sear
             {
               body: {
                 focusPersonId,
+                threadId,
                 ...(searchContext && {
                   searchContext: `User was searching for: "${searchContext.query}". Top results: ${searchContext.topResults.map((r) => `${r.title} (${r.providerId})`).join(', ')}`,
                 }),
@@ -95,7 +100,7 @@ export function ChatPanel({ focusPersonId, initialPrompt, onPromptConsumed, sear
         }
       }
     },
-    [isLoading, input, sendMessage, focusPersonId, searchContext]
+    [isLoading, input, sendMessage, focusPersonId, threadId, searchContext]
   );
 
   const handleNewChat = useCallback(() => {
@@ -109,6 +114,7 @@ export function ChatPanel({ focusPersonId, initialPrompt, onPromptConsumed, sear
         {
           body: {
             focusPersonId,
+            threadId,
             ...(searchContext && {
               searchContext: `User was searching for: "${searchContext.query}". Top results: ${searchContext.topResults.map((r) => `${r.title} (${r.providerId})`).join(', ')}`,
             }),
@@ -116,7 +122,7 @@ export function ChatPanel({ focusPersonId, initialPrompt, onPromptConsumed, sear
         }
       );
     },
-    [sendMessage, focusPersonId, searchContext]
+    [sendMessage, focusPersonId, threadId, searchContext]
   );
 
   const isEmpty = messages.length === 0;
@@ -213,6 +219,7 @@ export function ChatPanel({ focusPersonId, initialPrompt, onPromptConsumed, sear
                 {
                   body: {
                     focusPersonId,
+                    threadId,
                     ...(searchContext && {
                       searchContext: `User was searching for: "${searchContext.query}". Top results: ${searchContext.topResults.map((r) => `${r.title} (${r.providerId})`).join(', ')}`,
                     }),
