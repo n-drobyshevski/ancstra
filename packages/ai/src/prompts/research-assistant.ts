@@ -1,10 +1,39 @@
 import type { TreeContext } from '../context/tree-context';
 
+export interface ActiveThreadContext {
+  id: string;
+  title: string;
+  status: string;
+  summary: string | null;
+  recentEvents: Array<{
+    eventType: string;
+    reason: string | null;
+    occurredAt: string;
+  }>;
+}
+
+/** Renders the <active_thread> XML-style block. Empty string when no context. */
+function buildActiveThreadBlock(ctx: ActiveThreadContext | null | undefined): string {
+  if (!ctx) return '';
+  const eventLines = ctx.recentEvents.map(e =>
+    `  - [${e.occurredAt}] ${e.eventType}${e.reason ? `: ${e.reason}` : ''}`
+  ).join('\n');
+  return `\n## Active Research Thread
+<active_thread title="${ctx.title}" status="${ctx.status}">
+${ctx.summary ? `Summary: ${ctx.summary}\n` : ''}Recent events:
+${eventLines || '  (no events yet)'}
+</active_thread>
+`;
+}
+
 /**
  * Build the system prompt for the genealogy research assistant.
  * Includes tree context, key persons, research gaps, and guidelines.
  */
-export function buildSystemPrompt(treeContext: TreeContext): string {
+export function buildSystemPrompt(
+  treeContext: TreeContext,
+  activeThread?: ActiveThreadContext | null,
+): string {
   const keyPersonsList = treeContext.keyPersons.length > 0
     ? treeContext.keyPersons.map(p =>
         `- ${p.name} (${p.birthYear || '?'}–${p.deathYear || '?'}), ${p.birthPlace || 'unknown birthplace'}`
@@ -19,6 +48,8 @@ export function buildSystemPrompt(treeContext: TreeContext): string {
     ? treeContext.recentActivity.map(a => `- ${a}`).join('\n')
     : '- No recent activity';
 
+  const activeThreadBlock = buildActiveThreadBlock(activeThread);
+
   return `You are a genealogy research assistant with deep knowledge of historical records, research methodology, and the user's family tree.
 
 ## Your Family Tree Context
@@ -32,7 +63,7 @@ ${gapsList}
 
 ## Recent Activity
 ${recentList}
-
+${activeThreadBlock}
 ## Guidelines
 1. **Documents are the source of truth.** Always cite specific records. Never fabricate genealogical data.
 2. **Be specific about uncertainty.** Say "this census record suggests..." not "your ancestor was..."
