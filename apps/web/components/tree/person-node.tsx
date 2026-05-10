@@ -41,6 +41,10 @@ function PersonNodeComponent({ id, data, selected }: NodeProps<PersonNodeType>) 
   const surnameHighlight = data.surnameHighlight;
   const dimmed = !!data.dimmed || surnameHighlight === 'nonmatch';
   const fadedOut = surnameHighlight === 'fadeNonmatch';
+  // Active-thread overlay (research threads). Independent of surname
+  // highlighting; both can stack. See tree-utils.ts:PersonNodeData for the
+  // shape contract.
+  const threadOverlay = data.threadOverlay;
   const colors = sexColors[data.sex] ?? sexColors.U;
   const initials = `${data.givenName[0] ?? ''}${data.surname[0] ?? ''}`.toUpperCase();
   const showGaps = !!data.showGaps;
@@ -208,10 +212,17 @@ function PersonNodeComponent({ id, data, selected }: NodeProps<PersonNodeType>) 
   //   to opacity 0.3 + block clicks.
   // - fadedOut (fadeOut mode surname non-match): grayscale + soft opacity 0.5
   //   with clicks preserved so the user can still click through to inspect.
+  // - threadOverlay='dimmed': active research thread is set but didn't touch
+  //   this person — soft opacity 0.4, clicks preserved (deliberately weaker
+  //   than dimmed so the canvas stays scannable).
+  // - threadOverlay='highlighted': active thread touched this person — amber
+  //   ring so they read at a glance.
   const cardBase = `relative rounded-lg bg-card shadow-sm border transition-all${
     selected ? ' ring-2 ring-primary shadow-md' : ''
   }${dimmed ? ' opacity-30 pointer-events-none' : ''}${
     fadedOut ? ' opacity-50 grayscale' : ''
+  }${threadOverlay === 'dimmed' ? ' opacity-40' : ''}${
+    threadOverlay === 'highlighted' ? ' ring-2 ring-amber-400/70' : ''
   }${showGaps ? ' overflow-hidden' : ''}`;
 
   // Shared: citation indicator badge (top-right corner, inside card bounds so

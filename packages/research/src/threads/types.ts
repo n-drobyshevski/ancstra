@@ -3,7 +3,9 @@ export type ThreadStatus = 'active' | 'paused' | 'resolved' | 'abandoned';
 export type ThreadEventType =
   | 'thread_started' | 'item_attached' | 'fact_extracted'
   | 'factsheet_created' | 'factsheet_linked' | 'mention_followed'
+  | 'mention_extracted'
   | 'conflict_resolved' | 'duplicate_resolved' | 'factsheet_promoted'
+  | 'relationship_proposed'
   | 'note_added' | 'thread_paused' | 'thread_resolved' | 'thread_abandoned';
 
 export interface CreateThreadInput {

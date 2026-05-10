@@ -5,6 +5,7 @@ import type { TreeData } from '@ancstra/shared';
 import { Button } from '@/components/ui/button';
 import { Menubar } from '@/components/ui/menubar';
 import { Separator } from '@/components/ui/separator';
+import { Slider } from '@/components/ui/slider';
 import { RoleGate } from '@/components/auth/role-gate';
 import type { FilterState } from './tree-utils';
 import type { TreeViewMenuProps } from './tree-view-menu';
@@ -39,6 +40,13 @@ interface TreeToolbarProps extends TreeViewMenuProps {
   onHighlightSurnameChange: (surname: string | null) => void;
   surnameHighlightStyle: SurnameHighlightStyle;
   onSurnameHighlightStyleChange: (s: SurnameHighlightStyle) => void;
+
+  // Active-thread time-scrubber. Visible only when a research thread is
+  // active (canvas passes `threadScrubberVisible=true`). Value is in [0..1]
+  // where 1 = "now" and 0 = the earliest event in the thread.
+  threadScrubberVisible?: boolean;
+  threadScrubberValue?: number;
+  onThreadScrubberChange?: (v: number) => void;
 }
 
 export function TreeToolbar(props: TreeToolbarProps) {
@@ -60,6 +68,9 @@ export function TreeToolbar(props: TreeToolbarProps) {
     onHighlightSurnameChange,
     surnameHighlightStyle,
     onSurnameHighlightStyleChange,
+    threadScrubberVisible,
+    threadScrubberValue,
+    onThreadScrubberChange,
     ...viewMenuProps
   } = props;
   const t = useTranslations('tree.toolbar');
@@ -92,6 +103,22 @@ export function TreeToolbar(props: TreeToolbarProps) {
       </div>
 
       <div className="flex items-center gap-1.5">
+        {threadScrubberVisible && (
+          <>
+            <span className="text-xs text-muted-foreground select-none">Time</span>
+            <Slider
+              value={[threadScrubberValue ?? 1]}
+              min={0}
+              max={1}
+              step={0.01}
+              onValueChange={(v) => onThreadScrubberChange?.(v[0] ?? 1)}
+              className="w-32"
+              aria-label="Thread time-scrubber"
+            />
+            <Separator orientation="vertical" className="h-5 mx-0.5" />
+          </>
+        )}
+
         <Button variant="secondary" size="sm" disabled>
           {t('search')}
         </Button>

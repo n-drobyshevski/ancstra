@@ -43,6 +43,9 @@ import { DraftFactsheetNode } from './draft-factsheet-node';
 import { PersonCreateDialog } from '@/components/person-create-dialog';
 import { PersonLinkDialog, type RelationType } from '@/components/person-link-dialog';
 import { personDetailCache } from '@/lib/tree/person-detail-cache';
+import { useActiveThread } from '@/lib/research/active-thread';
+import { useTreeOverlay } from '@/lib/research/tree-overlay';
+import { PersonThreadsModal } from '@/components/research/threads/person-threads-modal';
 import {
   treeDataToFlow,
   applyDagreLayout,
@@ -238,6 +241,36 @@ function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focus
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(rawEdges);
+
+  // Active research thread overlay: when a thread is set, persons it has
+  // touched get a `threadOverlay: 'highlighted'`, others get `'dimmed'`.
+  // Both states render in person-node.tsx via Tailwind classes.
+  const { thread: activeThread } = useActiveThread();
+  const { data: threadOverlayData } = useTreeOverlay(activeThread?.id ?? null);
+
+  // Time-scrubber: 1.0 = "now" (all touched persons visible), 0.0 = before
+  // the earliest event in the thread (no touched persons visible). Linearly
+  // interpolated to a wall-clock timestamp from the thread's events.
+  const [threadScrubberValue, setThreadScrubberValue] = useState(1);
+  // Reset to 1.0 ("now") whenever the active thread changes — so switching
+  // threads doesn't carry over a partial scrub from the previous thread.
+  useEffect(() => { setThreadScrubberValue(1); }, [activeThread?.id]);
+
+  const threadEffectiveTs = useMemo(() => {
+    if (!threadOverlayData) return null;
+    const ts = Array.from(threadOverlayData.firstSeenAt.values()).sort();
+    if (ts.length === 0) return null;
+    const first = ts[0];
+    const last = ts[ts.length - 1];
+    const firstMs = new Date(first).getTime();
+    const lastMs = new Date(last).getTime();
+    return new Date(firstMs + (lastMs - firstMs) * threadScrubberValue).toISOString();
+  }, [threadOverlayData, threadScrubberValue]);
+
+  // Right-click "Show threads that touched this person" modal state. The
+  // canvas owns the state because the context menu unmounts on close —
+  // keeping it here makes the modal survive the menu's lifecycle.
+  const [personThreadsModalId, setPersonThreadsModalId] = useState<string | null>(null);
 
   const [contextMenu, setContextMenu] = useState<ContextMenuTrigger | null>(
     null,
@@ -1072,6 +1105,29 @@ function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focus
           }
         }
       }
+      // Active-thread overlay axis. Independent of surname highlight — both
+      // can be active simultaneously. When the overlay is null the field stays
+      // undefined and person-node treats it as a no-op.
+      // Scrubber: only mark a node as 'highlighted' when its earliest event
+      // is at or before the current scrubber timestamp; otherwise the node
+      // is dimmed (the journey hasn't reached it yet).
+      let threadOverlay: 'highlighted' | 'dimmed' | undefined;
+      if (threadOverlayData) {
+        const isTouched = threadOverlayData.touchedPersonIds.has(n.id);
+        if (isTouched && threadEffectiveTs) {
+          const seenAt = threadOverlayData.firstSeenAt.get(n.id);
+          // Persons touched via factsheet promotion (no event yet) have no
+          // firstSeenAt — surface them at 100% scrub only.
+          const visible = seenAt
+            ? seenAt <= threadEffectiveTs
+            : threadScrubberValue >= 1;
+          threadOverlay = visible ? 'highlighted' : 'dimmed';
+        } else if (isTouched) {
+          threadOverlay = 'highlighted';
+        } else {
+          threadOverlay = 'dimmed';
+        }
+      }
       return {
         ...n,
         hidden: hiddenByTopology,
@@ -1080,6 +1136,7 @@ function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focus
           coloringTone,
           coloringStyle: prefs.coloringStyle,
           surnameHighlight,
+          threadOverlay,
         },
       };
     }),
@@ -1091,6 +1148,9 @@ function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focus
       surnameHighlightSet,
       isSurnameHighlightActive,
       highlightStyle,
+      threadOverlayData,
+      threadEffectiveTs,
+      threadScrubberValue,
     ],
   );
 
@@ -1547,6 +1607,9 @@ function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focus
         onCenterOnSelected={handleCenterOnSelected}
         onResetZoom={handleResetZoom}
         hasSelection={hasSelection}
+        threadScrubberVisible={!!threadOverlayData}
+        threadScrubberValue={threadScrubberValue}
+        onThreadScrubberChange={setThreadScrubberValue}
       />)}
 
       {/* `overscroll-contain` traps pan gestures inside the canvas so Android
@@ -1655,6 +1718,37 @@ function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focus
           onExportSelection={handleBulkExport}
           activeHighlightSurname={activeHighlightSurname}
           onHighlightSurnameChange={onHighlightSurnameChange}
+          onShowThreadsTouching={(personId) => {
+            setPersonThreadsModalId(personId);
+            setContextMenu(null);
+          }}
+          onStartResearchThread={async (personId, personName) => {
+            try {
+              const created = await fetch('/api/research/threads', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  title: `${personName} — research`,
+                  seedPersonId: personId,
+                }),
+              }).then(r => r.json());
+              if (!created?.id) throw new Error('thread create failed');
+              await fetch('/api/research/threads/active', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ threadId: created.id }),
+              });
+              window.location.href = '/research';
+            } catch (err) {
+              console.error('Start research thread failed:', err);
+            }
+          }}
+        />
+
+        <PersonThreadsModal
+          personId={personThreadsModalId}
+          open={personThreadsModalId !== null}
+          onOpenChange={(o) => { if (!o) setPersonThreadsModalId(null); }}
         />
 
         <AlertDialog

@@ -7,10 +7,13 @@ import {
   ProviderRegistry,
   NARAProvider,
   ChroniclingAmericaProvider,
+  getThread,
+  getThreadTimeline,
 } from '@ancstra/research';
 import {
   buildTreeContext,
   buildSystemPrompt,
+  type ActiveThreadContext,
   getModel,
   checkBudget,
   recordUsage,
@@ -28,13 +31,15 @@ import {
   createExtractFactsTool,
   createDetectConflictsTool,
   createSuggestSearchesTool,
+  createSummarizeThreadTool,
+  createSuggestNextStepTool,
 } from '@ancstra/ai';
 
 export async function POST(request: Request) {
   try {
     const { ctx, familyDb } = await withAuthAndExperimental('ai:research', 'researchChat', request);
 
-    const { messages, focusPersonId } = await request.json();
+    const { messages, focusPersonId, threadId } = await request.json();
 
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json(
@@ -75,7 +80,29 @@ export async function POST(request: Request) {
 
     // Build tree context for system prompt
     const treeContext = await buildTreeContext(familyDb, focusPersonId);
-    const systemPrompt = buildSystemPrompt(treeContext);
+
+    // Load active thread context (last 10 events) so the AI knows which thread
+    // it is operating in. Limit to 10 events to keep token usage bounded.
+    let activeThread: ActiveThreadContext | null = null;
+    if (typeof threadId === 'string') {
+      const t = await getThread(familyDb, threadId);
+      if (t) {
+        const events = await getThreadTimeline(familyDb, threadId, { limit: 10 });
+        activeThread = {
+          id: t.id,
+          title: t.title,
+          status: t.status,
+          summary: t.summary ?? null,
+          recentEvents: events.map(e => ({
+            eventType: e.eventType,
+            reason: e.reason ?? null,
+            occurredAt: e.occurredAt,
+          })),
+        };
+      }
+    }
+
+    const systemPrompt = buildSystemPrompt(treeContext, activeThread);
 
     // Build provider registry for web search tools
     const registry = new ProviderRegistry();
@@ -88,7 +115,10 @@ export async function POST(request: Request) {
       computeRelationship: createComputeRelationshipTool(familyDb),
       analyzeTreeGaps: createAnalyzeTreeGapsTool(familyDb),
       explainRecord: explainRecordTool,
-      proposeRelationship: createProposeRelationshipTool(familyDb),
+      proposeRelationship: createProposeRelationshipTool(familyDb, {
+        threadId: typeof threadId === 'string' ? threadId : null,
+        actorId: ctx.userId,
+      }),
       searchFamilySearch: createSearchFamilySearchTool(),
       searchWeb: createSearchWebTool(registry),
       scrapeUrl: createScrapeUrlTool({
@@ -98,6 +128,8 @@ export async function POST(request: Request) {
       extractFacts: createExtractFactsTool(),
       detectConflicts: createDetectConflictsTool(familyDb),
       suggestSearches: createSuggestSearchesTool(familyDb),
+      summarizeThread: createSummarizeThreadTool(familyDb),
+      suggestNextStep: createSuggestNextStepTool(familyDb),
     };
 
     const model = getModel('chat');

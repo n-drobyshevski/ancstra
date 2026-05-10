@@ -10,6 +10,9 @@ export type {
 // Implementations added in Tasks 4-9
 export { createThread } from './create';
 export { addEvent, getThreadTimeline } from './events';
-export { listThreads, getThread } from './queries';
+export { listThreads, getThread, getPersonsTouchedByThread, getThreadsForPerson } from './queries';
+export type { ThreadTouchSummary } from './queries';
 export { pauseThread, resolveThread, abandonThread, resumeThread } from './lifecycle';
 export { updateThread } from './update';
+export { cascade } from './cascade';
+export type { CascadeInput, CascadeResult } from './cascade';

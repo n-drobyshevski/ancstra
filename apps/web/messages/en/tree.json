@@ -458,6 +458,8 @@
     "copyPersonId": "Copy person ID",
     "copyShareLink": "Copy share link",
     "openInNewTab": "Open in new tab",
+    "showThreadsTouching": "Show research threads that touched this person",
+    "startResearchThread": "Start research thread",
     "deletePerson": "Delete person…",
     "deleteRelationship": "Delete relationship",
     "selectedCount": "Selected ({count}) people",

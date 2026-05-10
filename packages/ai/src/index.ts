@@ -4,6 +4,7 @@ export type { TreeContext, PersonSummary } from './context/tree-context';
 
 // Prompts
 export { buildSystemPrompt } from './prompts/research-assistant';
+export type { ActiveThreadContext } from './prompts/research-assistant';
 export { buildBiographyPrompt } from './prompts/biography-prompt';
 export type { BiographyOptions, PersonBioData } from './prompts/biography-prompt';
 export { buildHistoricalContextPrompt } from './prompts/historical-context-prompt';
@@ -26,6 +27,9 @@ export { createGetResearchItemsTool } from './tools/research/get-research-items'
 export { createExtractFactsTool, parseExtractedFacts, validateFactType } from './tools/research/extract-facts';
 export { createDetectConflictsTool, executeDetectConflicts } from './tools/research/detect-conflicts';
 export { createSuggestSearchesTool, executeSuggestSearches } from './tools/research/suggest-searches';
+export { createSummarizeThreadTool } from './tools/research/summarize-thread';
+export type { SummarizeThreadResult } from './tools/research/summarize-thread';
+export { createSuggestNextStepTool } from './tools/research/suggest-next-step';
 
 // Cost Tracking
 export { calculateCost, recordUsage, checkBudget, getUsageStats, PRICING } from './context/cost-tracker';

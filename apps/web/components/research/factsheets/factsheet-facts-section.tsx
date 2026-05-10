@@ -88,6 +88,7 @@ export function FactsheetFactsSection({
             <FactsheetFactRow
               key={fact.id}
               fact={fact}
+              factsheetId={factsheetId}
               isConflict={conflictFactIds.has(fact.id)}
               sourceTitle={fact.researchItemId ? researchItemTitles.get(fact.researchItemId) : undefined}
               onAccept={() => handleAccept(fact.id, fact.factType)}

@@ -57,6 +57,13 @@ export interface PersonNodeData extends PersonListItem {
    *  - `'fadeNonmatch'`: in fadeOut mode, render desaturated and softly
    *    faded (grayscale + opacity 0.5) but keep pointer-events. */
   surnameHighlight?: 'match' | 'nonmatch' | 'fadeNonmatch';
+  /** Active research thread overlay state for this node. `undefined` = no
+   *  active thread or overlay disabled.
+   *  - `'highlighted'`: thread has touched this person — render an accent
+   *    ring so the user can find them at a glance.
+   *  - `'dimmed'`: thread is active but did NOT touch this person — soft
+   *    opacity to push them visually behind the journey. Clicks preserved. */
+  threadOverlay?: 'highlighted' | 'dimmed';
   [key: string]: unknown;
 }
 

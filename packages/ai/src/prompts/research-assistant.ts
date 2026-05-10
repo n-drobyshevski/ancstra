@@ -1,10 +1,49 @@
 import type { TreeContext } from '../context/tree-context';
 
+export interface ActiveThreadContext {
+  id: string;
+  title: string;
+  status: string;
+  summary: string | null;
+  recentEvents: Array<{
+    eventType: string;
+    reason: string | null;
+    occurredAt: string;
+  }>;
+}
+
+/** Escapes XML/HTML special characters to prevent attribute breakage and prompt injection. */
+function escapeXml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+/** Renders the <active_thread> XML-style block. Empty string when no context. */
+function buildActiveThreadBlock(ctx: ActiveThreadContext | null | undefined): string {
+  if (!ctx) return '';
+  const eventLines = ctx.recentEvents.map(e =>
+    `  - [${escapeXml(e.occurredAt)}] ${escapeXml(e.eventType)}${e.reason ? `: ${escapeXml(e.reason)}` : ''}`
+  ).join('\n');
+  return `\n## Active Research Thread
+<active_thread title="${escapeXml(ctx.title)}" status="${escapeXml(ctx.status)}">
+${ctx.summary ? `Summary: ${escapeXml(ctx.summary)}\n` : ''}Recent events:
+${eventLines || '  (no events yet)'}
+</active_thread>
+`;
+}
+
 /**
  * Build the system prompt for the genealogy research assistant.
  * Includes tree context, key persons, research gaps, and guidelines.
  */
-export function buildSystemPrompt(treeContext: TreeContext): string {
+export function buildSystemPrompt(
+  treeContext: TreeContext,
+  activeThread?: ActiveThreadContext | null,
+): string {
   const keyPersonsList = treeContext.keyPersons.length > 0
     ? treeContext.keyPersons.map(p =>
         `- ${p.name} (${p.birthYear || '?'}–${p.deathYear || '?'}), ${p.birthPlace || 'unknown birthplace'}`
@@ -19,6 +58,8 @@ export function buildSystemPrompt(treeContext: TreeContext): string {
     ? treeContext.recentActivity.map(a => `- ${a}`).join('\n')
     : '- No recent activity';
 
+  const activeThreadBlock = buildActiveThreadBlock(activeThread);
+
   return `You are a genealogy research assistant with deep knowledge of historical records, research methodology, and the user's family tree.
 
 ## Your Family Tree Context
@@ -32,7 +73,7 @@ ${gapsList}
 
 ## Recent Activity
 ${recentList}
-
+${activeThreadBlock}
 ## Guidelines
 1. **Documents are the source of truth.** Always cite specific records. Never fabricate genealogical data.
 2. **Be specific about uncertainty.** Say "this census record suggests..." not "your ancestor was..."
@@ -44,6 +85,10 @@ ${recentList}
 
 ## Available Tools
 You have access to tools for searching the local tree database, external record providers (FamilySearch, NARA, newspapers), web search, URL scraping, fact extraction, conflict detection, and relationship analysis. Use them proactively to answer questions with real data.
+
+When a research thread is active, you can also:
+- Use **summarizeThread** to write a structured markdown narrative of the journey so far (Investigation, Key findings, Open questions, Suggested next steps).
+- Use **suggestNextStep** to propose 3 ranked next-move options when the user asks "what should I do next?" or wants you to plan ahead.
 
 ## Record Types You Can Search
 - Census records (US: 1790-1950, UK: 1841-1921)

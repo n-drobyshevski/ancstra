@@ -5,9 +5,11 @@ import { Button } from '@/components/ui/button';
 import { CONFIDENCE_VARIANT } from '@/lib/research/constants';
 import { Badge } from '@/components/ui/badge';
 import type { FactsheetFact } from '@/lib/research/factsheet-client';
+import { MentionCascadeChip } from '../threads/mention-cascade-chip';
 
 interface FactsheetFactRowProps {
   fact: FactsheetFact;
+  factsheetId: string;
   isConflict: boolean;
   sourceTitle?: string;
   onAccept?: () => void;
@@ -16,7 +18,7 @@ interface FactsheetFactRowProps {
 }
 
 export function FactsheetFactRow({
-  fact, isConflict, sourceTitle, onAccept, onReject, isResolving,
+  fact, factsheetId, isConflict, sourceTitle, onAccept, onReject, isResolving,
 }: FactsheetFactRowProps) {
   const isAccepted = fact.accepted === true;
   const isRejected = fact.accepted === false;
@@ -80,6 +82,21 @@ export function FactsheetFactRow({
           From: {sourceTitle}
         </p>
       )}
+
+      {(fact.factType === 'spouse_name' || fact.factType === 'child_name') && fact.factValue && (
+        <div className="mt-1">
+          <MentionCascadeChip
+            sourceFactsheetId={factsheetId}
+            sourceFactId={fact.id}
+            mentionedName={fact.factValue}
+            relationshipLabel={fact.factType === 'spouse_name' ? 'spouse' : 'child'}
+            relationshipType={fact.factType === 'spouse_name' ? 'spouse' : 'parent_child'}
+            sourceTitle={sourceTitle ?? 'this fact'}
+            fromAI={fact.extractionMethod === 'ai_extracted'}
+          />
+        </div>
+      )}
+      {/* TODO Phase 2.5: parent_name needs inverted direction in cascade — defer */}
     </div>
   );
 }

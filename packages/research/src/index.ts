@@ -133,11 +133,14 @@ export {
   getThreadTimeline,
   listThreads,
   getThread,
+  getPersonsTouchedByThread,
+  getThreadsForPerson,
   pauseThread,
   resolveThread,
   abandonThread,
   resumeThread,
   updateThread,
+  cascade,
 } from './threads';
 export type {
   ThreadStatus,
@@ -146,4 +149,7 @@ export type {
   UpdateThreadInput,
   AddEventInput,
   ListThreadsFilters,
+  ThreadTouchSummary,
+  CascadeInput,
+  CascadeResult,
 } from './threads';
