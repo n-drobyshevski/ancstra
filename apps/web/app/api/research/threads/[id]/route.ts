@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
 import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
-import { getThread, updateThread, pauseThread, resolveThread, abandonThread } from '@ancstra/research';
+import { getThread, updateThread, pauseThread, resolveThread, abandonThread, resumeThread } from '@ancstra/research';
 
 export async function GET(
   request: Request,
@@ -30,9 +30,14 @@ export async function PATCH(
     const body = await request.json();
 
     // Status transitions go through lifecycle helpers (they emit events)
+    const VALID_STATUSES = new Set(['paused', 'resolved', 'abandoned', 'active']);
+    if (body.status !== undefined && !VALID_STATUSES.has(body.status)) {
+      return NextResponse.json({ error: 'invalid status' }, { status: 400 });
+    }
     if (body.status === 'paused')    await pauseThread(familyDb, id, ctx.userId);
     if (body.status === 'resolved')  await resolveThread(familyDb, id, ctx.userId, body.reason);
     if (body.status === 'abandoned') await abandonThread(familyDb, id, ctx.userId, body.reason);
+    if (body.status === 'active')    await resumeThread(familyDb, id, ctx.userId);
 
     if (body.title !== undefined || body.summary !== undefined) {
       await updateThread(familyDb, id, { title: body.title, summary: body.summary });

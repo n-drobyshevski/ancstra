@@ -136,6 +136,7 @@ export {
   pauseThread,
   resolveThread,
   abandonThread,
+  resumeThread,
   updateThread,
 } from './threads';
 export type {

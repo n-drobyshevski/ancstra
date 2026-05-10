@@ -11,5 +11,5 @@ export type {
 export { createThread } from './create';
 export { addEvent, getThreadTimeline } from './events';
 export { listThreads, getThread } from './queries';
-export { pauseThread, resolveThread, abandonThread } from './lifecycle';
+export { pauseThread, resolveThread, abandonThread, resumeThread } from './lifecycle';
 export { updateThread } from './update';

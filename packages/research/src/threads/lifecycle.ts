@@ -28,3 +28,12 @@ export const resolveThread = (db: Database, threadId: string, actorId: string, r
 
 export const abandonThread = (db: Database, threadId: string, actorId: string, reason?: string) =>
   transition(db, threadId, actorId, 'abandoned', 'thread_abandoned', reason);
+
+export async function resumeThread(db: Database, threadId: string, actorId: string) {
+  const now = new Date().toISOString();
+  await db.update(researchThreads)
+    .set({ status: 'active', updatedAt: now, closedAt: null })
+    .where(eq(researchThreads.id, threadId))
+    .run();
+  await addEvent(db, { threadId, eventType: 'note_added', actorId, reason: 'Resumed from paused' });
+}
