@@ -4,6 +4,8 @@ import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 import { Slot } from "radix-ui"
 
+// Source of truth: hooks/use-viewport.ts; use-mobile.ts is a thin re-export so
+// shadcn copy-paste keeps working unchanged.
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -27,7 +29,8 @@ import { PanelLeftIcon } from "lucide-react"
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
 const SIDEBAR_WIDTH = "16rem"
-const SIDEBAR_WIDTH_MOBILE = "18rem"
+// Mobile drawer width is driven by the `--sidebar-width-mobile` CSS variable
+// in app/globals.css so it can be viewport-aware (min(85vw, 20rem)).
 const SIDEBAR_WIDTH_ICON = "3rem"
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
 
@@ -148,6 +151,148 @@ function SidebarProvider({
   )
 }
 
+/**
+ * Swipe-to-close gesture for the mobile drawer. Touch-only; runs after a
+ * 10 px horizontal threshold so it doesn't fight inner vertical scroll.
+ * Dismisses when the user has dragged more than 30 % of the drawer's width
+ * OR is flicking faster than 300 px/s toward the edge.
+ *
+ * Only enabled for `side="left"` for now — extending to `side="right"` is a
+ * sign-flip on `dx` and the dismissal predicate.
+ */
+function useSwipeToClose(
+  setOpenMobile: (v: boolean) => void,
+  side: "left" | "right",
+) {
+  const ref = React.useRef<HTMLDivElement>(null)
+  const state = React.useRef({
+    active: false,
+    claimed: false,
+    startX: 0,
+    startY: 0,
+    lastX: 0,
+    lastT: 0,
+    velocity: 0,
+    width: 0,
+    pointerId: 0,
+  })
+
+  const reset = React.useCallback(() => {
+    const el = ref.current
+    if (el) {
+      el.style.transition = ""
+      el.style.transform = ""
+    }
+    const s = state.current
+    s.active = false
+    s.claimed = false
+  }, [])
+
+  const onPointerDown = React.useCallback((e: React.PointerEvent) => {
+    if (e.pointerType !== "touch") return
+    const el = ref.current
+    if (!el) return
+    const s = state.current
+    s.active = true
+    s.claimed = false
+    s.startX = e.clientX
+    s.startY = e.clientY
+    s.lastX = e.clientX
+    s.lastT = e.timeStamp
+    s.velocity = 0
+    s.width = el.getBoundingClientRect().width
+    s.pointerId = e.pointerId
+    el.style.transition = "none"
+  }, [])
+
+  const dir = side === "left" ? -1 : 1
+
+  const onPointerMove = React.useCallback(
+    (e: React.PointerEvent) => {
+      const s = state.current
+      if (!s.active) return
+      if (e.pointerType !== "touch") return
+      const dx = e.clientX - s.startX
+      const dy = e.clientY - s.startY
+      if (!s.claimed) {
+        if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return
+        // Vertical wins → let native scroll happen; abandon the gesture.
+        if (Math.abs(dy) > Math.abs(dx)) {
+          s.active = false
+          return
+        }
+        // Only claim if the swipe is in the dismiss direction.
+        if (Math.sign(dx) !== dir) {
+          s.active = false
+          return
+        }
+        s.claimed = true
+        try {
+          ;(e.currentTarget as Element).setPointerCapture(s.pointerId)
+        } catch {
+          /* setPointerCapture not supported — gesture still works without it */
+        }
+      }
+      const now = e.timeStamp
+      const dt = now - s.lastT
+      if (dt > 0) {
+        s.velocity = (e.clientX - s.lastX) / dt // px/ms
+        s.lastX = e.clientX
+        s.lastT = now
+      }
+      const el = ref.current
+      if (!el) return
+      // Clamp to dismiss direction only.
+      const tx = dir === -1 ? Math.min(0, dx) : Math.max(0, dx)
+      el.style.transform = `translate3d(${tx}px, 0, 0)`
+    },
+    [dir],
+  )
+
+  const onPointerUp = React.useCallback(() => {
+    const s = state.current
+    if (!s.active || !s.claimed) {
+      reset()
+      return
+    }
+    const el = ref.current
+    if (!el) {
+      reset()
+      return
+    }
+    const dx = s.lastX - s.startX
+    const dismissByDistance = dir === -1
+      ? dx < -0.3 * s.width
+      : dx > 0.3 * s.width
+    const dismissByVelocity = dir === -1
+      ? s.velocity < -0.3 // == -300 px/s
+      : s.velocity > 0.3
+    const shouldDismiss = dismissByDistance || dismissByVelocity
+    if (shouldDismiss) {
+      el.style.transition = "transform 150ms ease-out"
+      el.style.transform = `translate3d(${dir === -1 ? "-100%" : "100%"}, 0, 0)`
+      window.setTimeout(() => {
+        reset()
+        setOpenMobile(false)
+      }, 150)
+    } else {
+      el.style.transition = "transform 140ms ease-out"
+      el.style.transform = "translate3d(0, 0, 0)"
+      window.setTimeout(() => {
+        reset()
+      }, 140)
+    }
+    s.active = false
+    s.claimed = false
+  }, [dir, reset, setOpenMobile])
+
+  const onPointerCancel = React.useCallback(() => {
+    reset()
+  }, [reset])
+
+  return { ref, onPointerDown, onPointerMove, onPointerUp, onPointerCancel }
+}
+
 function Sidebar({
   side = "left",
   variant = "sidebar",
@@ -162,6 +307,7 @@ function Sidebar({
   collapsible?: "offcanvas" | "icon" | "none"
 }) {
   const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
+  const swipe = useSwipeToClose(setOpenMobile, side)
 
   if (collapsible === "none") {
     return (
@@ -182,23 +328,42 @@ function Sidebar({
     return (
       <Sheet open={openMobile} onOpenChange={setOpenMobile} {...props}>
         <SheetContent
+          ref={swipe.ref}
+          onPointerDown={swipe.onPointerDown}
+          onPointerMove={swipe.onPointerMove}
+          onPointerUp={swipe.onPointerUp}
+          onPointerCancel={swipe.onPointerCancel}
           dir={dir}
           data-sidebar="sidebar"
           data-slot="sidebar"
           data-mobile="true"
-          className="w-(--sidebar-width) bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden"
-          style={
-            {
-              "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
-            } as React.CSSProperties
-          }
+          className={cn(
+            "w-(--sidebar-width-mobile) touch-pan-y bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden",
+            // Real off-canvas drawer animation — overrides the sheet's default
+            // 40 px slide+fade with a true translateX(-100%) so the drawer
+            // reads as drawn from the edge rather than popping in place. Exit
+            // is ~70 % of enter (150 ms vs 200 ms) per the exit-faster-than-
+            // enter rule. `motion-reduce:animate-none` silences both keyframes
+            // when the user prefers reduced motion.
+            "data-[side=left]:data-open:!slide-in-from-left-full data-[side=left]:data-closed:!slide-out-to-left-full",
+            "data-[side=right]:data-open:!slide-in-from-right-full data-[side=right]:data-closed:!slide-out-to-right-full",
+            "data-closed:duration-150 motion-reduce:animate-none",
+          )}
           side={side}
         >
           <SheetHeader className="sr-only">
             <SheetTitle>Sidebar</SheetTitle>
             <SheetDescription>Displays the mobile sidebar.</SheetDescription>
           </SheetHeader>
-          <div className="flex h-full w-full flex-col">{children}</div>
+          <div className="flex h-full w-full flex-col pt-safe pb-safe pl-safe">
+            {children}
+          </div>
+          {/* Drag affordance — only visible on coarse (touch) pointers. Hints at
+              the swipe-to-close gesture without cluttering desktop. */}
+          <span
+            aria-hidden
+            className="pointer-events-none absolute top-1/2 right-1 hidden h-10 w-1 -translate-y-1/2 rounded-full bg-sidebar-border/60 [@media(pointer:coarse)]:block"
+          />
         </SheetContent>
       </Sheet>
     )
@@ -217,7 +382,7 @@ function Sidebar({
       <div
         data-slot="sidebar-gap"
         className={cn(
-          "relative w-(--sidebar-width) bg-transparent transition-[width] duration-200 ease-linear",
+          "relative w-(--sidebar-width) bg-transparent motion-safe:transition-[width] motion-safe:duration-200 motion-safe:ease-linear",
           "group-data-[collapsible=offcanvas]:w-0",
           "group-data-[side=right]:rotate-180",
           variant === "floating" || variant === "inset"
@@ -229,7 +394,7 @@ function Sidebar({
         data-slot="sidebar-container"
         data-side={side}
         className={cn(
-          "fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) transition-[left,right,width] duration-200 ease-linear data-[side=left]:left-0 data-[side=left]:group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)] data-[side=right]:right-0 data-[side=right]:group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)] md:flex",
+          "fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) motion-safe:transition-[left,right,width] motion-safe:duration-200 motion-safe:ease-linear data-[side=left]:left-0 data-[side=left]:group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)] data-[side=right]:right-0 data-[side=right]:group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)] md:flex",
           // Adjust the padding for floating and inset variants.
           variant === "floating" || variant === "inset"
             ? "p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4))+2px)]"
@@ -262,7 +427,7 @@ function SidebarTrigger({
       data-sidebar="trigger"
       data-slot="sidebar-trigger"
       variant="ghost"
-      size="icon-sm"
+      size="icon"
       className={cn(className)}
       onClick={(event) => {
         onClick?.(event)

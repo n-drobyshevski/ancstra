@@ -18,7 +18,8 @@
     "platform": "Platform",
     "settings": "Settings",
     "help": "Help",
-    "signOut": "Sign Out"
+    "signOut": "Sign Out",
+    "more": "More"
   },
   "groups": {
     "research": "Research",
@@ -29,7 +30,12 @@
     "platformAdmin": "Platform Admin",
     "settings": "Settings",
     "help": "Help",
-    "signOut": "Sign Out"
+    "signOut": "Sign Out",
+    "more": "More options"
+  },
+  "mobileDock": {
+    "ariaLabel": "Primary navigation",
+    "more": "More"
   },
   "fab": {
     "actions": {

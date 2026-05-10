@@ -51,7 +51,9 @@ export function ContextualFab() {
     <RoleGate permission={action.permission}>
       <Link
         href={action.href}
-        className="fixed bottom-4 right-4 z-30 mb-safe flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 active:scale-95 md:hidden"
+        // bottom-20 (5 rem) clears the 3.5 rem mobile bottom dock plus a 1.5 rem
+        // breathing gap. mb-safe stacks above the home-indicator inset.
+        className="fixed bottom-20 right-4 z-30 mb-safe flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 active:scale-95 md:hidden"
         aria-label={t(`actions.${action.labelKey}`)}
       >
         <Plus className="size-6" />

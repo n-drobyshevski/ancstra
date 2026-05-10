@@ -18,7 +18,8 @@
     "platform": "Платформа",
     "settings": "Настройки",
     "help": "Помощь",
-    "signOut": "Выйти"
+    "signOut": "Выйти",
+    "more": "Ещё"
   },
   "groups": {
     "research": "Исследование",
@@ -29,7 +30,12 @@
     "platformAdmin": "Администратор платформы",
     "settings": "Настройки",
     "help": "Помощь",
-    "signOut": "Выйти"
+    "signOut": "Выйти",
+    "more": "Дополнительно"
+  },
+  "mobileDock": {
+    "ariaLabel": "Основная навигация",
+    "more": "Ещё"
   },
   "fab": {
     "actions": {

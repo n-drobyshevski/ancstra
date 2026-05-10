@@ -1,5 +1,6 @@
 'use client';
 
+import type { CSSProperties } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -15,16 +16,16 @@ import {
   ExternalLink,
   FileStack,
   ShieldCheck,
+  ChevronDown,
+  MoreHorizontal,
   type LucideIcon,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import type { Permission } from '@ancstra/auth/types';
-import { hasPermission } from '@ancstra/auth/permissions';
 import { PlatformAdminOnly } from '@/components/auth/platform-admin-only';
 import { LensSelector } from '@/components/sidebar/lens-selector';
 import { LocaleSwitcher } from '@/components/sidebar/locale-switcher';
-import { useEffectiveMembership } from '@/lib/auth/use-has-permission';
-import { useIsHydrated } from '@/hooks/use-is-hydrated';
+import { useVisibleNavItems } from '@/lib/nav/visible-items';
 import { signOut } from 'next-auth/react';
 import {
   Sidebar,
@@ -37,9 +38,17 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarMenuBadge,
+  SidebarMenuSub,
+  SidebarMenuSubItem,
+  SidebarMenuSubButton,
   SidebarRail,
   useSidebar,
 } from '@/components/ui/sidebar';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 
 type NavItemKey =
   | 'dashboard'
@@ -105,36 +114,18 @@ const analyticsItems: NavItem[] = [
   },
 ];
 
-/**
- * Filter nav items by the user's effective (lens-aware) permissions.
- * Same semantics as `useVisibleSettingsNavItems` in components/settings/settings-nav.tsx.
- *
- * Gated by `useIsHydrated` because `useEffectiveMembership` ultimately reads
- * `useSession()`, which returns different data on the SSR pass vs. the first
- * client render once the SessionProvider hydrates. Until hydration completes
- * we render only items that are universally visible — server HTML and first
- * client render then match, and permissioned items pop in post-hydration.
- */
-function useVisibleNavItems(items: NavItem[]): NavItem[] {
-  const isHydrated = useIsHydrated();
-  const membership = useEffectiveMembership();
-  return items.filter((item) => {
-    if (!item.permission) return true;
-    if (!isHydrated) return false;
-    if (!membership) return false;
-    const required = Array.isArray(item.permission) ? item.permission : [item.permission];
-    return required.some((p) => hasPermission(membership.role, p));
-  });
-}
-
 function NavGroup({
   label,
   items,
   pathname,
+  className,
+  style,
 }: {
   label?: string;
   items: NavItem[];
   pathname: string;
+  className?: string;
+  style?: CSSProperties;
 }) {
   const { setOpenMobile } = useSidebar();
   const t = useTranslations('navigation.items');
@@ -145,7 +136,7 @@ function NavGroup({
   if (visible.length === 0) return null;
 
   return (
-    <SidebarGroup>
+    <SidebarGroup className={className} style={style}>
       {label && <SidebarGroupLabel>{label}</SidebarGroupLabel>}
       <SidebarMenu>
         {visible.map((item) => {
@@ -189,7 +180,7 @@ interface AppSidebarProps {
 
 export function AppSidebar({ factsheetCount = 0 }: AppSidebarProps) {
   const pathname = usePathname();
-  const { setOpenMobile } = useSidebar();
+  const { setOpenMobile, openMobile, isMobile } = useSidebar();
   const tNav = useTranslations('navigation');
   const tGroups = useTranslations('navigation.groups');
   const tItems = useTranslations('navigation.items');
@@ -200,6 +191,18 @@ export function AppSidebar({ factsheetCount = 0 }: AppSidebarProps) {
     if (item.href === '/research/factsheets') return { ...item, badge: factsheetCount };
     return item;
   });
+
+  // Stagger nav group entrance only when the mobile drawer opens — desktop
+  // users would otherwise see this animation on every navigation. Each
+  // group is offset 30 ms; total 120 ms across four groups. `fill-mode-both`
+  // keeps the initial (invisible) frame applied during the delay so groups
+  // don't flash visible before their turn.
+  const staggerClass =
+    openMobile && isMobile
+      ? 'motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-left-2 motion-safe:duration-200 motion-safe:fill-mode-both'
+      : undefined;
+  const staggerStyle = (i: number): CSSProperties | undefined =>
+    openMobile && isMobile ? { animationDelay: `${i * 30}ms` } : undefined;
 
   return (
     <Sidebar collapsible="icon" role="navigation" aria-label={tNav('ariaLabel')}>
@@ -218,23 +221,37 @@ export function AppSidebar({ factsheetCount = 0 }: AppSidebarProps) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavGroup items={coreItems} pathname={pathname} />
-        <NavGroup label={tGroups('research')} items={researchWithBadges} pathname={pathname} />
-        <NavGroup label={tGroups('data')} items={dataItems} pathname={pathname} />
-        <NavGroup label={tGroups('analytics')} items={analyticsItems} pathname={pathname} />
+        <NavGroup
+          items={coreItems}
+          pathname={pathname}
+          className={staggerClass}
+          style={staggerStyle(0)}
+        />
+        <NavGroup
+          label={tGroups('research')}
+          items={researchWithBadges}
+          pathname={pathname}
+          className={staggerClass}
+          style={staggerStyle(1)}
+        />
+        <NavGroup
+          label={tGroups('data')}
+          items={dataItems}
+          pathname={pathname}
+          className={staggerClass}
+          style={staggerStyle(2)}
+        />
+        <NavGroup
+          label={tGroups('analytics')}
+          items={analyticsItems}
+          pathname={pathname}
+          className={staggerClass}
+          style={staggerStyle(3)}
+        />
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>
-          <PlatformAdminOnly>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild tooltip={tTooltips('platformAdmin')}>
-                <Link href="/admin" onClick={() => setOpenMobile(false)}>
-                  <ShieldCheck />
-                  <span>{tItems('platform')}</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </PlatformAdminOnly>
+          {/* Inline footer: highest-frequency secondary actions stay visible. */}
           <LensSelector />
           <LocaleSwitcher />
           <SidebarMenuItem>
@@ -245,27 +262,64 @@ export function AppSidebar({ factsheetCount = 0 }: AppSidebarProps) {
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild tooltip={tTooltips('help')}>
-              <a
-                href={process.env.NEXT_PUBLIC_DOCS_URL || 'https://ancstra-docs.vercel.app'}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <ExternalLink />
-                <span>{tItems('help')}</span>
-              </a>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              tooltip={tTooltips('signOut')}
-              onClick={() => signOut({ callbackUrl: '/login' })}
-            >
-              <LogOut />
-              <span>{tItems('signOut')}</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
+          {/* "More" collapsible — collapses Admin / Help / Sign Out so the
+              mobile sheet footer stays scannable. Hidden contents are
+              still keyboard-reachable via the Collapsible primitive. */}
+          <Collapsible asChild className="group/footer-more">
+            <SidebarMenuItem>
+              <CollapsibleTrigger asChild>
+                <SidebarMenuButton
+                  tooltip={tTooltips('more')}
+                  aria-controls="sidebar-footer-more"
+                >
+                  <MoreHorizontal />
+                  <span>{tItems('more')}</span>
+                  <ChevronDown className="ml-auto transition-transform group-data-[state=open]/footer-more:rotate-180" />
+                </SidebarMenuButton>
+              </CollapsibleTrigger>
+              <CollapsibleContent id="sidebar-footer-more">
+                <SidebarMenuSub>
+                  <PlatformAdminOnly>
+                    <SidebarMenuSubItem>
+                      <SidebarMenuSubButton asChild>
+                        <Link href="/admin" onClick={() => setOpenMobile(false)}>
+                          <ShieldCheck />
+                          <span>{tItems('platform')}</span>
+                        </Link>
+                      </SidebarMenuSubButton>
+                    </SidebarMenuSubItem>
+                  </PlatformAdminOnly>
+                  <SidebarMenuSubItem>
+                    <SidebarMenuSubButton asChild>
+                      <a
+                        href={
+                          process.env.NEXT_PUBLIC_DOCS_URL ||
+                          'https://ancstra-docs.vercel.app'
+                        }
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <ExternalLink />
+                        <span>{tItems('help')}</span>
+                      </a>
+                    </SidebarMenuSubButton>
+                  </SidebarMenuSubItem>
+                  <SidebarMenuSubItem>
+                    <SidebarMenuSubButton asChild>
+                      <button
+                        type="button"
+                        onClick={() => signOut({ callbackUrl: '/login' })}
+                        className="w-full cursor-pointer text-left"
+                      >
+                        <LogOut />
+                        <span>{tItems('signOut')}</span>
+                      </button>
+                    </SidebarMenuSubButton>
+                  </SidebarMenuSubItem>
+                </SidebarMenuSub>
+              </CollapsibleContent>
+            </SidebarMenuItem>
+          </Collapsible>
         </SidebarMenu>
       </SidebarFooter>
       <SidebarRail />

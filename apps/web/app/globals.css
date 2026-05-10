@@ -134,6 +134,10 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
   --safe-right: env(safe-area-inset-right, 0px);
+  /* Mobile sidebar drawer width — viewport-aware. 85vw on a 390 px iPhone is
+     ~331 px (leaves ~59 px of canvas peeking through); capped at 20 rem so
+     tablet portrait never gets an oversize drawer. */
+  --sidebar-width-mobile: min(85vw, 20rem);
   /* Tree-table density */
   --tt-row-h-compact: 2rem;
   --tt-cell-py-compact: 0.25rem;

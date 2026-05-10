@@ -64,8 +64,16 @@ export function useViewport(): Viewport {
   const [breakpoint, setBreakpoint] = React.useState<Breakpoint | undefined>(
     undefined,
   )
+  // Distinguishes "before mount" (SSR / first client render — no info, must
+  // report desktop to keep SSR HTML stable) from "after mount and no min-width
+  // query matched" (viewport is narrower than xs/480px — modern phones in
+  // portrait fall here: iPhone 14 = 390px, Pixel 7 = 412px, iPhone 15 Pro Max
+  // = 430px). Without this flag the latter collapses into the former and the
+  // mobile sidebar trigger silently no-ops.
+  const [hasMounted, setHasMounted] = React.useState(false)
 
   React.useEffect(() => {
+    setHasMounted(true)
     setBreakpoint(snapshotBreakpoint())
 
     const mqls = ORDER.map((bp) => window.matchMedia(QUERIES[bp]))
@@ -77,7 +85,11 @@ export function useViewport(): Viewport {
     }
   }, [])
 
-  const isMobile = breakpoint === undefined ? false : !["md", "lg", "xl"].includes(breakpoint)
+  const isMobile = !hasMounted
+    ? false
+    : breakpoint === undefined
+      ? true
+      : !["md", "lg", "xl"].includes(breakpoint)
   const isTablet = breakpoint === "md"
   const isDesktop = breakpoint === "lg" || breakpoint === "xl"
 

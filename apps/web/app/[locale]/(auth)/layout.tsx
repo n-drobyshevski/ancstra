@@ -11,6 +11,7 @@ import { LensProvider } from '@/lib/lens/provider';
 import { AccessDeniedToast } from '@/components/auth/access-denied-toast';
 import { LensActiveBanner } from '@/components/lens/lens-active-banner';
 import { ContextualFab } from '@/components/layout/contextual-fab';
+import { MobileNav } from '@/components/layout/mobile-nav';
 import { InstallPrompt } from '@/components/pwa/install-prompt';
 
 // Auth/membership enforcement lives in proxy.ts — by the time this layout
@@ -49,22 +50,30 @@ export default function AuthLayout({
                   this group whenever a lens is active, hidden otherwise. */}
               <LensActiveBanner />
               <AppHeader />
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0 flex-1 pb-14 md:pb-0">
                 {/* Suspense boundary for sub-page children. The previous layout
                     implicitly provided one via <Suspense><AuthGate>{children}</AuthGate>.
                     Now that AuthGate is gone, sub-pages with top-level awaits
                     (e.g. /settings/members) need this boundary so cacheComponents
                     doesn't flag uncached-data-outside-Suspense. Per-segment
-                    loading.tsx fallbacks (where present) still take precedence. */}
+                    loading.tsx fallbacks (where present) still take precedence.
+                    `pb-14 md:pb-0` clears the mobile bottom dock; the dock
+                    itself owns its own safe-area inset via `pb-safe`. */}
                 <Suspense>{children}</Suspense>
               </div>
+              {/* Mobile-only primary navigation. Renders the dock (hybrid
+                  default) or the full tab bar (NEXT_PUBLIC_SIDEBAR_VARIANT=
+                  tabbar-full). Sits above the home indicator via pb-safe;
+                  hidden on md+. */}
+              <MobileNav />
               {/* Mobile-only floating action button. Picks its primary action
                   from the current pathname; renders nothing on routes without
-                  a registered action. md:hidden via the component itself. */}
+                  a registered action. md:hidden via the component itself.
+                  Sits above the bottom dock. */}
               <ContextualFab />
               {/* Mobile-only PWA install banner. Renders nothing until Chrome
                   fires beforeinstallprompt and the user has not suppressed it
-                  in the last 30 days. */}
+                  in the last 30 days. Sits above the bottom dock. */}
               <InstallPrompt />
             </SidebarInset>
           </SidebarProvider>
