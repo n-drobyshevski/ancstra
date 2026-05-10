@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Network, UserPlus } from 'lucide-react';
 import { useTranslations } from 'next-intl';
@@ -41,6 +41,12 @@ interface MobileDetailSheetProps {
   onClose: () => void;
   onFocusNode: (personId: string) => void;
   onSeeOnTree: (personId: string) => void;
+  /** Optional controlled Vaul snap. When provided, the parent owns the snap
+   *  state — used so siblings (TreeCanvas) can react to depth changes (e.g.
+   *  reposition the React Flow Controls cluster). When omitted, the sheet
+   *  manages snap internally. */
+  snap?: number | string | null;
+  setSnap?: (snap: number | string | null) => void;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -66,7 +72,10 @@ function SheetContent({
   const tRelations = useTranslations('tree.mobile.addRelation.relations');
   const tSex = useTranslations('tree.mobile.sex');
   const { person: fullPerson, events, citationCount, isLoading } = usePersonDetail(person.id);
-  const isFullSnap = snap === 0.85;
+  // 0.85 is the "fully open" snap where the body scrolls. 0.6 is the new
+  // intermediate "reading" snap added in Phase 6; treat it like full so users
+  // can scroll content without having to drag all the way up.
+  const isFullSnap = snap === 0.85 || snap === 0.6;
   const [dialog, setDialog] = useState<{
     kind: 'create' | 'link';
     relation: RelationType;
@@ -143,7 +152,7 @@ function SheetContent({
 
       {/* Full content — scrollable, only accessible at 0.85 snap */}
       <div
-        className={`flex-1 ${isFullSnap ? 'overflow-y-auto' : 'overflow-hidden'} pb-[env(safe-area-inset-bottom)]`}
+        className={`flex-1 ${isFullSnap ? 'overflow-y-auto' : 'overflow-hidden'} pb-safe`}
       >
         {isLoading ? (
           <div className="p-4 space-y-3">
@@ -209,15 +218,29 @@ export function MobileDetailSheet({
   onClose,
   onFocusNode,
   onSeeOnTree,
+  snap: snapProp,
+  setSnap: setSnapProp,
 }: MobileDetailSheetProps) {
-  const [snap, setSnap] = useState<number | string | null>(0.35);
+  // Internal snap state used only when the parent doesn't pass one in. The
+  // Vaul controlled API needs both `activeSnapPoint` and `setActiveSnapPoint`
+  // to be defined — controlled vs uncontrolled is decided once at mount.
+  const [internalSnap, setInternalSnap] = useState<number | string | null>(0.35);
+  const isControlled = snapProp !== undefined && setSnapProp !== undefined;
+  const snap = isControlled ? snapProp! : internalSnap;
+  const setSnap = isControlled ? setSnapProp! : setInternalSnap;
 
-  // Reset to peek snap whenever the selected person changes
+  // Reset to peek snap whenever the selected person changes. When parent
+  // owns snap, parent should also own this reset — but we run the reset
+  // here too so uncontrolled callers Just Work.
   useEffect(() => {
-    if (person) {
-      setSnap(0.35);
+    if (person && !isControlled) {
+      setInternalSnap(0.35);
     }
-  }, [person?.id]);
+    // We intentionally depend on `person?.id` only — the controlled-mode
+    // parent handles its own reset; we don't want to clobber an external
+    // snap value just because this effect re-fired.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [person?.id, isControlled]);
 
   // Radix Dialog (used by Vaul) sets pointer-events:none on <body> when open.
   // For our non-modal drawer this blocks touch on the canvas underneath.
@@ -241,10 +264,15 @@ export function MobileDetailSheet({
       onOpenChange={(open) => {
         if (!open) onClose();
       }}
-      snapPoints={[0.35, 0.85]}
+      // Three snaps so the user can park the sheet at peek (just header +
+      // chips), reading (~60% — body content visible without losing the
+      // canvas behind), or full (almost full-screen, body scrolls). Vaul's
+      // fadeFromIndex needs to point at the last snap so the dim only ramps
+      // in at the deepest depth.
+      snapPoints={[0.35, 0.6, 0.85]}
       activeSnapPoint={snap}
       setActiveSnapPoint={setSnap}
-      fadeFromIndex={1}
+      fadeFromIndex={2}
       modal={false}
       shouldScaleBackground={false}
     >

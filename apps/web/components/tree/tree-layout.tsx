@@ -118,6 +118,14 @@ export function TreeLayout({ viewData, focusPersonId }: TreeLayoutProps) {
   const view = (searchParams.get('view') ?? 'canvas') as 'canvas' | 'table';
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [selectedPerson, setSelectedPerson] = useState<PersonListItem | null>(null);
+  // Vaul snap of the mobile detail sheet — lifted up from MobileDetailSheet
+  // so TreeCanvas can key its Controls offset (zoom + fit-view) on the
+  // current depth. Reset to peek (0.35) whenever the selection changes so
+  // each new person opens at the same minimal depth.
+  const [detailSnap, setDetailSnap] = useState<number | string | null>(0.35);
+  useEffect(() => {
+    if (selectedPerson) setDetailSnap(0.35);
+  }, [selectedPerson?.id]);
   const [focusKey, setFocusKey] = useState(0);
   const [runtimeFocusId, setRuntimeFocusId] = useState<string | undefined>(undefined);
 
@@ -623,7 +631,7 @@ export function TreeLayout({ viewData, focusPersonId }: TreeLayoutProps) {
               view={view}
               onSetView={setView}
               isMobile
-              isDetailOpen={!!selectedPerson}
+              detailSnap={selectedPerson ? detailSnap : null}
               filterState={filterState}
               onFilterStateChange={handleFilterStateChange}
               showGaps={showGaps}
@@ -737,6 +745,8 @@ export function TreeLayout({ viewData, focusPersonId }: TreeLayoutProps) {
           onClose={clearSelection}
           onFocusNode={handleFocusNode}
           onSeeOnTree={handleSeeOnTree}
+          snap={detailSnap}
+          setSnap={setDetailSnap}
         />
       </div>
 

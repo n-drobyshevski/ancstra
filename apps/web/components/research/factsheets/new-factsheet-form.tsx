@@ -237,7 +237,7 @@ export function NewFactsheetForm({
       </form>
 
       {/* Mobile: sticky bottom action bar — primary on top, secondary below */}
-      <div className="fixed inset-x-0 bottom-0 z-50 space-y-2 border-t border-border bg-background px-4 pb-[env(safe-area-inset-bottom,0px)] pt-2 shadow-lg md:hidden">
+      <div className="fixed inset-x-0 bottom-0 z-50 space-y-2 border-t border-border bg-background px-4 pb-safe pt-2 shadow-lg md:hidden">
         <Button
           type="button"
           variant="outline"

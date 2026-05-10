@@ -78,6 +78,21 @@ import { computeColoringMap } from '@/lib/tree/coloring';
 const nodeTypes = { person: PersonNode, draftPerson: DraftPersonNode, draftFactsheet: DraftFactsheetNode };
 const edgeTypes = { partner: PartnerEdge, parentChild: ParentChildEdge, proposed: ProposedEdge };
 
+/**
+ * Tailwind class for the React Flow Controls margin, keyed off the active
+ * Vaul snap of the mobile detail sheet. Returns an empty string when the
+ * sheet is closed (no offset needed) or when running on desktop. The
+ * literal class strings are kept inline so Tailwind's content scanner can
+ * pre-generate them — don't switch to interpolation.
+ */
+function controlsOffsetClass(snap: number | string | null | undefined): string {
+  if (snap === null || snap === undefined) return '';
+  if (typeof snap !== 'number') return '!mb-[38dvh]';
+  if (snap >= 0.7) return '!opacity-0 !pointer-events-none';
+  if (snap >= 0.5) return '!mb-[63dvh]';
+  return '!mb-[38dvh]';
+}
+
 interface TreeCanvasProps {
   treeData: TreeData;
   /** Server-preloaded default layout. When provided, the first render uses
@@ -95,7 +110,13 @@ interface TreeCanvasProps {
   view: 'canvas' | 'table';
   onSetView: (v: 'canvas' | 'table') => void;
   isMobile?: boolean;
-  isDetailOpen?: boolean;
+  /** Active Vaul snap of the mobile detail sheet, or undefined when the
+   *  sheet is closed. Drives the React Flow Controls offset so the zoom +
+   *  fit-view buttons stay clear of the sheet at the peek and reading snaps,
+   *  and disappear at the deepest snap. Vaul snaps are typed as
+   *  `number | string` (string forms like "200px" are also legal); we treat
+   *  string snaps as the peek default. */
+  detailSnap?: number | string | null;
   /** External filter state — when provided, canvas uses these instead of internal state */
   filterState?: FilterState;
   onFilterStateChange?: (fs: FilterState) => void;
@@ -124,7 +145,7 @@ interface TreeCanvasProps {
   topologyVisibleIds?: Set<string> | null;
 }
 
-function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focusPersonId, focusKey, paletteOpen, onTogglePalette, onSelectPerson, view, onSetView, isMobile, isDetailOpen, filterState: externalFilterState, onFilterStateChange, showGaps: externalShowGaps, onShowGapsChange: _onShowGapsChange, mobileToolbarSlot, onFocusPerson, onSetTopologyAnchor, topologyVisibleIds }: TreeCanvasProps) {
+function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focusPersonId, focusKey, paletteOpen, onTogglePalette, onSelectPerson, view, onSetView, isMobile, detailSnap, filterState: externalFilterState, onFilterStateChange, showGaps: externalShowGaps, onShowGapsChange: _onShowGapsChange, mobileToolbarSlot, onFocusPerson, onSetTopologyAnchor, topologyVisibleIds }: TreeCanvasProps) {
   void _onShowGapsChange;
   const reactFlow = useReactFlow();
   const { fitView, screenToFlowPosition, getNodes } = reactFlow;
@@ -1345,7 +1366,12 @@ function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focus
         hasSelection={hasSelection}
       />)}
 
-      <div className="flex-1 relative overflow-hidden">
+      {/* `overscroll-contain` traps pan gestures inside the canvas so Android
+          Chrome doesn't fire pull-to-refresh when the user drags downward at
+          the top of the tree. `touch-none` would also work but it disables
+          native scroll on the wrapper itself; React Flow handles its own
+          touch interaction so we leave it browser-default. */}
+      <div className="flex-1 relative overflow-hidden overscroll-contain">
         <ReactFlow
           aria-label="Family tree"
           proOptions={{ hideAttribution: true }}
@@ -1403,7 +1429,13 @@ function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focus
             showInteractive={!isMobile}
             className={cn(
               "!bg-card !border !shadow-sm !rounded-lg",
-              isMobile && isDetailOpen && "!mb-[38dvh]"
+              // Mobile-only: keep the zoom/fit cluster clear of the detail
+              // sheet. The sheet snaps are 0.35 (peek) / 0.6 (reading) / 0.85
+              // (full); we offset by ~the snap fraction so the cluster
+              // floats just above the sheet edge, and hide it entirely at
+              // the deepest snap where the sheet IS the interaction. String
+              // snaps and unknown values fall back to the peek offset.
+              isMobile && controlsOffsetClass(detailSnap)
             )}
           />
         </ReactFlow>

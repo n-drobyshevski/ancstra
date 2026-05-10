@@ -25,6 +25,9 @@ export function FacetSearch() {
         <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
         <Input
           type="search"
+          inputMode="search"
+          enterKeyHint="search"
+          autoComplete="off"
           placeholder={t('placeholder')}
           aria-label={t('ariaLabel')}
           value={value}

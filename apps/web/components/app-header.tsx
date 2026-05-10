@@ -22,7 +22,10 @@ export function AppHeader({ title }: { title?: string }) {
       <Button
         variant="outline"
         size="sm"
-        className="gap-2 text-muted-foreground"
+        // Below sm: search collapses to a square icon-only button (no text,
+        // no kbd hint, zero gap) so the header items don't collide on phones.
+        className="gap-2 max-sm:gap-0 max-sm:size-9 max-sm:p-0 text-muted-foreground"
+        aria-label={t('search')}
         onClick={() =>
           window.dispatchEvent(
             new KeyboardEvent('keydown', { key: 'k', metaKey: true }),

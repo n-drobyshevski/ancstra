@@ -19,6 +19,13 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
+import {
+  ResponsiveTable,
+  MobileCardList,
+  MobileCardListItem,
+  MobileCardListEmpty,
+} from '@/components/ui/responsive-table';
+import { SortSheet, type SortOption, type SortValue } from '@/components/ui/sort-sheet';
 import { personsParsers, type HidableColumn, type PersonsFilters } from '@/lib/persons/search-params';
 import {
   usePersonsColumns,
@@ -30,7 +37,10 @@ import {
 import { ColumnsDropdown } from './columns-dropdown';
 import type { SelectionState } from './use-selection';
 import { SelectAllBanner } from './select-all-banner';
+import { PersonMobileCard } from './person-mobile-card';
 import type { PersonListItem } from '@ancstra/shared';
+
+type PersonsSortKey = NonNullable<PersonsFilters['sort']>;
 
 interface PersonsDataTableProps {
   data: PersonListItem[];
@@ -40,6 +50,12 @@ interface PersonsDataTableProps {
   onTogglePage: (pageIds: readonly string[], allChecked: boolean) => void;
   onSelectAllMatching: () => void;
   onClearSelection: () => void;
+}
+
+function isRowChecked(selection: SelectionState, id: string): boolean {
+  if (selection.kind === 'matching') return !selection.exclude.has(id);
+  if (selection.kind === 'ids') return selection.rowIds.has(id);
+  return false;
 }
 
 export function PersonsDataTable({
@@ -82,6 +98,32 @@ export function PersonsDataTable({
   const pageCount = Math.max(1, Math.ceil(total / filters.size));
   const personsColumns = usePersonsColumns();
   const tTable = useTranslations('persons.table');
+  const tHeaders = useTranslations('persons.table.headers');
+
+  const sortOptions = useMemo<readonly SortOption<PersonsSortKey>[]>(
+    () => [
+      { value: 'edited', label: tHeaders('lastEdited'), defaultDir: 'desc' },
+      { value: 'name', label: tHeaders('name') },
+      { value: 'born', label: tHeaders('birth') },
+      { value: 'died', label: tHeaders('death') },
+      { value: 'compl', label: tHeaders('completeness'), defaultDir: 'desc' },
+      { value: 'sources', label: tHeaders('sources'), defaultDir: 'desc' },
+    ],
+    [tHeaders],
+  );
+
+  const sortValue: SortValue<PersonsSortKey> = {
+    key: filters.sort,
+    dir: filters.dir,
+  };
+
+  const onSortChange = (next: SortValue<PersonsSortKey>) => {
+    void setFilters({
+      sort: next.key,
+      dir: next.dir,
+      page: 1,
+    });
+  };
 
   const table = useReactTable({
     data,
@@ -124,10 +166,100 @@ export function PersonsDataTable({
     void setFilters({ hide: next });
   };
 
+  const noRows = data.length === 0;
+
+  const desktopTable = (
+    <div className="rounded-md border">
+      <Table>
+        <TableHeader>
+          {table.getHeaderGroups().map((group) => (
+            <TableRow key={group.id}>
+              {group.headers.map((header) => (
+                <TableHead
+                  key={header.id}
+                  style={{ width: header.getSize() }}
+                  aria-sort={getAriaSort(header.column.getIsSorted())}
+                >
+                  {header.isPlaceholder
+                    ? null
+                    : flexRender(header.column.columnDef.header, header.getContext())}
+                </TableHead>
+              ))}
+            </TableRow>
+          ))}
+        </TableHeader>
+        <TableBody>
+          {noRows ? (
+            <TableRow>
+              <TableCell colSpan={personsColumns.length} className="h-24 text-center">
+                <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
+                  <p>{tTable('noPersonsMatch')}</p>
+                  <Button
+                    variant="link"
+                    size="sm"
+                    onClick={() => void setFilters(defaultClearFilters())}
+                  >
+                    {tTable('clearAllFilters')}
+                  </Button>
+                </div>
+              </TableCell>
+            </TableRow>
+          ) : (
+            table.getRowModel().rows.map((row) => (
+              <TableRow key={row.id}>
+                {row.getVisibleCells().map((cell) => (
+                  <TableCell key={cell.id}>
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))
+          )}
+        </TableBody>
+      </Table>
+    </div>
+  );
+
+  const mobileList = noRows ? (
+    <MobileCardListEmpty>
+      <p>{tTable('noPersonsMatch')}</p>
+      <Button
+        variant="link"
+        size="sm"
+        onClick={() => void setFilters(defaultClearFilters())}
+      >
+        {tTable('clearAllFilters')}
+      </Button>
+    </MobileCardListEmpty>
+  ) : (
+    <MobileCardList>
+      {data.map((person) => (
+        <MobileCardListItem key={person.id}>
+          <PersonMobileCard
+            person={person}
+            selected={isRowChecked(selection, person.id)}
+            onToggleSelect={onToggleRow}
+            showSelection
+          />
+        </MobileCardListItem>
+      ))}
+    </MobileCardList>
+  );
+
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-end gap-2">
-        <ColumnsDropdown hidden={filters.hide} onChange={onHideChange} />
+      <div className="flex items-center justify-between gap-2">
+        <SortSheet<PersonsSortKey>
+          options={sortOptions}
+          value={sortValue}
+          onValueChange={onSortChange}
+          triggerLabel={tTable('sort')}
+          title={tTable('sortBy')}
+          className="md:hidden"
+        />
+        <div className="ml-auto flex items-center gap-2">
+          <ColumnsDropdown hidden={filters.hide} onChange={onHideChange} />
+        </div>
       </div>
 
       <SelectAllBanner
@@ -138,58 +270,11 @@ export function PersonsDataTable({
         onClear={onClearSelection}
       />
 
-      <div
-        className={`rounded-md border ${isPending ? 'motion-safe:opacity-50 motion-safe:transition-opacity' : ''}`}
-        aria-busy={isPending}
-      >
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((group) => (
-              <TableRow key={group.id}>
-                {group.headers.map((header) => (
-                  <TableHead
-                    key={header.id}
-                    style={{ width: header.getSize() }}
-                    aria-sort={getAriaSort(header.column.getIsSorted())}
-                  >
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(header.column.columnDef.header, header.getContext())}
-                  </TableHead>
-                ))}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={personsColumns.length} className="h-24 text-center">
-                  <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
-                    <p>{tTable('noPersonsMatch')}</p>
-                    <Button
-                      variant="link"
-                      size="sm"
-                      onClick={() => void setFilters(defaultClearFilters())}
-                    >
-                      {tTable('clearAllFilters')}
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ) : (
-              table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id}>
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      <ResponsiveTable
+        desktop={desktopTable}
+        mobile={mobileList}
+        pending={isPending}
+      />
 
       <div
         className="flex items-center justify-between text-sm text-muted-foreground"

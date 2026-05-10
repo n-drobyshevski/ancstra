@@ -24,6 +24,16 @@ import {
   DrawerDescription,
   DrawerFooter,
 } from '@/components/ui/drawer';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 import type { RelationType } from '@/components/person-link-dialog';
 import { personDetailCache } from '@/lib/tree/person-detail-cache';
@@ -78,6 +88,7 @@ export function PersonCreateDialog({
   const [surname, setSurname] = useState('');
   const [sex, setSex] = useState<'M' | 'F' | 'U'>(() => getDefaultSex(relationType, personSex));
   const [saving, setSaving] = useState(false);
+  const [confirmDiscardOpen, setConfirmDiscardOpen] = useState(false);
 
   // Reset form when dialog opens/closes or relation changes
   useEffect(() => {
@@ -89,6 +100,29 @@ export function PersonCreateDialog({
       setTimeout(() => givenNameRef.current?.focus(), 100);
     }
   }, [open, relationType, personSex]);
+
+  // Dirty if the user has typed anything we'd lose on dismiss. `sex` flips on
+  // mount based on relation context, so we don't track it as dirty signal.
+  const isDirty = givenName.trim().length > 0 || surname.trim().length > 0;
+
+  // Wraps the consumer's onOpenChange. When the user tries to close (next
+  // === false) and the form has unsaved input, intercept and surface a
+  // confirmation dialog instead of immediately closing.
+  const handleOpenChange = useCallback(
+    (next: boolean) => {
+      if (!next && isDirty && !saving) {
+        setConfirmDiscardOpen(true);
+        return;
+      }
+      onOpenChange(next);
+    },
+    [isDirty, saving, onOpenChange],
+  );
+
+  const confirmDiscard = useCallback(() => {
+    setConfirmDiscardOpen(false);
+    onOpenChange(false);
+  }, [onOpenChange]);
 
   const handleSubmit = useCallback(async () => {
     if (!givenName.trim() || !surname.trim()) {
@@ -301,7 +335,7 @@ export function PersonCreateDialog({
       <Button
         variant="outline"
         size="sm"
-        onClick={() => onOpenChange(false)}
+        onClick={() => handleOpenChange(false)}
         disabled={saving}
       >
         Cancel
@@ -328,31 +362,63 @@ export function PersonCreateDialog({
     </div>
   );
 
+  const discardConfirmDialog = (
+    <AlertDialog open={confirmDiscardOpen} onOpenChange={setConfirmDiscardOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Discard changes?</AlertDialogTitle>
+          <AlertDialogDescription>
+            You haven&apos;t saved this {label.toLowerCase()}. Closing now will
+            lose what you&apos;ve typed.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Keep editing</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={(e) => {
+              e.preventDefault();
+              confirmDiscard();
+            }}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            Discard
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+
   if (isMobile) {
     return (
-      <Drawer open={open} onOpenChange={onOpenChange}>
-        <DrawerContent>
-          <DrawerHeader>
-            <DrawerTitle>New {label}</DrawerTitle>
-            <DrawerDescription>Quick-add a new person and link them</DrawerDescription>
-          </DrawerHeader>
-          {form}
-          <DrawerFooter>{footer}</DrawerFooter>
-        </DrawerContent>
-      </Drawer>
+      <>
+        <Drawer open={open} onOpenChange={handleOpenChange}>
+          <DrawerContent>
+            <DrawerHeader>
+              <DrawerTitle>New {label}</DrawerTitle>
+              <DrawerDescription>Quick-add a new person and link them</DrawerDescription>
+            </DrawerHeader>
+            {form}
+            <DrawerFooter>{footer}</DrawerFooter>
+          </DrawerContent>
+        </Drawer>
+        {discardConfirmDialog}
+      </>
     );
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md" showCloseButton={false}>
-        <DialogHeader>
-          <DialogTitle>New {label}</DialogTitle>
-          <DialogDescription>Quick-add a new person and link them</DialogDescription>
-        </DialogHeader>
-        {form}
-        <DialogFooter>{footer}</DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <>
+      <Dialog open={open} onOpenChange={handleOpenChange}>
+        <DialogContent className="sm:max-w-md" showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>New {label}</DialogTitle>
+            <DialogDescription>Quick-add a new person and link them</DialogDescription>
+          </DialogHeader>
+          {form}
+          <DialogFooter>{footer}</DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {discardConfirmDialog}
+    </>
   );
 }

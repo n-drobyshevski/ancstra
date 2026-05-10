@@ -12,6 +12,7 @@ import {
   CommandList,
 } from '@/components/ui/command';
 import { Badge } from '@/components/ui/badge';
+import { useViewport } from '@/hooks/use-viewport';
 import type { PersonListItem } from '@ancstra/shared';
 import { personDetailCache } from '@/lib/tree/person-detail-cache';
 
@@ -44,6 +45,7 @@ export function CommandPalette() {
   const t = useTranslations('common.commandPalette');
   const tActions = useTranslations('common.commandPalette.actions');
   const tSex = useTranslations('common.sexLabels');
+  const { isMobile } = useViewport();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<PersonListItem[]>([]);
@@ -120,13 +122,26 @@ export function CommandPalette() {
     : actions;
 
   return (
-    <CommandDialog open={open} onOpenChange={setOpen}>
+    <CommandDialog
+      open={open}
+      onOpenChange={setOpen}
+      // Below md, override the default centered/clipped dialog with a
+      // fullscreen sheet so the on-screen keyboard never covers results and
+      // the focused input has the whole viewport. Desktop keeps the centered
+      // top-1/3 placement defined in components/ui/command.tsx.
+      className={
+        isMobile
+          ? 'top-0 left-0 right-0 bottom-0 h-dvh w-screen max-w-none translate-x-0 translate-y-0 rounded-none! border-0'
+          : undefined
+      }
+      showCloseButton={isMobile}
+    >
       <CommandInput
         placeholder={t('placeholder')}
         value={query}
         onValueChange={setQuery}
       />
-      <CommandList>
+      <CommandList className={isMobile ? 'flex-1 max-h-none' : undefined}>
         <CommandEmpty>
           {searching ? t('searching') : t('noResults')}
         </CommandEmpty>

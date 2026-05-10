@@ -7,6 +7,7 @@ import { useTranslations } from 'next-intl';
 import { signUpAction as signUp, type SignUpState } from '@/server/api/routers/account/_actions';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { OAuthButtons } from '@/components/auth/oauth-buttons';
@@ -23,7 +24,7 @@ function SignUpForm() {
   );
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
+    <div className="flex min-h-dvh items-center justify-center bg-background px-4 py-8">
       <PublicLocaleSwitcher />
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
@@ -37,9 +38,18 @@ function SignUpForm() {
             )}
             <div className="space-y-2">
               <Label htmlFor="name">{t('nameLabel')}</Label>
-              <Input id="name" name="name" placeholder={t('namePlaceholder')} required />
+              <Input
+                id="name"
+                name="name"
+                autoComplete="name"
+                enterKeyHint="next"
+                placeholder={t('namePlaceholder')}
+                required
+              />
               {state?.errors?.name && (
-                <p className="text-sm text-destructive">{state.errors.name[0]}</p>
+                <p role="alert" aria-live="polite" className="text-sm text-destructive">
+                  {state.errors.name[0]}
+                </p>
               )}
             </div>
             <div className="space-y-2">
@@ -48,30 +58,39 @@ function SignUpForm() {
                 id="email"
                 name="email"
                 type="email"
+                inputMode="email"
+                autoComplete="email"
+                enterKeyHint="next"
                 placeholder={t('emailPlaceholder')}
                 required
               />
               {state?.errors?.email && (
-                <p className="text-sm text-destructive">{state.errors.email[0]}</p>
+                <p role="alert" aria-live="polite" className="text-sm text-destructive">
+                  {state.errors.email[0]}
+                </p>
               )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">{t('passwordLabel')}</Label>
-              <Input
+              <PasswordInput
                 id="password"
                 name="password"
-                type="password"
                 minLength={8}
+                autoComplete="new-password"
+                enterKeyHint="go"
+                toggleAriaLabel={{ show: t('passwordShow'), hide: t('passwordHide') }}
                 required
               />
               {state?.errors?.password && (
-                <p className="text-sm text-destructive">
+                <p role="alert" aria-live="polite" className="text-sm text-destructive">
                   {state.errors.password[0]}
                 </p>
               )}
             </div>
             {state?.message && (
-              <p className="text-sm text-destructive">{state.message}</p>
+              <p role="alert" aria-live="polite" className="text-sm text-destructive">
+                {state.message}
+              </p>
             )}
             <Button type="submit" className="w-full" disabled={pending}>
               {pending ? t('creatingAccount') : t('createAccount')}

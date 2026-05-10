@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { OAuthButtons } from '@/components/auth/oauth-buttons';
@@ -43,7 +44,7 @@ function LoginForm() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
+    <div className="flex min-h-dvh items-center justify-center bg-background px-4 py-8">
       <PublicLocaleSwitcher />
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
@@ -58,21 +59,28 @@ function LoginForm() {
                 id="email"
                 name="email"
                 type="email"
+                inputMode="email"
+                autoComplete="email"
+                enterKeyHint="next"
                 placeholder={t('emailPlaceholder')}
                 required
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">{t('passwordLabel')}</Label>
-              <Input
+              <PasswordInput
                 id="password"
                 name="password"
-                type="password"
+                autoComplete="current-password"
+                enterKeyHint="go"
+                toggleAriaLabel={{ show: t('passwordShow'), hide: t('passwordHide') }}
                 required
               />
             </div>
             {error && (
-              <p className="text-sm text-destructive">{error}</p>
+              <p role="alert" aria-live="polite" className="text-sm text-destructive">
+                {error}
+              </p>
             )}
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? t('signingIn') : t('signIn')}

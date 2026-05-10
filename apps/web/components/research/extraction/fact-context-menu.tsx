@@ -103,7 +103,7 @@ export function FactContextMenu({ state, onSelect, onDismiss }: FactContextMenuP
         {/* Backdrop */}
         <div className="fixed inset-0 z-40 bg-black/20" onClick={onDismiss} />
         {/* Bottom sheet */}
-        <div className="fixed inset-x-0 bottom-0 z-50 rounded-t-xl border-t border-border bg-popover p-2 pb-[env(safe-area-inset-bottom)] shadow-lg animate-in slide-in-from-bottom duration-200">
+        <div className="fixed inset-x-0 bottom-0 z-50 rounded-t-xl border-t border-border bg-popover p-2 pb-safe shadow-lg animate-in slide-in-from-bottom duration-200">
           {/* Header: selected text */}
           <div className="flex items-center gap-2 rounded-md bg-primary/10 px-3 py-2 text-sm font-medium text-foreground">
             <Plus className="size-3.5 shrink-0" />

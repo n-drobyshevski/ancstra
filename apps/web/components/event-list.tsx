@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Pencil, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EventForm } from '@/components/event-form';
@@ -58,7 +59,7 @@ export function EventList({ events, personId, onUpdate }: EventListProps) {
         return (
           <div
             key={evt.id}
-            className="flex items-start gap-3 rounded-lg border bg-card px-3 py-2 text-sm"
+            className="flex min-h-11 items-start gap-3 rounded-lg border bg-card px-3 py-2 text-sm"
           >
             <Badge variant="secondary" className="mt-0.5 shrink-0">
               {evt.eventType.charAt(0).toUpperCase() + evt.eventType.slice(1)}
@@ -85,20 +86,22 @@ export function EventList({ events, personId, onUpdate }: EventListProps) {
                   <button
                     type="button"
                     onClick={() => setEditingId(evt.id)}
-                    className="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-muted"
+                    className="inline-flex min-h-11 min-w-11 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
+                    aria-label="Edit event"
                     title="Edit event"
                   >
-                    &#9998;
+                    <Pencil className="size-4" />
                   </button>
                 </RoleGate>
                 <RoleGate permission="event:delete">
                   <button
                     type="button"
                     onClick={() => handleDelete(evt.id)}
-                    className="rounded p-1 text-muted-foreground hover:text-destructive hover:bg-muted"
+                    className="inline-flex min-h-11 min-w-11 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-destructive"
+                    aria-label="Delete event"
                     title="Delete event"
                   >
-                    &times;
+                    <Trash2 className="size-4" />
                   </button>
                 </RoleGate>
               </div>

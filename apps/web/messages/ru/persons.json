@@ -115,7 +115,9 @@
     "clearAllFilters": "Очистить все фильтры",
     "pageOf": "Страница {page} из {total} (всего {count})",
     "previous": "Назад",
-    "next": "Вперёд"
+    "next": "Вперёд",
+    "sortBy": "Сортировка",
+    "sort": "Сорт."
   },
   "activeFilters": {
     "ariaLabel": "Активные фильтры",

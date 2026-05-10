@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { NextIntlClientProvider, hasLocale } from 'next-intl';
 import { setRequestLocale } from 'next-intl/server';
@@ -31,6 +31,23 @@ export const metadata: Metadata = {
     siteName: 'Ancstra',
     type: 'website',
   },
+};
+
+// Phase 2 (mobile foundation): explicit viewport so the safe-area utilities
+// (pb-safe / pt-safe / pl-safe / pr-safe — see globals.css) actually receive
+// non-zero env() values on devices with notches or gesture bars. We keep
+// `userScalable` and `maximumScale` permissive so users can pinch-zoom.
+// Theme-color tracks light/dark to match the chrome of the standalone PWA
+// shell (matches manifest.theme_color for the Indigo Heritage palette).
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+  viewportFit: 'cover',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#3347a8' },
+    { media: '(prefers-color-scheme: dark)', color: '#0f172a' },
+  ],
 };
 
 export function generateStaticParams() {

@@ -65,7 +65,7 @@ function DrawerInner({
           <TabsTrigger value="notes" className="min-h-[40px]">Notes</TabsTrigger>
         </TabsList>
 
-        <div className={`flex-1 ${isFullSnap ? 'overflow-y-auto' : 'overflow-hidden'} pb-[env(safe-area-inset-bottom)]`}>
+        <div className={`flex-1 ${isFullSnap ? 'overflow-y-auto' : 'overflow-hidden'} pb-safe`}>
           {/* Facts */}
           <TabsContent value="facts" className="px-4 py-3">
             {factsLoading ? (

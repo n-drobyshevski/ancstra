@@ -191,7 +191,7 @@ export function ActivityFeed({
   const dateGroups = groupByBucket(items, (item) => item.createdAt);
 
   return (
-    <div className="space-y-4 pb-[env(safe-area-inset-bottom)]">
+    <div className="space-y-4 pb-safe">
       <ActivityFilterBar
         visibility={visibility}
         members={members}

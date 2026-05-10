@@ -11,7 +11,7 @@ import { MobileBottomBar } from './mobile-bottom-bar';
 import { MobileAiSheet } from './mobile-ai-sheet';
 import { TextPasteModal } from './text-paste-modal';
 import { useResearchItems } from '@/lib/research/search-client';
-import { useMediaQuery } from '@/lib/hooks/use-media-query';
+import { useViewport } from '@/hooks/use-viewport';
 import { useExperimentalFeatures } from '@/hooks/use-experimental-features';
 import { ExperimentalBadge } from '@/components/ui/experimental-badge';
 
@@ -29,7 +29,7 @@ function ResearchLayoutInner() {
 
   const searchParams = useSearchParams();
   const router = useRouter();
-  const isDesktop = useMediaQuery('(min-width: 1024px)');
+  const { isDesktop } = useViewport();
   const { data: itemsData } = useResearchItems();
   const bookmarkCount = itemsData?.items?.length ?? 0;
   const { isEnabled } = useExperimentalFeatures();

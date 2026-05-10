@@ -27,7 +27,7 @@ export function MobileBottomBar({ onPasteText, onScrapeUrl, onOpenAi, bookmarkCo
     <div
       role="toolbar"
       aria-label="Research actions"
-      className="fixed inset-x-0 bottom-0 z-30 flex items-center justify-around border-t border-border bg-background px-2 pb-[env(safe-area-inset-bottom)] pt-2"
+      className="fixed inset-x-0 bottom-0 z-30 flex items-center justify-around border-t border-border bg-background px-2 pb-safe pt-2"
     >
       {visibleItems.map((item) => {
         const Icon = item.icon;

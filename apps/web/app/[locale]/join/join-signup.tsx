@@ -6,6 +6,7 @@ import { signIn } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -91,7 +92,7 @@ export function JoinSignup({ token, invitedEmail, familyName, role }: JoinSignup
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-8">
+    <div className="flex min-h-dvh items-center justify-center bg-background px-4 py-8">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
           <CardTitle>{t('title')}</CardTitle>
@@ -116,12 +117,16 @@ export function JoinSignup({ token, invitedEmail, familyName, role }: JoinSignup
                   <Label htmlFor="signup-name">{t('nameLabel')}</Label>
                   <Input
                     id="signup-name"
+                    autoComplete="name"
+                    enterKeyHint="next"
                     value={signupName}
                     onChange={(e) => setSignupName(e.target.value)}
                     required
                   />
                   {signupState?.errors?.name && (
-                    <p className="text-sm text-destructive">{signupState.errors.name[0]}</p>
+                    <p role="alert" aria-live="polite" className="text-sm text-destructive">
+                      {signupState.errors.name[0]}
+                    </p>
                   )}
                 </div>
                 <div className="space-y-2">
@@ -129,6 +134,9 @@ export function JoinSignup({ token, invitedEmail, familyName, role }: JoinSignup
                   <Input
                     id="signup-email"
                     type="email"
+                    inputMode="email"
+                    autoComplete="email"
+                    enterKeyHint="next"
                     value={signupEmail}
                     onChange={(e) => setSignupEmail(e.target.value)}
                     readOnly={Boolean(invitedEmail)}
@@ -138,25 +146,33 @@ export function JoinSignup({ token, invitedEmail, familyName, role }: JoinSignup
                     <p className="text-xs text-muted-foreground">{t('emailLocked')}</p>
                   )}
                   {signupState?.errors?.email && (
-                    <p className="text-sm text-destructive">{signupState.errors.email[0]}</p>
+                    <p role="alert" aria-live="polite" className="text-sm text-destructive">
+                      {signupState.errors.email[0]}
+                    </p>
                   )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="signup-password">{t('passwordLabel')}</Label>
-                  <Input
+                  <PasswordInput
                     id="signup-password"
-                    type="password"
                     minLength={8}
+                    autoComplete="new-password"
+                    enterKeyHint="go"
+                    toggleAriaLabel={{ show: t('passwordShow'), hide: t('passwordHide') }}
                     value={signupPassword}
                     onChange={(e) => setSignupPassword(e.target.value)}
                     required
                   />
                   {signupState?.errors?.password && (
-                    <p className="text-sm text-destructive">{signupState.errors.password[0]}</p>
+                    <p role="alert" aria-live="polite" className="text-sm text-destructive">
+                      {signupState.errors.password[0]}
+                    </p>
                   )}
                 </div>
                 {signupState?.message && (
-                  <p className="text-sm text-destructive">{signupState.message}</p>
+                  <p role="alert" aria-live="polite" className="text-sm text-destructive">
+                    {signupState.message}
+                  </p>
                 )}
                 <Button type="submit" className="w-full" disabled={signupPending}>
                   {signupPending ? t('joining') : t('createAndJoin')}
@@ -171,6 +187,9 @@ export function JoinSignup({ token, invitedEmail, familyName, role }: JoinSignup
                   <Input
                     id="signin-email"
                     type="email"
+                    inputMode="email"
+                    autoComplete="email"
+                    enterKeyHint="next"
                     value={signinEmail}
                     onChange={(e) => setSigninEmail(e.target.value)}
                     required
@@ -178,16 +197,20 @@ export function JoinSignup({ token, invitedEmail, familyName, role }: JoinSignup
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="signin-password">{t('passwordLabel')}</Label>
-                  <Input
+                  <PasswordInput
                     id="signin-password"
-                    type="password"
+                    autoComplete="current-password"
+                    enterKeyHint="go"
+                    toggleAriaLabel={{ show: t('passwordShow'), hide: t('passwordHide') }}
                     value={signinPassword}
                     onChange={(e) => setSigninPassword(e.target.value)}
                     required
                   />
                 </div>
                 {signinError && (
-                  <p className="text-sm text-destructive">{signinError}</p>
+                  <p role="alert" aria-live="polite" className="text-sm text-destructive">
+                    {signinError}
+                  </p>
                 )}
                 <Button type="submit" className="w-full" disabled={signinPending}>
                   {signinPending ? t('signingIn') : t('signInAndJoin')}

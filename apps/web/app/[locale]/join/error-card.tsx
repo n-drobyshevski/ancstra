@@ -10,7 +10,7 @@ interface ErrorCardProps {
 export async function ErrorCard({ message }: ErrorCardProps) {
   const t = await getTranslations('auth.join.error');
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
+    <div className="flex min-h-dvh items-center justify-center bg-background">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
           <CardTitle>{t('title')}</CardTitle>

@@ -11,6 +11,13 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import {
+  ResponsiveTable,
+  MobileCardList,
+  MobileCardListItem,
+  MobileCardListEmpty,
+} from '@/components/ui/responsive-table';
+import { MemberMobileCard } from './member-mobile-card';
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -404,7 +411,9 @@ export function MemberList({
           </div>
         </div>
       ) : null}
-      <div className="rounded-md border">
+      <ResponsiveTable
+        desktop={
+        <div className="rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
@@ -578,6 +587,54 @@ export function MemberList({
           </TableBody>
         </Table>
       </div>
+        }
+        mobile={
+          visibleMembers.length === 0 ? (
+            <MobileCardListEmpty>
+              {members.length === 0
+                ? 'No members found.'
+                : 'No members match the selected filter.'}
+            </MobileCardListEmpty>
+          ) : (
+            <MobileCardList>
+              {visibleMembers.map((member) => {
+                const showMenu = canRemove(member) || canTransferTo(member);
+                const isSelectable = canRemove(member);
+                const isChecked = selected.has(member.userId);
+                return (
+                  <MobileCardListItem key={member.userId}>
+                    <MemberMobileCard
+                      member={member}
+                      isYou={member.userId === currentUserId}
+                      selected={isChecked}
+                      bulkBusy={bulkBusy}
+                      showCheckbox={canBulkManage}
+                      isSelectable={isSelectable}
+                      showRoleEditor={canEditRole(member)}
+                      showMenu={showMenu}
+                      showTransfer={canTransferTo(member)}
+                      showRemove={canRemove(member)}
+                      updatingRole={updatingRole === member.userId}
+                      removingMember={removingMember === member.userId}
+                      onToggleSelect={(id, value) =>
+                        setSelected((prev) => {
+                          const next = new Set(prev);
+                          if (value) next.add(id);
+                          else next.delete(id);
+                          return next;
+                        })
+                      }
+                      onRoleChange={handleRoleChange}
+                      onTransfer={(m) => setTransferTarget(m)}
+                      onRemove={(m) => setRemoveTarget(m)}
+                    />
+                  </MobileCardListItem>
+                );
+              })}
+            </MobileCardList>
+          )
+        }
+      />
 
       {transferTarget && (
         <TransferOwnershipDialog

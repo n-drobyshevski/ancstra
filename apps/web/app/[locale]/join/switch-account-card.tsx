@@ -26,7 +26,7 @@ export function SwitchAccountCard({ inviteEmail, userEmail, token }: SwitchAccou
   const t = useTranslations('auth.join.switchAccount');
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-8">
+    <div className="flex min-h-dvh items-center justify-center bg-background px-4 py-8">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
           <CardTitle>{t('title')}</CardTitle>

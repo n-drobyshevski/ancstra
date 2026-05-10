@@ -317,7 +317,7 @@ export function CreateFamilyWizard() {
 
 function Shell({ children, wide = false }: { children: React.ReactNode; wide?: boolean }) {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-8">
+    <div className="flex min-h-dvh items-center justify-center bg-background px-4 py-8">
       <Card className={wide ? 'w-full max-w-lg' : 'w-full max-w-sm'}>
         {children}
       </Card>
@@ -398,7 +398,7 @@ function RootSelfStep({
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-8">
+    <div className="flex min-h-dvh items-center justify-center bg-background px-4 py-8">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-semibold">{t('title')}</CardTitle>
@@ -443,6 +443,8 @@ function RootSelfStep({
               <Input
                 id="birth-year"
                 type="number"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 min={1}
                 max={9999}
                 value={birthYearInput}

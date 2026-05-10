@@ -30,5 +30,19 @@
     "settings": "Settings",
     "help": "Help",
     "signOut": "Sign Out"
+  },
+  "fab": {
+    "actions": {
+      "addPerson": "Add person"
+    }
+  },
+  "pwa": {
+    "install": {
+      "title": "Install Ancstra",
+      "description": "Get a fullscreen experience and quicker access from your home screen.",
+      "install": "Install",
+      "dismiss": "Not now",
+      "dismissAriaLabel": "Dismiss install prompt"
+    }
   }
 }

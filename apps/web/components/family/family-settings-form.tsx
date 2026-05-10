@@ -128,6 +128,8 @@ export function FamilySettingsForm({ initialSettings, canEdit }: Props) {
               <Input
                 id="max-members"
                 type="number"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 min={1}
                 step={1}
                 value={maxMembers}
@@ -144,6 +146,7 @@ export function FamilySettingsForm({ initialSettings, canEdit }: Props) {
               <Input
                 id="ai-budget"
                 type="number"
+                inputMode="decimal"
                 min={0}
                 step={0.5}
                 value={aiBudget}

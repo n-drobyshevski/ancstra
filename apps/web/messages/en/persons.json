@@ -115,7 +115,9 @@
     "clearAllFilters": "Clear all filters",
     "pageOf": "Page {page} of {total} ({count} total)",
     "previous": "Previous",
-    "next": "Next"
+    "next": "Next",
+    "sortBy": "Sort by",
+    "sort": "Sort"
   },
   "activeFilters": {
     "ariaLabel": "Active filters",

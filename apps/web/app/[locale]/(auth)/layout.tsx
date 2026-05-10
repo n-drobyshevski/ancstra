@@ -10,6 +10,8 @@ import { HeaderProvider } from '@/lib/header-context';
 import { LensProvider } from '@/lib/lens/provider';
 import { AccessDeniedToast } from '@/components/auth/access-denied-toast';
 import { LensActiveBanner } from '@/components/lens/lens-active-banner';
+import { ContextualFab } from '@/components/layout/contextual-fab';
+import { InstallPrompt } from '@/components/pwa/install-prompt';
 
 // Auth/membership enforcement lives in proxy.ts — by the time this layout
 // renders, the user is authenticated AND has at least one family membership
@@ -56,6 +58,14 @@ export default function AuthLayout({
                     loading.tsx fallbacks (where present) still take precedence. */}
                 <Suspense>{children}</Suspense>
               </div>
+              {/* Mobile-only floating action button. Picks its primary action
+                  from the current pathname; renders nothing on routes without
+                  a registered action. md:hidden via the component itself. */}
+              <ContextualFab />
+              {/* Mobile-only PWA install banner. Renders nothing until Chrome
+                  fires beforeinstallprompt and the user has not suppressed it
+                  in the last 30 days. */}
+              <InstallPrompt />
             </SidebarInset>
           </SidebarProvider>
         </LensProvider>

@@ -19,13 +19,7 @@ export default function DashboardLayout({
   primary,
   aside,
   secondary,
-}: {
-  children: React.ReactNode;
-  hero: React.ReactNode;
-  primary: React.ReactNode;
-  aside: React.ReactNode;
-  secondary: React.ReactNode;
-}) {
+}: LayoutProps<'/[locale]/dashboard'>) {
   if (!isDashboardV2Enabled()) {
     return <>{children}</>;
   }

@@ -1,4 +1,3 @@
-import { MobileAddButton } from '@/components/dashboard/mobile-add-button';
 import { InviteAcceptedToast } from '@/components/dashboard/invite-accepted-toast';
 
 /**
@@ -10,18 +9,20 @@ import { InviteAcceptedToast } from '@/components/dashboard/invite-accepted-toas
  * region:
  *   - InviteAcceptedToast — fires a one-shot toast after invite acceptance,
  *     renders no UI.
- *   - MobileAddButton — position:fixed FAB, gated to `person:create`.
+ *
+ * The mobile FAB now lives in `(auth)/layout.tsx` as `ContextualFab` so it
+ * appears on every authenticated route that registers an action — no per-page
+ * mounting required.
  *
  * If `NEXT_PUBLIC_DASHBOARD_V2=false` is set as an emergency opt-out, the
- * layout returns just `{children}` and this page renders only the toast +
- * FAB — an explicit "something is broken, surface as little as possible"
+ * layout returns just `{children}` and this page renders only the toast —
+ * an explicit "something is broken, surface as little as possible"
  * mode rather than a graceful fallback. See ADR-018.
  */
 export default function DashboardPage() {
   return (
     <>
       <InviteAcceptedToast />
-      <MobileAddButton />
     </>
   );
 }

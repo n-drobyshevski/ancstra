@@ -33,6 +33,21 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  ResponsiveTable,
+  MobileCardList,
+  MobileCardListItem,
+  MobileCardListEmpty,
+} from '@/components/ui/responsive-table';
+import {
+  DataCard,
+  DataCardActions,
+  DataCardBody,
+  DataCardLeading,
+  DataCardMeta,
+  DataCardSubtitle,
+  DataCardTitle,
+} from '@/components/ui/data-card';
 
 type AuditEntry = {
   id: string;
@@ -201,7 +216,9 @@ export function AuditLogTable() {
         </div>
       </div>
 
-      <div className="rounded-md border border-border">
+      <ResponsiveTable
+        desktop={
+        <div className="rounded-md border border-border">
         <Table>
           <TableHeader>
             <TableRow>
@@ -310,6 +327,101 @@ export function AuditLogTable() {
           </TableBody>
         </Table>
       </div>
+        }
+        mobile={
+          query.isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="size-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : query.isError ? (
+            <MobileCardListEmpty>
+              <p className="text-destructive">{query.error?.message ?? t('loadFailed')}</p>
+              <Button variant="outline" size="sm" className="mt-1" onClick={() => query.refetch()}>
+                {t('retry')}
+              </Button>
+            </MobileCardListEmpty>
+          ) : items.length === 0 ? (
+            <MobileCardListEmpty>
+              {hasFilters ? t('noMatch') : t('empty')}
+            </MobileCardListEmpty>
+          ) : (
+            <MobileCardList>
+              {items.map((entry) => (
+                <MobileCardListItem key={entry.id}>
+                  <DataCard>
+                    <DataCardLeading>
+                      <Link
+                        href={`/admin/users/${entry.actorUserId}`}
+                        aria-label={entry.actorName}
+                        className="flex min-h-11 min-w-11 items-center"
+                      >
+                        <Avatar className="size-9">
+                          {entry.actorAvatarUrl ? (
+                            <AvatarImage src={entry.actorAvatarUrl} alt="" />
+                          ) : null}
+                          <AvatarFallback className="text-xs">
+                            {initials(entry.actorName, entry.actorEmail)}
+                          </AvatarFallback>
+                        </Avatar>
+                      </Link>
+                    </DataCardLeading>
+                    <DataCardBody>
+                      <DataCardTitle>
+                        <Link
+                          href={`/admin/users/${entry.actorUserId}`}
+                          className="hover:underline focus:underline focus:outline-none"
+                        >
+                          {entry.actorName}
+                        </Link>
+                      </DataCardTitle>
+                      <DataCardSubtitle>
+                        <code className="rounded bg-muted px-1.5 py-0.5 text-[0.7rem]">
+                          {entry.action}
+                        </code>
+                      </DataCardSubtitle>
+                      <DataCardMeta>
+                        <Badge variant="outline" className="capitalize">
+                          {entry.targetType}
+                        </Badge>
+                        <Link
+                          href={
+                            entry.targetType === 'user'
+                              ? `/admin/users/${entry.targetId}`
+                              : entry.targetType === 'family'
+                                ? `/admin/families/${entry.targetId}`
+                                : '#'
+                          }
+                          className="font-mono text-[0.7rem] hover:underline"
+                          title={entry.targetId}
+                        >
+                          {entry.targetId.slice(0, 8)}…
+                        </Link>
+                        <span className="ml-auto" title={entry.createdAt}>
+                          {formatWhen(entry.createdAt)}
+                        </span>
+                      </DataCardMeta>
+                      {entry.summary ? (
+                        <p className="mt-1 text-sm text-foreground/90">{entry.summary}</p>
+                      ) : null}
+                    </DataCardBody>
+                    <DataCardActions>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setDetailEntry(entry)}
+                        aria-label={tHeaders('details')}
+                        disabled={!entry.metadata}
+                      >
+                        <Eye className="size-4" />
+                      </Button>
+                    </DataCardActions>
+                  </DataCard>
+                </MobileCardListItem>
+              ))}
+            </MobileCardList>
+          )
+        }
+      />
 
       {query.hasNextPage ? (
         <div className="flex justify-center">

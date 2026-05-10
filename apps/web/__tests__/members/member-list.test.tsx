@@ -48,20 +48,23 @@ function openDropdown(trigger: HTMLElement) {
 describe('<MemberList>', () => {
   it('renders Last seen column header', async () => {
     renderWithIntl(<MemberList familyId="fam-1" familyName="Test" currentUserId="u-owner" currentRole="owner" />);
-    await waitFor(() => expect(screen.getByText('Alice')).not.toBeNull());
+    await waitFor(() => expect(screen.getAllByText('Alice').length).toBeGreaterThan(0));
+    // Header only appears in desktop Table (mobile cards have no column headers)
     expect(screen.getByText('Last seen')).not.toBeNull();
   });
 
   it('renders em-dash for null lastSeenAt', async () => {
     renderWithIntl(<MemberList familyId="fam-1" familyName="Test" currentUserId="u-owner" currentRole="owner" />);
-    await waitFor(() => expect(screen.getByText('Bob')).not.toBeNull());
-    expect(screen.getByText('—')).not.toBeNull();
+    await waitFor(() => expect(screen.getAllByText('Bob').length).toBeGreaterThan(0));
+    // Both desktop row and mobile card render '—' when lastSeenAt is null
+    expect(screen.getAllByText('—').length).toBeGreaterThan(0);
   });
 
   it('owner sees Transfer ownership in dropdown for admin row', async () => {
     renderWithIntl(<MemberList familyId="fam-1" familyName="Test" currentUserId="u-owner" currentRole="owner" />);
-    await waitFor(() => expect(screen.getByText('Bob')).not.toBeNull());
+    await waitFor(() => expect(screen.getAllByText('Bob').length).toBeGreaterThan(0));
 
+    // Both surfaces render an actions trigger; opening either reveals the same menu
     const triggers = screen.getAllByLabelText('Member actions');
     openDropdown(triggers[0]);
 
@@ -73,7 +76,7 @@ describe('<MemberList>', () => {
 
   it('admin caller does not see Transfer ownership', async () => {
     renderWithIntl(<MemberList familyId="fam-1" familyName="Test" currentUserId="u-admin" currentRole="admin" />);
-    await waitFor(() => expect(screen.getByText('Bob')).not.toBeNull());
+    await waitFor(() => expect(screen.getAllByText('Bob').length).toBeGreaterThan(0));
 
     const triggers = screen.queryAllByLabelText('Member actions');
     for (const t of triggers) openDropdown(t);
