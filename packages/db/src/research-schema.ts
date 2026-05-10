@@ -73,6 +73,7 @@ export const factsheets = sqliteTable('factsheets', {
   notes: text('notes'),
   promotedPersonId: text('promoted_person_id').references(() => persons.id),
   promotedAt: text('promoted_at'),
+  createdThreadId: text('created_thread_id'),  // FK to research_threads (added below)
   createdBy: text('created_by').notNull(),
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
   updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
@@ -80,6 +81,7 @@ export const factsheets = sqliteTable('factsheets', {
   index('idx_factsheets_status').on(table.status),
   index('idx_factsheets_created_by').on(table.createdBy),
   index('idx_factsheets_promoted_person').on(table.promotedPersonId),
+  index('idx_factsheets_thread').on(table.createdThreadId),
 ]);
 
 // ==================== FACTSHEET LINKS (Relationship Graph) ====================
@@ -170,4 +172,53 @@ export const scrapeJobs = sqliteTable('scrape_jobs', {
 }, (table) => [
   index('idx_scrape_jobs_item').on(table.itemId),
   index('idx_scrape_jobs_status').on(table.status),
+]);
+
+// ==================== RESEARCH THREADS (Journey Overlay) ====================
+export const researchThreads = sqliteTable('research_threads', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  title: text('title').notNull(),
+  status: text('status', {
+    enum: ['active', 'paused', 'resolved', 'abandoned'],
+  }).notNull().default('active'),
+  seedPersonId: text('seed_person_id').references(() => persons.id, { onDelete: 'set null' }),
+  seedFactsheetId: text('seed_factsheet_id').references(() => factsheets.id, { onDelete: 'set null' }),
+  seedResearchItemId: text('seed_research_item_id').references(() => researchItems.id, { onDelete: 'set null' }),
+  summary: text('summary'),
+  createdBy: text('created_by').notNull(),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
+  closedAt: text('closed_at'),
+}, (table) => [
+  index('idx_threads_status').on(table.status),
+  index('idx_threads_created_by').on(table.createdBy),
+  index('idx_threads_updated_at').on(table.updatedAt),
+]);
+
+// ==================== RESEARCH THREAD EVENTS (Chronological Journey) ====================
+export const researchThreadEvents = sqliteTable('research_thread_events', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  threadId: text('thread_id').notNull().references(() => researchThreads.id, { onDelete: 'cascade' }),
+  eventType: text('event_type', {
+    enum: [
+      'thread_started', 'item_attached', 'fact_extracted',
+      'factsheet_created', 'factsheet_linked', 'mention_followed',
+      'conflict_resolved', 'duplicate_resolved', 'factsheet_promoted',
+      'note_added', 'thread_paused', 'thread_resolved', 'thread_abandoned',
+    ],
+  }).notNull(),
+  actorId: text('actor_id').notNull(), // user uuid or 'ai'
+  factsheetId: text('factsheet_id').references(() => factsheets.id, { onDelete: 'set null' }),
+  personId: text('person_id').references(() => persons.id, { onDelete: 'set null' }),
+  researchItemId: text('research_item_id').references(() => researchItems.id, { onDelete: 'set null' }),
+  researchFactId: text('research_fact_id').references(() => researchFacts.id, { onDelete: 'set null' }),
+  sourceId: text('source_id').references(() => sources.id, { onDelete: 'set null' }),
+  linkId: text('link_id').references(() => factsheetLinks.id, { onDelete: 'set null' }),
+  reason: text('reason'),
+  payloadJson: text('payload_json'),
+  occurredAt: text('occurred_at').notNull().$defaultFn(() => new Date().toISOString()),
+}, (table) => [
+  index('idx_thread_events_thread').on(table.threadId, table.occurredAt),
+  index('idx_thread_events_factsheet').on(table.factsheetId),
+  index('idx_thread_events_person').on(table.personId),
 ]);
