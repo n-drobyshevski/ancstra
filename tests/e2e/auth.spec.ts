@@ -4,7 +4,7 @@ test.describe('Authentication', () => {
   test('login page loads with form and OAuth buttons', async ({ page }) => {
     await page.goto('/login');
     await expect(page.getByLabel('Email')).toBeVisible();
-    await expect(page.getByLabel('Password')).toBeVisible();
+    await expect(page.getByLabel('Password', { exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: /sign in/i })).toBeVisible();
   });
 

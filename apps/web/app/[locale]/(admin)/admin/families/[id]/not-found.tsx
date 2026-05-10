@@ -3,15 +3,15 @@
 import { useTranslations } from 'next-intl';
 import { NotFoundState } from '@/components/errors/not-found-state';
 
-export default function ResearchItemNotFound() {
+export default function AdminFamilyNotFound() {
   const t = useTranslations('error-pages');
   return (
     <NotFoundState
-      title={t('perRoute.researchItemId.notFoundTitle')}
-      description={t('perRoute.researchItemId.notFoundDescription')}
+      title={t('perRoute.adminFamiliesId.notFoundTitle')}
+      description={t('perRoute.adminFamiliesId.notFoundDescription')}
       primaryAction={{
-        label: t('actions.backToResearch'),
-        href: '/research',
+        label: t('actions.backToAdmin'),
+        href: '/admin/families',
       }}
     />
   );

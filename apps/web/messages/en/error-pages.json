@@ -1,0 +1,80 @@
+{
+  "notFound": {
+    "title": "This branch isn't on the tree",
+    "description": "We searched the records but couldn't find what you're looking for. The page may have been moved, deleted, or never existed."
+  },
+  "forbidden": {
+    "title": "This page is sealed",
+    "description": "You don't have permission to view this page. Ask the family owner or admin if you think this is a mistake."
+  },
+  "unauthorized": {
+    "title": "Sign in to continue",
+    "description": "This page is behind a closed gate. Sign in to your Ancstra account to continue."
+  },
+  "generic": {
+    "title": "Something went wrong",
+    "description": "An unexpected error tipped the inkwell. Try again — and if it keeps happening, share the reference below with support."
+  },
+  "offline": {
+    "title": "Lost the connection",
+    "description": "We couldn't reach Ancstra. Check your network and try again."
+  },
+  "actions": {
+    "tryAgain": "Try again",
+    "backToHome": "Back to home",
+    "backToPersons": "Back to all persons",
+    "backToResearch": "Back to research",
+    "backToAdmin": "Back to admin",
+    "backToSettings": "Back to settings",
+    "backToTree": "Back to tree",
+    "signIn": "Sign in",
+    "reload": "Reload page"
+  },
+  "reference": {
+    "label": "Reference"
+  },
+  "perRoute": {
+    "personsId": {
+      "notFoundTitle": "Person not found",
+      "notFoundDescription": "This person may have been deleted, or you may not have access to their record."
+    },
+    "researchItemId": {
+      "notFoundTitle": "Research item not found",
+      "notFoundDescription": "This research item may have been deleted, or you may not have access to it.",
+      "genericDescription": "We couldn't load this research item. Try again, or head back to your research list."
+    },
+    "researchPersonId": {
+      "notFoundTitle": "Research person not found",
+      "notFoundDescription": "This person doesn't have a research record yet, or it may have been removed."
+    },
+    "adminFamiliesId": {
+      "notFoundTitle": "Family tree not found",
+      "notFoundDescription": "This family tree may have been deleted or never existed in the platform records."
+    },
+    "adminUsersId": {
+      "notFoundTitle": "User not found",
+      "notFoundDescription": "This user account may have been deleted or never existed in the platform records."
+    },
+    "admin": {
+      "genericDescription": "Something went wrong loading the admin console. Try again, or refresh the page."
+    },
+    "activity": {
+      "genericDescription": "Failed to load the activity feed. Try again to refresh."
+    },
+    "dashboard": {
+      "genericDescription": "Something went wrong loading your dashboard. Try again to reload it."
+    },
+    "tree": {
+      "genericDescription": "We couldn't load the family tree visualization. Try again — heavy trees occasionally hit a hiccup."
+    },
+    "settings": {
+      "genericDescription": "We couldn't load your settings. Try again or head back to the dashboard."
+    },
+    "persons": {
+      "genericDescription": "We couldn't load the people list. Try again or refresh the page."
+    },
+    "research": {
+      "genericDescription": "We couldn't load your research workspace. Try again to refresh."
+    }
+  }
+}

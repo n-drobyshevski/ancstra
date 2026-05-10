@@ -4,6 +4,7 @@ import type { routing } from './i18n/routing';
 type Messages = {
   common: typeof import('./messages/en/common.json');
   errors: typeof import('./messages/en/errors.json');
+  'error-pages': typeof import('./messages/en/error-pages.json');
   navigation: typeof import('./messages/en/navigation.json');
   auth: typeof import('./messages/en/auth.json');
   dashboard: typeof import('./messages/en/dashboard.json');
