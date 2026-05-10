@@ -43,6 +43,8 @@ import { DraftFactsheetNode } from './draft-factsheet-node';
 import { PersonCreateDialog } from '@/components/person-create-dialog';
 import { PersonLinkDialog, type RelationType } from '@/components/person-link-dialog';
 import { personDetailCache } from '@/lib/tree/person-detail-cache';
+import { useActiveThread } from '@/lib/research/active-thread';
+import { useTreeOverlay } from '@/lib/research/tree-overlay';
 import {
   treeDataToFlow,
   applyDagreLayout,
@@ -238,6 +240,12 @@ function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focus
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(rawEdges);
+
+  // Active research thread overlay: when a thread is set, persons it has
+  // touched get a `threadOverlay: 'highlighted'`, others get `'dimmed'`.
+  // Both states render in person-node.tsx via Tailwind classes.
+  const { thread: activeThread } = useActiveThread();
+  const { data: threadOverlayData } = useTreeOverlay(activeThread?.id ?? null);
 
   const [contextMenu, setContextMenu] = useState<ContextMenuTrigger | null>(
     null,
@@ -1072,6 +1080,15 @@ function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focus
           }
         }
       }
+      // Active-thread overlay axis. Independent of surname highlight — both
+      // can be active simultaneously. When the overlay is null the field stays
+      // undefined and person-node treats it as a no-op.
+      let threadOverlay: 'highlighted' | 'dimmed' | undefined;
+      if (threadOverlayData) {
+        threadOverlay = threadOverlayData.touchedPersonIds.has(n.id)
+          ? 'highlighted'
+          : 'dimmed';
+      }
       return {
         ...n,
         hidden: hiddenByTopology,
@@ -1080,6 +1097,7 @@ function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focus
           coloringTone,
           coloringStyle: prefs.coloringStyle,
           surnameHighlight,
+          threadOverlay,
         },
       };
     }),
@@ -1091,6 +1109,7 @@ function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focus
       surnameHighlightSet,
       isSurnameHighlightActive,
       highlightStyle,
+      threadOverlayData,
     ],
   );
 
