@@ -80,20 +80,23 @@ export async function listAllUsers(
       // tag interpolates Column refs as bare unqualified names, so inside a
       // correlated subquery `WHERE "user_id" = "id"` resolves to the inner
       // table's own `id` and the count silently returns 0 for every row.
-      // Inner-join family_registry + filter `deleted_at IS NULL` so that
-      // soft-deleted families don't inflate the count.
+      //
+      // The inner subquery joins `family_registry` so we can filter out
+      // soft-deleted families. Both joined tables expose `id` and
+      // `deleted_at`, so we hand-qualify every column with its table name —
+      // the `${col}` interpolation would emit ambiguous bare names.
       familyCount: sql<number>`(
-        SELECT COUNT(*) FROM ${centralSchema.familyMembers}
-        INNER JOIN ${centralSchema.familyRegistry}
-          ON ${centralSchema.familyRegistry.id} = ${centralSchema.familyMembers.familyId}
-        WHERE ${centralSchema.familyMembers.userId} = users.id
-          AND ${centralSchema.familyMembers.isActive} = 1
-          AND ${centralSchema.familyRegistry.deletedAt} IS NULL
+        SELECT COUNT(*) FROM family_members
+        INNER JOIN family_registry
+          ON family_registry.id = family_members.family_id
+        WHERE family_members.user_id = users.id
+          AND family_members.is_active = 1
+          AND family_registry.deleted_at IS NULL
       )`,
       ownedFamilyCount: sql<number>`(
-        SELECT COUNT(*) FROM ${centralSchema.familyRegistry}
-        WHERE ${centralSchema.familyRegistry.ownerId} = users.id
-          AND ${centralSchema.familyRegistry.deletedAt} IS NULL
+        SELECT COUNT(*) FROM family_registry
+        WHERE family_registry.owner_id = users.id
+          AND family_registry.deleted_at IS NULL
       )`,
     })
     .from(centralSchema.users)
