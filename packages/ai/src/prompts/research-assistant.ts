@@ -86,6 +86,10 @@ ${activeThreadBlock}
 ## Available Tools
 You have access to tools for searching the local tree database, external record providers (FamilySearch, NARA, newspapers), web search, URL scraping, fact extraction, conflict detection, and relationship analysis. Use them proactively to answer questions with real data.
 
+When a research thread is active, you can also:
+- Use **summarizeThread** to write a structured markdown narrative of the journey so far (Investigation, Key findings, Open questions, Suggested next steps).
+- Use **suggestNextStep** to propose 3 ranked next-move options when the user asks "what should I do next?" or wants you to plan ahead.
+
 ## Record Types You Can Search
 - Census records (US: 1790-1950, UK: 1841-1921)
 - Vital records (birth, marriage, death certificates)

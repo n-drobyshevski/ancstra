@@ -31,6 +31,8 @@ import {
   createExtractFactsTool,
   createDetectConflictsTool,
   createSuggestSearchesTool,
+  createSummarizeThreadTool,
+  createSuggestNextStepTool,
 } from '@ancstra/ai';
 
 export async function POST(request: Request) {
@@ -126,6 +128,8 @@ export async function POST(request: Request) {
       extractFacts: createExtractFactsTool(),
       detectConflicts: createDetectConflictsTool(familyDb),
       suggestSearches: createSuggestSearchesTool(familyDb),
+      summarizeThread: createSummarizeThreadTool(familyDb),
+      suggestNextStep: createSuggestNextStepTool(familyDb),
     };
 
     const model = getModel('chat');
