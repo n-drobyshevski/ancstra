@@ -458,6 +458,8 @@
     "copyPersonId": "Копировать ID человека",
     "copyShareLink": "Копировать ссылку для общего доступа",
     "openInNewTab": "Открыть в новой вкладке",
+    "showThreadsTouching": "Показать исследовательские нити, касающиеся этого человека",
+    "startResearchThread": "Начать исследовательскую нить",
     "deletePerson": "Удалить человека…",
     "deleteRelationship": "Удалить связь",
     "selectedCount": "Выбрано: {count} человек",

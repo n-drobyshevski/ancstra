@@ -98,6 +98,9 @@ interface TreeContextMenuProps {
   /** Set/clear the active surname highlight from the per-node menu. When
    *  omitted, the highlight items are not rendered. */
   onHighlightSurnameChange?: (surname: string | null) => void;
+  /** Open the "research threads that touched this person" modal. When
+   *  omitted, the menu item is not rendered. */
+  onShowThreadsTouching?: (personId: string) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -189,6 +192,7 @@ function NodeItems({
   onSetTopologyAnchor,
   activeHighlightSurname,
   onHighlightSurnameChange,
+  onShowThreadsTouching,
 }: TreeContextMenuProps & { surface: { kind: 'node'; nodeId: string } }) {
   const router = useRouter();
   const t = useTranslations('tree.contextMenu');
@@ -401,6 +405,22 @@ function NodeItems({
         <ExternalLink />
         <span>{t('openInNewTab')}</span>
       </DropdownMenuItem>
+
+      {onShowThreadsTouching ? (
+        <>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onSelect={() => {
+              onShowThreadsTouching(person.id);
+              // Don't onClose() — modal supersedes the menu and racing the
+              // open with onClose() can suppress the dialog mount.
+            }}
+          >
+            <FlaskConical />
+            <span>{t('showThreadsTouching')}</span>
+          </DropdownMenuItem>
+        </>
+      ) : null}
 
       <DropdownMenuSeparator />
 

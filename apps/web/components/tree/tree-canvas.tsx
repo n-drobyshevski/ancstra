@@ -45,6 +45,7 @@ import { PersonLinkDialog, type RelationType } from '@/components/person-link-di
 import { personDetailCache } from '@/lib/tree/person-detail-cache';
 import { useActiveThread } from '@/lib/research/active-thread';
 import { useTreeOverlay } from '@/lib/research/tree-overlay';
+import { PersonThreadsModal } from '@/components/research/threads/person-threads-modal';
 import {
   treeDataToFlow,
   applyDagreLayout,
@@ -265,6 +266,11 @@ function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focus
     const lastMs = new Date(last).getTime();
     return new Date(firstMs + (lastMs - firstMs) * threadScrubberValue).toISOString();
   }, [threadOverlayData, threadScrubberValue]);
+
+  // Right-click "Show threads that touched this person" modal state. The
+  // canvas owns the state because the context menu unmounts on close —
+  // keeping it here makes the modal survive the menu's lifecycle.
+  const [personThreadsModalId, setPersonThreadsModalId] = useState<string | null>(null);
 
   const [contextMenu, setContextMenu] = useState<ContextMenuTrigger | null>(
     null,
@@ -1712,6 +1718,16 @@ function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focus
           onExportSelection={handleBulkExport}
           activeHighlightSurname={activeHighlightSurname}
           onHighlightSurnameChange={onHighlightSurnameChange}
+          onShowThreadsTouching={(personId) => {
+            setPersonThreadsModalId(personId);
+            setContextMenu(null);
+          }}
+        />
+
+        <PersonThreadsModal
+          personId={personThreadsModalId}
+          open={personThreadsModalId !== null}
+          onOpenChange={(o) => { if (!o) setPersonThreadsModalId(null); }}
         />
 
         <AlertDialog
