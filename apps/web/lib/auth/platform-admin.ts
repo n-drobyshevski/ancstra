@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { cookies } from 'next/headers';
-import { eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { centralSchema } from '@ancstra/db';
 import { auth } from '@/auth';
 import { getCentralDb } from '@/lib/db-singleton';
@@ -49,7 +49,12 @@ export async function getPlatformAdmin(): Promise<PlatformAdmin | null> {
   const row = await db
     .select({ isPlatformAdmin: centralSchema.users.isPlatformAdmin })
     .from(centralSchema.users)
-    .where(eq(centralSchema.users.id, session.user.id))
+    .where(
+      and(
+        eq(centralSchema.users.id, session.user.id),
+        isNull(centralSchema.users.deletedAt),
+      ),
+    )
     .get();
   return row?.isPlatformAdmin === 1
     ? { userId: session.user.id, email }

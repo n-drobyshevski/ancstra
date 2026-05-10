@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS users (
   email_verified INTEGER NOT NULL DEFAULT 0,
   memberships_version INTEGER NOT NULL DEFAULT 0,
   is_platform_admin INTEGER NOT NULL DEFAULT 0,
+  deleted_at TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -55,6 +56,7 @@ CREATE TABLE IF NOT EXISTS family_registry (
   default_gedcom_export_mode TEXT NOT NULL DEFAULT 'shareable' CHECK(default_gedcom_export_mode IN ('full', 'shareable')),
   default_citation_style TEXT NOT NULL DEFAULT 'evidence-explained' CHECK(default_citation_style IN ('evidence-explained', 'chicago', 'apa')),
   living_threshold_years INTEGER NOT NULL DEFAULT 100,
+  deleted_at TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );

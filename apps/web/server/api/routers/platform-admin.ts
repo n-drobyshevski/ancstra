@@ -17,9 +17,12 @@ import {
   countOtherPlatformAdmins,
   listAuditLog,
   listAuditLogActions,
+  listOwnedActiveFamilies,
   logPlatformActivity,
   searchFamilies,
   searchUsers,
+  softDeleteFamily,
+  softDeleteUser,
 } from '@ancstra/auth/admin';
 import { createTRPCRouter, platformAdminProcedure } from '../trpc';
 import { invalidateTags } from '../cache';
@@ -421,6 +424,159 @@ export const platformAdminRouter = createTRPCRouter({
         'platform-audit-log',
       ]);
       return { changed: true } as const;
+    }),
+
+  // ── Soft-delete (platform-admin destructive actions, 2026-05-10) ──────
+  // Soft-delete only — orphan per-family DB (dbFilename) is intentionally
+  // left intact and recorded in audit metadata for any future purge job.
+
+  deleteFamily: platformAdminProcedure
+    .input(
+      z.object({
+        familyId: z.string().min(1),
+        // Type-to-confirm guard. UI requires the admin to type the family's
+        // name; we re-verify here so a tampered client can't skip the gate.
+        confirmName: z.string().min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const family = await ctx.centralDb
+        .select({
+          name: centralSchema.familyRegistry.name,
+          deletedAt: centralSchema.familyRegistry.deletedAt,
+        })
+        .from(centralSchema.familyRegistry)
+        .where(eq(centralSchema.familyRegistry.id, input.familyId))
+        .get();
+      if (!family) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Family not found' });
+      }
+      if (family.deletedAt) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Family is already deleted',
+        });
+      }
+      if (input.confirmName.trim() !== family.name) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Confirmation name does not match family name',
+        });
+      }
+
+      const result = await softDeleteFamily(ctx.centralDb, input.familyId);
+
+      const summary = `Platform admin soft-deleted family ${family.name}`;
+      await logPlatformActivity(ctx.centralDb, {
+        actorUserId: ctx.platformAdmin.userId,
+        action: 'family.delete',
+        targetType: 'family',
+        targetId: input.familyId,
+        summary,
+        metadata: {
+          familyName: family.name,
+          dbFilename: result.dbFilename,
+          memberCount: result.memberCount,
+        },
+      });
+
+      invalidateTags([
+        `platform-family:${input.familyId}`,
+        'platform-families',
+        'platform-users',
+        'platform-counts',
+        'platform-audit-log',
+      ]);
+      return { deleted: true, memberCount: result.memberCount } as const;
+    }),
+
+  deleteUser: platformAdminProcedure
+    .input(z.object({ userId: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      // 1. Self-delete guard.
+      if (input.userId === ctx.platformAdmin.userId) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Cannot delete yourself. Ask another platform admin.',
+        });
+      }
+
+      const target = await ctx.centralDb
+        .select({
+          id: centralSchema.users.id,
+          name: centralSchema.users.name,
+          email: centralSchema.users.email,
+          isPlatformAdmin: centralSchema.users.isPlatformAdmin,
+          deletedAt: centralSchema.users.deletedAt,
+        })
+        .from(centralSchema.users)
+        .where(eq(centralSchema.users.id, input.userId))
+        .get();
+      if (!target) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
+      }
+      if (target.deletedAt) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'User is already deleted',
+        });
+      }
+
+      // 2. Last-platform-admin guard (defensive — self-delete already blocks
+      // the only reachable case, but cheap to check).
+      if (target.isPlatformAdmin === 1) {
+        const otherCount = await countOtherPlatformAdmins(
+          ctx.centralDb,
+          input.userId,
+        );
+        if (otherCount === 0) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message:
+              'Cannot delete the last platform admin. Promote another user first.',
+          });
+        }
+      }
+
+      // 3. Owns-active-family guard. Force-transfer first so deletion never
+      // strands a family without an owner.
+      const ownedFamilies = await listOwnedActiveFamilies(
+        ctx.centralDb,
+        input.userId,
+      );
+      if (ownedFamilies.length > 0) {
+        const familyNames = ownedFamilies.map((f) => f.name).join(', ');
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: `User owns active families (${familyNames}). Force-transfer ownership first.`,
+        });
+      }
+
+      const result = await softDeleteUser(ctx.centralDb, input.userId);
+
+      const summary = `Platform admin soft-deleted user ${target.email}`;
+      await logPlatformActivity(ctx.centralDb, {
+        actorUserId: ctx.platformAdmin.userId,
+        action: 'user.delete',
+        targetType: 'user',
+        targetId: input.userId,
+        summary,
+        metadata: {
+          email: target.email,
+          name: target.name,
+          wasPlatformAdmin: target.isPlatformAdmin === 1,
+          removedFromFamilies: result.removedFromFamilies,
+        },
+      });
+
+      invalidateTags([
+        `platform-user:${input.userId}`,
+        'platform-users',
+        'platform-families',
+        'platform-counts',
+        'platform-audit-log',
+      ]);
+      return { deleted: true, removedFromFamilies: result.removedFromFamilies } as const;
     }),
 
   listInvitations: platformAdminProcedure

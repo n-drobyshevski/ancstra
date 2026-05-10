@@ -23,6 +23,8 @@ export interface UserListRow {
   /** Up to first {@link TOOLTIP_NAME_LIMIT} family names this user owns, newest createdAt first. */
   ownedFamilyNames: string[];
   createdAt: string;
+  /** ISO 8601 if soft-deleted; null if active. Surfaced for the Restore UI. */
+  deletedAt: string | null;
 }
 
 /** How many names we surface in admin-table hover tooltips before collapsing the rest into "and N more". */
@@ -45,17 +47,22 @@ export async function listAllUsers(
   const { q, offset = 0, limit = 50 } = opts;
   const search = q?.trim();
 
+  // Always exclude soft-deleted users from admin listings.
+  const notDeleted = isNull(centralSchema.users.deletedAt);
   const whereClause = search
-    ? or(
-        like(centralSchema.users.email, `%${search}%`),
-        like(centralSchema.users.name, `%${search}%`),
+    ? and(
+        notDeleted,
+        or(
+          like(centralSchema.users.email, `%${search}%`),
+          like(centralSchema.users.name, `%${search}%`),
+        ),
       )
-    : undefined;
+    : notDeleted;
 
   const totalRow = await centralDb
     .select({ n: count() })
     .from(centralSchema.users)
-    .where(whereClause ?? sql`1=1`)
+    .where(whereClause)
     .get();
 
   const rows = await centralDb
@@ -67,23 +74,30 @@ export async function listAllUsers(
       isPlatformAdmin: centralSchema.users.isPlatformAdmin,
       emailVerified: centralSchema.users.emailVerified,
       createdAt: centralSchema.users.createdAt,
+      deletedAt: centralSchema.users.deletedAt,
       // NOTE: outer table column is referenced as a raw identifier
       // (`users.id`) instead of `${centralSchema.users.id}`. Drizzle's `sql`
       // tag interpolates Column refs as bare unqualified names, so inside a
       // correlated subquery `WHERE "user_id" = "id"` resolves to the inner
       // table's own `id` and the count silently returns 0 for every row.
+      // Inner-join family_registry + filter `deleted_at IS NULL` so that
+      // soft-deleted families don't inflate the count.
       familyCount: sql<number>`(
         SELECT COUNT(*) FROM ${centralSchema.familyMembers}
+        INNER JOIN ${centralSchema.familyRegistry}
+          ON ${centralSchema.familyRegistry.id} = ${centralSchema.familyMembers.familyId}
         WHERE ${centralSchema.familyMembers.userId} = users.id
           AND ${centralSchema.familyMembers.isActive} = 1
+          AND ${centralSchema.familyRegistry.deletedAt} IS NULL
       )`,
       ownedFamilyCount: sql<number>`(
         SELECT COUNT(*) FROM ${centralSchema.familyRegistry}
         WHERE ${centralSchema.familyRegistry.ownerId} = users.id
+          AND ${centralSchema.familyRegistry.deletedAt} IS NULL
       )`,
     })
     .from(centralSchema.users)
-    .where(whereClause ?? sql`1=1`)
+    .where(whereClause)
     .orderBy(desc(centralSchema.users.createdAt))
     .limit(limit)
     .offset(offset)
@@ -112,6 +126,7 @@ export async function listAllUsers(
         and(
           inArray(centralSchema.familyMembers.userId, userIds),
           eq(centralSchema.familyMembers.isActive, 1),
+          isNull(centralSchema.familyRegistry.deletedAt),
         ),
       )
       .orderBy(
@@ -132,7 +147,12 @@ export async function listAllUsers(
         familyName: centralSchema.familyRegistry.name,
       })
       .from(centralSchema.familyRegistry)
-      .where(inArray(centralSchema.familyRegistry.ownerId, userIds))
+      .where(
+        and(
+          inArray(centralSchema.familyRegistry.ownerId, userIds),
+          isNull(centralSchema.familyRegistry.deletedAt),
+        ),
+      )
       .orderBy(
         centralSchema.familyRegistry.ownerId,
         desc(centralSchema.familyRegistry.createdAt),
@@ -188,7 +208,12 @@ export async function getUserDetail(
   const u = await centralDb
     .select()
     .from(centralSchema.users)
-    .where(eq(centralSchema.users.id, userId))
+    .where(
+      and(
+        eq(centralSchema.users.id, userId),
+        isNull(centralSchema.users.deletedAt),
+      ),
+    )
     .get();
   if (!u) return null;
 
@@ -243,6 +268,8 @@ export interface FamilyListRow {
   /** Up to first {@link TOOLTIP_NAME_LIMIT} active member display names, newest joinedAt first. */
   memberNames: string[];
   createdAt: string;
+  /** ISO 8601 if soft-deleted; null if active. Surfaced for the Restore UI. */
+  deletedAt: string | null;
 }
 
 export async function listAllFamilies(
@@ -252,14 +279,15 @@ export async function listAllFamilies(
   const { q, offset = 0, limit = 50 } = opts;
   const search = q?.trim();
 
+  const notDeleted = isNull(centralSchema.familyRegistry.deletedAt);
   const whereClause = search
-    ? like(centralSchema.familyRegistry.name, `%${search}%`)
-    : undefined;
+    ? and(notDeleted, like(centralSchema.familyRegistry.name, `%${search}%`))
+    : notDeleted;
 
   const totalRow = await centralDb
     .select({ n: count() })
     .from(centralSchema.familyRegistry)
-    .where(whereClause ?? sql`1=1`)
+    .where(whereClause)
     .get();
 
   const rows = await centralDb
@@ -270,6 +298,7 @@ export async function listAllFamilies(
       ownerName: centralSchema.users.name,
       ownerEmail: centralSchema.users.email,
       createdAt: centralSchema.familyRegistry.createdAt,
+      deletedAt: centralSchema.familyRegistry.deletedAt,
       // See note in listAllUsers: outer table column referenced as raw
       // identifier so the correlated subquery resolves it correctly.
       memberCount: sql<number>`(
@@ -289,7 +318,7 @@ export async function listAllFamilies(
       centralSchema.users,
       eq(centralSchema.users.id, centralSchema.familyRegistry.ownerId),
     )
-    .where(whereClause ?? sql`1=1`)
+    .where(whereClause)
     .orderBy(desc(centralSchema.familyRegistry.createdAt))
     .limit(limit)
     .offset(offset)
@@ -351,7 +380,12 @@ export async function familyExists(
   const row = await centralDb
     .select({ id: centralSchema.familyRegistry.id })
     .from(centralSchema.familyRegistry)
-    .where(eq(centralSchema.familyRegistry.id, familyId))
+    .where(
+      and(
+        eq(centralSchema.familyRegistry.id, familyId),
+        isNull(centralSchema.familyRegistry.deletedAt),
+      ),
+    )
     .get();
   return !!row;
 }
@@ -363,7 +397,12 @@ export async function userExists(
   const row = await centralDb
     .select({ id: centralSchema.users.id })
     .from(centralSchema.users)
-    .where(eq(centralSchema.users.id, userId))
+    .where(
+      and(
+        eq(centralSchema.users.id, userId),
+        isNull(centralSchema.users.deletedAt),
+      ),
+    )
     .get();
   return !!row;
 }
@@ -394,7 +433,9 @@ export async function searchFamilies(
   const { q, excludeFamilyId, limit = 10 } = opts;
   const search = q?.trim();
 
-  const conditions: ReturnType<typeof eq>[] = [];
+  const conditions: ReturnType<typeof eq>[] = [
+    isNull(centralSchema.familyRegistry.deletedAt),
+  ];
   if (search) {
     conditions.push(like(centralSchema.familyRegistry.name, `%${search}%`));
   }
@@ -422,7 +463,7 @@ export async function searchFamilies(
       centralSchema.users,
       eq(centralSchema.users.id, centralSchema.familyRegistry.ownerId),
     )
-    .where(conditions.length > 0 ? and(...conditions) : sql`1=1`)
+    .where(and(...conditions))
     .orderBy(centralSchema.familyRegistry.name)
     .limit(limit)
     .all();
@@ -458,7 +499,9 @@ export async function searchUsers(
   const { q, excludeUserId, limit = 10 } = opts;
   const search = q?.trim();
 
-  const conditions: ReturnType<typeof eq>[] = [];
+  const conditions: ReturnType<typeof eq>[] = [
+    isNull(centralSchema.users.deletedAt),
+  ];
   if (search) {
     conditions.push(
       or(
@@ -481,10 +524,11 @@ export async function searchUsers(
       ownedFamiliesCount: sql<number>`(
         SELECT COUNT(*) FROM ${centralSchema.familyRegistry}
         WHERE ${centralSchema.familyRegistry.ownerId} = users.id
+          AND ${centralSchema.familyRegistry.deletedAt} IS NULL
       )`,
     })
     .from(centralSchema.users)
-    .where(conditions.length > 0 ? and(...conditions) : sql`1=1`)
+    .where(and(...conditions))
     .orderBy(centralSchema.users.name)
     .limit(limit)
     .all();
@@ -530,7 +574,12 @@ export async function getFamilyDetail(
   const f = await centralDb
     .select()
     .from(centralSchema.familyRegistry)
-    .where(eq(centralSchema.familyRegistry.id, familyId))
+    .where(
+      and(
+        eq(centralSchema.familyRegistry.id, familyId),
+        isNull(centralSchema.familyRegistry.deletedAt),
+      ),
+    )
     .get();
   if (!f) return null;
 
@@ -614,8 +663,16 @@ export async function getPlatformCounts(
   const nowIso = now.toISOString();
 
   const [users, families, memberships, recent, admins, pendingInvites] = await Promise.all([
-    centralDb.select({ n: count() }).from(centralSchema.users).get(),
-    centralDb.select({ n: count() }).from(centralSchema.familyRegistry).get(),
+    centralDb
+      .select({ n: count() })
+      .from(centralSchema.users)
+      .where(isNull(centralSchema.users.deletedAt))
+      .get(),
+    centralDb
+      .select({ n: count() })
+      .from(centralSchema.familyRegistry)
+      .where(isNull(centralSchema.familyRegistry.deletedAt))
+      .get(),
     centralDb
       .select({ n: count() })
       .from(centralSchema.familyMembers)
@@ -624,12 +681,22 @@ export async function getPlatformCounts(
     centralDb
       .select({ n: count() })
       .from(centralSchema.users)
-      .where(gte(centralSchema.users.createdAt, sevenDaysAgo))
+      .where(
+        and(
+          isNull(centralSchema.users.deletedAt),
+          gte(centralSchema.users.createdAt, sevenDaysAgo),
+        ),
+      )
       .get(),
     centralDb
       .select({ n: count() })
       .from(centralSchema.users)
-      .where(eq(centralSchema.users.isPlatformAdmin, 1))
+      .where(
+        and(
+          eq(centralSchema.users.isPlatformAdmin, 1),
+          isNull(centralSchema.users.deletedAt),
+        ),
+      )
       .get(),
     centralDb
       .select({ n: count() })
@@ -853,9 +920,164 @@ export async function countOtherPlatformAdmins(
     .where(
       and(
         eq(centralSchema.users.isPlatformAdmin, 1),
+        isNull(centralSchema.users.deletedAt),
         sql`${centralSchema.users.id} != ${excludingUserId}`,
       ),
     )
     .get();
   return row?.n ?? 0;
+}
+
+// ====================================================================
+// Soft-delete helpers (platform-admin destructive actions)
+// ====================================================================
+
+export interface SoftDeleteFamilyResult {
+  deleted: boolean;
+  dbFilename: string;
+  memberCount: number;
+}
+
+/**
+ * Soft-delete a family: stamp `deletedAt`, bump every active member's
+ * `membershipsVersion` so their JWTs re-derive on the next request and lose
+ * the family from claims. The per-family DB (`dbFilename`) is left intact;
+ * the caller records it in audit metadata for any future purge job.
+ */
+export async function softDeleteFamily(
+  centralDb: CentralDb,
+  familyId: string,
+): Promise<SoftDeleteFamilyResult> {
+  const family = await centralDb
+    .select({
+      id: centralSchema.familyRegistry.id,
+      dbFilename: centralSchema.familyRegistry.dbFilename,
+      deletedAt: centralSchema.familyRegistry.deletedAt,
+    })
+    .from(centralSchema.familyRegistry)
+    .where(eq(centralSchema.familyRegistry.id, familyId))
+    .get();
+  if (!family) throw new Error(`Family ${familyId} not found`);
+  if (family.deletedAt) throw new Error(`Family ${familyId} is already soft-deleted`);
+
+  const memberRows = await centralDb
+    .select({ userId: centralSchema.familyMembers.userId })
+    .from(centralSchema.familyMembers)
+    .where(
+      and(
+        eq(centralSchema.familyMembers.familyId, familyId),
+        eq(centralSchema.familyMembers.isActive, 1),
+      ),
+    )
+    .all();
+  const userIds = memberRows.map((r: { userId: string }) => r.userId);
+
+  const now = new Date().toISOString();
+
+  await centralDb
+    .update(centralSchema.familyRegistry)
+    .set({ deletedAt: now, updatedAt: now })
+    .where(eq(centralSchema.familyRegistry.id, familyId))
+    .run();
+
+  if (userIds.length > 0) {
+    await centralDb
+      .update(centralSchema.users)
+      .set({
+        membershipsVersion: sql`${centralSchema.users.membershipsVersion} + 1`,
+        updatedAt: now,
+      })
+      .where(inArray(centralSchema.users.id, userIds))
+      .run();
+  }
+
+  return { deleted: true, dbFilename: family.dbFilename, memberCount: userIds.length };
+}
+
+export interface SoftDeleteUserResult {
+  deleted: boolean;
+  removedFromFamilies: number;
+}
+
+/**
+ * Soft-delete a user: stamp `deletedAt`, deactivate every active membership
+ * (so the user vanishes from family rosters and member counts).
+ *
+ * Owned families are NOT touched here; the calling tRPC mutation enforces a
+ * "force-transfer ownership first" precondition so deletion never strands a
+ * family without an owner.
+ */
+export async function softDeleteUser(
+  centralDb: CentralDb,
+  userId: string,
+): Promise<SoftDeleteUserResult> {
+  const user = await centralDb
+    .select({
+      id: centralSchema.users.id,
+      deletedAt: centralSchema.users.deletedAt,
+    })
+    .from(centralSchema.users)
+    .where(eq(centralSchema.users.id, userId))
+    .get();
+  if (!user) throw new Error(`User ${userId} not found`);
+  if (user.deletedAt) throw new Error(`User ${userId} is already soft-deleted`);
+
+  const memberships = await centralDb
+    .select({ familyId: centralSchema.familyMembers.familyId })
+    .from(centralSchema.familyMembers)
+    .where(
+      and(
+        eq(centralSchema.familyMembers.userId, userId),
+        eq(centralSchema.familyMembers.isActive, 1),
+      ),
+    )
+    .all();
+  const familyIds = memberships.map((m: { familyId: string }) => m.familyId);
+
+  const now = new Date().toISOString();
+
+  await centralDb
+    .update(centralSchema.users)
+    .set({ deletedAt: now, updatedAt: now })
+    .where(eq(centralSchema.users.id, userId))
+    .run();
+
+  if (familyIds.length > 0) {
+    await centralDb
+      .update(centralSchema.familyMembers)
+      .set({ isActive: 0 })
+      .where(
+        and(
+          eq(centralSchema.familyMembers.userId, userId),
+          eq(centralSchema.familyMembers.isActive, 1),
+        ),
+      )
+      .run();
+  }
+
+  return { deleted: true, removedFromFamilies: familyIds.length };
+}
+
+/**
+ * Returns owned non-deleted families for a user. Used by the deleteUser
+ * safeguard to block deletion if the user still owns active families —
+ * they must force-transfer ownership first.
+ */
+export async function listOwnedActiveFamilies(
+  centralDb: CentralDb,
+  userId: string,
+): Promise<Array<{ id: string; name: string }>> {
+  return await centralDb
+    .select({
+      id: centralSchema.familyRegistry.id,
+      name: centralSchema.familyRegistry.name,
+    })
+    .from(centralSchema.familyRegistry)
+    .where(
+      and(
+        eq(centralSchema.familyRegistry.ownerId, userId),
+        isNull(centralSchema.familyRegistry.deletedAt),
+      ),
+    )
+    .all();
 }

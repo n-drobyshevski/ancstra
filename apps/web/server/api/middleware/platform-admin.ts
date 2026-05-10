@@ -1,5 +1,5 @@
 import { TRPCError } from '@trpc/server';
-import { eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { centralSchema } from '@ancstra/db';
 import { t } from '../init';
 
@@ -20,10 +20,17 @@ export const platformAdminMiddleware = t.middleware(async ({ ctx, next }) => {
 
   if (!claimed) {
     // Stale-JWT fallback — same pattern as lib/auth/platform-admin.ts.
+    // Soft-deleted users are treated as non-admins so a deletion in flight
+    // can't keep granting access until the JWT expires.
     const row = await ctx.centralDb
       .select({ isPlatformAdmin: centralSchema.users.isPlatformAdmin })
       .from(centralSchema.users)
-      .where(eq(centralSchema.users.id, ctx.userId))
+      .where(
+        and(
+          eq(centralSchema.users.id, ctx.userId),
+          isNull(centralSchema.users.deletedAt),
+        ),
+      )
       .get();
     isAdmin = row?.isPlatformAdmin === 1;
   }

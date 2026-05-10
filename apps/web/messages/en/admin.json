@@ -133,7 +133,14 @@
       "copyOwnerEmail": "Copy owner email",
       "idCopied": "Family ID copied",
       "ownerCopied": "Owner email copied",
-      "copyFailed": "Copy failed"
+      "copyFailed": "Copy failed",
+      "delete": "Delete family…",
+      "deleteDialogTitle": "Delete family?",
+      "deleteDialogDescription": "{name} will be soft-deleted: members lose access immediately, the family disappears from listings, and the underlying data is preserved for a future restore. This action is logged in the platform audit log.",
+      "deleteConfirmLabel": "Type the family name to confirm: {name}",
+      "deleteAction": "Delete family",
+      "deleteSuccess": "Deleted family {name}",
+      "deleteFailed": "Failed to delete family"
     },
     "detail": {
       "back": "Back to family trees",
@@ -253,7 +260,13 @@
       "updateFailed": "Failed to update platform admin status",
       "idCopied": "User ID copied",
       "emailCopied": "Email copied",
-      "copyFailed": "Copy failed"
+      "copyFailed": "Copy failed",
+      "delete": "Delete user…",
+      "deleteDialogTitle": "Delete user?",
+      "deleteDialogDescription": "{name} will be soft-deleted: their login is disabled, all family memberships are removed, and they disappear from admin listings. The user record is retained for a future restore. This action is logged in the platform audit log.",
+      "deleteAction": "Delete user",
+      "deleteSuccess": "Deleted user {name}",
+      "deleteFailed": "Failed to delete user"
     },
     "detail": {
       "back": "Back to users",

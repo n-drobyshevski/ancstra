@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { eq, and, desc, sql } from 'drizzle-orm';
+import { eq, and, desc, sql, isNull } from 'drizzle-orm';
 import createIntlMiddleware from 'next-intl/middleware';
 import { centralSchema } from '@ancstra/db';
 import { JWT_REFRESH_COOKIE_NAME } from '@ancstra/auth';
@@ -111,9 +111,26 @@ async function fetchUserMemberships(userId: string): Promise<{
       and(
         eq(centralSchema.familyMembers.userId, userId),
         eq(centralSchema.familyMembers.isActive, 1),
+        // Soft-deleted families must never resurface in fresh memberships.
+        isNull(centralSchema.familyRegistry.deletedAt),
       ),
     )
     .all();
+}
+
+/**
+ * Returns true if the user has been soft-deleted by a platform admin. Hot-path
+ * gate alongside the membershipsVersion staleness probe — one DB read per
+ * request when the JWT is otherwise current.
+ */
+async function isUserSoftDeleted(userId: string): Promise<boolean> {
+  const db = await getCentralDb();
+  const row = await db
+    .select({ deletedAt: centralSchema.users.deletedAt })
+    .from(centralSchema.users)
+    .where(eq(centralSchema.users.id, userId))
+    .get();
+  return Boolean(row?.deletedAt);
 }
 
 export const proxy = auth(async (request) => {
@@ -151,6 +168,28 @@ export const proxy = auth(async (request) => {
     }
     // Redirect to /login — intl middleware on the next request handles locale.
     return NextResponse.redirect(new URL('/login', request.url));
+  }
+
+  // ── 3b. Soft-deleted user gate ────────────────────────────────────────
+  // A platform admin may have soft-deleted this user since their JWT was
+  // issued. Cut them off here — refusing API calls and redirecting page
+  // requests to /login. The next sign-in attempt is rejected by `authorize`.
+  try {
+    if (await isUserSoftDeleted(session.user.id)) {
+      if (isApiPath(pathname)) {
+        return NextResponse.json({ error: 'Account deactivated' }, { status: 401 });
+      }
+      const redirect = NextResponse.redirect(new URL('/login', request.url));
+      redirect.cookies.set(JWT_REFRESH_COOKIE_NAME, '1', {
+        httpOnly: false,
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 60,
+      });
+      return redirect;
+    }
+  } catch (err) {
+    console.warn('[PROXY] soft-delete probe failed, continuing with JWT', err);
   }
 
   // ── 4. Defense in depth: strip inbound x-user-* / x-family-* headers ──

@@ -31,6 +31,7 @@ const EXPECTED_INDEXES = [
 const EXPECTED_USERS_COLUMNS = [
   'id', 'email', 'password_hash', 'name', 'avatar_url',
   'email_verified', 'memberships_version', 'is_platform_admin',
+  'deleted_at',
   'created_at', 'updated_at',
 ];
 

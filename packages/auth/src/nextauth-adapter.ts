@@ -1,5 +1,5 @@
 import type { Adapter, AdapterUser, AdapterAccount } from 'next-auth/adapters';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, isNull } from 'drizzle-orm';
 import { users, oauthAccounts, verificationTokens } from '@ancstra/db/central-schema';
 
 type CentralDb = Parameters<typeof users._.columns.id.mapFromDriverValue> extends never
@@ -52,7 +52,7 @@ export function AncstraAdapter(centralDb: any): Adapter {
       const row = await centralDb
         .select()
         .from(users)
-        .where(eq(users.id, id))
+        .where(and(eq(users.id, id), isNull(users.deletedAt)))
         .get();
 
       return row ? toAdapterUser(row) : null;
@@ -62,7 +62,7 @@ export function AncstraAdapter(centralDb: any): Adapter {
       const row = await centralDb
         .select()
         .from(users)
-        .where(eq(users.email, email))
+        .where(and(eq(users.email, email), isNull(users.deletedAt)))
         .get();
 
       return row ? toAdapterUser(row) : null;
@@ -77,6 +77,7 @@ export function AncstraAdapter(centralDb: any): Adapter {
           and(
             eq(oauthAccounts.provider, provider),
             eq(oauthAccounts.providerAccountId, providerAccountId),
+            isNull(users.deletedAt),
           ),
         )
         .get();

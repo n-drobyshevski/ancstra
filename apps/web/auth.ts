@@ -4,7 +4,7 @@ import Google from 'next-auth/providers/google';
 import Apple from 'next-auth/providers/apple';
 import type { Provider } from 'next-auth/providers';
 import { centralSchema } from '@ancstra/db';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import type { FamilyMembership } from '@/types/next-auth';
 import bcrypt from 'bcryptjs';
 import { AncstraAdapter } from '@ancstra/auth';
@@ -34,6 +34,8 @@ const providers: Provider[] = [
 
         const user = users[0];
         if (!user || !user.passwordHash) return null;
+        // Soft-deleted users (platform-admin delete) cannot authenticate.
+        if (user.deletedAt) return null;
 
         const valid = await bcrypt.compare(password, user.passwordHash);
         if (!valid) return null;
@@ -126,6 +128,28 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (shouldRefresh && token.userId) {
         try {
           const db = getCentralDbSync();
+
+          // Sub-spec A: fetch users.memberships_version for staleness detection
+          // Platform-admin v1: fetch is_platform_admin so /admin guard can read claim
+          // Soft-delete (2026-05-10): also fetch deleted_at — if the user has been
+          // soft-deleted, scrub the token so subsequent requests are unauthenticated.
+          const userRow = await db
+            .select({
+              v: centralSchema.users.membershipsVersion,
+              isPlatformAdmin: centralSchema.users.isPlatformAdmin,
+              deletedAt: centralSchema.users.deletedAt,
+            })
+            .from(centralSchema.users)
+            .where(eq(centralSchema.users.id, token.userId as string))
+            .get();
+
+          if (!userRow || userRow.deletedAt) {
+            token.memberships = [];
+            token.membershipsVersion = 0;
+            token.isPlatformAdmin = false;
+            return token;
+          }
+
           const memberships = await db
             .select({
               familyId: centralSchema.familyMembers.familyId,
@@ -141,23 +165,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               and(
                 eq(centralSchema.familyMembers.userId, token.userId as string),
                 eq(centralSchema.familyMembers.isActive, 1),
+                isNull(centralSchema.familyRegistry.deletedAt),
               ),
             )
             .all();
           token.memberships = memberships as FamilyMembership[];
-
-          // Sub-spec A: also fetch users.memberships_version for staleness detection
-          // Platform-admin v1: also fetch is_platform_admin so /admin guard can read claim
-          const userRow = await db
-            .select({
-              v: centralSchema.users.membershipsVersion,
-              isPlatformAdmin: centralSchema.users.isPlatformAdmin,
-            })
-            .from(centralSchema.users)
-            .where(eq(centralSchema.users.id, token.userId as string))
-            .get();
-          token.membershipsVersion = userRow?.v ?? 0;
-          token.isPlatformAdmin = userRow?.isPlatformAdmin === 1;
+          token.membershipsVersion = userRow.v ?? 0;
+          token.isPlatformAdmin = userRow.isPlatformAdmin === 1;
         } catch (error) {
           console.error('[AUTH] Error loading memberships into JWT:', error);
         }

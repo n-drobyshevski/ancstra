@@ -12,6 +12,10 @@ export const users = sqliteTable('users', {
   // Cross-family super-admin flag. Independent of family-scoped roles.
   // Granted via promote-platform-admin script or platformAdmin.toggle mutation.
   isPlatformAdmin: integer('is_platform_admin').notNull().default(0),
+  // Soft-delete timestamp (ISO 8601). NULL means active. Set by the
+  // platform-admin delete action. Read paths must filter `deletedAt IS NULL`
+  // — see audit list in PR description.
+  deletedAt: text('deleted_at'),
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
   updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
 });
@@ -58,6 +62,10 @@ export const familyRegistry = sqliteTable('family_registry', {
   // 2026-05-08). Person born within last N years with no death is presumed
   // living. Owner-configurable via family.updateSettings; range 50-150.
   livingThresholdYears: integer('living_threshold_years').notNull().default(100),
+  // Soft-delete timestamp (ISO 8601). NULL means active. Per-family DB
+  // (dbFilename) is preserved on soft-delete; full reclamation is a
+  // separate, future purge job.
+  deletedAt: text('deleted_at'),
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
   updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
 });

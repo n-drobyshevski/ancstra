@@ -1,4 +1,4 @@
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and, sql, isNull } from 'drizzle-orm';
 import {
   familyRegistry,
   familyMembers,
@@ -93,7 +93,12 @@ export async function getFamiliesForUser(
     })
     .from(familyMembers)
     .innerJoin(familyRegistry, eq(familyMembers.familyId, familyRegistry.id))
-    .where(eq(familyMembers.userId, userId))
+    .where(
+      and(
+        eq(familyMembers.userId, userId),
+        isNull(familyRegistry.deletedAt),
+      ),
+    )
     .all();
 
   return rows as FamilyWithRole[];

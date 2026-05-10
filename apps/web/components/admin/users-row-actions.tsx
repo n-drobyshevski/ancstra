@@ -12,6 +12,7 @@ import {
   MoreHorizontal,
   ShieldCheck,
   ShieldOff,
+  Trash2,
   UserPlus,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
@@ -51,6 +52,7 @@ export function UsersRowActions({ user, currentUserId }: Props) {
   const t = useTranslations('admin.users.rowActions');
   const tCommon = useTranslations('common');
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [transferMode, setTransferMode] = useState<'add' | 'move' | null>(null);
   const isSelf = user.id === currentUserId;
   const promoting = !user.isPlatformAdmin;
@@ -65,6 +67,17 @@ export function UsersRowActions({ user, currentUserId }: Props) {
       toast.error(err.message || t('updateFailed')),
   });
 
+  const deleteMutation = trpc.platformAdmin.deleteUser.useMutation({
+    onSuccess: () => {
+      toast.success(t('deleteSuccess', { name: user.name }));
+      setDeleteOpen(false);
+      router.refresh();
+    },
+    onError: (err) => {
+      toast.error(err.message || t('deleteFailed'));
+    },
+  });
+
   async function copy(value: string, kind: 'idCopied' | 'emailCopied') {
     try {
       await navigator.clipboard.writeText(value);
@@ -74,7 +87,7 @@ export function UsersRowActions({ user, currentUserId }: Props) {
     }
   }
 
-  const isPending = toggle.isPending;
+  const isPending = toggle.isPending || deleteMutation.isPending;
   const ToggleIcon = promoting ? ShieldCheck : ShieldOff;
   const toggleLabel = promoting ? t('promote') : t('demote');
 
@@ -127,6 +140,18 @@ export function UsersRowActions({ user, currentUserId }: Props) {
             <Copy className="size-4" />
             {t('copyEmail')}
           </DropdownMenuItem>
+          {!isSelf && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                variant="destructive"
+                onClick={() => setDeleteOpen(true)}
+              >
+                <Trash2 className="size-4" />
+                {t('delete')}
+              </DropdownMenuItem>
+            </>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -176,6 +201,44 @@ export function UsersRowActions({ user, currentUserId }: Props) {
                 </>
               ) : (
                 toggleLabel
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={deleteOpen}
+        onOpenChange={(open) => {
+          if (!deleteMutation.isPending) setDeleteOpen(open);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('deleteDialogTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('deleteDialogDescription', { name: user.name })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteMutation.isPending}>
+              {tCommon('buttons.cancel')}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleteMutation.isPending}
+              onClick={(e) => {
+                e.preventDefault();
+                deleteMutation.mutate({ userId: user.id });
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteMutation.isPending ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  {tCommon('states.loading')}
+                </>
+              ) : (
+                t('deleteAction')
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

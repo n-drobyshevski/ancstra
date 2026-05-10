@@ -375,6 +375,16 @@ export async function ensureCentralSchema(db: CentralDatabase, dbKey?: string): 
   // Seed the singleton row. INSERT OR IGNORE so it's safe on every cold start.
   await db.run(sql`INSERT OR IGNORE INTO platform_settings (id) VALUES ('global')`);
 
+  // Soft-delete columns for platform-admin delete action (2026-05-10).
+  // Read paths must filter `deleted_at IS NULL`. Idempotent ALTER —
+  // throws "duplicate column" on re-run, which we swallow.
+  try {
+    await db.run(sql`ALTER TABLE users ADD COLUMN deleted_at TEXT`);
+  } catch { /* column already exists */ }
+  try {
+    await db.run(sql`ALTER TABLE family_registry ADD COLUMN deleted_at TEXT`);
+  } catch { /* column already exists */ }
+
   if (dbKey) _ensuredCentralDbs.add(dbKey);
 }
 

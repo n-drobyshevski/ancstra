@@ -1,7 +1,7 @@
 import { headers } from 'next/headers';
 import { auth } from '@/auth';
 import { parseRole, type Role } from '@ancstra/auth';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, isNull } from 'drizzle-orm';
 import { centralSchema } from '@ancstra/db';
 import { getCentralDb } from '@/lib/db-singleton';
 import { resolveEffectiveRole } from '@/lib/auth/effective-role-from-cookie';
@@ -138,7 +138,15 @@ async function dbFallback(
     const family = await centralDb
       .select({ dbFilename: centralSchema.familyRegistry.dbFilename })
       .from(centralSchema.familyRegistry)
-      .where(eq(centralSchema.familyRegistry.id, resolvedFamilyId))
+      .where(
+        and(
+          eq(centralSchema.familyRegistry.id, resolvedFamilyId),
+          // Defense in depth: a soft-deleted family must never resolve into
+          // an AuthContext, so even a stale `?family=…` URL or x-family-id
+          // header cannot be used to operate on a deleted tree.
+          isNull(centralSchema.familyRegistry.deletedAt),
+        ),
+      )
       .get();
     if (!family) return null;
     resolvedDbFilename = family.dbFilename;
