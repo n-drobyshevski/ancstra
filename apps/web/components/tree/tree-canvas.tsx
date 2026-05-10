@@ -247,6 +247,25 @@ function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focus
   const { thread: activeThread } = useActiveThread();
   const { data: threadOverlayData } = useTreeOverlay(activeThread?.id ?? null);
 
+  // Time-scrubber: 1.0 = "now" (all touched persons visible), 0.0 = before
+  // the earliest event in the thread (no touched persons visible). Linearly
+  // interpolated to a wall-clock timestamp from the thread's events.
+  const [threadScrubberValue, setThreadScrubberValue] = useState(1);
+  // Reset to 1.0 ("now") whenever the active thread changes — so switching
+  // threads doesn't carry over a partial scrub from the previous thread.
+  useEffect(() => { setThreadScrubberValue(1); }, [activeThread?.id]);
+
+  const threadEffectiveTs = useMemo(() => {
+    if (!threadOverlayData) return null;
+    const ts = Array.from(threadOverlayData.firstSeenAt.values()).sort();
+    if (ts.length === 0) return null;
+    const first = ts[0];
+    const last = ts[ts.length - 1];
+    const firstMs = new Date(first).getTime();
+    const lastMs = new Date(last).getTime();
+    return new Date(firstMs + (lastMs - firstMs) * threadScrubberValue).toISOString();
+  }, [threadOverlayData, threadScrubberValue]);
+
   const [contextMenu, setContextMenu] = useState<ContextMenuTrigger | null>(
     null,
   );
@@ -1083,11 +1102,25 @@ function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focus
       // Active-thread overlay axis. Independent of surname highlight — both
       // can be active simultaneously. When the overlay is null the field stays
       // undefined and person-node treats it as a no-op.
+      // Scrubber: only mark a node as 'highlighted' when its earliest event
+      // is at or before the current scrubber timestamp; otherwise the node
+      // is dimmed (the journey hasn't reached it yet).
       let threadOverlay: 'highlighted' | 'dimmed' | undefined;
       if (threadOverlayData) {
-        threadOverlay = threadOverlayData.touchedPersonIds.has(n.id)
-          ? 'highlighted'
-          : 'dimmed';
+        const isTouched = threadOverlayData.touchedPersonIds.has(n.id);
+        if (isTouched && threadEffectiveTs) {
+          const seenAt = threadOverlayData.firstSeenAt.get(n.id);
+          // Persons touched via factsheet promotion (no event yet) have no
+          // firstSeenAt — surface them at 100% scrub only.
+          const visible = seenAt
+            ? seenAt <= threadEffectiveTs
+            : threadScrubberValue >= 1;
+          threadOverlay = visible ? 'highlighted' : 'dimmed';
+        } else if (isTouched) {
+          threadOverlay = 'highlighted';
+        } else {
+          threadOverlay = 'dimmed';
+        }
       }
       return {
         ...n,
@@ -1110,6 +1143,8 @@ function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focus
       isSurnameHighlightActive,
       highlightStyle,
       threadOverlayData,
+      threadEffectiveTs,
+      threadScrubberValue,
     ],
   );
 
@@ -1566,6 +1601,9 @@ function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focus
         onCenterOnSelected={handleCenterOnSelected}
         onResetZoom={handleResetZoom}
         hasSelection={hasSelection}
+        threadScrubberVisible={!!threadOverlayData}
+        threadScrubberValue={threadScrubberValue}
+        onThreadScrubberChange={setThreadScrubberValue}
       />)}
 
       {/* `overscroll-contain` traps pan gestures inside the canvas so Android
