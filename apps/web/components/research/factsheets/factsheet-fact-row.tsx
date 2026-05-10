@@ -92,6 +92,7 @@ export function FactsheetFactRow({
             relationshipLabel={fact.factType === 'spouse_name' ? 'spouse' : 'child'}
             relationshipType={fact.factType === 'spouse_name' ? 'spouse' : 'parent_child'}
             sourceTitle={sourceTitle ?? 'this fact'}
+            fromAI={fact.extractionMethod === 'ai_extracted'}
           />
         </div>
       )}
