@@ -90,7 +90,7 @@ export async function executeProposeRelationship(
     try {
       await addEvent(db, {
         threadId: params.threadId,
-        eventType: 'note_added',
+        eventType: 'relationship_proposed',
         actorId: params.actorId ?? 'ai',
         personId: params.person1Id,
         reason: `AI proposed ${relationshipType} between ${params.person1Id} and ${params.person2Id}: ${evidence}`,
@@ -119,8 +119,8 @@ export async function executeProposeRelationship(
  *
  * @param db - Family database instance.
  * @param opts.threadId - Optional active research thread id. When set, a
- *   `note_added` event is emitted after each successful proposal so the
- *   timeline reflects the AI's activity. Emission failure never blocks the
+ *   `relationship_proposed` event is emitted after each successful proposal so
+ *   the timeline reflects the AI's activity. Emission failure never blocks the
  *   proposal.
  * @param opts.actorId - Actor id recorded on the event (default: 'ai').
  */
