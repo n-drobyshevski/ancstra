@@ -36,8 +36,14 @@ export function useScrapeJob(
     itemId: null,
   });
 
+  // "Live ref" that always points at the latest callbacks so the long-lived
+  // poll loop can call them without re-subscribing. Updating ref.current
+  // during render trips react-hooks/refs; doing it in an effect after every
+  // render keeps the ref fresh without that warning.
   const callbacksRef = useRef({ onCompleted, onFailed, onTimeout });
-  callbacksRef.current = { onCompleted, onFailed, onTimeout };
+  useEffect(() => {
+    callbacksRef.current = { onCompleted, onFailed, onTimeout };
+  });
 
   useEffect(() => {
     if (!jobId) return;

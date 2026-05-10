@@ -1,21 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { debounce } from 'nuqs';
 import { Search } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { Input } from '@/components/ui/input';
 import { FacetBlock } from './facet-block';
 import { usePersonsFilters } from '../use-persons-filters';
+import { useDerivedState } from '@/hooks/use-derived-state';
 
 export function FacetSearch() {
   const t = useTranslations('persons.facets.search');
   const { filters, setFilters } = usePersonsFilters();
-  const [value, setValue] = useState(filters.q);
-
-  useEffect(() => {
-    setValue(filters.q);
-  }, [filters.q]);
+  const [value, setValue] = useDerivedState(filters.q);
 
   const active = filters.q.trim() !== '';
 

@@ -154,10 +154,13 @@ export function ContentViewer({
   const [showPreview, setShowPreview] = useState(false);
   const [iframeLoading, setIframeLoading] = useState(true);
 
-  // Reset loading state when consumer triggers iframe reload
-  useEffect(() => {
+  // Reset loading state when consumer triggers iframe reload — done in
+  // render via prev-compare to avoid the cascading-render anti-pattern.
+  const [prevIframeKey, setPrevIframeKey] = useState(iframeKey);
+  if (iframeKey !== prevIframeKey) {
+    setPrevIframeKey(iframeKey);
     if (iframeKey !== undefined) setIframeLoading(true);
-  }, [iframeKey]);
+  }
 
   const contentResize = useResizeHandle({ initialHeight: 320 });
   const previewResize = useResizeHandle({ initialHeight: 448 });

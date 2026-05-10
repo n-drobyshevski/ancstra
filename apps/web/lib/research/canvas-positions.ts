@@ -9,9 +9,12 @@ export function useCanvasPositions(personId: string) {
   const [error, setError] = useState<Error | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  // Fetch positions on mount
+  // Fetch positions on mount. The setIsLoading(true) is the rule's
+  // documented "subscribe to external state" case — we are synchronizing
+  // local state with a network resource keyed by personId.
   useEffect(() => {
     if (!personId) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsLoading(true);
     fetch(
       `/api/research/canvas-positions?personId=${encodeURIComponent(personId)}`,

@@ -54,11 +54,17 @@ export function PersonPreviewContent({ personId, onNavigate }: PersonPreviewCont
   const [loading, setLoading] = useState(true);
   const [notesExpanded, setNotesExpanded] = useState(false);
 
-  useEffect(() => {
+  // Reset local state when the upstream personId changes — done in render
+  // via prev-compare so it doesn't trip react-hooks/set-state-in-effect.
+  const [prevPersonId, setPrevPersonId] = useState(personId);
+  if (personId !== prevPersonId) {
+    setPrevPersonId(personId);
     setLoading(true);
     setPerson(null);
     setNotesExpanded(false);
+  }
 
+  useEffect(() => {
     let cancelled = false;
     fetch(`/api/persons/${personId}`)
       .then((res) => (res.ok ? res.json() : null))

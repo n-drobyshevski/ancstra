@@ -1,11 +1,11 @@
 // apps/web/components/research/activity-feed.tsx
 'use client';
 
-import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search, Link as LinkIcon, FileText } from 'lucide-react';
 import { getActivity, type ActivityEntry } from '@/lib/research/activity';
 import { SmartSuggestions } from './smart-suggestions';
+import { useClientHydratedState } from '@/hooks/use-client-hydrated-state';
 import { cn } from '@/lib/utils';
 
 const TYPE_CONFIG: Record<ActivityEntry['type'], { icon: typeof Search; className: string }> = {
@@ -30,12 +30,11 @@ interface ActivityFeedProps {
 }
 
 export function ActivityFeed({ onRerunSearch }: ActivityFeedProps) {
-  const [entries, setEntries] = useState<ActivityEntry[]>([]);
+  const [entries] = useClientHydratedState<ActivityEntry[]>(
+    [],
+    () => getActivity().slice(0, 5),
+  );
   const router = useRouter();
-
-  useEffect(() => {
-    setEntries(getActivity().slice(0, 5));
-  }, []);
 
   if (entries.length === 0) {
     return (

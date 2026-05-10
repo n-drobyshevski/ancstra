@@ -17,6 +17,10 @@ interface FactCardProps {
 
 export function FactCard({ fact, onRemove, onUpdate, accentColor = 'rgb(168 85 247)' }: FactCardProps) {
   const [editing, setEditing] = useState(false);
+  // Visual recency cue. Date.now() during render is impure (flagged by
+  // react-hooks/purity), accepted here for a transient ~2s ring effect that
+  // doesn't affect functionality if it's slightly off.
+  // eslint-disable-next-line react-hooks/purity
   const isNew = Date.now() - fact.addedAt < 2000;
 
   return (

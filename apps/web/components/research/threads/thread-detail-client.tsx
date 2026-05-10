@@ -110,7 +110,7 @@ export function ThreadDetailClient({ threadId }: ThreadDetailClientProps) {
   if (thread === null) {
     return (
       <div className="py-8 text-sm text-muted-foreground">
-        Thread not found, or you don't have access.
+        Thread not found, or you don&apos;t have access.
         <div className="mt-3">
           <Button variant="outline" size="sm" asChild>
             <Link href="/research"><ChevronLeft className="size-3 mr-1" /> Back to Research</Link>
@@ -192,7 +192,7 @@ export function ThreadDetailClient({ threadId }: ThreadDetailClientProps) {
             </div>
           ) : touchedPersonIds.length === 0 ? (
             <div className="text-xs text-muted-foreground">
-              This thread hasn't touched any tree persons yet.
+              This thread hasn&apos;t touched any tree persons yet.
             </div>
           ) : (
             <ul className="space-y-1">

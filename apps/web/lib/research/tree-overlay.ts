@@ -22,6 +22,10 @@ export function useTreeOverlay(threadId: string | null) {
   const [data, setData] = useState<TreeOverlayData | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // The setData(null) reset and setLoading(true) here synchronize local
+  // query state with the upstream threadId (an external "store"); allowed
+  // per the rule's documented "subscribe to external state" exception.
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!isHydrated || !threadId) {
       setData(null);
@@ -49,6 +53,7 @@ export function useTreeOverlay(threadId: string | null) {
       });
     return () => { cancelled = true; };
   }, [isHydrated, threadId]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   return { data, loading };
 }

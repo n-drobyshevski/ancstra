@@ -88,7 +88,10 @@ export function SourceSelector({ onSelectionChange }: SourceSelectorProps) {
   const [healthLoading, setHealthLoading] = useState(false);
   const lastChecked = useRef<number>(0);
 
-  // Fetch health when popover opens (throttled to once per 30s)
+  // Fetch health when popover opens (throttled to once per 30s). The
+  // setHealthLoading/setHealthMap calls synchronize with a network resource;
+  // allowed per the rule's "subscribe to external state" exception.
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!open) return;
     const now = Date.now();
@@ -113,6 +116,7 @@ export function SourceSelector({ onSelectionChange }: SourceSelectorProps) {
       })
       .finally(() => setHealthLoading(false));
   }, [open]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Persist and notify on change
   useEffect(() => {

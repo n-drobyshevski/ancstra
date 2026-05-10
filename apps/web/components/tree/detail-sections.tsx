@@ -42,6 +42,10 @@ export function usePersonDetail(personId: string): PersonDetailState & { refresh
   });
 
   // Sync state when personId changes (covers panel re-use across selections).
+  // The setData calls here synchronize local state with personDetailCache
+  // (an external store with subscribe/read semantics) — allowed per the rule's
+  // "subscribe to external state" exception.
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     let cancelled = false;
     const read = personDetailCache.read(personId);
@@ -76,6 +80,7 @@ export function usePersonDetail(personId: string): PersonDetailState & { refresh
       unsubscribe();
     };
   }, [personId]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const refresh = useCallback(() => {
     personDetailCache.invalidate(personId);
@@ -185,6 +190,54 @@ export function MiniAvatar({ person: p }: { person: PersonListItem }) {
 /* -------------------------------------------------------------------------- */
 /*  DetailFamily                                                               */
 /* -------------------------------------------------------------------------- */
+
+function SectionHeader({ label }: { label: string }) {
+  return (
+    <div className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
+      {label}
+    </div>
+  );
+}
+
+interface AddButtonsProps {
+  relation: RelationType;
+  linkLabel: string;
+  newLabel: string;
+  editable: boolean;
+  onAddRelation?: (kind: 'create' | 'link', relation: RelationType) => void;
+}
+
+function AddButtons({
+  relation,
+  linkLabel,
+  newLabel,
+  editable,
+  onAddRelation,
+}: AddButtonsProps) {
+  if (!editable || !onAddRelation) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-1 ml-14">
+      <RoleGate permission="family:create">
+        <button
+          type="button"
+          onClick={() => onAddRelation('link', relation)}
+          className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
+        >
+          <Link2 className="size-3" /> {linkLabel}
+        </button>
+      </RoleGate>
+      <RoleGate permission="family:create">
+        <button
+          type="button"
+          onClick={() => onAddRelation('create', relation)}
+          className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
+        >
+          <UserPlus className="size-3" /> {newLabel}
+        </button>
+      </RoleGate>
+    </div>
+  );
+}
 
 type SpouseRow = { kind: 'spouse'; person: PersonListItem; familyId: string };
 type ParentRow = { kind: 'parent'; person: PersonListItem; familyId: string; slot: 'partner1' | 'partner2' };
@@ -368,40 +421,6 @@ export function DetailFamily({
     );
   }
 
-  function AddButtons({ relation, linkLabel, newLabel }: { relation: RelationType; linkLabel: string; newLabel: string }) {
-    if (!editable) return null;
-    return (
-      <div className="flex flex-wrap items-center gap-1 ml-14">
-        <RoleGate permission="family:create">
-          <button
-            type="button"
-            onClick={() => onAddRelation!('link', relation)}
-            className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
-          >
-            <Link2 className="size-3" /> {linkLabel}
-          </button>
-        </RoleGate>
-        <RoleGate permission="family:create">
-          <button
-            type="button"
-            onClick={() => onAddRelation!('create', relation)}
-            className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
-          >
-            <UserPlus className="size-3" /> {newLabel}
-          </button>
-        </RoleGate>
-      </div>
-    );
-  }
-
-  function SectionHeader({ label }: { label: string }) {
-    return (
-      <div className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
-        {label}
-      </div>
-    );
-  }
-
   return (
     <div className="border-b p-4 space-y-3">
       <div className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-1">{t('heading')}</div>
@@ -416,7 +435,7 @@ export function DetailFamily({
           ) : (
             <SectionHeader label={tLabels('spouse')} />
           )}
-          <AddButtons relation="spouse" linkLabel={tAdd('linkExisting')} newLabel={tAdd('new')} />
+          <AddButtons relation="spouse" linkLabel={tAdd('linkExisting')} newLabel={tAdd('new')} editable={editable} onAddRelation={onAddRelation} />
         </div>
       )}
 
@@ -491,7 +510,7 @@ export function DetailFamily({
           ) : (
             <SectionHeader label={tLabels('children')} />
           )}
-          <AddButtons relation="child" linkLabel={tAdd('linkExisting')} newLabel={tAdd('new')} />
+          <AddButtons relation="child" linkLabel={tAdd('linkExisting')} newLabel={tAdd('new')} editable={editable} onAddRelation={onAddRelation} />
         </div>
       )}
 
@@ -505,7 +524,7 @@ export function DetailFamily({
           ) : (
             <SectionHeader label={tLabels('siblings')} />
           )}
-          <AddButtons relation="sibling" linkLabel={tAdd('linkExisting')} newLabel={tAdd('new')} />
+          <AddButtons relation="sibling" linkLabel={tAdd('linkExisting')} newLabel={tAdd('new')} editable={editable} onAddRelation={onAddRelation} />
         </div>
       )}
     </div>

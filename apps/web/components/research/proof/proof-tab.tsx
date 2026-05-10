@@ -103,17 +103,21 @@ export function ProofTab({ personId, personName = 'Unknown' }: ProofTabProps) {
   const [loaded, setLoaded] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Load from localStorage on mount
-  useEffect(() => {
+  // Load from localStorage when personId changes — done in render via
+  // prev-compare so it doesn't trip react-hooks/set-state-in-effect.
+  const [hydratedForPersonId, setHydratedForPersonId] = useState<string | null>(null);
+  if (hydratedForPersonId !== personId) {
+    setHydratedForPersonId(personId);
     const saved = loadProof(personId);
-    if (saved) setProof(saved);
+    setProof(saved ?? defaultProof);
     setLoaded(true);
-  }, [personId]);
+  }
 
-  // Merge research items into sourcesIncluded when items arrive
-  useEffect(() => {
-    if (!loaded || items.length === 0) return;
-
+  // Merge research items into sourcesIncluded when items arrive — same idiom.
+  const itemsSignature = items.map((i) => i.id).join('|');
+  const [mergedItemsSignature, setMergedItemsSignature] = useState<string>('');
+  if (loaded && items.length > 0 && itemsSignature !== mergedItemsSignature) {
+    setMergedItemsSignature(itemsSignature);
     setProof((prev) => {
       const existingIds = new Set(prev.sourcesIncluded.map((s) => s.sourceId));
       const merged = [...prev.sourcesIncluded];
@@ -139,7 +143,7 @@ export function ProofTab({ personId, personName = 'Unknown' }: ProofTabProps) {
 
       return { ...prev, sourcesIncluded: merged };
     });
-  }, [items, loaded]);
+  }
 
   // Debounced save
   const persistProof = useCallback(

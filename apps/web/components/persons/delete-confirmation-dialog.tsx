@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Trash2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import {
@@ -39,15 +39,17 @@ export function DeleteConfirmationDialog({
   const t = useTranslations('persons.deleteDialog');
   const [echo, setEcho] = useState('');
 
-  useEffect(() => {
-    if (!open) setEcho('');
-  }, [open]);
-
   const echoMatches = echo.trim() === String(count);
   const canConfirm = !isPending && (!requireCountEcho || echoMatches);
 
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
+    <AlertDialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) setEcho('');
+        onOpenChange(next);
+      }}
+    >
       <AlertDialogContent>
         <AlertDialogHeader>
           <div className="flex items-center gap-3">

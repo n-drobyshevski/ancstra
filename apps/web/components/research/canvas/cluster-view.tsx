@@ -68,19 +68,14 @@ export function ClusterView({
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(rawEdges);
-  const [clusters, setClusters] = useState<ClusterBoundary[]>([]);
 
   // Pending connection for link-type popover
   const [pendingConnection, setPendingConnection] = useState<Connection | null>(null);
 
-  // Compute cluster boundaries after layout
-  useEffect(() => {
-    const clusterIds = detectClusters(
-      factsheets.map((f) => f.id),
-      links,
-    );
-    const bounds = computeClusterBounds(clusterIds, nodes);
-    setClusters(bounds);
+  // Cluster boundaries derived from current layout — no state/effect needed.
+  const clusters = useMemo<ClusterBoundary[]>(() => {
+    const clusterIds = detectClusters(factsheets.map((f) => f.id), links);
+    return computeClusterBounds(clusterIds, nodes);
   }, [nodes, factsheets, links]);
 
   // Re-layout when data changes

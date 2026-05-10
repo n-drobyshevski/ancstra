@@ -177,18 +177,19 @@ export function useConclusionsForPerson(personId: string) {
   const [isSaving, setIsSaving] = useState(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Load from localStorage on mount
-  useEffect(() => {
+  // Load from localStorage when personId changes — done in render via
+  // prev-compare so it doesn't trip react-hooks/set-state-in-effect.
+  const [hydratedForPersonId, setHydratedForPersonId] = useState<string | null>(null);
+  if (hydratedForPersonId !== personId) {
+    setHydratedForPersonId(personId);
     const key = `ancstra:conclusions:${personId}`;
     try {
       const stored = localStorage.getItem(key);
-      if (stored) {
-        setConclusions(JSON.parse(stored));
-      }
+      setConclusions(stored ? JSON.parse(stored) : {});
     } catch {
-      // ignore parse errors
+      setConclusions({});
     }
-  }, [personId]);
+  }
 
   const persistToStorage = useCallback(
     (updated: Record<string, string>) => {

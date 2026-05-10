@@ -102,7 +102,12 @@ function ResearchLayoutInner() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [aiPanelOpen, isDesktop, chatEnabled]);
 
-  // Read ?askAi= param on mount (from item detail "Ask AI" button)
+  // Read ?askAi= param on mount (from item detail "Ask AI" button) and
+  // consume it. The setState calls + router.replace are intentionally bundled
+  // into a single mount-only effect so the URL is cleaned synchronously with
+  // the AI panel open — splitting them would risk the user seeing the param
+  // re-applied if they navigate.
+  /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
   useEffect(() => {
     const askAi = searchParams.get('askAi');
     if (askAi) {
@@ -117,7 +122,8 @@ function ResearchLayoutInner() {
       const qs = params.toString();
       router.replace(qs ? `?${qs}` : '/research');
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
+  /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
   return (
     <div className="flex h-full flex-col">

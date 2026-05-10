@@ -25,6 +25,12 @@ function TRPCInner({ children }: { children: React.ReactNode }) {
       }),
   );
 
+  // The tRPC client is created once and lazily — the closure captures
+  // updateRef + queryClient by reference, not value, so reading
+  // updateRef.current at call time is the live value. The lint rule
+  // (`react-hooks/refs`) flags lazy state initializers that read refs
+  // because in general it can't tell if the ref is stable; here it is.
+  // eslint-disable-next-line react-hooks/refs
   const [trpcClient] = useState(() =>
     trpc.createClient({
       links: [

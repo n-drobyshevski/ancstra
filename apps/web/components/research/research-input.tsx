@@ -38,18 +38,35 @@ export const ResearchInput = forwardRef<ResearchInputHandle, ResearchInputProps>
     externalQuery,
   }, ref) {
   const [value, setValue] = useState('');
-  const [isUrlMode, setIsUrlMode] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
-  const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [recentSearches, setRecentSearches] = useState<string[]>(() =>
+    typeof window === 'undefined' ? [] : getRecentSearches(),
+  );
   const [activeIndex, setActiveIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { scrape, status, result, error, isLoading, elapsed, reset } = useScrapeUrl();
 
+  // Auto-detect URL vs search — pure derivation, no state needed.
+  const isUrlMode = URL_REGEX.test(value.trim());
+
+  // Pattern A: sync external query (e.g. from example search clicks) by
+  // comparing previous source value during render — avoids the
+  // useEffect-cascading-render anti-pattern.
+  const [prevExternalQuery, setPrevExternalQuery] = useState(externalQuery);
+  if (externalQuery !== prevExternalQuery) {
+    setPrevExternalQuery(externalQuery);
+    if (externalQuery != null) {
+      setValue(externalQuery);
+      setShowDropdown(false);
+      setActiveIndex(-1);
+    }
+  }
+
   useImperativeHandle(ref, () => ({
     focusUrlMode() {
       setValue('https://');
-      setIsUrlMode(true);
+      // isUrlMode derives from value automatically.
       inputRef.current?.focus();
       requestAnimationFrame(() => {
         const input = inputRef.current;
@@ -60,33 +77,6 @@ export const ResearchInput = forwardRef<ResearchInputHandle, ResearchInputProps>
       inputRef.current?.focus();
     },
   }));
-
-  // Sync external query (e.g. from example search clicks)
-  useEffect(() => {
-    if (externalQuery != null) {
-      setValue(externalQuery);
-      setShowDropdown(false);
-    }
-  }, [externalQuery]);
-
-  // Auto-detect URL vs search
-  useEffect(() => {
-    const trimmed = value.trim();
-    setIsUrlMode(URL_REGEX.test(trimmed));
-  }, [value]);
-
-  // Load recent searches when dropdown opens; reset active index
-  useEffect(() => {
-    if (showDropdown) {
-      setRecentSearches(getRecentSearches());
-      setActiveIndex(-1);
-    }
-  }, [showDropdown]);
-
-  // Reset active index when query changes
-  useEffect(() => {
-    setActiveIndex(-1);
-  }, [value]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -148,10 +138,21 @@ export const ResearchInput = forwardRef<ResearchInputHandle, ResearchInputProps>
           value={value}
           onChange={(e) => {
             setValue(e.target.value);
-            if (!URL_REGEX.test(e.target.value.trim())) setShowDropdown(true);
-            else setShowDropdown(false);
+            setActiveIndex(-1);
+            if (!URL_REGEX.test(e.target.value.trim())) {
+              setRecentSearches(getRecentSearches());
+              setShowDropdown(true);
+            } else {
+              setShowDropdown(false);
+            }
           }}
-          onFocus={() => { if (!isUrlMode && !isLoading) setShowDropdown(true); }}
+          onFocus={() => {
+            if (!isUrlMode && !isLoading) {
+              setRecentSearches(getRecentSearches());
+              setActiveIndex(-1);
+              setShowDropdown(true);
+            }
+          }}
           onKeyDown={(e) => {
             if (e.key === 'ArrowDown' && showDropdown) {
               e.preventDefault();

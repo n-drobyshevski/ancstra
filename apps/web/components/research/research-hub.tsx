@@ -99,7 +99,7 @@ export function ResearchHub({ onAskAi, onOpenAiPanel, onSearchContextChange, aiP
       }
     }
     return set;
-  }, [itemsData?.items]);
+  }, [itemsData]);
 
   const hasQuery = !!query;
 

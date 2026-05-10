@@ -1,6 +1,5 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { debounce } from 'nuqs';
 import { useTranslations } from 'next-intl';
 import { Input } from '@/components/ui/input';
@@ -8,14 +7,13 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { FacetBlock } from '@/components/persons/facets/facet-block';
 import { useTreeTableFilters } from '../use-tree-table-filters';
 import { TREE_PLACE_SCOPES } from '@/lib/tree/search-params';
+import { useDerivedState } from '@/hooks/use-derived-state';
 
 export function FacetPlace() {
   const t = useTranslations('persons.facets.place');
   const tScopes = useTranslations('persons.facets.place.scopes');
   const { filters, setFilters } = useTreeTableFilters();
-  const [text, setText] = useState(filters.place);
-
-  useEffect(() => { setText(filters.place); }, [filters.place]);
+  const [text, setText] = useDerivedState(filters.place);
 
   const active = filters.place.trim() !== '';
 

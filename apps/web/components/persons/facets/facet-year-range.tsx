@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { FacetBlock } from './facet-block';
 import { usePersonsFilters, useFilterUpdate } from '../use-persons-filters';
 import type { PersonsFilters } from '@/lib/persons/search-params';
+import { useDerivedState } from '@/hooks/use-derived-state';
 
 interface FacetYearRangeProps {
   label: string;
@@ -26,11 +26,8 @@ export function FacetYearRange({
   const fromUrl = filters[fromKey] as number | null;
   const toUrl = filters[toKey] as number | null;
 
-  const [fromText, setFromText] = useState<string>(fromUrl?.toString() ?? '');
-  const [toText, setToText] = useState<string>(toUrl?.toString() ?? '');
-
-  useEffect(() => { setFromText(fromUrl?.toString() ?? ''); }, [fromUrl]);
-  useEffect(() => { setToText(toUrl?.toString() ?? ''); }, [toUrl]);
+  const [fromText, setFromText] = useDerivedState<string>(fromUrl?.toString() ?? '');
+  const [toText, setToText] = useDerivedState<string>(toUrl?.toString() ?? '');
 
   const active = fromUrl !== null || toUrl !== null;
 

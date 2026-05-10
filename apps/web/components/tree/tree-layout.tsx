@@ -51,6 +51,7 @@ import type { TreeYearBounds } from '@/lib/persons/year-bounds';
 import type { DefaultTreeLayout } from '@/lib/cache/tree';
 import type { ProposedRelationshipForCanvas } from '@/lib/queries';
 import { personDetailCache } from '@/lib/tree/person-detail-cache';
+import { useClientHydratedState } from '@/hooks/use-client-hydrated-state';
 
 const DENSITY_STORAGE_KEY = 'tree-table-density';
 
@@ -110,9 +111,16 @@ export function TreeLayout({ viewData, focusPersonId }: TreeLayoutProps) {
   // current depth. Reset to peek (0.35) whenever the selection changes so
   // each new person opens at the same minimal depth.
   const [detailSnap, setDetailSnap] = useState<number | string | null>(0.35);
-  useEffect(() => {
+  // Reset to peek depth whenever the selected person changes — done in
+  // render via prev-compare instead of useEffect to avoid the cascading
+  // render the effect would cause.
+  const [prevSelectedId, setPrevSelectedId] = useState<string | undefined>(
+    selectedPerson?.id,
+  );
+  if (selectedPerson?.id !== prevSelectedId) {
+    setPrevSelectedId(selectedPerson?.id);
     if (selectedPerson) setDetailSnap(0.35);
-  }, [selectedPerson?.id]);
+  }
   const [focusKey, setFocusKey] = useState(0);
   const [runtimeFocusId, setRuntimeFocusId] = useState<string | undefined>(undefined);
 
@@ -146,22 +154,22 @@ export function TreeLayout({ viewData, focusPersonId }: TreeLayoutProps) {
   );
 
   // Density (localStorage; mobile defaults to compact post-mount).
-  const [density, setDensity] = useState<TreeDensity>('comfortable');
-  useEffect(() => {
-    const stored = readStoredDensity();
-    if (stored) {
-      setDensity(stored);
-    } else if (typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches) {
-      setDensity('compact');
-    }
-  }, []);
+  const [density, setDensity] = useClientHydratedState<TreeDensity>(
+    'comfortable',
+    () => {
+      const stored = readStoredDensity();
+      if (stored) return stored;
+      if (window.matchMedia('(max-width: 767px)').matches) return 'compact';
+      return 'comfortable';
+    },
+  );
 
   const handleDensityChange = useCallback((next: TreeDensity) => {
     setDensity(next);
     if (typeof window !== 'undefined') {
       window.localStorage.setItem(DENSITY_STORAGE_KEY, next);
     }
-  }, []);
+  }, [setDensity]);
 
   const [showGaps, setShowGaps] = useState(false);
 
@@ -180,17 +188,16 @@ export function TreeLayout({ viewData, focusPersonId }: TreeLayoutProps) {
     ? normalizeSurname(rawHighlightSurname)
     : null;
   const [surnameHighlightStyle, setSurnameHighlightStyleState] =
-    useState<SurnameHighlightStyle>('overlay');
-  useEffect(() => {
-    const stored = readSurnameHighlightStyle();
-    if (stored) setSurnameHighlightStyleState(stored);
-  }, []);
+    useClientHydratedState<SurnameHighlightStyle>(
+      'overlay',
+      () => readSurnameHighlightStyle() ?? 'overlay',
+    );
   const handleSurnameHighlightStyleChange = useCallback(
     (next: SurnameHighlightStyle) => {
       setSurnameHighlightStyleState(next);
       writeSurnameHighlightStyle(next);
     },
-    [],
+    [setSurnameHighlightStyleState],
   );
   const handleHighlightSurnameChange = useCallback(
     (next: string | null) => {
@@ -476,7 +483,11 @@ export function TreeLayout({ viewData, focusPersonId }: TreeLayoutProps) {
     const sigChanged = filterSignature !== lastFilterSigRef.current;
     lastFilterSigRef.current = filterSignature;
     if (sigChanged || filters.page === 1) {
-      // Reset on filter change or first page.
+      // Reset on filter change or first page. The setState calls here
+      // intentionally synchronize local accumulator state with the upstream
+      // URL-driven query result — this is the rule's documented "subscribe
+      // to external state" case (the URL/server is the source of truth).
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setAccumulatedRows(viewData.rows);
       setAccumulatedRels(viewData.relationships);
       return;

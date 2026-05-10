@@ -185,12 +185,13 @@ export function ItemDetailDrawer({
 }: ItemDetailDrawerProps) {
   const [snap, setSnap] = useState<number | string | null>(0.4);
 
-  // Reset snap when drawer opens
-  useEffect(() => {
-    if (open) {
-      setSnap(0.4);
-    }
-  }, [open]);
+  // Reset snap when drawer opens — done in render via prev-compare so it
+  // doesn't trip react-hooks/set-state-in-effect.
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
+    if (open) setSnap(0.4);
+  }
 
   // Radix Dialog sets pointer-events:none on <body> when open.
   // For our non-modal drawer this blocks touch on the content underneath.

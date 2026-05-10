@@ -40,6 +40,10 @@ export function useResearchSearch(query: string, enabled = true, providers?: str
   const [isLoading, setIsLoading] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
+  // The setState branches here synchronize local query state with the
+  // upstream query/enabled props (an external "store"). eslint-disabled per
+  // the rule's documented "subscribe to external state" exception.
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!enabled || !query) {
       setData(null);
@@ -88,6 +92,7 @@ export function useResearchSearch(query: string, enabled = true, providers?: str
 
     return () => controller.abort();
   }, [query, enabled, providers, key]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   return { data, error, isLoading };
 }

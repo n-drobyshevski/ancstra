@@ -175,6 +175,11 @@ export function TreeTable({
     overscan: 6,
   });
 
+  // Extract virtual-items snapshots so the dep array can be statically
+  // checked (the lint rule rejects calling a method inline as a dep).
+  const desktopVirtualItems = desktopVirtualizer.getVirtualItems();
+  const mobileVirtualItems = mobileVirtualizer.getVirtualItems();
+
   // Reset scroll on sort change (filter changes are handled by the parent
   // resetting the rows array, which changes count and naturally resets).
   useEffect(() => {
@@ -200,7 +205,7 @@ export function TreeTable({
     }
   }, [
     desktopVirtualizer,
-    desktopVirtualizer.getVirtualItems(),
+    desktopVirtualItems,
     hasMore,
     isAppending,
     onLoadMore,
@@ -217,7 +222,7 @@ export function TreeTable({
     }
   }, [
     mobileVirtualizer,
-    mobileVirtualizer.getVirtualItems(),
+    mobileVirtualItems,
     hasMore,
     isAppending,
     onLoadMore,

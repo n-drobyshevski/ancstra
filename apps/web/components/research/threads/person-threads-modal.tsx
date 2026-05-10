@@ -35,6 +35,9 @@ export function PersonThreadsModal({ personId, open, onOpenChange }: PersonThrea
   const [threads, setThreads] = useState<ThreadTouch[] | null>(null);
   const { setActive } = useActiveThread();
 
+  // Fetch threads keyed by (open, personId) — synchronizes with a network
+  // resource. Allowed per the rule's "subscribe to external state" exception.
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!open || !personId) return;
     setThreads(null);
@@ -43,6 +46,7 @@ export function PersonThreadsModal({ personId, open, onOpenChange }: PersonThrea
       .then(b => setThreads(b.threads ?? []))
       .catch(() => setThreads([]));
   }, [open, personId]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

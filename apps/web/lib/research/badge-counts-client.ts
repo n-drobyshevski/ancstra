@@ -26,9 +26,13 @@ export function useBadgeCounts(personId: string) {
     }
   }, [personId]);
 
+  // refetch() calls setCounts internally — this is the rule's documented
+  // "subscribe to external state" case (a network resource keyed by personId).
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     refetch();
   }, [refetch]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   return { ...counts, refetch };
 }

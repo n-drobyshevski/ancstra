@@ -29,13 +29,14 @@ function NoteNodeComponent({ data, selected, id }: NodeProps<NoteNodeType>) {
     }
   }, [id, text]);
 
-  // Load from localStorage on mount
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem(`canvas-note-${id}`);
-      if (stored) setText(stored);
-    }
-  }, [id]);
+  // Load from localStorage when the node id changes — done in render via
+  // prev-compare so it doesn't trip react-hooks/set-state-in-effect.
+  const [hydratedForId, setHydratedForId] = useState<string | null>(null);
+  if (hydratedForId !== id && typeof window !== 'undefined') {
+    setHydratedForId(id);
+    const stored = localStorage.getItem(`canvas-note-${id}`);
+    if (stored) setText(stored);
+  }
 
   return (
     <>

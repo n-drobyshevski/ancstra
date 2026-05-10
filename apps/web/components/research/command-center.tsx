@@ -1,10 +1,10 @@
 // apps/web/components/research/command-center.tsx
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, User } from 'lucide-react';
 import { getLastWorkspace, type LastWorkspace } from '@/lib/research/activity';
+import { useClientHydratedState } from '@/hooks/use-client-hydrated-state';
 import { ActivityFeed } from './activity-feed';
 import { QuickActions } from './quick-actions';
 import { BookmarksPanel } from './bookmarks-panel';
@@ -26,11 +26,10 @@ export function CommandCenter({
   bookmarkRefreshKey,
   aiPanelOpen,
 }: CommandCenterProps) {
-  const [lastWorkspace, setLastWs] = useState<LastWorkspace | null>(null);
-
-  useEffect(() => {
-    setLastWs(getLastWorkspace());
-  }, []);
+  const [lastWorkspace] = useClientHydratedState<LastWorkspace | null>(
+    null,
+    getLastWorkspace,
+  );
 
   const workspaceUrl = lastWorkspace
     ? `/research/person/${lastWorkspace.personId}${lastWorkspace.view !== 'record' ? `?view=${lastWorkspace.view}` : ''}`
