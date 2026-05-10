@@ -7,8 +7,23 @@ import { createClient } from '@libsql/client';
 import { createLogger } from '@ancstra/shared';
 import * as schema from './family-schema';
 import * as centralSchema from './central-schema';
+import { wrapWithSlowQueryLogger } from './perf/slow-query-logger';
 
 const log = createLogger('db');
+
+/** Returns true when the slow-query Proxy should be applied. */
+function shouldWrapSlowQuery(): boolean {
+  return (
+    process.env.NODE_ENV === 'production' ||
+    process.env.PERF_SLOW_QUERY_ENABLED === '1'
+  );
+}
+
+/** Create (and optionally wrap) a libsql client. */
+function makeClient(config: Parameters<typeof createClient>[0]) {
+  const client = createClient(config);
+  return shouldWrapSlowQuery() ? wrapWithSlowQueryLogger(client) : client;
+}
 
 export function isWebMode(url?: string): boolean {
   return (url || '').startsWith('libsql://');
@@ -28,13 +43,13 @@ function resolveUrl(url: string): { url: string; authToken?: string } {
 
 export function createDb(url?: string) {
   const dbUrl = url || process.env.DATABASE_URL || './ancstra.db';
-  const client = createClient(resolveUrl(dbUrl));
+  const client = makeClient(resolveUrl(dbUrl));
   return drizzle({ client, schema });
 }
 
 export function createCentralDb(url?: string) {
   const dbUrl = url || process.env.CENTRAL_DATABASE_URL || path.join(os.homedir(), '.ancstra', 'ancstra.sqlite');
-  const client = createClient(resolveUrl(dbUrl));
+  const client = makeClient(resolveUrl(dbUrl));
   return drizzle({ client, schema: centralSchema });
 }
 
@@ -45,7 +60,7 @@ export function createFamilyDb(dbFilename: string) {
   } else {
     dbUrl = path.join(os.homedir(), '.ancstra', 'families', dbFilename);
   }
-  const client = createClient(resolveUrl(dbUrl));
+  const client = makeClient(resolveUrl(dbUrl));
   return drizzle({ client, schema });
 }
 

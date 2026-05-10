@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { withAuthAndExperimental, handleAuthError } from '@/lib/auth/api-guard';
 import { createCentralDb, centralSchema } from '@ancstra/db';
+import { withSpan } from '@ancstra/shared/perf';
 import {
   ProviderRegistry,
   NARAProvider,
@@ -109,8 +110,25 @@ export async function POST(request: Request) {
     registry.register(new NARAProvider());
     registry.register(new ChroniclingAmericaProvider());
 
-    // Assemble all tools
-    const tools = {
+    // Assemble all tools; wrap each execute in a named Sentry span so
+    // per-tool latency is visible in traces.
+    // The AI SDK Tool type uses a complex intersection that prevents clean
+    // typed spreading. We build the tools object first, then wrap each
+    // execute at the ToolSet level (which is already cast via `as unknown as
+    // ToolSet` below). The wrapper preserves the original shape at runtime.
+    type ToolLike = { execute?: (input: unknown, options: unknown) => unknown };
+
+    function wrapToolExecute(name: string, t: ToolLike): ToolLike {
+      if (!t.execute) return t;
+      const orig = t.execute;
+      return {
+        ...t,
+        execute: (input: unknown, options: unknown) =>
+          withSpan(`ai.tool.${name}`, () => orig(input, options), { tool_name: name }),
+      };
+    }
+
+    const rawTools = {
       searchLocalTree: createSearchLocalTreeTool(familyDb),
       computeRelationship: createComputeRelationshipTool(familyDb),
       analyzeTreeGaps: createAnalyzeTreeGapsTool(familyDb),
@@ -131,6 +149,13 @@ export async function POST(request: Request) {
       summarizeThread: createSummarizeThreadTool(familyDb),
       suggestNextStep: createSuggestNextStepTool(familyDb),
     };
+
+    // Wrap each tool's execute with a Sentry span. Cast is necessary because
+    // Tool's intersection type prevents typed spreading; the runtime shape is
+    // identical to rawTools.
+    const tools = Object.fromEntries(
+      Object.entries(rawTools).map(([n, t]) => [n, wrapToolExecute(n, t as ToolLike)]),
+    ) as typeof rawTools;
 
     const model = getModel('chat');
     const userId = ctx.userId;

@@ -13,6 +13,7 @@ import { requirePagePermission } from '@/lib/auth/page-guard';
 import { treeTableCache } from '@/lib/tree/search-params';
 import { TreeCanvasSkeleton } from '@/components/skeletons/tree-canvas-skeleton';
 import { TreeTableSkeleton } from '@/components/skeletons/tree-table-skeleton';
+import { withSpan } from '@ancstra/shared/perf';
 
 const TreePageClient = dynamic(
   () => import('@/components/tree/tree-page-client').then(m => m.TreePageClient),
@@ -62,10 +63,12 @@ async function TreePageContent({
 
   if (view === 'table') {
     const filters = await treeTableCache.parse(searchParams);
-    const [data, yearBounds] = await Promise.all([
-      getCachedTreeTableRows(authContext.dbFilename, filters),
-      getCachedTreeYearBounds(authContext.dbFilename),
-    ]);
+    const [data, yearBounds] = await withSpan('page.tree.load', async () => {
+      return Promise.all([
+        getCachedTreeTableRows(authContext.dbFilename, filters),
+        getCachedTreeYearBounds(authContext.dbFilename),
+      ]);
+    }, { view: 'table' });
     const fetchedSoFar = (filters.page - 1) * filters.size + data.items.length;
     const hasMore = fetchedSoFar < data.total;
 
@@ -103,11 +106,13 @@ async function TreePageContent({
     );
   }
 
-  const [treeData, defaultLayout, proposedRelationships] = await Promise.all([
-    getCachedTreeData(authContext.dbFilename),
-    getCachedDefaultLayout(authContext.dbFilename),
-    getCachedProposedRelationships(authContext.dbFilename),
-  ]);
+  const [treeData, defaultLayout, proposedRelationships] = await withSpan('page.tree.load', async () => {
+    return Promise.all([
+      getCachedTreeData(authContext.dbFilename),
+      getCachedDefaultLayout(authContext.dbFilename),
+      getCachedProposedRelationships(authContext.dbFilename),
+    ]);
+  }, { view: 'canvas' });
 
   if (treeData.persons.length === 0) {
     return (

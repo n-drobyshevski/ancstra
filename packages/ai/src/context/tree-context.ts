@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import type { Database } from '@ancstra/db';
+import { withSpan } from '@ancstra/shared/perf';
 
 export interface PersonSummary {
   id: string;
@@ -213,7 +214,9 @@ export async function buildTreeContext(
   focusPersonId?: string,
   tokenBudget = 2000
 ): Promise<TreeContext> {
-  const stats = await getTreeStats(db);
+  const spanAttrs = focusPersonId ? { person_id: focusPersonId } : undefined;
+
+  const stats = await withSpan('buildTreeContext.treeStats', () => getTreeStats(db), spanAttrs);
 
   // Build summary
   let summary = `Family tree with ${stats.personCount} persons`;
@@ -229,11 +232,15 @@ export async function buildTreeContext(
   summary += `. ${stats.sourcedPercentage}% of persons are sourced.`;
 
   // Get key persons from direct line
-  const rootId = focusPersonId || await findRootPerson(db);
+  const rootId = focusPersonId || await withSpan('buildTreeContext.rootPerson', () => findRootPerson(db), spanAttrs);
   let keyPersons: PersonSummary[] = [];
 
   if (rootId) {
-    const ancestors = await getAncestors(db, rootId, 5);
+    const ancestors = await withSpan(
+      'buildTreeContext.ancestors',
+      () => getAncestors(db, rootId, 5),
+      { ...spanAttrs, person_id: rootId },
+    );
     // Estimate ~40 tokens per person; cap based on budget
     const maxPersons = Math.min(50, Math.max(5, Math.floor(tokenBudget / 40)));
     keyPersons = ancestors.slice(0, maxPersons).map(row => ({
@@ -247,10 +254,10 @@ export async function buildTreeContext(
   }
 
   // Identify gaps
-  const gaps = await identifyResearchGaps(db);
+  const gaps = await withSpan('buildTreeContext.researchGaps', () => identifyResearchGaps(db), spanAttrs);
 
   // Recent activity
-  const recentActivity = await getRecentActivity(db);
+  const recentActivity = await withSpan('buildTreeContext.recentActivity', () => getRecentActivity(db), spanAttrs);
 
   return { summary, keyPersons, gaps, recentActivity, tokenBudget };
 }

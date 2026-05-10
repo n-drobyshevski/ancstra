@@ -3,6 +3,7 @@ import { eq, and } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { withAuthAndExperimental, handleAuthError } from '@/lib/auth/api-guard';
 import { centralSchema, biographies, persons, personNames, events, families, children, sources, sourceCitations } from '@ancstra/db';
+import { withSpan } from '@ancstra/shared/perf';
 import {
   buildBiographyPrompt,
   getModel,
@@ -26,16 +27,18 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'personId required' }, { status: 400 });
     }
 
-    const cached = await familyDb
-      .select()
-      .from(biographies)
-      .where(and(
-        eq(biographies.personId, personId),
-        eq(biographies.tone, tone),
-        eq(biographies.length, length),
-        eq(biographies.focus, focus),
-      ))
-      .get();
+    const cached = await withSpan('ai.biography.cache', async () => {
+      return familyDb
+        .select()
+        .from(biographies)
+        .where(and(
+          eq(biographies.personId, personId),
+          eq(biographies.tone, tone),
+          eq(biographies.length, length),
+          eq(biographies.focus, focus),
+        ))
+        .get();
+    }, { person_id: personId });
 
     if (cached) {
       return NextResponse.json({ cached: true, content: cached.content });
@@ -219,54 +222,58 @@ export async function POST(request: Request) {
     const model = getModel('analysis'); // Sonnet for quality biography writing
     const userId = ctx.userId;
 
-    const result = streamText({
-      model,
-      prompt,
-      onFinish: async ({ text, usage }) => {
-        try {
-          const modelName = 'claude-sonnet-4-5';
-          const costUsd = calculateCost(modelName, usage.inputTokens ?? 0, usage.outputTokens ?? 0);
+    const result = await withSpan('ai.biography.streamText', async () => {
+      return streamText({
+        model,
+        prompt,
+        onFinish: async ({ text, usage }) => {
+          try {
+            const modelName = 'claude-sonnet-4-5';
+            const costUsd = calculateCost(modelName, usage.inputTokens ?? 0, usage.outputTokens ?? 0);
 
-          // Cache biography (INSERT OR REPLACE via unique constraint)
-          await familyDb
-            .insert(biographies)
-            .values({
-              personId,
-              tone: options.tone,
-              length: options.length,
-              focus: options.focus,
-              content: text,
+            // Cache biography (INSERT OR REPLACE via unique constraint)
+            await withSpan('ai.biography.cache', async () => {
+              await familyDb
+                .insert(biographies)
+                .values({
+                  personId,
+                  tone: options.tone,
+                  length: options.length,
+                  focus: options.focus,
+                  content: text,
+                  model: modelName,
+                  inputTokens: usage.inputTokens ?? 0,
+                  outputTokens: usage.outputTokens ?? 0,
+                  costUsd,
+                })
+                .onConflictDoUpdate({
+                  target: [biographies.personId, biographies.tone, biographies.length, biographies.focus],
+                  set: {
+                    content: text,
+                    model: modelName,
+                    inputTokens: usage.inputTokens ?? 0,
+                    outputTokens: usage.outputTokens ?? 0,
+                    costUsd,
+                    createdAt: new Date().toISOString(),
+                  },
+                })
+                .run();
+            }, { person_id: personId });
+
+            // Record usage
+            await recordUsage(familyDb, {
+              userId,
               model: modelName,
               inputTokens: usage.inputTokens ?? 0,
               outputTokens: usage.outputTokens ?? 0,
-              costUsd,
-            })
-            .onConflictDoUpdate({
-              target: [biographies.personId, biographies.tone, biographies.length, biographies.focus],
-              set: {
-                content: text,
-                model: modelName,
-                inputTokens: usage.inputTokens ?? 0,
-                outputTokens: usage.outputTokens ?? 0,
-                costUsd,
-                createdAt: new Date().toISOString(),
-              },
-            })
-            .run();
-
-          // Record usage
-          await recordUsage(familyDb, {
-            userId,
-            model: modelName,
-            inputTokens: usage.inputTokens ?? 0,
-            outputTokens: usage.outputTokens ?? 0,
-            taskType: 'biography',
-          });
-        } catch (err) {
-          console.error('Failed to cache biography or record usage:', err);
-        }
-      },
-    });
+              taskType: 'biography',
+            });
+          } catch (err) {
+            console.error('Failed to cache biography or record usage:', err);
+          }
+        },
+      });
+    }, { person_id: personId });
 
     return result.toUIMessageStreamResponse();
   } catch (err) {
