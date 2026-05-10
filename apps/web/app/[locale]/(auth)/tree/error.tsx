@@ -3,7 +3,7 @@
 import { useTranslations } from 'next-intl';
 import { RouteError } from '@/components/errors/route-error';
 
-export default function AdminError(props: {
+export default function TreeError(props: {
   error: Error & { digest?: string };
   unstable_retry?: () => void;
   reset?: () => void;
@@ -12,8 +12,8 @@ export default function AdminError(props: {
   return (
     <RouteError
       {...props}
-      segment="admin"
-      description={t('perRoute.admin.genericDescription')}
+      segment="tree"
+      description={t('perRoute.tree.genericDescription')}
       back="home"
     />
   );

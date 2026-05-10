@@ -4,6 +4,7 @@
 export const NAMESPACES = [
   'common',
   'errors',
+  'error-pages',
   'navigation',
   'auth',
   'dashboard',

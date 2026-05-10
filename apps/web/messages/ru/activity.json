@@ -72,11 +72,6 @@
     "removeFilterAriaLabel": "Убрать фильтр {label}",
     "memberFallback": "член"
   },
-  "error": {
-    "heading": "Что-то пошло не так",
-    "fallbackMessage": "Не удалось загрузить ленту активности.",
-    "tryAgain": "Попробовать снова"
-  },
   "metadata": {
     "showDetails": "Показать детали",
     "hideDetails": "Скрыть детали"

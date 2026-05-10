@@ -72,11 +72,6 @@
     "removeFilterAriaLabel": "Remove filter {label}",
     "memberFallback": "member"
   },
-  "error": {
-    "heading": "Something went wrong",
-    "fallbackMessage": "Failed to load activity feed.",
-    "tryAgain": "Try again"
-  },
   "metadata": {
     "showDetails": "Show details",
     "hideDetails": "Hide details"

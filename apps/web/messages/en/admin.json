@@ -360,10 +360,5 @@
     "previous": "Previous",
     "nextAriaLabel": "Next page",
     "next": "Next"
-  },
-  "error": {
-    "heading": "Something went wrong",
-    "fallbackMessage": "An error occurred while loading this page.",
-    "tryAgain": "Try again"
   }
 }
