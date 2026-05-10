@@ -10,7 +10,27 @@
     "living": {
       "living": "Living",
       "deceased": "Deceased"
+    },
+    "surnameHighlight": {
+      "triggerLabel": "Highlight surname branch",
+      "triggerEmpty": "Highlight",
+      "searchPlaceholder": "Search surnames…",
+      "emptyResults": "No surnames found.",
+      "groupHeading": "{count, plural, one {1 surname} other {# surnames}}",
+      "applyAsLabel": "Apply as:",
+      "applyAsOverlay": "Overlay",
+      "applyAsReplace": "Replace",
+      "applyAsFadeOut": "Fade out",
+      "clear": "Clear"
     }
+  },
+  "canvasFiltersPanel": {
+    "triggerLabel": "Filters",
+    "triggerLabelWithCount": "Filters ({count} active)",
+    "panelTitle": "Filter people",
+    "panelDescription": "Non-matching people on the canvas are dimmed. Filters are shared with the table view.",
+    "emptyState": "No filters applied — every person is visible.",
+    "closeAriaLabel": "Close filters panel"
   },
   "viewToggle": {
     "canvas": "Canvas",
@@ -433,6 +453,8 @@
     "showAncestorsOnly": "Show ancestors only",
     "showDescendantsOnly": "Show descendants only",
     "seeInTableView": "See in table view",
+    "highlightSurnameBranch": "Highlight {surname} branch",
+    "clearSurnameHighlight": "Clear surname highlight",
     "copyPersonId": "Copy person ID",
     "copyShareLink": "Copy share link",
     "openInNewTab": "Open in new tab",

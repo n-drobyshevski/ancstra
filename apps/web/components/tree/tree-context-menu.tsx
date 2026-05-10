@@ -21,7 +21,10 @@ import {
   RefreshCw,
   Map as MapIcon,
   Download,
+  Highlighter,
+  XCircle,
 } from 'lucide-react';
+import { normalizeSurname } from '@/lib/tree/surname-highlight';
 import type { PersonListItem } from '@ancstra/shared';
 
 import {
@@ -89,6 +92,12 @@ interface TreeContextMenuProps {
   onToggleMinimap: () => void;
   onAddPerson: () => void;
   onExportSelection: (format: 'png' | 'svg' | 'pdf') => void;
+  /** Currently active surname-branch highlight (lowercase). Used to label
+   *  and disable/enable the "Highlight branch" / "Clear highlight" items. */
+  activeHighlightSurname?: string | null;
+  /** Set/clear the active surname highlight from the per-node menu. When
+   *  omitted, the highlight items are not rendered. */
+  onHighlightSurnameChange?: (surname: string | null) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -178,6 +187,8 @@ function NodeItems({
   onRequestDeletePerson,
   onFocusOnPerson,
   onSetTopologyAnchor,
+  activeHighlightSurname,
+  onHighlightSurnameChange,
 }: TreeContextMenuProps & { surface: { kind: 'node'; nodeId: string } }) {
   const router = useRouter();
   const t = useTranslations('tree.contextMenu');
@@ -189,6 +200,10 @@ function NodeItems({
   const fullName = `${person.givenName} ${person.surname}`.trim();
   const lifespan = formatLifespan(person);
   const target = { id: person.id, name: fullName, sex: person.sex };
+  const normalizedNodeSurname = normalizeSurname(person.surname);
+  const isAlreadyActive =
+    !!activeHighlightSurname &&
+    activeHighlightSurname === normalizedNodeSurname;
 
   const requestAddRelation = (
     kind: 'create' | 'link',
@@ -314,6 +329,36 @@ function NodeItems({
         <Table2 />
         <span>{t('seeInTableView')}</span>
       </DropdownMenuItem>
+
+      {onHighlightSurnameChange ? (
+        <>
+          {normalizedNodeSurname ? (
+            <DropdownMenuItem
+              disabled={isAlreadyActive}
+              onSelect={() => {
+                onHighlightSurnameChange(normalizedNodeSurname);
+                onClose();
+              }}
+            >
+              <Highlighter />
+              <span>
+                {t('highlightSurnameBranch', { surname: person.surname })}
+              </span>
+            </DropdownMenuItem>
+          ) : null}
+          {activeHighlightSurname ? (
+            <DropdownMenuItem
+              onSelect={() => {
+                onHighlightSurnameChange(null);
+                onClose();
+              }}
+            >
+              <XCircle />
+              <span>{t('clearSurnameHighlight')}</span>
+            </DropdownMenuItem>
+          ) : null}
+        </>
+      ) : null}
 
       <DropdownMenuSeparator />
 

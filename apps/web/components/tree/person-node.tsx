@@ -33,7 +33,14 @@ function PersonNodeComponent({ id, data, selected }: NodeProps<PersonNodeType>) 
   const tNode = useTranslations('tree.node');
   const tHandles = useTranslations('tree.node.handles');
   const tFields = useTranslations('tree.node.fields');
-  const dimmed = !!data.dimmed;
+  // Surname highlight axis composes with the existing dim path used by
+  // sex/living filter mismatches:
+  //   - 'nonmatch'      → opacity 0.3, click-blocked (overlay/replace modes)
+  //   - 'fadeNonmatch'  → grayscale + opacity 0.5, clicks preserved (fadeOut)
+  //   - 'match'         → accent ring drawn below via tonedCardStyle
+  const surnameHighlight = data.surnameHighlight;
+  const dimmed = !!data.dimmed || surnameHighlight === 'nonmatch';
+  const fadedOut = surnameHighlight === 'fadeNonmatch';
   const colors = sexColors[data.sex] ?? sexColors.U;
   const initials = `${data.givenName[0] ?? ''}${data.surname[0] ?? ''}`.toUpperCase();
   const showGaps = !!data.showGaps;
@@ -52,11 +59,22 @@ function PersonNodeComponent({ id, data, selected }: NodeProps<PersonNodeType>) 
   // no conflict with Tailwind's ring-2 selection state which lives in
   // box-shadow). Vivid border tokens (L≈0.6 light / 0.7 dark) keep the
   // 1px stroke readable against the card surface.
-  const tonedCardStyle: CSSProperties | undefined = data.coloringTone
+  const baseTonedStyle: CSSProperties | undefined = data.coloringTone
     ? data.coloringStyle === 'border'
       ? { borderColor: data.coloringTone.border }
       : { backgroundColor: data.coloringTone.bg }
     : undefined;
+  // Surname-match accent ring. Stacked into box-shadow so it composes with
+  // both the 1px border tone (no layout shift) and the selection ring (which
+  // lives at ring-2 ring-primary via Tailwind utilities — that ring keeps
+  // priority because it's applied as a class, on top of inline styles).
+  const tonedCardStyle: CSSProperties | undefined =
+    surnameHighlight === 'match'
+      ? {
+          ...baseTonedStyle,
+          boxShadow: '0 0 0 2px var(--tree-coloring-surname-border)',
+        }
+      : baseTonedStyle;
 
   // Drag-connection visual hint: when the user is dragging from another node's
   // handle, light up only the handles on this node where a drop will succeed,
@@ -186,9 +204,15 @@ function PersonNodeComponent({ id, data, selected }: NodeProps<PersonNodeType>) 
   );
 
   // Shared: card base classes
+  // - dimmed (filter mismatch / overlay+replace surname non-match): hard fade
+  //   to opacity 0.3 + block clicks.
+  // - fadedOut (fadeOut mode surname non-match): grayscale + soft opacity 0.5
+  //   with clicks preserved so the user can still click through to inspect.
   const cardBase = `relative rounded-lg bg-card shadow-sm border transition-all${
     selected ? ' ring-2 ring-primary shadow-md' : ''
-  }${dimmed ? ' opacity-30 pointer-events-none' : ''}${showGaps ? ' overflow-hidden' : ''}`;
+  }${dimmed ? ' opacity-30 pointer-events-none' : ''}${
+    fadedOut ? ' opacity-50 grayscale' : ''
+  }${showGaps ? ' overflow-hidden' : ''}`;
 
   // Shared: citation indicator badge (top-right corner, inside card bounds so
   // it survives `overflow-hidden` when the quality bar is on).

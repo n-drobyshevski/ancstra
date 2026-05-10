@@ -76,6 +76,7 @@ const baseFilters: TreeTableFilters = {
   citations: 'any',
   hasProposals: false,
   complGte: null,
+  highlightSurname: '',
 };
 
 function p(id: string, opts: { sex?: string; isLiving?: number } = {}) {
