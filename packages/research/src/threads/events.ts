@@ -1,4 +1,4 @@
-import { eq, asc } from 'drizzle-orm';
+import { eq, asc, sql } from 'drizzle-orm';
 import { researchThreads, researchThreadEvents } from '@ancstra/db';
 import type { Database } from '@ancstra/db';
 import type { AddEventInput } from './types';
@@ -15,27 +15,37 @@ export async function addEvent(db: Database, input: AddEventInput) {
 
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
-  await db.insert(researchThreadEvents).values({
-    id,
-    threadId: input.threadId,
-    eventType: input.eventType,
-    actorId: input.actorId,
-    factsheetId: input.factsheetId ?? null,
-    personId: input.personId ?? null,
-    researchItemId: input.researchItemId ?? null,
-    researchFactId: input.researchFactId ?? null,
-    sourceId: input.sourceId ?? null,
-    linkId: input.linkId ?? null,
-    reason: input.reason ?? null,
-    payloadJson: input.payload === undefined ? null : JSON.stringify(input.payload),
-    occurredAt: now,
-  }).run();
 
-  // Bump thread updatedAt so listings sort fresh threads up
-  await db.update(researchThreads)
-    .set({ updatedAt: now })
-    .where(eq(researchThreads.id, input.threadId))
-    .run();
+  // Use explicit BEGIN/COMMIT/ROLLBACK — db.transaction(async tx) breaks on better-sqlite3
+  await db.run(sql`BEGIN`);
+  try {
+    await db.insert(researchThreadEvents).values({
+      id,
+      threadId: input.threadId,
+      eventType: input.eventType,
+      actorId: input.actorId,
+      factsheetId: input.factsheetId ?? null,
+      personId: input.personId ?? null,
+      researchItemId: input.researchItemId ?? null,
+      researchFactId: input.researchFactId ?? null,
+      sourceId: input.sourceId ?? null,
+      linkId: input.linkId ?? null,
+      reason: input.reason ?? null,
+      payloadJson: input.payload === undefined ? null : JSON.stringify(input.payload),
+      occurredAt: now,
+    }).run();
+
+    // Bump thread updatedAt so listings sort fresh threads up
+    await db.update(researchThreads)
+      .set({ updatedAt: now })
+      .where(eq(researchThreads.id, input.threadId))
+      .run();
+
+    await db.run(sql`COMMIT`);
+  } catch (err) {
+    await db.run(sql`ROLLBACK`);
+    throw err;
+  }
 
   const rows = await db.select().from(researchThreadEvents)
     .where(eq(researchThreadEvents.id, id))

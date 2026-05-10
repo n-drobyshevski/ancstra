@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createTestCentralDb, type TestCentralDb } from '@ancstra/db/test-fixtures';
+import { eq } from 'drizzle-orm';
+import { researchThreads } from '@ancstra/db';
 import { createThread } from '../threads/create';
 import { addEvent, getThreadTimeline } from '../threads/events';
 
@@ -63,6 +65,27 @@ describe('addEvent', () => {
       payload: { foo: 'bar', n: 42 },
     });
     expect(JSON.parse(evt.payloadJson!)).toEqual({ foo: 'bar', n: 42 });
+  });
+
+  it('bumps thread updatedAt transactionally on success', async () => {
+    const thread = await createThread(db as any, { title: 'T', createdBy: 'u1' });
+    const originalUpdatedAt = thread.updatedAt;
+
+    // Small delay to ensure the timestamp differs
+    await new Promise(r => setTimeout(r, 5));
+
+    await addEvent(db as any, {
+      threadId: thread.id,
+      eventType: 'note_added',
+      actorId: 'u1',
+      reason: 'transaction test',
+    });
+
+    const rows = await (db as any).select().from(researchThreads)
+      .where(eq(researchThreads.id, thread.id))
+      .all();
+    expect(rows[0].updatedAt).not.toBe(originalUpdatedAt);
+    expect(rows[0].updatedAt > originalUpdatedAt).toBe(true);
   });
 });
 
