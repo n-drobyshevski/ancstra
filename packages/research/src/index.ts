@@ -133,6 +133,8 @@ export {
   getThreadTimeline,
   listThreads,
   getThread,
+  getPersonsTouchedByThread,
+  getThreadsForPerson,
   pauseThread,
   resolveThread,
   abandonThread,
@@ -147,6 +149,7 @@ export type {
   UpdateThreadInput,
   AddEventInput,
   ListThreadsFilters,
+  ThreadTouchSummary,
   CascadeInput,
   CascadeResult,
 } from './threads';
