@@ -153,7 +153,53 @@ describe('bundle-report', () => {
   });
 
   // -------------------------------------------------------------------------
-  // Test 4: marker line always appears as the first line
+  // Test 4: App Router _meta sentinel triggers callout block in PR comment
+  // -------------------------------------------------------------------------
+  it('emits App Router callout when _meta.perRouteAccuracy is "shared-only"', () => {
+    const baseline = {
+      '/': { raw: 90_000, gzip: 27_000 },
+      '/dashboard': { raw: 100_000, gzip: 30_000 },
+    };
+    const current = {
+      '/': { raw: 90_000, gzip: 27_000 },
+      '/dashboard': { raw: 100_000, gzip: 30_000 },
+      _meta: { perRouteAccuracy: 'shared-only', reason: 'App Router project; per-route attribution unavailable from build manifests' },
+    };
+
+    const baselinePath = writeTmp(TMP, 'baseline-meta.json', baseline);
+    const currentPath = writeTmp(TMP, 'current-meta.json', current);
+    const outputPath = join(TMP, 'report-meta.md');
+
+    run([
+      '--current', currentPath,
+      '--baseline', baselinePath,
+      '--output', outputPath,
+    ]);
+
+    const md = readFileSync(outputPath, 'utf8');
+
+    // Callout must be present
+    assert.ok(
+      md.includes('App Router project'),
+      'Report must contain App Router callout when _meta.perRouteAccuracy is "shared-only"'
+    );
+    assert.ok(
+      md.includes('per-route sizes reflect shared chunks only'),
+      'Callout must describe the shared-chunks limitation'
+    );
+
+    // _meta key must NOT appear as a table row
+    assert.ok(
+      !md.includes('`_meta`'),
+      '_meta must not appear as a route row in the table'
+    );
+
+    // Normal routes must still be present
+    assert.ok(md.includes('/dashboard'), '/dashboard route should appear in the report');
+  });
+
+  // -------------------------------------------------------------------------
+  // Test 5: marker line always appears as the first line
   // -------------------------------------------------------------------------
   it('marker line <!-- ancstra-bundle-report --> is always the first line', () => {
     const baseline = { '/': { raw: 90_000, gzip: 27_000 } };

@@ -32,8 +32,6 @@
  */
 
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 
 // ---------------------------------------------------------------------------
 // Argument parsing
@@ -134,7 +132,10 @@ if (!current) {
 // Build delta table
 // ---------------------------------------------------------------------------
 
-const allRoutes = new Set([...Object.keys(current), ...Object.keys(baseline)]);
+const allRoutes = new Set([
+  ...Object.keys(current).filter(k => !k.startsWith('_')),
+  ...Object.keys(baseline).filter(k => !k.startsWith('_')),
+]);
 const sortedRoutes = [...allRoutes].sort();
 
 const header = [
@@ -190,10 +191,18 @@ summaryLines.push(
   '',
 );
 
+const calloutLines = current._meta?.perRouteAccuracy === 'shared-only'
+  ? [
+      '',
+      '> ⚠️ **App Router project**: per-route sizes reflect shared chunks only. Individual route deltas are not reliable; rely on the totals row.',
+    ]
+  : [];
+
 const md = [
   MARKER,
   '',
   '## Bundle size report',
+  ...calloutLines,
   '',
   ...header,
   ...rows,

@@ -113,6 +113,7 @@ if (Object.keys(result).length === 0 && existsSync(appManifestPath)) {
   }
   if (Object.keys(result).length > 0) {
     console.log('[extract-bundle-sizes] App Router project detected — using shared-chunk estimate per route.');
+    result._meta = { perRouteAccuracy: 'shared-only', reason: 'App Router project; per-route attribution unavailable from build manifests' };
   }
 }
 
