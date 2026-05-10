@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
 import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
 import { promoteSingleFactsheet, promoteFactsheetCluster } from '@ancstra/research';
+import { getActiveThreadIdFromCookies } from '@/lib/research/active-thread-server';
 
 export async function POST(
   request: Request,
@@ -11,10 +12,11 @@ export async function POST(
     const { familyDb, ctx } = await withAuth('ai:research', request);
     const { id: factsheetId } = await params;
     const body = await request.json();
+    const threadId = await getActiveThreadIdFromCookies(ctx.familyId);
 
     // Cluster promotion
     if (body.cluster === true) {
-      const result = await promoteFactsheetCluster(familyDb, factsheetId, ctx.userId);
+      const result = await promoteFactsheetCluster(familyDb, factsheetId, ctx.userId, threadId);
       revalidateTag('persons', 'max');
       revalidateTag('tree-data', 'max');
       revalidateTag('dashboard-stats', 'max');
@@ -39,6 +41,7 @@ export async function POST(
       mode,
       mergeTargetPersonId: body.mergeTargetPersonId,
       userId: ctx.userId,
+      threadId,
     });
 
     revalidateTag('persons', 'max');

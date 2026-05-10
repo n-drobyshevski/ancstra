@@ -16,6 +16,7 @@ import {
 import type { Database } from '@ancstra/db';
 import { isFactsheetPromotable } from './validation';
 import { getFactsheetCluster } from './links';
+import { addEvent } from '../threads/events';
 
 export interface PromoteSingleInput {
   factsheetId: string;
@@ -24,6 +25,8 @@ export interface PromoteSingleInput {
   userId: string;
   /** Skip promotability validation for programmatic callers. */
   skipValidation?: boolean;
+  /** When set, emits a 'factsheet_promoted' thread event after success. */
+  threadId?: string | null;
 }
 
 export interface PromoteSingleResult {
@@ -73,6 +76,13 @@ export async function promoteSingleFactsheet(
     throw new Error('mergeTargetPersonId required for merge mode');
   }
 
+  // Fetch factsheet title once (needed both for the event reason and to keep
+  // a single read; we still UPDATE the row inside the transaction below).
+  const fsRows = await db.all<{ title: string }>(sql`
+    SELECT title FROM factsheets WHERE id = ${input.factsheetId}
+  `);
+  const factsheetTitle = fsRows[0]?.title ?? input.factsheetId;
+
   // Get accepted/unresolved facts (skip rejected)
   const facts = await db.all<{
     id: string;
@@ -98,7 +108,10 @@ export async function promoteSingleFactsheet(
   let sourcesCreated = 0;
   const mode = input.mode;
 
-  await (db as any).transaction(async (tx: any) => {
+  // Use explicit BEGIN/COMMIT/ROLLBACK — Drizzle's db.transaction(async tx)
+  // breaks on better-sqlite3 (see project memory feedback_drizzle_transactions).
+  await db.run(sql`BEGIN`);
+  try {
     if (mode === 'create') {
       // Extract name and sex from facts
       const nameFact = facts.find(f => f.factType === 'name');
@@ -108,10 +121,10 @@ export async function promoteSingleFactsheet(
 
       personId = crypto.randomUUID();
 
-      await tx.insert(persons)
+      await db.insert(persons)
         .values({
           id: personId,
-          sex: 'unknown',
+          sex: 'U',
           isLiving: false,
           privacyLevel: 'public',
           createdBy: input.userId,
@@ -120,7 +133,7 @@ export async function promoteSingleFactsheet(
         })
         .run();
 
-      await tx.insert(personNames)
+      await db.insert(personNames)
         .values({
           id: crypto.randomUUID(),
           personId,
@@ -155,14 +168,14 @@ export async function promoteSingleFactsheet(
 
     for (const [eventType, group] of eventGroups) {
       const eventId = crypto.randomUUID();
-      await tx.insert(events)
+      await db.insert(events)
         .values({
           id: eventId,
           personId,
           eventType: eventType as any,
           dateOriginal: group.date ?? null,
-          dateSortValue: group.dateFact?.factDateSort ?? null,
-          placeOriginal: group.place ?? null,
+          dateSort: group.dateFact?.factDateSort ?? null,
+          placeText: group.place ?? null,
           createdAt: now,
           updatedAt: now,
         })
@@ -174,14 +187,14 @@ export async function promoteSingleFactsheet(
     const researchItemIds = [...new Set(facts.filter(f => f.researchItemId).map(f => f.researchItemId!))];
 
     for (const riId of researchItemIds) {
-      const items = await tx.select().from(researchItems).where(eq(researchItems.id, riId)).all();
+      const items = await db.select().from(researchItems).where(eq(researchItems.id, riId)).all();
       const item = items[0];
       if (!item) continue;
 
       const sourceId = crypto.randomUUID();
       const citationId = crypto.randomUUID();
 
-      await tx.insert(sources)
+      await db.insert(sources)
         .values({
           id: sourceId,
           title: item.title,
@@ -193,7 +206,7 @@ export async function promoteSingleFactsheet(
         })
         .run();
 
-      await tx.insert(sourceCitations)
+      await db.insert(sourceCitations)
         .values({
           id: citationId,
           sourceId,
@@ -204,7 +217,7 @@ export async function promoteSingleFactsheet(
         .run();
 
       // Link facts to citation
-      await tx.run(sql`
+      await db.run(sql`
         UPDATE research_facts
         SET source_citation_id = ${citationId}, updated_at = ${now}
         WHERE factsheet_id = ${input.factsheetId}
@@ -215,7 +228,7 @@ export async function promoteSingleFactsheet(
     }
 
     // Update factsheet status
-    await tx.update(factsheets)
+    await db.update(factsheets)
       .set({
         status: (mode === 'create' ? 'promoted' : 'merged') as any,
         promotedPersonId: personId,
@@ -224,12 +237,34 @@ export async function promoteSingleFactsheet(
       })
       .where(eq(factsheets.id, input.factsheetId))
       .run();
-  });
+
+    await db.run(sql`COMMIT`);
+  } catch (err) {
+    await db.run(sql`ROLLBACK`);
+    throw err;
+  }
 
   // Promotion creates/updates events + source_citations for this person, so
   // person_summary needs a refresh to reflect the new facets (has_source,
   // sources_count, completeness, dates/places).
   await refreshSummary(db, personId!);
+
+  // Emit thread event when a research thread is active. Fire-and-forget:
+  // emission failure must never roll back a successful promotion.
+  if (input.threadId) {
+    try {
+      await addEvent(db, {
+        threadId: input.threadId,
+        eventType: 'factsheet_promoted',
+        actorId: input.userId,
+        factsheetId: input.factsheetId,
+        personId: personId!,
+        reason: `Promoted "${factsheetTitle}" to person`,
+      });
+    } catch (err) {
+      console.warn('[promoteSingleFactsheet] thread event emission failed:', err);
+    }
+  }
 
   return {
     personId: personId!,
@@ -248,6 +283,7 @@ export async function promoteFactsheetCluster(
   db: Database,
   rootFactsheetId: string,
   userId: string,
+  threadId?: string | null,
 ): Promise<PromoteClusterResult> {
   const clusterIds = await getFactsheetCluster(db, rootFactsheetId);
   const results: PromoteSingleResult[] = [];
@@ -262,17 +298,19 @@ export async function promoteFactsheetCluster(
       factsheetId: fsId,
       mode: 'create',
       userId,
+      threadId,
     });
     factsheetToPersonId.set(fsId, result.personId);
     results.push(result);
   }
 
-  // Phase 2: Wire relationships from links
-  await (db as any).transaction(async (tx: any) => {
-    const now = new Date().toISOString();
-
+  // Phase 2: Wire relationships from links — raw BEGIN/COMMIT/ROLLBACK to
+  // stay compatible with better-sqlite3 (project memory feedback_drizzle_transactions).
+  const now = new Date().toISOString();
+  await db.run(sql`BEGIN`);
+  try {
     for (const fsId of clusterIds) {
-      const links = await tx.select()
+      const links = await db.select()
         .from(factsheetLinks)
         .where(eq(factsheetLinks.fromFactsheetId, fsId))
         .all();
@@ -284,7 +322,7 @@ export async function promoteFactsheetCluster(
 
         if (link.relationshipType === 'spouse') {
           const familyId = crypto.randomUUID();
-          await tx.insert(families)
+          await db.insert(families)
             .values({
               id: familyId,
               partner1Id: fromPersonId,
@@ -298,7 +336,7 @@ export async function promoteFactsheetCluster(
           familiesCreated++;
         } else if (link.relationshipType === 'parent_child') {
           // from=parent, to=child — find or create family for parent
-          const existingFamilies = await tx.all(sql`
+          const existingFamilies = await db.all(sql`
             SELECT id FROM families
             WHERE partner1_id = ${fromPersonId} OR partner2_id = ${fromPersonId}
             LIMIT 1
@@ -309,7 +347,7 @@ export async function promoteFactsheetCluster(
             familyId = (existingFamilies[0] as any).id;
           } else {
             familyId = crypto.randomUUID();
-            await tx.insert(families)
+            await db.insert(families)
               .values({
                 id: familyId,
                 partner1Id: fromPersonId,
@@ -322,7 +360,7 @@ export async function promoteFactsheetCluster(
             familiesCreated++;
           }
 
-          await tx.insert(children)
+          await db.insert(children)
             .values({
               id: crypto.randomUUID(),
               familyId,
@@ -335,7 +373,11 @@ export async function promoteFactsheetCluster(
         }
       }
     }
-  });
+    await db.run(sql`COMMIT`);
+  } catch (err) {
+    await db.run(sql`ROLLBACK`);
+    throw err;
+  }
 
   return {
     personsCreated: results.length,
