@@ -101,6 +101,10 @@ interface TreeContextMenuProps {
   /** Open the "research threads that touched this person" modal. When
    *  omitted, the menu item is not rendered. */
   onShowThreadsTouching?: (personId: string) => void;
+  /** Start a new research thread seeded with the given person. When omitted,
+   *  the menu item is not rendered. The handler is responsible for creating
+   *  the thread, setting it active, and navigating to /research. */
+  onStartResearchThread?: (personId: string, personName: string) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -193,6 +197,7 @@ function NodeItems({
   activeHighlightSurname,
   onHighlightSurnameChange,
   onShowThreadsTouching,
+  onStartResearchThread,
 }: TreeContextMenuProps & { surface: { kind: 'node'; nodeId: string } }) {
   const router = useRouter();
   const t = useTranslations('tree.contextMenu');
@@ -406,19 +411,35 @@ function NodeItems({
         <span>{t('openInNewTab')}</span>
       </DropdownMenuItem>
 
-      {onShowThreadsTouching ? (
+      {onShowThreadsTouching || onStartResearchThread ? (
         <>
           <DropdownMenuSeparator />
-          <DropdownMenuItem
-            onSelect={() => {
-              onShowThreadsTouching(person.id);
-              // Don't onClose() — modal supersedes the menu and racing the
-              // open with onClose() can suppress the dialog mount.
-            }}
-          >
-            <FlaskConical />
-            <span>{t('showThreadsTouching')}</span>
-          </DropdownMenuItem>
+          {onStartResearchThread ? (
+            <DropdownMenuItem
+              onSelect={() => {
+                const name =
+                  `${person.givenName ?? ''} ${person.surname ?? ''}`.trim() ||
+                  t('unnamed');
+                onStartResearchThread(person.id, name);
+                onClose();
+              }}
+            >
+              <FlaskConical />
+              <span>{t('startResearchThread')}</span>
+            </DropdownMenuItem>
+          ) : null}
+          {onShowThreadsTouching ? (
+            <DropdownMenuItem
+              onSelect={() => {
+                onShowThreadsTouching(person.id);
+                // Don't onClose() — modal supersedes the menu and racing the
+                // open with onClose() can suppress the dialog mount.
+              }}
+            >
+              <FlaskConical />
+              <span>{t('showThreadsTouching')}</span>
+            </DropdownMenuItem>
+          ) : null}
         </>
       ) : null}
 

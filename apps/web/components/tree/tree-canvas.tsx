@@ -1722,6 +1722,27 @@ function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focus
             setPersonThreadsModalId(personId);
             setContextMenu(null);
           }}
+          onStartResearchThread={async (personId, personName) => {
+            try {
+              const created = await fetch('/api/research/threads', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  title: `${personName} — research`,
+                  seedPersonId: personId,
+                }),
+              }).then(r => r.json());
+              if (!created?.id) throw new Error('thread create failed');
+              await fetch('/api/research/threads/active', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ threadId: created.id }),
+              });
+              window.location.href = '/research';
+            } catch (err) {
+              console.error('Start research thread failed:', err);
+            }
+          }}
         />
 
         <PersonThreadsModal
