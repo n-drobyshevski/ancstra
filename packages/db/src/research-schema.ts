@@ -203,7 +203,9 @@ export const researchThreadEvents = sqliteTable('research_thread_events', {
     enum: [
       'thread_started', 'item_attached', 'fact_extracted',
       'factsheet_created', 'factsheet_linked', 'mention_followed',
+      'mention_extracted',
       'conflict_resolved', 'duplicate_resolved', 'factsheet_promoted',
+      'relationship_proposed',
       'note_added', 'thread_paused', 'thread_resolved', 'thread_abandoned',
     ],
   }).notNull(),
