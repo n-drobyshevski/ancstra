@@ -36,6 +36,20 @@ import {
   createSuggestNextStepTool,
 } from '@ancstra/ai';
 
+// Minimal interface that covers the subset of AI SDK Tool we need to wrap.
+// Defined at module scope so it is not recreated on every POST request.
+type ToolLike = { execute?: (input: unknown, options: unknown) => unknown };
+
+function wrapToolExecute(name: string, t: ToolLike): ToolLike {
+  if (!t.execute) return t;
+  const orig = t.execute;
+  return {
+    ...t,
+    execute: (input: unknown, options: unknown) =>
+      withSpan(`ai.tool.${name}`, () => orig(input, options), { tool_name: name }),
+  };
+}
+
 export async function POST(request: Request) {
   try {
     const { ctx, familyDb } = await withAuthAndExperimental('ai:research', 'researchChat', request);
@@ -116,18 +130,6 @@ export async function POST(request: Request) {
     // typed spreading. We build the tools object first, then wrap each
     // execute at the ToolSet level (which is already cast via `as unknown as
     // ToolSet` below). The wrapper preserves the original shape at runtime.
-    type ToolLike = { execute?: (input: unknown, options: unknown) => unknown };
-
-    function wrapToolExecute(name: string, t: ToolLike): ToolLike {
-      if (!t.execute) return t;
-      const orig = t.execute;
-      return {
-        ...t,
-        execute: (input: unknown, options: unknown) =>
-          withSpan(`ai.tool.${name}`, () => orig(input, options), { tool_name: name }),
-      };
-    }
-
     const rawTools = {
       searchLocalTree: createSearchLocalTreeTool(familyDb),
       computeRelationship: createComputeRelationshipTool(familyDb),

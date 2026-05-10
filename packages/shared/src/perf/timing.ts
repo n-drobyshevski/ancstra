@@ -13,15 +13,15 @@ export async function withSpan<T>(
   fn: () => Promise<T> | T,
   attrs?: Record<string, string | number | boolean>,
 ): Promise<T> {
+  let invoked = false;
   try {
-    return await Sentry.startSpan({ name, attributes: attrs }, async () => fn());
+    return await Sentry.startSpan({ name, attributes: attrs }, async () => {
+      invoked = true;
+      return fn();
+    });
   } catch (err) {
-    // If Sentry.startSpan itself threw (not the wrapped fn), re-throw only if
-    // the error came from fn. Otherwise fall back to a direct call.
-    // In practice Sentry v10 never throws from startSpan itself; this guard
-    // is here for unit-test environments where the import may be partially
-    // replaced.
-    return fn() as Promise<T>;
+    if (invoked) throw err;          // fn already ran and threw — propagate
+    return fn() as Promise<T>;        // Sentry wrapper failed before invoking — safe to retry
   }
 }
 
@@ -34,9 +34,14 @@ export function timeQuery<T>(
   fn: () => T,
   attrs?: Record<string, string | number | boolean>,
 ): T {
+  let invoked = false;
   try {
-    return Sentry.startSpan({ name, attributes: attrs, op: 'db.query' }, () => fn());
-  } catch {
-    return fn();
+    return Sentry.startSpan({ name, attributes: attrs, op: 'db.query' }, () => {
+      invoked = true;
+      return fn();
+    });
+  } catch (err) {
+    if (invoked) throw err;          // fn already ran and threw — propagate
+    return fn();                      // Sentry wrapper failed before invoking — safe to retry
   }
 }

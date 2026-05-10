@@ -12,9 +12,6 @@
   "peerDependencies": {
     "@sentry/nextjs": ">=10"
   },
-  "peerDependenciesMeta": {
-    "@sentry/nextjs": { "optional": true }
-  },
   "dependencies": {
     "pino": "^10.3.1"
   },

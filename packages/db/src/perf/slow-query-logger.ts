@@ -44,28 +44,24 @@ export function wrapWithSlowQueryLogger(client: Client): Client {
           args?: InArgs,
         ): Promise<ResultSet> {
           const start = performance.now();
-          try {
-            // The real Client.execute has two overloads; forward correctly.
-            const result =
-              args !== undefined
-                ? await target.execute(stmtOrSql as string, args)
-                : await target.execute(stmtOrSql as InStatement);
-            const ms = performance.now() - start;
-            if (ms > SLOW_QUERY_THRESHOLD_MS) {
-              const sql = typeof stmtOrSql === 'string'
-                ? stmtOrSql.slice(0, MAX_SQL_LENGTH)
-                : extractSql(stmtOrSql as InStatement);
-              const params_count =
-                args !== undefined ? countParams(args) : countParams((stmtOrSql as { args?: InArgs }).args);
-              log.warn(
-                { category: 'db.slow_query', sql, ms: Math.round(ms), params_count },
-                'slow query',
-              );
-            }
-            return result;
-          } catch (err) {
-            throw err;
+          // The real Client.execute has two overloads; forward correctly.
+          const result =
+            args !== undefined
+              ? await target.execute(stmtOrSql as string, args)
+              : await target.execute(stmtOrSql as InStatement);
+          const ms = performance.now() - start;
+          if (ms > SLOW_QUERY_THRESHOLD_MS) {
+            const sql = typeof stmtOrSql === 'string'
+              ? stmtOrSql.slice(0, MAX_SQL_LENGTH)
+              : extractSql(stmtOrSql as InStatement);
+            const params_count =
+              args !== undefined ? countParams(args) : countParams((stmtOrSql as { args?: InArgs }).args);
+            log.warn(
+              { category: 'db.slow_query', sql, ms: Math.round(ms), params_count },
+              'slow query',
+            );
           }
+          return result;
         };
       }
 
@@ -76,26 +72,22 @@ export function wrapWithSlowQueryLogger(client: Client): Client {
           mode?: TransactionMode,
         ): Promise<Array<ResultSet>> {
           const start = performance.now();
-          try {
-            const result = await target.batch(stmts, mode);
-            const ms = performance.now() - start;
-            if (ms > SLOW_QUERY_THRESHOLD_MS) {
-              // For batches we log a summary — individual SQLs are not logged
-              // to avoid log explosion.
-              log.warn(
-                {
-                  category: 'db.slow_query',
-                  sql: `[batch of ${stmts.length} statements]`,
-                  ms: Math.round(ms),
-                  params_count: stmts.length,
-                },
-                'slow query',
-              );
-            }
-            return result;
-          } catch (err) {
-            throw err;
+          const result = await target.batch(stmts, mode);
+          const ms = performance.now() - start;
+          if (ms > SLOW_QUERY_THRESHOLD_MS) {
+            // For batches we log a summary — individual SQLs are not logged
+            // to avoid log explosion.
+            log.warn(
+              {
+                category: 'db.slow_query',
+                sql: `[batch of ${stmts.length} statements]`,
+                ms: Math.round(ms),
+                params_count: stmts.length,
+              },
+              'slow query',
+            );
           }
+          return result;
         };
       }
 

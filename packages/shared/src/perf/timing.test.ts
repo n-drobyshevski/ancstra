@@ -22,20 +22,24 @@ describe('withSpan', () => {
     expect(result).toBe(42);
   });
 
-  it('returns the inner result when Sentry is NOT initialized (startSpan throws)', async () => {
-    // Simulate an uninitialised Sentry that throws from startSpan itself.
+  it('returns the inner result when Sentry is NOT initialized (startSpan throws, fn called exactly once)', async () => {
+    // Simulate an uninitialised Sentry that throws from startSpan itself
+    // (without ever invoking the callback). fn should be called exactly once
+    // via the fallback path.
     startSpanMock.mockImplementation(() => {
       throw new Error('Sentry not initialised');
     });
-    const result = await withSpan('test.span', async () => 'fallback');
+    const fn = vi.fn(async () => 'fallback');
+    const result = await withSpan('test.span', fn);
     expect(result).toBe('fallback');
+    expect(fn).toHaveBeenCalledTimes(1);
   });
 
-  it('propagates errors thrown by fn', async () => {
-    const boom = new Error('inner error');
-    // startSpan delegates to fn; fn throws.
-    startSpanMock.mockImplementation((_opts: unknown, cb: () => unknown) => cb());
-    await expect(withSpan('test.span', async () => { throw boom; })).rejects.toThrow('inner error');
+  it('propagates errors thrown by fn (calling fn only once)', async () => {
+    const error = new Error('boom');
+    const fn = vi.fn(async () => { throw error; });
+    await expect(withSpan('s', fn)).rejects.toThrow('boom');
+    expect(fn).toHaveBeenCalledTimes(1);
   });
 
   it('calls Sentry.startSpan with the expected name and attributes', async () => {
@@ -61,5 +65,22 @@ describe('timeQuery', () => {
       { name: 'db.query.persons', attributes: attrs, op: 'db.query' },
       expect.any(Function),
     );
+  });
+
+  it('propagates errors thrown by fn (calling fn only once)', () => {
+    const error = new Error('db boom');
+    const fn = vi.fn(() => { throw error; });
+    expect(() => timeQuery('db.query', fn)).toThrow('db boom');
+    expect(fn).toHaveBeenCalledTimes(1);
+  });
+
+  it('falls back to fn when Sentry startSpan throws, calling fn exactly once', () => {
+    startSpanMock.mockImplementation(() => {
+      throw new Error('Sentry not initialised');
+    });
+    const fn = vi.fn(() => 'sync-fallback');
+    const result = timeQuery('db.query', fn);
+    expect(result).toBe('sync-fallback');
+    expect(fn).toHaveBeenCalledTimes(1);
   });
 });

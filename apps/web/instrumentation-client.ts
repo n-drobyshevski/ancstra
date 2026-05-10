@@ -5,8 +5,12 @@ Sentry.init({
 
   sendDefaultPii: true,
 
-  // 100% in dev, 10% in production
-  tracesSampleRate: process.env.NODE_ENV === 'development' ? 1.0 : 0.1,
+  // Prefer the NEXT_PUBLIC_ env var (set via Vercel / .env.local) so all
+  // three configs (server, edge, client) stay in sync. Falls back to
+  // 100 % in dev / 10 % in production when the var is absent.
+  tracesSampleRate: process.env.NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE !== undefined
+    ? Number(process.env.NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE)
+    : process.env.NODE_ENV === 'development' ? 1.0 : 0.1,
 
   // Session Replay: disabled by default to keep client bundle small.
   // Replay is lazy-loaded below; sample rates kick in only after the

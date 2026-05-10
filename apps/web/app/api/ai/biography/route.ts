@@ -222,58 +222,62 @@ export async function POST(request: Request) {
     const model = getModel('analysis'); // Sonnet for quality biography writing
     const userId = ctx.userId;
 
-    const result = await withSpan('ai.biography.streamText', async () => {
-      return streamText({
-        model,
-        prompt,
-        onFinish: async ({ text, usage }) => {
-          try {
-            const modelName = 'claude-sonnet-4-5';
-            const costUsd = calculateCost(modelName, usage.inputTokens ?? 0, usage.outputTokens ?? 0);
+    // Note: streamText from the Vercel AI SDK returns a StreamTextResult
+    // synchronously — wrapping it in withSpan would measure only ~1ms of
+    // object construction, not the actual LLM streaming time. The real
+    // duration is already captured by Sentry.vercelAIIntegration() configured
+    // in sentry.server.config.ts. The inner ai.biography.cache span (inside
+    // onFinish) is kept because the DB write is worth tracking separately.
+    const result = streamText({
+      model,
+      prompt,
+      onFinish: async ({ text, usage }) => {
+        try {
+          const modelName = 'claude-sonnet-4-5';
+          const costUsd = calculateCost(modelName, usage.inputTokens ?? 0, usage.outputTokens ?? 0);
 
-            // Cache biography (INSERT OR REPLACE via unique constraint)
-            await withSpan('ai.biography.cache', async () => {
-              await familyDb
-                .insert(biographies)
-                .values({
-                  personId,
-                  tone: options.tone,
-                  length: options.length,
-                  focus: options.focus,
+          // Cache biography (INSERT OR REPLACE via unique constraint)
+          await withSpan('ai.biography.cache', async () => {
+            await familyDb
+              .insert(biographies)
+              .values({
+                personId,
+                tone: options.tone,
+                length: options.length,
+                focus: options.focus,
+                content: text,
+                model: modelName,
+                inputTokens: usage.inputTokens ?? 0,
+                outputTokens: usage.outputTokens ?? 0,
+                costUsd,
+              })
+              .onConflictDoUpdate({
+                target: [biographies.personId, biographies.tone, biographies.length, biographies.focus],
+                set: {
                   content: text,
                   model: modelName,
                   inputTokens: usage.inputTokens ?? 0,
                   outputTokens: usage.outputTokens ?? 0,
                   costUsd,
-                })
-                .onConflictDoUpdate({
-                  target: [biographies.personId, biographies.tone, biographies.length, biographies.focus],
-                  set: {
-                    content: text,
-                    model: modelName,
-                    inputTokens: usage.inputTokens ?? 0,
-                    outputTokens: usage.outputTokens ?? 0,
-                    costUsd,
-                    createdAt: new Date().toISOString(),
-                  },
-                })
-                .run();
-            }, { person_id: personId });
+                  createdAt: new Date().toISOString(),
+                },
+              })
+              .run();
+          }, { person_id: personId });
 
-            // Record usage
-            await recordUsage(familyDb, {
-              userId,
-              model: modelName,
-              inputTokens: usage.inputTokens ?? 0,
-              outputTokens: usage.outputTokens ?? 0,
-              taskType: 'biography',
-            });
-          } catch (err) {
-            console.error('Failed to cache biography or record usage:', err);
-          }
-        },
-      });
-    }, { person_id: personId });
+          // Record usage
+          await recordUsage(familyDb, {
+            userId,
+            model: modelName,
+            inputTokens: usage.inputTokens ?? 0,
+            outputTokens: usage.outputTokens ?? 0,
+            taskType: 'biography',
+          });
+        } catch (err) {
+          console.error('Failed to cache biography or record usage:', err);
+        }
+      },
+    });
 
     return result.toUIMessageStreamResponse();
   } catch (err) {
