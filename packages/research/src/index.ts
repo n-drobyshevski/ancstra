@@ -138,6 +138,7 @@ export {
   abandonThread,
   resumeThread,
   updateThread,
+  cascade,
 } from './threads';
 export type {
   ThreadStatus,
@@ -146,4 +147,6 @@ export type {
   UpdateThreadInput,
   AddEventInput,
   ListThreadsFilters,
+  CascadeInput,
+  CascadeResult,
 } from './threads';
