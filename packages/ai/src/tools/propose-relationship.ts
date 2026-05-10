@@ -3,6 +3,7 @@ import { z } from 'zod/v3';
 import { sql, eq, and } from 'drizzle-orm';
 import { proposedRelationships, persons } from '@ancstra/db';
 import type { Database } from '@ancstra/db';
+import { addEvent } from '@ancstra/research';
 
 interface ProposalResult {
   proposalId: string;
@@ -13,6 +14,8 @@ interface ProposalResult {
 /**
  * Execute the propose relationship operation.
  * Creates a pending proposal in the proposed_relationships table.
+ * Optionally emits a thread event when threadId is provided (fire-and-forget;
+ * emission failure never rolls back the proposal).
  */
 export async function executeProposeRelationship(
   db: Database,
@@ -23,6 +26,8 @@ export async function executeProposeRelationship(
     evidence: string;
     confidence: number;
     sourceRecordId?: string;
+    threadId?: string | null;
+    actorId?: string;
   }
 ): Promise<ProposalResult> {
   const { person1Id, person2Id, relationshipType, evidence, confidence, sourceRecordId } = params;
@@ -81,6 +86,27 @@ export async function executeProposeRelationship(
     })
     .run();
 
+  if (params.threadId) {
+    try {
+      await addEvent(db, {
+        threadId: params.threadId,
+        eventType: 'note_added',
+        actorId: params.actorId ?? 'ai',
+        personId: params.person1Id,
+        reason: `AI proposed ${relationshipType} between ${params.person1Id} and ${params.person2Id}: ${evidence}`,
+        payload: {
+          proposalId: id,
+          person2Id: params.person2Id,
+          confidence,
+          sourceRecordId: params.sourceRecordId ?? null,
+        },
+      });
+    } catch (err) {
+      // Don't fail the proposal if event emission fails — log only.
+      console.warn('[propose-relationship] thread event emission failed:', err);
+    }
+  }
+
   return {
     proposalId: id,
     status: 'pending',
@@ -90,8 +116,18 @@ export async function executeProposeRelationship(
 
 /**
  * Create the proposeRelationship tool bound to a database instance.
+ *
+ * @param db - Family database instance.
+ * @param opts.threadId - Optional active research thread id. When set, a
+ *   `note_added` event is emitted after each successful proposal so the
+ *   timeline reflects the AI's activity. Emission failure never blocks the
+ *   proposal.
+ * @param opts.actorId - Actor id recorded on the event (default: 'ai').
  */
-export function createProposeRelationshipTool(db: Database) {
+export function createProposeRelationshipTool(
+  db: Database,
+  opts?: { threadId?: string | null; actorId?: string },
+) {
   return tool({
     description: 'Propose a relationship between two people based on discovered evidence. Creates a pending proposal for editor validation — does NOT directly modify the family tree.',
     inputSchema: z.object({
@@ -103,6 +139,11 @@ export function createProposeRelationshipTool(db: Database) {
       confidence: z.number().min(0).max(1).describe('Confidence level 0-1'),
       sourceRecordId: z.string().optional().describe('ID of the source record that supports this'),
     }),
-    execute: async (params) => executeProposeRelationship(db, params),
+    execute: async (params) =>
+      executeProposeRelationship(db, {
+        ...params,
+        threadId: opts?.threadId,
+        actorId: opts?.actorId,
+      }),
   });
 }
