@@ -164,11 +164,55 @@ async function ensureFamilySchemaInner(db: FamilyDatabase): Promise<void> {
 
   // Research Threads Phase 1 (2026-05): link factsheets back to the thread
   // that spawned them. Nullable — factsheets created before threads existed
-  // have no thread. No FK constraint at SQLite level (research_threads table
-  // may not exist on older DBs; drizzle migration creates it on fresh DBs).
+  // have no thread.
   try {
     await db.run(sql`ALTER TABLE factsheets ADD COLUMN created_thread_id TEXT`);
   } catch { /* column already exists */ }
+  await db.run(sql`CREATE INDEX IF NOT EXISTS idx_factsheets_thread ON factsheets(created_thread_id)`);
+
+  // Research Threads + Thread Events tables — mirror of migration 0009
+  // (0009_parallel_stingray.sql). Existing dev DBs predate that migration; without
+  // these back-fill CREATE TABLEs, POST /api/research/threads 500s with
+  // "no such table: research_threads".
+  await db.run(sql`
+    CREATE TABLE IF NOT EXISTS research_threads (
+      id TEXT PRIMARY KEY NOT NULL,
+      title TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'active',
+      seed_person_id TEXT REFERENCES persons(id) ON DELETE SET NULL,
+      seed_factsheet_id TEXT REFERENCES factsheets(id) ON DELETE SET NULL,
+      seed_research_item_id TEXT REFERENCES research_items(id) ON DELETE SET NULL,
+      summary TEXT,
+      created_by TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      closed_at TEXT
+    )
+  `);
+  await db.run(sql`CREATE INDEX IF NOT EXISTS idx_threads_status ON research_threads(status)`);
+  await db.run(sql`CREATE INDEX IF NOT EXISTS idx_threads_created_by ON research_threads(created_by)`);
+  await db.run(sql`CREATE INDEX IF NOT EXISTS idx_threads_updated_at ON research_threads(updated_at)`);
+
+  await db.run(sql`
+    CREATE TABLE IF NOT EXISTS research_thread_events (
+      id TEXT PRIMARY KEY NOT NULL,
+      thread_id TEXT NOT NULL REFERENCES research_threads(id) ON DELETE CASCADE,
+      event_type TEXT NOT NULL,
+      actor_id TEXT NOT NULL,
+      factsheet_id TEXT REFERENCES factsheets(id) ON DELETE SET NULL,
+      person_id TEXT REFERENCES persons(id) ON DELETE SET NULL,
+      research_item_id TEXT REFERENCES research_items(id) ON DELETE SET NULL,
+      research_fact_id TEXT REFERENCES research_facts(id) ON DELETE SET NULL,
+      source_id TEXT REFERENCES sources(id) ON DELETE SET NULL,
+      link_id TEXT REFERENCES factsheet_links(id) ON DELETE SET NULL,
+      reason TEXT,
+      payload_json TEXT,
+      occurred_at TEXT NOT NULL
+    )
+  `);
+  await db.run(sql`CREATE INDEX IF NOT EXISTS idx_thread_events_thread ON research_thread_events(thread_id, occurred_at)`);
+  await db.run(sql`CREATE INDEX IF NOT EXISTS idx_thread_events_factsheet ON research_thread_events(factsheet_id)`);
+  await db.run(sql`CREATE INDEX IF NOT EXISTS idx_thread_events_person ON research_thread_events(person_id)`);
 
   await db.run(sql`
     CREATE TABLE IF NOT EXISTS person_summary (

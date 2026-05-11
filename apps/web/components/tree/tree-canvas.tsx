@@ -1732,7 +1732,10 @@ function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focus
                   seedPersonId: personId,
                 }),
               }).then(r => r.json());
-              if (!created?.id) throw new Error('thread create failed');
+              if (!created?.id) {
+                const serverMessage = typeof created?.error === 'string' ? created.error : null;
+                throw new Error(serverMessage ?? 'thread create failed');
+              }
               await fetch('/api/research/threads/active', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
