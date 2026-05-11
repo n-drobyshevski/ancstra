@@ -29,6 +29,8 @@ docs/superpowers/
 
 # Playwright/test outputs
 tests/test-results/
+# Local lint/test scratch output at repo root (e.g. `lint-current.txt`)
+/test-results/
 
 # CI build logs (root-level captured stdout)
 /build*.log
