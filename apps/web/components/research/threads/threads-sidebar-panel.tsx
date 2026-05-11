@@ -1,41 +1,24 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useActiveThread } from '@/lib/research/active-thread';
-import { useIsHydrated } from '@/hooks/use-is-hydrated';
+import { useThreadList } from '@/lib/research/use-thread-list';
 import { cn } from '@/lib/utils';
-
-interface ThreadListItem {
-  id: string;
-  title: string;
-  status: 'active' | 'paused' | 'resolved' | 'abandoned';
-  updatedAt: string;
-}
 
 /**
  * Compact list of all research threads for use in the tree right-sidebar's
  * "Threads" tab. Click a row to set that thread active. The currently active
  * thread (per the active-thread cookie) gets a subtle highlight.
+ *
+ * Backed by the shared `useThreadList` hook so the panel, the full
+ * `/research/threads` page, and the `ThreadHeaderBar` quick-switcher all
+ * read from one consistent fetch shape.
  */
 export function ThreadsSidebarPanel() {
-  const isHydrated = useIsHydrated();
   const { thread: activeThread, setActive } = useActiveThread();
-  const [threads, setThreads] = useState<ThreadListItem[] | null>(null);
+  const { threads, loading } = useThreadList();
 
-  useEffect(() => {
-    if (!isHydrated) return;
-    let cancelled = false;
-    fetch('/api/research/threads')
-      .then(r => r.json())
-      .then(b => {
-        if (!cancelled) setThreads(b.threads ?? []);
-      })
-      .catch(() => { if (!cancelled) setThreads([]); });
-    return () => { cancelled = true; };
-  }, [isHydrated]);
-
-  if (threads === null) {
+  if (loading) {
     return (
       <div className="px-3 py-4 text-xs text-muted-foreground">
         <Loader2 className="size-3 animate-spin inline mr-2" />
@@ -44,7 +27,7 @@ export function ThreadsSidebarPanel() {
     );
   }
 
-  if (threads.length === 0) {
+  if (!threads || threads.length === 0) {
     return (
       <div className="px-3 py-4 text-xs text-muted-foreground">
         No research threads yet. Right-click a person on the canvas to start one.

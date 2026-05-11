@@ -15,6 +15,7 @@ import {
   LogOut,
   ExternalLink,
   FileStack,
+  Workflow,
   ShieldCheck,
   ChevronDown,
   MoreHorizontal,
@@ -56,6 +57,7 @@ type NavItemKey =
   | 'tree'
   | 'research'
   | 'factsheets'
+  | 'threads'
   | 'importExport'
   | 'activity'
   | 'dataQuality';
@@ -89,6 +91,12 @@ const researchItems: NavItem[] = [
     key: 'factsheets',
     href: '/research/factsheets',
     icon: FileStack,
+    permission: 'ai:research',
+  },
+  {
+    key: 'threads',
+    href: '/research/threads',
+    icon: Workflow,
     permission: 'ai:research',
   },
 ];

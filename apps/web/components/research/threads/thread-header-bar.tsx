@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useActiveThread } from '@/lib/research/active-thread';
+import { ThreadQuickSwitcher } from './thread-quick-switcher';
 
 export function ThreadHeaderBar() {
   const { thread, loading, setActive } = useActiveThread();
@@ -29,29 +30,35 @@ export function ThreadHeaderBar() {
   return (
     <div className="sticky top-0 z-30 border-b bg-amber-50 px-4 py-1.5 dark:bg-amber-950/30">
       <div className="flex items-center justify-between gap-3 text-sm">
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center gap-1 min-w-0">
           <Notebook className="size-4 shrink-0" />
           <span className="font-medium shrink-0">Working on:</span>
           <Link href={`/research/threads/${thread.id}`} className="truncate hover:underline">
             {thread.title}
           </Link>
+          <ThreadQuickSwitcher className="shrink-0" />
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button size="sm" variant="ghost" className="h-7 gap-1 shrink-0">
-              Actions
-              <ChevronDown className="size-3" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => setActive(null)}>Clear active thread</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => transition('paused')}>Pause</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => transition('resolved')}>Resolve</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => transition('abandoned')} className="text-destructive">
-              Abandon
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex items-center gap-1 shrink-0">
+          <Button size="sm" variant="ghost" asChild className="h-7 hidden sm:inline-flex">
+            <Link href="/research/threads">View all →</Link>
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="ghost" className="h-7 gap-1">
+                Actions
+                <ChevronDown className="size-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setActive(null)}>Clear active thread</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => transition('paused')}>Pause</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => transition('resolved')}>Resolve</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => transition('abandoned')} className="text-destructive">
+                Abandon
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
     </div>
   );
