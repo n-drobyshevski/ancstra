@@ -31,7 +31,12 @@ export default function DashboardLayout({
       <PagePadding>
         <div className="space-y-4 md:space-y-6">
           {hero}
-          <div className="grid gap-4 md:gap-6 lg:grid-cols-[1fr_320px]">
+          {/* `grid-cols-1` is essential below `lg:`: it expands to
+              `grid-template-columns: repeat(1, minmax(0, 1fr))`, which lets the
+              `min-w-0 flex-1` chains inside cards (e.g. Recent Persons names)
+              actually shrink. Without it, mobile gets implicit min-content
+              sizing and long Cyrillic surnames push a horizontal scrollbar. */}
+          <div className="grid gap-4 md:gap-6 grid-cols-1 lg:grid-cols-[1fr_320px]">
             <div className="min-w-0 space-y-4 md:space-y-6">{primary}</div>
             <div className="space-y-4 md:space-y-6">{aside}</div>
           </div>

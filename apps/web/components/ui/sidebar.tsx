@@ -370,6 +370,12 @@ function Sidebar({
   }
 
   return (
+    // suppressHydrationWarning: several common browser extensions
+    // (Grammarly/LanguageTool/Dark Reader and friends) mutate elements
+    // matching nav-like data attributes between SSR and hydration, which
+    // triggers a recoverable hydration warning here in dev. The tree
+    // regenerates on the client correctly either way; this just silences
+    // the noise on the one element extensions touch.
     <div
       className="group peer hidden text-sidebar-foreground md:block"
       data-state={state}
@@ -377,6 +383,7 @@ function Sidebar({
       data-variant={variant}
       data-side={side}
       data-slot="sidebar"
+      suppressHydrationWarning
     >
       {/* This is what handles the sidebar gap on desktop */}
       <div
