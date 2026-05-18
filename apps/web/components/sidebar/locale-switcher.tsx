@@ -1,7 +1,7 @@
 'use client';
 
 import { Languages } from 'lucide-react';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { usePathname, useRouter } from 'next/navigation';
 import { useTransition } from 'react';
 import {
@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { routing, type Locale } from '@/i18n/routing';
+import { cn } from '@/lib/utils';
 
 const LOCALE_LABELS: Record<Locale, string> = {
   en: 'English',
@@ -38,12 +39,18 @@ function writeLocaleCookie(locale: Locale): void {
  * existing locale prefix if present, and push to the new prefix. This
  * preserves the in-route path (so /persons/abc stays at /persons/abc but
  * under /ru/persons/abc).
+ *
+ * Layout: dropdown menu on desktop (≥md), inline 2-column card grid on
+ * mobile. CSS-only gate (hidden md:block / md:hidden) — no JS viewport
+ * detection — so the SSR/CSR markup matches and Radix's popper never has
+ * to open inside the narrow mobile drawer or bottom sheet.
  */
 export function LocaleSwitcher() {
   const currentLocale = useLocale() as Locale;
   const pathname = usePathname();
   const router = useRouter();
   const [, startTransition] = useTransition();
+  const t = useTranslations('common.localeSwitcher');
 
   function switchTo(next: Locale) {
     if (next === currentLocale) return;
@@ -72,46 +79,93 @@ export function LocaleSwitcher() {
   }
 
   return (
-    <SidebarMenuItem>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <SidebarMenuButton
-            tooltip={LOCALE_LABELS[currentLocale]}
-            aria-haspopup="menu"
-          >
-            <Languages />
-            <span className="truncate">{LOCALE_LABELS[currentLocale]}</span>
-          </SidebarMenuButton>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent
-          side="right"
-          align="end"
-          sideOffset={8}
-          className="min-w-44"
-        >
-          <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
-            {LOCALE_LABELS[currentLocale]}
-          </DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          {routing.locales.map((loc) => (
-            <DropdownMenuItem
-              key={loc}
-              onSelect={() => switchTo(loc)}
-              aria-checked={loc === currentLocale}
-              role="menuitemradio"
-              className="gap-2"
+    <>
+      {/* Desktop: dropdown menu */}
+      <SidebarMenuItem className="hidden md:block">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <SidebarMenuButton
+              size="sm"
+              tooltip={LOCALE_LABELS[currentLocale]}
+              title={LOCALE_LABELS[currentLocale]}
+              aria-label={LOCALE_LABELS[currentLocale]}
+              aria-haspopup="menu"
             >
-              <span className="text-base leading-none" aria-hidden>
-                {LOCALE_FLAGS[loc]}
-              </span>
-              <span className="flex-1">{LOCALE_LABELS[loc]}</span>
-              {loc === currentLocale && (
-                <span className="text-xs text-muted-foreground">✓</span>
-              )}
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </SidebarMenuItem>
+              <Languages />
+              <span className="truncate font-medium">{currentLocale.toUpperCase()}</span>
+            </SidebarMenuButton>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            side="right"
+            align="end"
+            sideOffset={8}
+            className="min-w-44"
+          >
+            <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+              {LOCALE_LABELS[currentLocale]}
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {routing.locales.map((loc) => (
+              <DropdownMenuItem
+                key={loc}
+                onSelect={() => switchTo(loc)}
+                aria-checked={loc === currentLocale}
+                role="menuitemradio"
+                className="gap-2"
+              >
+                <span className="text-base leading-none" aria-hidden>
+                  {LOCALE_FLAGS[loc]}
+                </span>
+                <span className="flex-1">{LOCALE_LABELS[loc]}</span>
+                {loc === currentLocale && (
+                  <span className="text-xs text-muted-foreground">✓</span>
+                )}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </SidebarMenuItem>
+
+      {/* Mobile: compact inline segmented control */}
+      <SidebarMenuItem className="md:hidden">
+        <div className="flex items-center gap-2 px-2 py-1">
+          <Languages
+            className="size-4 shrink-0 text-sidebar-foreground/60"
+            aria-hidden
+          />
+          <span className="sr-only">{t('label')}</span>
+          <div
+            role="radiogroup"
+            aria-label={t('label')}
+            className="flex h-10 min-w-0 flex-1 items-stretch rounded-md border border-sidebar-border bg-sidebar-accent/10 p-0.5"
+          >
+            {routing.locales.map((loc) => {
+              const isActive = loc === currentLocale;
+              return (
+                <button
+                  key={loc}
+                  type="button"
+                  role="radio"
+                  aria-checked={isActive}
+                  onClick={() => switchTo(loc)}
+                  className={cn(
+                    'inline-flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-sm px-2 text-xs font-medium transition-colors',
+                    'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-sidebar-ring',
+                    isActive
+                      ? 'bg-sidebar text-sidebar-accent-foreground shadow-sm'
+                      : 'text-sidebar-foreground/70 active:bg-sidebar-accent/30',
+                  )}
+                >
+                  <span className="text-sm leading-none" aria-hidden>
+                    {LOCALE_FLAGS[loc]}
+                  </span>
+                  <span className="truncate">{LOCALE_LABELS[loc]}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </SidebarMenuItem>
+    </>
   );
 }

@@ -28,6 +28,9 @@
       "viewer": "Наблюдатель"
     }
   },
+  "localeSwitcher": {
+    "label": "Язык"
+  },
   "sexLabels": {
     "M": "Мужской",
     "F": "Женский",

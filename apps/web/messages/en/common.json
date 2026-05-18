@@ -28,6 +28,9 @@
       "viewer": "Viewer"
     }
   },
+  "localeSwitcher": {
+    "label": "Language"
+  },
   "sexLabels": {
     "M": "Male",
     "F": "Female",
