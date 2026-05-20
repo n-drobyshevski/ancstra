@@ -3,6 +3,7 @@ import { Head } from 'nextra/components';
 import { getPageMap } from 'nextra/page-map';
 import 'nextra-theme-docs/style.css';
 import { notFound } from 'next/navigation';
+import type { PageMapItem } from 'nextra';
 import type { ReactNode } from 'react';
 
 const LOCALES = ['en', 'ru'] as const;
@@ -38,7 +39,23 @@ export default async function LangLayout({
   const { lang } = await params;
   if (!LOCALES.includes(lang as Locale)) notFound();
   const locale = lang as Locale;
-  const pageMap = await getPageMap(`/${locale}`);
+  // Nextra's ConfigProvider crashes when pageMap[0] is undefined, which happens
+  // when a locale has no translated pages yet (empty pageMap) or only empty
+  // folder stubs (e.g. a research/_meta.ts with no sibling MDX files).
+  // Fall back to the EN page map so the Layout renders cleanly; the page
+  // component will still call notFound() for missing locale content.
+  function stripEmptyFolders(items: PageMapItem[]): PageMapItem[] {
+    return items.flatMap((item) => {
+      if ('children' in item) {
+        const children = stripEmptyFolders(item.children as PageMapItem[]);
+        return children.length > 0 ? [{ ...item, children }] : [];
+      }
+      return [item];
+    });
+  }
+  const rawPageMap = await getPageMap(`/${locale}`);
+  const localePageMap = stripEmptyFolders(rawPageMap);
+  const pageMap = localePageMap.length > 0 ? localePageMap : await getPageMap('/en');
 
   return (
     <html lang={locale} dir="ltr" suppressHydrationWarning>

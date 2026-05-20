@@ -1,4 +1,5 @@
 import { generateStaticParamsFor, importPage } from 'nextra/pages';
+import { notFound } from 'next/navigation';
 import { useMDXComponents } from '../../../mdx-components';
 
 export const generateStaticParams = generateStaticParamsFor('mdxPath');
@@ -20,9 +21,13 @@ export async function generateMetadata(props: {
   params: Promise<{ lang: string; mdxPath?: string[] }>;
 }) {
   const { lang, mdxPath } = await props.params;
-  const { metadata } = await importPage(mdxPath, lang);
+  const page = await importPage(mdxPath, lang).catch((err: unknown) => {
+    if (err instanceof Error && err.message?.startsWith('NEXT_HTTP_ERROR_FALLBACK')) throw err;
+    return null;
+  });
+  if (!page) notFound();
   return {
-    ...metadata,
+    ...page.metadata,
     alternates: {
       canonical: pathFor(lang, mdxPath),
       languages: {
@@ -40,7 +45,11 @@ export default async function Page(props: {
   params: Promise<{ lang: string; mdxPath?: string[] }>;
 }) {
   const { lang, mdxPath } = await props.params;
-  const result = await importPage(mdxPath, lang);
+  const result = await importPage(mdxPath, lang).catch((err: unknown) => {
+    if (err instanceof Error && err.message?.startsWith('NEXT_HTTP_ERROR_FALLBACK')) throw err;
+    return null;
+  });
+  if (!result) notFound();
   const { default: MDXContent, ...rest } = result;
   return (
     <Wrapper {...rest}>
