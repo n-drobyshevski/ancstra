@@ -6,7 +6,8 @@
     "dev": "next dev --port 3002",
     "build": "next build",
     "start": "next start",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "translate": "tsx --env-file=../../.env.local scripts/translate.ts"
   },
   "dependencies": {
     "next": "^15.3.0",
@@ -16,8 +17,12 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@ai-sdk/anthropic": "^3.0.66",
     "@types/node": "^22",
     "@types/react": "^19",
+    "ai": "^6.0.145",
+    "gray-matter": "^4.0.3",
+    "tsx": "^4.19.2",
     "typescript": "^5"
   }
 }
