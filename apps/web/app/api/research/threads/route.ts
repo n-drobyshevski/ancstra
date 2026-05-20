@@ -1,18 +1,25 @@
 import { NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
 import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
-import { createThread, listThreads } from '@ancstra/research';
+import { createThread } from '@ancstra/research';
 import type { ThreadStatus } from '@ancstra/research';
+import { getCachedThreadList } from '@/lib/research/thread-loaders';
 
 export async function GET(request: Request) {
   try {
-    const { familyDb } = await withAuth('ai:research', request);
+    const { ctx } = await withAuth('ai:research', request);
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status') as ThreadStatus | null;
     const createdBy = searchParams.get('createdBy');
-    const rows = await listThreads(familyDb, {
+    const q = searchParams.get('q');
+    // Route into the cached loader so the response is served from the
+    // Next.js Data Cache when the (dbFilename, filters) tuple hasn't
+    // changed. Mutations elsewhere already call `revalidateTag('threads-list')`
+    // so the cache stays consistent automatically.
+    const rows = await getCachedThreadList(ctx.dbFilename, {
       status: status ?? undefined,
       createdBy: createdBy ?? undefined,
+      q: q && q.trim().length > 0 ? q.trim() : undefined,
     });
     return NextResponse.json({ threads: rows });
   } catch (err) {

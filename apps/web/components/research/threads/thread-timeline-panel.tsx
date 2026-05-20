@@ -57,29 +57,60 @@ const EVENT_ICON: Record<string, string> = {
   thread_abandoned: '🗑',
 };
 
+/**
+ * Latest-first paginated timeline. Initial page (50 events) loads on
+ * mount; older pages append via the "Load older events" button using
+ * the opaque `nextCursor` from the server. Adding a new note prepends
+ * to the top and is rendered immediately without a full refetch.
+ */
 export function ThreadTimelinePanel({ threadId }: ThreadTimelinePanelProps) {
   const [events, setEvents] = useState<ThreadEvent[]>([]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [note, setNote] = useState('');
   const [posting, setPosting] = useState(false);
 
-  const refresh = useCallback(async () => {
+  // Load the first page (latest events). Replaces `events` rather than
+  // appending so refresh-after-mutation always returns to a clean state.
+  const loadFirstPage = useCallback(async () => {
+    setLoading(true);
     try {
-      const res = await fetch(`/api/research/threads/${threadId}/events`);
+      const res = await fetch(`/api/research/threads/${threadId}/events?limit=50`);
       if (!res.ok) {
         toast.error('Failed to load timeline');
         return;
       }
       const data = await res.json();
       setEvents(data.events ?? []);
+      setNextCursor(data.nextCursor ?? null);
     } finally {
       setLoading(false);
     }
   }, [threadId]);
 
+  // Append the next page (events older than the last visible row).
+  const loadMore = useCallback(async () => {
+    if (!nextCursor || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const url = `/api/research/threads/${threadId}/events?limit=50&cursor=${encodeURIComponent(nextCursor)}`;
+      const res = await fetch(url);
+      if (!res.ok) {
+        toast.error('Failed to load older events');
+        return;
+      }
+      const data = await res.json();
+      setEvents(prev => [...prev, ...(data.events ?? [])]);
+      setNextCursor(data.nextCursor ?? null);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [threadId, nextCursor, loadingMore]);
+
   useEffect(() => {
-    refresh();
-  }, [refresh]);
+    void loadFirstPage();
+  }, [loadFirstPage]);
 
   const addNote = async () => {
     if (!note.trim()) return;
@@ -94,8 +125,12 @@ export function ThreadTimelinePanel({ threadId }: ThreadTimelinePanelProps) {
         toast.error('Failed to add note', { description: await res.text() });
         return;
       }
+      const created: ThreadEvent = await res.json();
+      // Optimistic prepend: the new event is always the latest, so it
+      // belongs at the top in our DESC ordering. Avoids a full refetch
+      // that would otherwise wipe any "Load older" pages.
+      setEvents(prev => [created, ...prev]);
       setNote('');
-      await refresh();
     } finally {
       setPosting(false);
     }
@@ -129,6 +164,21 @@ export function ThreadTimelinePanel({ threadId }: ThreadTimelinePanelProps) {
               </div>
             </li>
           ))
+        )}
+        {nextCursor && (
+          <li className="pt-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={loadMore}
+              disabled={loadingMore}
+              className="w-full text-xs text-muted-foreground"
+            >
+              {loadingMore ? <Loader2 className="size-3 animate-spin mr-1" /> : null}
+              {loadingMore ? 'Loading…' : 'Load older events'}
+            </Button>
+          </li>
         )}
       </ul>
       <div className="border-t pt-3">

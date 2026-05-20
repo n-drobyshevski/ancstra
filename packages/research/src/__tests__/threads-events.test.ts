@@ -3,7 +3,7 @@ import { createTestCentralDb, type TestCentralDb } from '@ancstra/db/test-fixtur
 import { eq } from 'drizzle-orm';
 import { researchThreads } from '@ancstra/db';
 import { createThread } from '../threads/create';
-import { addEvent, getThreadTimeline } from '../threads/events';
+import { addEvent, getThreadTimeline, getThreadTimelinePage } from '../threads/events';
 
 const DDL = `
   CREATE TABLE research_threads (
@@ -119,5 +119,42 @@ describe('getThreadTimeline (M2M)', () => {
     await addEvent(db as any, { threadId: t.id, eventType: 'factsheet_created', actorId: 'u1' });
     const events = await getThreadTimeline(db as any, t.id);
     expect(events.map(e => e.eventType)).toEqual(['thread_started', 'note_added', 'factsheet_created']);
+  });
+});
+
+describe('getThreadTimelinePage (cursor-paginated, DESC)', () => {
+  it('returns newest-first and surfaces nextCursor when more rows exist', async () => {
+    const t = await createThread(db as any, { title: 'T', createdBy: 'u1' });
+    // Insert 4 events with strictly increasing occurredAt (5ms apart)
+    await addEvent(db as any, { threadId: t.id, eventType: 'thread_started', actorId: 'u1' });
+    await new Promise(r => setTimeout(r, 5));
+    await addEvent(db as any, { threadId: t.id, eventType: 'note_added', actorId: 'u1', reason: 'first note' });
+    await new Promise(r => setTimeout(r, 5));
+    await addEvent(db as any, { threadId: t.id, eventType: 'note_added', actorId: 'u1', reason: 'second note' });
+    await new Promise(r => setTimeout(r, 5));
+    await addEvent(db as any, { threadId: t.id, eventType: 'factsheet_created', actorId: 'u1' });
+
+    const page1 = await getThreadTimelinePage(db as any, t.id, { limit: 2 });
+    expect(page1.events).toHaveLength(2);
+    // DESC by occurredAt → latest first
+    expect(page1.events[0].eventType).toBe('factsheet_created');
+    expect(page1.events[1].reason).toBe('second note');
+    expect(page1.nextCursor).not.toBeNull();
+
+    const page2 = await getThreadTimelinePage(db as any, t.id, { limit: 2, cursor: page1.nextCursor! });
+    expect(page2.events).toHaveLength(2);
+    expect(page2.events[0].reason).toBe('first note');
+    expect(page2.events[1].eventType).toBe('thread_started');
+    expect(page2.nextCursor).toBeNull();
+  });
+
+  it('returns nextCursor=null when the page exactly drains the table', async () => {
+    const t = await createThread(db as any, { title: 'T', createdBy: 'u1' });
+    await addEvent(db as any, { threadId: t.id, eventType: 'note_added', actorId: 'u1' });
+    await addEvent(db as any, { threadId: t.id, eventType: 'note_added', actorId: 'u1' });
+
+    const page = await getThreadTimelinePage(db as any, t.id, { limit: 2 });
+    expect(page.events).toHaveLength(2);
+    expect(page.nextCursor).toBeNull();
   });
 });

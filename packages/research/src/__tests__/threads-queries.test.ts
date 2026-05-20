@@ -48,6 +48,37 @@ describe('listThreads', () => {
     const list = await listThreads(db as any, { createdBy: 'u2' });
     expect(list.map(t => t.title)).toEqual(['B']);
   });
+
+  describe('q filter (case-insensitive title LIKE)', () => {
+    it('returns matching titles regardless of case', async () => {
+      await createThread(db as any, { title: 'Eleonora WWII trail', createdBy: 'u1' });
+      await createThread(db as any, { title: 'Lindgren parish', createdBy: 'u1' });
+      await createThread(db as any, { title: 'DNA Match — Drobyshevskij', createdBy: 'u1' });
+
+      const lower = await listThreads(db as any, { q: 'eleonora' });
+      const upper = await listThreads(db as any, { q: 'DNA' });
+      const mid = await listThreads(db as any, { q: 'parish' });
+
+      expect(lower.map(t => t.title)).toEqual(['Eleonora WWII trail']);
+      expect(upper.map(t => t.title)).toEqual(['DNA Match — Drobyshevskij']);
+      expect(mid.map(t => t.title)).toEqual(['Lindgren parish']);
+    });
+
+    it('returns empty when nothing matches', async () => {
+      await createThread(db as any, { title: 'A', createdBy: 'u1' });
+      const list = await listThreads(db as any, { q: 'zzz-no-match-zzz' });
+      expect(list).toEqual([]);
+    });
+
+    it('treats empty/whitespace q as no filter', async () => {
+      await createThread(db as any, { title: 'A', createdBy: 'u1' });
+      await createThread(db as any, { title: 'B', createdBy: 'u1' });
+      const empty = await listThreads(db as any, { q: '' });
+      const blank = await listThreads(db as any, { q: '   ' });
+      expect(empty).toHaveLength(2);
+      expect(blank).toHaveLength(2);
+    });
+  });
 });
 
 describe('getThread', () => {

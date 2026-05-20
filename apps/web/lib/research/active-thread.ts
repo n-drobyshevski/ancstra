@@ -38,12 +38,10 @@ export function useActiveThread() {
       body: JSON.stringify({ threadId }),
     });
     if (!res.ok) throw new Error(`Failed to set active thread: ${res.status}`);
-    if (threadId) {
-      const fresh = await fetch(`/api/research/threads/${threadId}`).then(r => r.json());
-      setThread(fresh);
-    } else {
-      setThread(null);
-    }
+    // PUT now returns the resolved thread directly — skip the
+    // follow-up GET. Halves the network round-trips on switch.
+    const data = (await res.json()) as { threadId: string | null; thread: ActiveThread | null };
+    setThread(data.thread);
   }, []);
 
   return { thread, loading, setActive };

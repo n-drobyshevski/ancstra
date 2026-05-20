@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useActiveThread } from '@/lib/research/active-thread';
-import type { ThreadStatus } from '@/lib/research/use-thread-list';
+import type { ThreadListItem, ThreadStatus } from '@/lib/research/use-thread-list';
 
 interface ThreadEventLite {
   id: string;
@@ -29,6 +29,12 @@ interface ThreadDetail {
 interface ThreadPreviewPaneProps {
   /** When empty, the pane renders a friendly placeholder. */
   threadId: string;
+  /**
+   * When the parent list already has the thread row in memory, pass it
+   * here to skip the GET /threads/:id fetch on selection. The events
+   * fetch still runs because the list payload doesn't carry events.
+   */
+  initialThread?: ThreadListItem | null;
 }
 
 const STATUS_VARIANT: Record<ThreadStatus, 'default' | 'secondary' | 'outline'> = {
@@ -42,8 +48,22 @@ const STATUS_VARIANT: Record<ThreadStatus, 'default' | 'secondary' | 'outline'> 
 // status, summary, recent events) but read-only and compact, so a desktop
 // user can scan many threads quickly. "Open full" navigates to the full
 // detail page where summary editing + note-adding live.
-export function ThreadPreviewPane({ threadId }: ThreadPreviewPaneProps) {
-  const [detail, setDetail] = useState<ThreadDetail | null | undefined>(undefined);
+export function ThreadPreviewPane({ threadId, initialThread = null }: ThreadPreviewPaneProps) {
+  // If the parent provided the thread row from the list, seed `detail`
+  // synchronously so the pane renders immediately without a network
+  // roundtrip. We still kick off the full GET when no seed is given
+  // (e.g. the URL points at a thread that's not in the current filter).
+  const seed: ThreadDetail | null = initialThread
+    ? {
+        id: initialThread.id,
+        title: initialThread.title,
+        status: initialThread.status,
+        summary: initialThread.summary,
+        updatedAt: initialThread.updatedAt,
+      }
+    : null;
+
+  const [detail, setDetail] = useState<ThreadDetail | null | undefined>(seed ?? undefined);
   const [events, setEvents] = useState<ThreadEventLite[] | null>(null);
   const { thread: activeThread, setActive } = useActiveThread();
   const [activating, setActivating] = useState(false);
@@ -51,19 +71,29 @@ export function ThreadPreviewPane({ threadId }: ThreadPreviewPaneProps) {
   useEffect(() => {
     if (!threadId) return;
     let cancelled = false;
-    setDetail(undefined);
+
+    // Re-seed from props when the selection changes so the header renders
+    // instantly. If no seed is available we fall back to the spinner state.
+    setDetail(seed ?? undefined);
     setEvents(null);
 
-    fetch(`/api/research/threads/${threadId}`)
-      .then(async r => {
-        if (!r.ok) {
-          if (!cancelled) setDetail(null);
-          return;
-        }
-        const data = await r.json();
-        if (!cancelled) setDetail(data);
-      })
-      .catch(() => { if (!cancelled) setDetail(null); });
+    // Only fetch the full thread if we don't have a seed — the seed is
+    // missing the eventCount, but a) eventCount appears in the preview as
+    // a "· N events" tagline and b) the list query is the same row source
+    // so showing the count is a future enhancement. For now skip the
+    // GET entirely when seeded.
+    if (!seed) {
+      fetch(`/api/research/threads/${threadId}`)
+        .then(async r => {
+          if (!r.ok) {
+            if (!cancelled) setDetail(null);
+            return;
+          }
+          const data = await r.json();
+          if (!cancelled) setDetail(data);
+        })
+        .catch(() => { if (!cancelled) setDetail(null); });
+    }
 
     fetch(`/api/research/threads/${threadId}/events`)
       .then(async r => {
@@ -77,7 +107,12 @@ export function ThreadPreviewPane({ threadId }: ThreadPreviewPaneProps) {
       .catch(() => { if (!cancelled) setEvents([]); });
 
     return () => { cancelled = true; };
-  }, [threadId]);
+    // seed is derived from initialThread which is itself a prop the
+    // parent recomputes; depending on threadId + initialThread.id is
+    // equivalent and avoids referencing the derived `seed` (which would
+    // change identity every render).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [threadId, initialThread?.id]);
 
   if (!threadId) {
     return (

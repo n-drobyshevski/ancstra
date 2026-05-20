@@ -1,14 +1,29 @@
 import { Suspense } from 'react';
 import { requirePagePermission } from '@/lib/auth/page-guard';
 import { PagePadding } from '@/components/page-padding';
-import { ThreadDetailClient } from '@/components/research/threads/thread-detail-client';
+import {
+  loadThread,
+  getCachedThreadPersons,
+} from '@/lib/research/thread-loaders';
+import { ThreadDetailView } from '@/components/research/threads/thread-detail-view';
 
-async function ThreadDetailContent({ params }: { params: Promise<{ id: string }> }) {
+async function ThreadDetailDataShell({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  await requirePagePermission('ai:research');
+  const ctx = await requirePagePermission('ai:research');
+
+  // Kick off both reads in parallel; neither is awaited here so the
+  // <Suspense> boundary owns the loading state and the client component
+  // resolves them via React 19's `use()` hook.
+  const threadPromise = loadThread(ctx.dbFilename, id);
+  const personsPromise = getCachedThreadPersons(ctx.dbFilename, id);
+
   return (
     <PagePadding>
-      <ThreadDetailClient threadId={id} />
+      <ThreadDetailView
+        threadId={id}
+        threadPromise={threadPromise}
+        personsPromise={personsPromise}
+      />
     </PagePadding>
   );
 }
@@ -20,7 +35,7 @@ export default function ThreadDetailPage({
 }) {
   return (
     <Suspense fallback={null}>
-      <ThreadDetailContent params={params} />
+      <ThreadDetailDataShell params={params} />
     </Suspense>
   );
 }

@@ -26,12 +26,16 @@ export async function PUT(request: Request) {
     const body = await request.json();
     const threadId: string | null = body.threadId ?? null;
 
+    // Resolve the new thread up-front so the client can read it directly
+    // from the PUT response — saves a follow-up GET /threads/:id on
+    // every switcher click (was 2 round-trips, now 1).
+    let thread = null;
     if (threadId) {
-      const t = await getThread(familyDb, threadId);
-      if (!t) return NextResponse.json({ error: 'thread not found' }, { status: 404 });
+      thread = await getThread(familyDb, threadId);
+      if (!thread) return NextResponse.json({ error: 'thread not found' }, { status: 404 });
     }
 
-    const res = NextResponse.json({ threadId });
+    const res = NextResponse.json({ threadId, thread });
     const name = cookieName(ctx.familyId);
     if (threadId) {
       res.cookies.set(name, threadId, {

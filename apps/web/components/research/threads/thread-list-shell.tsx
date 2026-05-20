@@ -1,13 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useTransition, useState, useEffect } from 'react';
+import { use, useEffect, useMemo, useState, useTransition } from 'react';
 import { useQueryStates } from 'nuqs';
-import { Search, Loader2, Notebook } from 'lucide-react';
+import { Search, Notebook } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import { useThreadList, type ThreadStatus } from '@/lib/research/use-thread-list';
 import { useActiveThread } from '@/lib/research/active-thread';
 import {
   threadsParsers,
@@ -16,7 +15,8 @@ import {
   type ThreadStatusFilter,
   type ThreadSortKey,
 } from '@/lib/research/threads-search-params';
-import { applyThreadSort, applyThreadSearch } from '@/lib/research/thread-list-utils';
+import { applyThreadSort } from '@/lib/research/thread-list-utils';
+import type { ThreadListItem } from '@/lib/research/use-thread-list';
 import { ThreadListRow } from './thread-list-row';
 import { ThreadPreviewPane } from './thread-preview-pane';
 
@@ -50,7 +50,21 @@ function useLg(): boolean {
   return isLg;
 }
 
-export function ThreadListShell() {
+interface ThreadListShellProps {
+  /**
+   * Cached thread list promise streamed from the server data shell.
+   * Resolved with React 19's `use()` so the surrounding <Suspense>
+   * boundary owns the loading state — keeps the client small and
+   * lets the Next.js Data Cache absorb repeat navigations.
+   */
+  threadsPromise: Promise<ThreadListItem[]>;
+}
+
+export function ThreadListShell({ threadsPromise }: ThreadListShellProps) {
+  // Suspends until the server-streamed promise resolves; the outer
+  // <Suspense fallback={<ThreadListSkeleton/>}> covers this.
+  const threads = use(threadsPromise);
+
   const [isPending, startTransition] = useTransition();
   const [params, setParams] = useQueryStates(threadsParsers, {
     shallow: false,
@@ -60,20 +74,22 @@ export function ThreadListShell() {
   const isLg = useLg();
   const { thread: activeThread } = useActiveThread();
 
-  // Server-side status filter when a single status is picked; 'all' is a
-  // client-side identity filter. We re-fetch on status change but the
-  // common case (one filter) is the cheapest payload.
-  const serverStatus: ThreadStatus | undefined = params.status === 'all' ? undefined : params.status;
-  const { threads, loading, error } = useThreadList({ status: serverStatus });
+  // Debounced commit so typing feels instant but URL/server fetch only
+  // fires after 300ms of stillness — keeps us from spamming the data
+  // cache on every keystroke.
+  const handleSearchCommit = (value: string) => {
+    if (value === params.q) return;
+    void setParams({ q: value });
+  };
 
-  const visible = useMemo(() => {
-    if (!threads) return [];
-    return applyThreadSort(applyThreadSearch(threads, params.q), params.sort);
-  }, [threads, params.q, params.sort]);
+  // Server already applied the q + status filters. Sort is client-side
+  // because changing it shouldn't trigger a refetch.
+  const visible = useMemo(() => applyThreadSort(threads, params.sort), [threads, params.sort]);
 
   // If the URL points at a thread that isn't in the current filter, drop
   // it silently so the preview pane shows the placeholder.
   const selectedId = visible.some(t => t.id === params.selected) ? params.selected : '';
+  const selectedThread = selectedId ? visible.find(t => t.id === selectedId) ?? null : null;
 
   const handleSelect = (id: string) => {
     void setParams({ selected: id });
@@ -87,7 +103,7 @@ export function ThreadListShell() {
     void setParams({ sort: next });
   };
 
-  const total = threads?.length ?? 0;
+  const total = threads.length;
 
   return (
     <div className="flex h-full flex-col gap-3">
@@ -96,26 +112,20 @@ export function ThreadListShell() {
         <div>
           <h1 className="text-xl font-semibold leading-tight">Research Threads</h1>
           <p className="text-xs text-muted-foreground">
-            {loading
-              ? 'Loading…'
-              : total === 0
-                ? 'No threads in this family yet.'
-                : `${total} thread${total === 1 ? '' : 's'}`}
+            {total === 0
+              ? 'No threads in this family yet.'
+              : `${total} thread${total === 1 ? '' : 's'}`}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="relative">
-            <Search className="absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
-            <Input
-              type="search"
-              inputMode="search"
-              placeholder="Search threads…"
-              aria-label="Search threads"
-              value={params.q}
-              onChange={(e) => setParams({ q: e.target.value })}
-              className="h-8 w-56 pl-7 text-sm"
-            />
-          </div>
+          {/* Keying on params.q resets the local input when the URL
+              changes externally (back/forward nav, deep link) without
+              needing a syncing useEffect. */}
+          <DebouncedSearchInput
+            key={params.q}
+            initialValue={params.q}
+            onCommit={handleSearchCommit}
+          />
         </div>
       </div>
 
@@ -175,15 +185,7 @@ export function ThreadListShell() {
         <div className="grid h-full lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
           {/* List */}
           <div className="overflow-y-auto">
-            {error ? (
-              <div className="p-4 text-sm text-destructive">
-                Failed to load threads. <button type="button" onClick={() => location.reload()} className="underline">Reload</button>
-              </div>
-            ) : loading ? (
-              <div className="flex items-center gap-2 p-4 text-sm text-muted-foreground">
-                <Loader2 className="size-4 animate-spin" aria-hidden /> Loading threads…
-              </div>
-            ) : visible.length === 0 ? (
+            {visible.length === 0 ? (
               <div className="flex h-full flex-col items-center justify-center gap-3 p-8 text-center">
                 <Notebook className="size-8 text-muted-foreground/40" aria-hidden />
                 <div className="space-y-1">
@@ -215,10 +217,49 @@ export function ThreadListShell() {
           {/* Preview — lg+ only. Below lg, row clicks navigate to the
               full detail page so we never show this column. */}
           <div className="hidden border-l border-border lg:block">
-            <ThreadPreviewPane threadId={selectedId} />
+            <ThreadPreviewPane threadId={selectedId} initialThread={selectedThread} />
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Search input that owns its own local value and emits the value to
+ * `onCommit` after 300ms of stillness. Mounted with `key={url-value}`
+ * by the parent so back/forward navigation resets it cleanly without
+ * a bidirectional sync effect.
+ */
+function DebouncedSearchInput({
+  initialValue,
+  onCommit,
+  delayMs = 300,
+}: {
+  initialValue: string;
+  onCommit: (value: string) => void;
+  delayMs?: number;
+}) {
+  const [value, setValue] = useState(initialValue);
+
+  useEffect(() => {
+    if (value === initialValue) return;
+    const timer = setTimeout(() => onCommit(value), delayMs);
+    return () => clearTimeout(timer);
+  }, [value, initialValue, onCommit, delayMs]);
+
+  return (
+    <div className="relative">
+      <Search className="absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
+      <Input
+        type="search"
+        inputMode="search"
+        placeholder="Search threads…"
+        aria-label="Search threads"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        className="h-8 w-56 pl-7 text-sm"
+      />
     </div>
   );
 }

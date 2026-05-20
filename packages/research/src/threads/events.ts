@@ -1,7 +1,7 @@
-import { eq, asc, sql } from 'drizzle-orm';
+import { and, eq, asc, desc, or, sql } from 'drizzle-orm';
 import { researchThreads, researchThreadEvents } from '@ancstra/db';
 import type { Database } from '@ancstra/db';
-import type { AddEventInput } from './types';
+import type { AddEventInput, ThreadTimelineCursor, ThreadTimelinePage } from './types';
 
 export async function addEvent(db: Database, input: AddEventInput) {
   // Application-level FK check (SQLite FK enforcement is opt-in)
@@ -65,4 +65,63 @@ export async function getThreadTimeline(db: Database, threadId: string, opts?: {
     .limit(limit)
     .offset(offset)
     .all();
+}
+
+/**
+ * Cursor-based page over thread events, ordered NEWEST-FIRST.
+ *
+ * Chosen for the UI use case ("Recent timeline", chat/feed style):
+ * the first page surfaces the latest activity, and "Load more"
+ * walks back through history.
+ *
+ * Cursor is a tuple `(occurredAt, id)` for stability when multiple
+ * events share a timestamp. The cursor identifies the LAST row of
+ * the previous page; the next page returns rows strictly older.
+ *
+ * Backed by `idx_thread_events_thread (threadId, occurredAt)` so it
+ * stays O(log n + page) at any scale.
+ *
+ * For AI tools that need chronological order for summarization, keep
+ * using `getThreadTimeline` (ASC, offset-based) which preserves the
+ * older API contract.
+ */
+export async function getThreadTimelinePage(
+  db: Database,
+  threadId: string,
+  opts: { limit?: number; cursor?: ThreadTimelineCursor } = {},
+): Promise<ThreadTimelinePage<Awaited<ReturnType<typeof getThreadTimeline>>[number]>> {
+  const limit = opts.limit ?? 50;
+  const cursor = opts.cursor;
+
+  // DESC scan; cursor advances BACKWARD in time (older than cursor):
+  //   (occurredAt < cursor.occurredAt)
+  //   OR (occurredAt == cursor.occurredAt AND id < cursor.id)
+  // Fetch limit+1 to detect another page without a second roundtrip.
+  const baseFilter = eq(researchThreadEvents.threadId, threadId);
+  const where = cursor
+    ? and(
+        baseFilter,
+        or(
+          sql`${researchThreadEvents.occurredAt} < ${cursor.occurredAt}`,
+          and(
+            eq(researchThreadEvents.occurredAt, cursor.occurredAt),
+            sql`${researchThreadEvents.id} < ${cursor.id}`,
+          ),
+        ),
+      )
+    : baseFilter;
+
+  const rows = await db.select().from(researchThreadEvents)
+    .where(where as any)
+    .orderBy(desc(researchThreadEvents.occurredAt), desc(researchThreadEvents.id))
+    .limit(limit + 1)
+    .all();
+
+  const hasMore = rows.length > limit;
+  const events = hasMore ? rows.slice(0, limit) : rows;
+  const last = events[events.length - 1];
+  const nextCursor: ThreadTimelineCursor | null = hasMore && last
+    ? { occurredAt: last.occurredAt, id: last.id }
+    : null;
+  return { events, nextCursor };
 }

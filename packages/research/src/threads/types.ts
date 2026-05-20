@@ -39,4 +39,27 @@ export interface AddEventInput {
 export interface ListThreadsFilters {
   status?: ThreadStatus;
   createdBy?: string;
+  /**
+   * Case-insensitive substring match against thread title.
+   * Matched server-side with LOWER(title) LIKE %q% to keep the list
+   * page from doing an O(n) JS scan on every keystroke.
+   */
+  q?: string;
+}
+
+export interface ThreadTimelineCursor {
+  occurredAt: string;
+  id: string;
+}
+
+export interface ThreadTimelinePage<E> {
+  events: E[];
+  nextCursor: ThreadTimelineCursor | null;
+}
+
+export interface ListPersonsTouchedOptions {
+  /** Max rows to return. Default 200. */
+  limit?: number;
+  /** Cursor: person id to start AFTER (lexical). */
+  after?: string;
 }
