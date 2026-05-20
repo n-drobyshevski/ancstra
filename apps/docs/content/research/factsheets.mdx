@@ -1,0 +1,66 @@
+import { Callout } from 'nextra/components'
+
+# Factsheets
+
+A **factsheet** is a structured hypothesis about a person, a couple, or an entire family unit. It is where you assemble evidence *before* committing anyone to your tree. Think of it as a working draft: you can edit it freely, link it to other factsheets, and dismiss it without consequence — until you promote it.
+
+<Callout type="important">
+Factsheets are not research items, and they are not tree persons. A **research item** is a raw document (a record, a URL, a pasted excerpt). A **tree person** is a confirmed entity in your family tree. A **factsheet** is the structured workspace in between, where facts pulled from items accumulate into a hypothesis about a person. See [How It Works → Working with Evidence](/how-it-works#working-with-evidence) for the item side of the boundary.
+</Callout>
+
+## Anatomy of a factsheet
+
+Each factsheet carries:
+
+- **Title** — a short name for the hypothesis, e.g. "Anna Müller (b. ~1842, Vienna)".
+- **Entity type** — `person`, `couple`, or `family_unit`. Most factsheets are persons; couples and family units are used when evidence describes a relationship as a whole (a marriage record, a household census entry).
+- **Status** — `draft`, `ready`, `promoted`, `merged`, or `dismissed`.
+- **Notes** — free-form context about the hypothesis.
+- **Facts** — the structured claims you've assigned to this factsheet.
+- **Links** — connections to other factsheets that express family relationships.
+- **`promotedPersonId`** — set once the factsheet has been promoted, pointing at the tree person it became.
+
+The factsheets list also shows a few derived counts so you can see at a glance which sheets need attention: fact count, link count, conflict count, and an "unanchored" flag (no facts have been tied to a person on the tree yet).
+
+## Facts on a factsheet
+
+Facts are the same 17 structured claim types you use everywhere else in Ancstra — name, birth date, birth place, death date, marriage place, occupation, residence, and so on. The full list and definitions live in [How It Works → Extracting Facts](/how-it-works#extracting-facts).
+
+When you extract a fact from a research item you can assign it to a factsheet. The fact retains its provenance — which item it came from, its confidence level (`high`, `medium`, `low`), and its extraction method (manual or AI). A single factsheet typically collects facts from many different research items as you gather evidence.
+
+### Conflicts
+
+When two facts of the same single-valued type disagree (e.g. two different birth dates), the factsheet flags a conflict. Multi-valued types like `residence`, `occupation`, and `child_name` are excluded from conflict detection — a person can legitimately have several of those.
+
+Each conflict shows the disagreeing values side by side. You resolve it by **accepting** one fact and **rejecting** the others. Unresolved single-valued conflicts will block promotion.
+
+## Factsheet links
+
+Factsheets reference each other through **links** to describe family relationships *before* anything is promoted. There are three link types:
+
+- **`parent_child`** — `from` is the parent, `to` is the child.
+- **`spouse`** — bidirectional partnership between two factsheets.
+- **`sibling`** — bidirectional, between siblings.
+
+Each link carries its own confidence level (`high`, `medium`, `low`) and optionally points at the specific fact that justified it (a `parent_name` fact in the child's factsheet, say).
+
+Ancstra can also suggest links automatically: if a factsheet has a `parent_name`, `spouse_name`, or `child_name` fact whose value matches the title of another factsheet, that pairing appears as a suggestion you can accept or ignore.
+
+Links matter because they make **cluster promotion** possible — promoting a whole family in one transaction, with the relationships wired between the resulting tree persons. See [Promoting to Tree](/research/promoting).
+
+## Status lifecycle
+
+```
+draft ──► ready ──► promoted
+   │         │   └─► merged
+   │         │
+   └─────────┴────► dismissed
+```
+
+- **`draft`** — the default state. Evidence is still being collected.
+- **`ready`** — you've signalled that the factsheet is complete enough to promote. (Promotion can be invoked from `draft` too; `ready` is a manual marker for your own workflow.)
+- **`promoted`** — the factsheet was promoted with mode `create`. `promotedPersonId` now points at the new tree person.
+- **`merged`** — the factsheet was promoted with mode `merge`. Its facts were folded into an existing tree person, and `promotedPersonId` points at that target.
+- **`dismissed`** — the hypothesis didn't pan out. Dismissed factsheets are kept (not deleted) so you can revisit your reasoning later. Dismissed factsheets cannot be promoted.
+
+Promotion is a one-way transition: once a factsheet is `promoted` or `merged` it cannot be promoted again.

@@ -1,0 +1,99 @@
+import { Steps, Callout } from 'nextra/components'
+
+# Promoting a Factsheet to the Tree
+
+Promotion is the moment a hypothesis becomes a confirmed person in your family tree. It's the one and only way data flows from the research workspace into the tree itself.
+
+<Callout type="important">
+There are **two distinct kinds of promotion** in Ancstra. Don't confuse them:
+
+- **Item promotion** — converts a research item into a formal source with citations attached to a person. Covered in [How It Works → Promoting to Sources](/how-it-works#promoting-to-sources).
+- **Factsheet promotion** — converts a factsheet into a tree person (or a whole family cluster). This is what this page is about.
+
+Both promotions are intentional, atomic, and one-way.
+</Callout>
+
+## Modes
+
+Factsheet promotion has two modes:
+
+### Create
+
+A new person is added to your tree from the factsheet. Ancstra:
+
+- Parses the `name` fact into given name and surname and writes a primary `birth` name record.
+- Walks the factsheet's date/place facts and creates events for each one: `birth_date` and `birth_place` collapse into a single `birth` event, the same for `death`, `marriage`, `immigration`, and `military_service`.
+- For each research item that contributed a fact, creates a `source` and a `source_citation` tying that source to the new person. Every fact carried over keeps a reference to its citation.
+- Updates the factsheet's status to `promoted` and sets `promotedPersonId` to the new person's id.
+
+### Merge
+
+The factsheet's facts and events are folded into an existing tree person you choose. Use this when the factsheet turns out to describe someone already in your tree. The flow is the same as `create` minus the new-person step — the existing person gains new events and source citations, and the factsheet's status becomes `merged`.
+
+You must supply the target person id when promoting in merge mode.
+
+## Cluster promotion
+
+When a factsheet is linked to others via `parent_child`, `spouse`, or `sibling` links, you can promote the **entire connected cluster** in one operation. This is how families enter the tree as a unit instead of one detached person at a time.
+
+Cluster promotion runs in two phases:
+
+1. **Phase 1 — promote each factsheet individually.** Ancstra walks every factsheet in the cluster (found by breadth-first search across links) and promotes each one in `create` mode, producing a new tree person for every factsheet.
+2. **Phase 2 — wire the relationships.** Once all persons exist, Ancstra walks the link graph again and creates the tree-side relationships:
+   - A `spouse` link becomes a **family** row joining the two persons.
+   - A `parent_child` link becomes a **child** row attached to a family for the parent. If the parent doesn't already have a family, one is created on the spot.
+
+All families and children records produced by cluster promotion are written with `validationStatus: 'confirmed'`. They are *not* routed through the `proposed_relationships` queue; that queue is for AI-suggested links between persons that already exist on the tree, not for the direct output of your own promotion action. See [How It Works → The Trust Boundary](/how-it-works#the-trust-boundary) for the broader picture.
+
+## The promotion walkthrough
+
+<Steps>
+### Open the factsheet
+
+Open the factsheet you want to promote from the Research workspace. Confirm the title, the entity type, and the facts that have accumulated.
+
+### Resolve any conflicts
+
+Open the factsheet's conflicts tab and resolve every disagreement on a single-valued fact type (birth date, death place, etc.). Accept the fact you believe and reject the others. Unresolved single-valued conflicts will block promotion.
+
+### Choose a mode
+
+Pick **Create** for a brand-new person, or **Merge** and select the target person from your tree if this factsheet describes someone already there.
+
+### Choose single vs cluster
+
+If the factsheet is linked to others, decide whether to promote just this one or the entire cluster. Cluster promotion is irreversible per factsheet — once a sheet inside the cluster is promoted, it can't be re-promoted later as part of a different group.
+
+### Confirm
+
+Confirm the promotion. Ancstra runs the whole operation in a single transaction. If an active research thread is attached, it records a `factsheet_promoted` event on that thread so the timeline reflects the moment.
+</Steps>
+
+## What happens to the factsheet afterwards
+
+After a successful promotion:
+
+- The factsheet's `status` becomes `promoted` (mode `create`) or `merged` (mode `merge`).
+- `promotedPersonId` points at the resulting tree person.
+- The factsheet remains visible in the research workspace as a record of the work that produced the person. It cannot be promoted again.
+
+## Why a promotion might be refused
+
+Ancstra checks promotability before running the transaction. A promotion is refused when any of these are true:
+
+- The factsheet is already `promoted` or `merged`.
+- The factsheet is `dismissed`.
+- The factsheet has no facts.
+- One or more single-valued fact conflicts are unresolved.
+
+The error message lists every blocker so you know exactly what to fix.
+
+## When not to promote
+
+Even when Ancstra *would* let you promote, you may not want to. Hold off when:
+
+- Key facts are missing — no name, no date, no place to anchor the person.
+- The evidence is weak — every fact is `low` confidence, or the only source is a single unverified URL.
+- A conflict is *technically* resolved but you accepted the wrong fact under pressure. Sleep on it.
+
+Factsheets are cheap and persistent. Leave a hypothesis as a draft for as long as you need.

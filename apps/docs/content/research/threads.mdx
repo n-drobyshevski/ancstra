@@ -1,0 +1,69 @@
+import { Steps, Callout } from 'nextra/components'
+
+# Research Threads
+
+A **research thread** is a chronological investigation journal for a single open question — "Who were Anna Müller's parents?", "Was this the same John Smith?", "Where did the Petrov family live between 1890 and 1920?". Every action you take inside a thread is recorded as an event, so the thread doubles as both a workspace and a record of your reasoning.
+
+Threads live entirely in the research workspace. Nothing inside a thread reaches the tree until you promote a factsheet (see [Promoting to Tree](/research/promoting)).
+
+## What's in a thread
+
+Each thread has:
+
+- **Title** — a one-line description of the question you are investigating.
+- **Status** — one of `active`, `paused`, `resolved`, or `abandoned`. New threads start `active`.
+- **Seed** — the starting point. A thread can be seeded from an existing person, an existing factsheet, or a research item. The seed is optional but recommended; it gives the thread a clear anchor.
+- **Summary** — free-form notes about the investigation. Useful when you come back to a paused thread weeks later.
+- **Timeline** — the ordered list of every event that has happened in this thread.
+
+## Timeline events
+
+Every meaningful action in a thread emits an event. The most common types:
+
+- **`thread_started`** — recorded once at creation.
+- **`item_attached`** — a research item (a record, a URL, a pasted document) was attached to the thread.
+- **`fact_extracted`** — a fact was extracted from one of the attached items, manually or by the AI assistant.
+- **`factsheet_created`** — a new factsheet was started inside this thread.
+- **`factsheet_linked`** — two factsheets were connected (parent–child, spouse, sibling).
+- **`mention_followed`** / **`mention_extracted`** — a name mentioned in evidence was investigated as a lead.
+- **`conflict_resolved`** / **`duplicate_resolved`** — disagreements between facts or factsheets were settled.
+- **`relationship_proposed`** — the AI assistant proposed a relationship between two existing persons (see [How It Works → Proposed Relationships](/how-it-works#proposed-relationships)).
+- **`factsheet_promoted`** — a factsheet was promoted to the tree from inside this thread.
+- **`note_added`** — a free-form note recorded by you.
+- **`thread_paused`** / **`thread_resolved`** / **`thread_abandoned`** — lifecycle transitions.
+
+Events are timestamped and ordered, so the timeline always reads as a story you can scroll backward through.
+
+## Starting a thread
+
+<Steps>
+### Pick a starting point
+
+Start from a person ("research this ancestor"), from an existing factsheet ("dig deeper on this hypothesis"), or from a research item you have just saved ("what does this document tell me?"). You can also start a thread with no seed if you are exploring something more open-ended.
+
+### Give the thread a title and an initial question
+
+The title is the question, not the answer. "Find Anna Müller's parents" beats "Müller family research" — it tells future-you when the thread is done.
+
+### Investigate
+
+Attach items, extract facts, build factsheets, link them together. Every step lands on the timeline automatically. The AI assistant can read the thread's context and suggest next steps along the way.
+</Steps>
+
+## Pausing, resolving, and abandoning
+
+A thread doesn't have to end in success. Lifecycle transitions:
+
+- **Pause** — you'll come back to this later. Paused threads stay editable; you can resume them, and resuming records a `note_added` event so the gap is visible on the timeline.
+- **Resolve** — the question is answered. The thread becomes read-only and is marked complete.
+- **Abandon** — the question turned out to be unanswerable, irrelevant, or a dead end. Like resolved, an abandoned thread is read-only; unlike resolved, it carries the explicit signal "I gave up on this".
+
+Resolved and abandoned threads stay searchable. Reopening a closed line of investigation usually means starting a *new* thread that links back to the old one in its summary.
+
+## When to start a new thread vs continue an existing one
+
+Keep one open question per thread. If you started out asking "who were Anna's parents?" and end up needing to verify whether Anna and Maria are the same person, that is a *new* thread — start it, and link to it from the first thread's summary.
+
+<Callout type="info">
+The reason threads stay narrow is the timeline. A thread that tracks four unrelated questions in parallel produces a timeline that is hard to read and impossible to summarise. Narrow threads are short, complete, and easy to resolve.
+</Callout>
