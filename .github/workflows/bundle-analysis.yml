@@ -2,9 +2,11 @@ name: Bundle Analysis
 
 on:
   push:
+    # Only `main` writes a bundle baseline. PRs into `dev` still run analyze
+    # and compare against the `main` baseline via restore-keys fallback.
     branches: [main, master]
   pull_request:
-    branches: [main, master]
+    branches: [main, master, dev]
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -52,14 +54,20 @@ jobs:
       - name: Extract bundle sizes
         run: node scripts/extract-bundle-sizes.mjs --next-dir apps/web/.next
 
-      # Restore the saved main-branch baseline (may be a cache miss on first run).
+      # Restore baseline matching the PR's target branch. For PRs into `main`
+      # this finds the canonical baseline; for PRs into `dev` it cache-misses
+      # and falls through to `bundle-baseline-main` (we never write a `dev`
+      # baseline). actions/cache/restore is read-only so the PR job can't
+      # accidentally overwrite the baseline with its own analyzer output.
       - name: Restore main baseline
         id: restore-baseline
-        uses: actions/cache@v5
+        uses: actions/cache/restore@v5
         with:
           path: /tmp/bundle-baseline
-          key: bundle-baseline-main
-          restore-keys: bundle-baseline-
+          key: bundle-baseline-${{ github.event.pull_request.base.ref }}
+          restore-keys: |
+            bundle-baseline-main
+            bundle-baseline-
 
       # Diff current against baseline and write bundle-report.md.
       # The script exits 0 even when no baseline exists — it posts a friendly

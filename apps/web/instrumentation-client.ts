@@ -5,6 +5,10 @@ Sentry.init({
 
   sendDefaultPii: true,
 
+  // Explicit env tag — set NEXT_PUBLIC_SENTRY_ENVIRONMENT per Vercel scope
+  // (production / development). Falls back to NODE_ENV when absent.
+  environment: process.env.NEXT_PUBLIC_SENTRY_ENVIRONMENT ?? process.env.NODE_ENV,
+
   // Prefer the NEXT_PUBLIC_ env var (set via Vercel / .env.local) so all
   // three configs (server, edge, client) stay in sync. Falls back to
   // 100 % in dev / 10 % in production when the var is absent.

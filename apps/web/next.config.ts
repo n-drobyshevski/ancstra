@@ -54,6 +54,12 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: false,
   },
+  devIndicators: {
+    // Default 'bottom-left' overlaps the sidebar footer's "More" collapsible.
+    // The dev toast's z-index is INT32_MAX so it wins hit-testing and
+    // silently eats clicks on anything in that corner.
+    position: 'bottom-right',
+  },
 };
 
 // Skip Sentry wrapper in local dev to avoid proxy compilation hang
