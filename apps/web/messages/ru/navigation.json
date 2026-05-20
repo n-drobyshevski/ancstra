@@ -19,20 +19,20 @@
     "platform": "Платформа",
     "settings": "Настройки",
     "help": "Помощь",
-    "signOut": "Выйти",
-    "more": "Ещё"
+    "signOut": "Выйти"
   },
   "groups": {
     "research": "Исследование",
-    "data": "Данные",
-    "analytics": "Аналитика"
+    "data": "Данные"
   },
   "tooltips": {
     "platformAdmin": "Администратор платформы",
     "settings": "Настройки",
     "help": "Помощь",
-    "signOut": "Выйти",
-    "more": "Дополнительно"
+    "signOut": "Выйти"
+  },
+  "userMenu": {
+    "label": "Меню аккаунта {name}"
   },
   "mobileDock": {
     "ariaLabel": "Основная навигация",

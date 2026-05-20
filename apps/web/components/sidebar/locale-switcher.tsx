@@ -4,6 +4,7 @@ import { Languages } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { usePathname, useRouter } from 'next/navigation';
 import { useTransition } from 'react';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,20 +33,32 @@ function writeLocaleCookie(locale: Locale): void {
   document.cookie = `NEXT_LOCALE=${locale}; path=/; max-age=${LOCALE_COOKIE_MAX_AGE}; samesite=lax`;
 }
 
+type Variant = 'sidebar' | 'header';
+
+interface LocaleSwitcherProps {
+  /**
+   * 'sidebar' (default): SidebarMenuItem dropdown on md+ and a 2-column inline
+   * segmented control on mobile — for the sidebar footer and the mobile
+   * tab-bar's More sheet, both of which expect SidebarMenu children.
+   *
+   * 'header': single ghost Button trigger styled to match ModeToggle for the
+   * app header. Renders identically across viewports.
+   */
+  variant?: Variant;
+}
+
 /**
- * Locale switcher rendered in the sidebar footer (next to lens-selector).
+ * Locale switcher. Strategy: client-side route swap — strip the current
+ * locale prefix from the pathname and push the new prefix. Preserves the
+ * in-route path so /persons/abc stays at /persons/abc but under /ru/.
  *
- * Strategy: client-side route swap. Use the current pathname, strip the
- * existing locale prefix if present, and push to the new prefix. This
- * preserves the in-route path (so /persons/abc stays at /persons/abc but
- * under /ru/persons/abc).
- *
- * Layout: dropdown menu on desktop (≥md), inline 2-column card grid on
- * mobile. CSS-only gate (hidden md:block / md:hidden) — no JS viewport
- * detection — so the SSR/CSR markup matches and Radix's popper never has
- * to open inside the narrow mobile drawer or bottom sheet.
+ * Sync NEXT_LOCALE cookie BEFORE navigation. Switching ru → en sends the
+ * request to /foo (no prefix); next-intl middleware then runs
+ * resolveLocaleFromPrefix which falls through to the cookie. A stale 'ru'
+ * cookie causes a 307 redirect /foo → /ru/foo, trapping the user in the old
+ * locale.
  */
-export function LocaleSwitcher() {
+export function LocaleSwitcher({ variant = 'sidebar' }: LocaleSwitcherProps = {}) {
   const currentLocale = useLocale() as Locale;
   const pathname = usePathname();
   const router = useRouter();
@@ -54,33 +67,70 @@ export function LocaleSwitcher() {
 
   function switchTo(next: Locale) {
     if (next === currentLocale) return;
-    // Strip leading /:locale segment if present
     const stripRe = new RegExp(`^/(?:${routing.locales.join('|')})(?=/|$)`);
     const cleanPath = pathname.replace(stripRe, '') || '/';
-    // localePrefix: 'as-needed' → default locale has no prefix
     const targetPath =
       next === routing.defaultLocale
         ? cleanPath
         : `/${next}${cleanPath === '/' ? '' : cleanPath}`;
 
-    // Sync NEXT_LOCALE cookie BEFORE navigation. Switching ru → en sends
-    // the request to /foo (no prefix); next-intl middleware then runs
-    // resolveLocaleFromPrefix which falls through to the cookie. A stale
-    // 'ru' cookie causes a 307 redirect /foo → /ru/foo, trapping the user
-    // in the old locale. Updating the cookie first lets the middleware
-    // resolve to the new locale and pass through.
     writeLocaleCookie(next);
 
     startTransition(() => {
       router.replace(targetPath);
-      // Hard refresh so server components re-render with the new locale
       router.refresh();
     });
   }
 
+  const items = routing.locales.map((loc) => (
+    <DropdownMenuItem
+      key={loc}
+      onSelect={() => switchTo(loc)}
+      aria-checked={loc === currentLocale}
+      role="menuitemradio"
+      className="gap-2"
+    >
+      <span className="text-base leading-none" aria-hidden>
+        {LOCALE_FLAGS[loc]}
+      </span>
+      <span className="flex-1">{LOCALE_LABELS[loc]}</span>
+      {loc === currentLocale && (
+        <span className="text-xs text-muted-foreground">✓</span>
+      )}
+    </DropdownMenuItem>
+  ));
+
+  if (variant === 'header') {
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-1.5 px-2"
+            aria-label={`${t('label')}: ${LOCALE_LABELS[currentLocale]}`}
+            aria-haspopup="menu"
+          >
+            <Languages className="size-4" />
+            <span className="text-xs font-medium">
+              {currentLocale.toUpperCase()}
+            </span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" sideOffset={8} className="min-w-44">
+          <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+            {LOCALE_LABELS[currentLocale]}
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          {items}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  }
+
   return (
     <>
-      {/* Desktop: dropdown menu */}
+      {/* Desktop sidebar: dropdown menu */}
       <SidebarMenuItem className="hidden md:block">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -105,28 +155,12 @@ export function LocaleSwitcher() {
               {LOCALE_LABELS[currentLocale]}
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            {routing.locales.map((loc) => (
-              <DropdownMenuItem
-                key={loc}
-                onSelect={() => switchTo(loc)}
-                aria-checked={loc === currentLocale}
-                role="menuitemradio"
-                className="gap-2"
-              >
-                <span className="text-base leading-none" aria-hidden>
-                  {LOCALE_FLAGS[loc]}
-                </span>
-                <span className="flex-1">{LOCALE_LABELS[loc]}</span>
-                {loc === currentLocale && (
-                  <span className="text-xs text-muted-foreground">✓</span>
-                )}
-              </DropdownMenuItem>
-            ))}
+            {items}
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>
 
-      {/* Mobile: compact inline segmented control */}
+      {/* Mobile sidebar: compact inline segmented control */}
       <SidebarMenuItem className="md:hidden">
         <div className="flex items-center gap-2 px-2 py-1">
           <Languages

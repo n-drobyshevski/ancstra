@@ -19,20 +19,20 @@
     "platform": "Platform",
     "settings": "Settings",
     "help": "Help",
-    "signOut": "Sign Out",
-    "more": "More"
+    "signOut": "Sign Out"
   },
   "groups": {
     "research": "Research",
-    "data": "Data",
-    "analytics": "Analytics"
+    "data": "Data"
   },
   "tooltips": {
     "platformAdmin": "Platform Admin",
     "settings": "Settings",
     "help": "Help",
-    "signOut": "Sign Out",
-    "more": "More options"
+    "signOut": "Sign Out"
+  },
+  "userMenu": {
+    "label": "Account menu for {name}"
   },
   "mobileDock": {
     "ariaLabel": "Primary navigation",

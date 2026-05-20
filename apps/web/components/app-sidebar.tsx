@@ -12,22 +12,16 @@ import {
   Activity,
   BarChart3,
   Settings,
-  LogOut,
-  ExternalLink,
+  HelpCircle,
   FileStack,
   Workflow,
-  ShieldCheck,
-  ChevronDown,
-  MoreHorizontal,
   type LucideIcon,
 } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import type { Permission } from '@ancstra/auth/types';
-import { PlatformAdminOnly } from '@/components/auth/platform-admin-only';
 import { LensSelector } from '@/components/sidebar/lens-selector';
-import { LocaleSwitcher } from '@/components/sidebar/locale-switcher';
 import { useVisibleNavItems } from '@/lib/nav/visible-items';
-import { signOut } from 'next-auth/react';
+import { docsUrl } from '@/lib/docs-url';
 import {
   Sidebar,
   SidebarContent,
@@ -39,17 +33,9 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarMenuBadge,
-  SidebarMenuSub,
-  SidebarMenuSubItem,
-  SidebarMenuSubButton,
   SidebarRail,
   useSidebar,
 } from '@/components/ui/sidebar';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
 
 type NavItemKey =
   | 'dashboard'
@@ -110,16 +96,13 @@ const dataItems: NavItem[] = [
     // correct tab based on which permission they hold.
     permission: ['gedcom:import', 'gedcom:export'],
   },
-  { key: 'activity', href: '/activity', icon: Activity, permission: 'activity:view' },
-];
-
-const analyticsItems: NavItem[] = [
   {
     key: 'dataQuality',
     href: '/analytics/quality',
     icon: BarChart3,
     permission: 'activity:view',
   },
+  { key: 'activity', href: '/activity', icon: Activity, permission: 'activity:view' },
 ];
 
 function NavGroup({
@@ -188,6 +171,7 @@ interface AppSidebarProps {
 
 export function AppSidebar({ factsheetCount = 0 }: AppSidebarProps) {
   const pathname = usePathname();
+  const locale = useLocale();
   const { setOpenMobile, openMobile, isMobile } = useSidebar();
   const tNav = useTranslations('navigation');
   const tGroups = useTranslations('navigation.groups');
@@ -202,7 +186,7 @@ export function AppSidebar({ factsheetCount = 0 }: AppSidebarProps) {
 
   // Stagger nav group entrance only when the mobile drawer opens — desktop
   // users would otherwise see this animation on every navigation. Each
-  // group is offset 30 ms; total 120 ms across four groups. `fill-mode-both`
+  // group is offset 30 ms; total 90 ms across three groups. `fill-mode-both`
   // keeps the initial (invisible) frame applied during the delay so groups
   // don't flash visible before their turn.
   const staggerClass =
@@ -249,19 +233,11 @@ export function AppSidebar({ factsheetCount = 0 }: AppSidebarProps) {
           className={staggerClass}
           style={staggerStyle(2)}
         />
-        <NavGroup
-          label={tGroups('analytics')}
-          items={analyticsItems}
-          pathname={pathname}
-          className={staggerClass}
-          style={staggerStyle(3)}
-        />
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>
           {/* Inline footer: highest-frequency secondary actions stay visible. */}
           <LensSelector />
-          <LocaleSwitcher />
           <SidebarMenuItem>
             <SidebarMenuButton asChild tooltip={tTooltips('settings')}>
               <Link href="/settings" onClick={() => setOpenMobile(false)}>
@@ -270,64 +246,19 @@ export function AppSidebar({ factsheetCount = 0 }: AppSidebarProps) {
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
-          {/* "More" collapsible — collapses Admin / Help / Sign Out so the
-              mobile sheet footer stays scannable. Hidden contents are
-              still keyboard-reachable via the Collapsible primitive. */}
-          <Collapsible asChild className="group/footer-more">
-            <SidebarMenuItem>
-              <CollapsibleTrigger asChild>
-                <SidebarMenuButton
-                  tooltip={tTooltips('more')}
-                  aria-controls="sidebar-footer-more"
-                >
-                  <MoreHorizontal />
-                  <span>{tItems('more')}</span>
-                  <ChevronDown className="ml-auto transition-transform group-data-[state=open]/footer-more:rotate-180" />
-                </SidebarMenuButton>
-              </CollapsibleTrigger>
-              <CollapsibleContent id="sidebar-footer-more">
-                <SidebarMenuSub>
-                  <PlatformAdminOnly>
-                    <SidebarMenuSubItem>
-                      <SidebarMenuSubButton asChild>
-                        <Link href="/admin" onClick={() => setOpenMobile(false)}>
-                          <ShieldCheck />
-                          <span>{tItems('platform')}</span>
-                        </Link>
-                      </SidebarMenuSubButton>
-                    </SidebarMenuSubItem>
-                  </PlatformAdminOnly>
-                  <SidebarMenuSubItem>
-                    <SidebarMenuSubButton asChild>
-                      <a
-                        href={
-                          process.env.NEXT_PUBLIC_DOCS_URL ||
-                          'https://ancstra-docs.vercel.app'
-                        }
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <ExternalLink />
-                        <span>{tItems('help')}</span>
-                      </a>
-                    </SidebarMenuSubButton>
-                  </SidebarMenuSubItem>
-                  <SidebarMenuSubItem>
-                    <SidebarMenuSubButton asChild>
-                      <button
-                        type="button"
-                        onClick={() => signOut({ callbackUrl: '/login' })}
-                        className="w-full cursor-pointer text-left"
-                      >
-                        <LogOut />
-                        <span>{tItems('signOut')}</span>
-                      </button>
-                    </SidebarMenuSubButton>
-                  </SidebarMenuSubItem>
-                </SidebarMenuSub>
-              </CollapsibleContent>
-            </SidebarMenuItem>
-          </Collapsible>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild tooltip={tTooltips('help')}>
+              <a
+                href={docsUrl(locale, '')}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setOpenMobile(false)}
+              >
+                <HelpCircle />
+                <span>{tItems('help')}</span>
+              </a>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
       <SidebarRail />

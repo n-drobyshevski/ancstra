@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Search } from 'lucide-react';
 import { useHeaderContent } from '@/lib/header-context';
 import { FamilyPicker } from '@/components/auth/family-picker';
+import { UserButton } from '@/components/auth/user-button';
+import { LocaleSwitcher } from '@/components/sidebar/locale-switcher';
 import { SIDEBAR_VARIANT } from '@/components/layout/mobile-nav';
 import { cn } from '@/lib/utils';
 
@@ -51,7 +53,9 @@ export function AppHeader({ title }: { title?: string }) {
       <Suspense fallback={null}>
         <FamilyPicker />
       </Suspense>
+      <LocaleSwitcher variant="header" />
       <ModeToggle />
+      <UserButton />
     </header>
   );
 }
