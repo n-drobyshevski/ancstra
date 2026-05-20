@@ -3,12 +3,35 @@ import { useMDXComponents } from '../../../mdx-components';
 
 export const generateStaticParams = generateStaticParamsFor('mdxPath');
 
+const BASE_URL = (() => {
+  const url = process.env.NEXT_PUBLIC_DOCS_URL;
+  if (!url && process.env.NODE_ENV === 'production') {
+    console.error('[docs] NEXT_PUBLIC_DOCS_URL is not set — sitemap/canonical URLs will use localhost');
+  }
+  return url ?? 'http://localhost:3002';
+})();
+
+function pathFor(lang: string, mdxPath: string[] | undefined): string {
+  const segments = mdxPath?.length ? mdxPath.join('/') : '';
+  return `${BASE_URL}/${lang}${segments ? `/${segments}` : ''}`;
+}
+
 export async function generateMetadata(props: {
   params: Promise<{ lang: string; mdxPath?: string[] }>;
 }) {
   const { lang, mdxPath } = await props.params;
   const { metadata } = await importPage(mdxPath, lang);
-  return metadata;
+  return {
+    ...metadata,
+    alternates: {
+      canonical: pathFor(lang, mdxPath),
+      languages: {
+        en: pathFor('en', mdxPath),
+        ru: pathFor('ru', mdxPath),
+        'x-default': pathFor('en', mdxPath),
+      },
+    },
+  };
 }
 
 const Wrapper = useMDXComponents().wrapper!;
