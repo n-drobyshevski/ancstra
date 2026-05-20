@@ -6,7 +6,7 @@ import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
 // import { anthropic } from '@ai-sdk/anthropic';
 import { z } from 'zod/v3';
 
-const factSchema = z.object({
+export const factSchema = z.object({
   facts: z.array(z.object({
     factType: z.enum(['name', 'birth_date', 'birth_place', 'death_date', 'death_place',
       'marriage_date', 'marriage_place', 'residence', 'occupation', 'immigration',
@@ -38,23 +38,24 @@ export async function POST(request: Request) {
       );
     }
 
-    const { text, personContext, documentType } = parsed.data;
-
-    const systemPrompt = `You are a genealogy research assistant that extracts structured facts from historical documents and text.
-Extract all genealogical facts you can find. For each fact, determine:
-- factType: the category of the fact
-- factValue: the actual value (dates in YYYY-MM-DD format when possible, places as complete as found)
-- confidence: "high" if explicitly stated, "medium" if reasonably inferred, "low" if uncertain`;
-
-    const userPrompt = [
-      `Extract genealogical facts from the following text:`,
-      documentType ? `\nDocument type: ${documentType}` : '',
-      personContext ? `\nPerson context: ${personContext}` : '',
-      `\nText:\n${text}`,
-    ].join('');
+    // Discard parsed payload until AI SDK is wired up; touch it so the linter
+    // doesn't flag the destructuring as unused.
+    void parsed.data;
 
     try {
       // TODO: Uncomment when ai and @ai-sdk/anthropic are installed
+      // const { text, personContext, documentType } = parsed.data;
+      // const systemPrompt = `You are a genealogy research assistant that extracts structured facts from historical documents and text.
+      // Extract all genealogical facts you can find. For each fact, determine:
+      // - factType: the category of the fact
+      // - factValue: the actual value (dates in YYYY-MM-DD format when possible, places as complete as found)
+      // - confidence: "high" if explicitly stated, "medium" if reasonably inferred, "low" if uncertain`;
+      // const userPrompt = [
+      //   `Extract genealogical facts from the following text:`,
+      //   documentType ? `\nDocument type: ${documentType}` : '',
+      //   personContext ? `\nPerson context: ${personContext}` : '',
+      //   `\nText:\n${text}`,
+      // ].join('');
       // const result = await generateObject({
       //   model: anthropic('claude-sonnet-4-20250514'),
       //   schema: factSchema,

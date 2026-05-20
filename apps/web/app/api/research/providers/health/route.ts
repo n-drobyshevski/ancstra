@@ -5,9 +5,7 @@ import {
   MockProvider,
   NARAProvider,
   ChroniclingAmericaProvider,
-  FamilySearchProvider,
   WikiTreeProvider,
-  WebSearchProvider,
   createWebSearchProvider,
   type HealthStatus,
 } from '@ancstra/research';

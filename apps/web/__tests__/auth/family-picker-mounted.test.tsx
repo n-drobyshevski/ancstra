@@ -18,8 +18,22 @@ function renderWithIntl(ui: React.ReactElement) {
 }
 
 // ── sidebar (throws without SidebarProvider) ──────────────────────────────────
+// UserButton (now also in AppHeader) calls useSidebar() unconditionally, so
+// stub that too. SidebarMenuItem / SidebarMenuButton are pulled in by
+// LocaleSwitcher's sidebar branch — but the header renders variant="header"
+// which never uses them. Stub minimally just in case.
 vi.mock('@/components/ui/sidebar', () => ({
   SidebarTrigger: () => <button data-testid="sidebar-trigger" />,
+  useSidebar: () => ({ setOpenMobile: vi.fn(), state: 'expanded' }),
+  SidebarMenuItem: ({ children }: { children: React.ReactNode }) =>
+    React.createElement('div', null, children),
+  SidebarMenuButton: ({ children }: { children: React.ReactNode }) =>
+    React.createElement('button', null, children),
+}));
+
+// ── lens provider (used transitively by PlatformAdminOnly inside UserButton) ──
+vi.mock('@/lib/lens/provider', () => ({
+  useLens: () => ({ lens: null }),
 }));
 
 // ── next-themes ───────────────────────────────────────────────────────────────
@@ -72,17 +86,30 @@ vi.mock('@/components/ui/dropdown-menu', () => {
     DropdownMenuItem: ({
       children,
       onClick,
+      onSelect,
       className,
     }: {
       children: React.ReactNode;
       onClick?: () => void;
+      onSelect?: () => void;
       className?: string;
     }) =>
       React.createElement(
         'div',
-        { role: 'menuitem', onClick, className },
+        { role: 'menuitem', onClick: onClick ?? onSelect, className },
         children,
       ),
+
+    // LocaleSwitcher (header variant) renders these — stub minimally.
+    DropdownMenuLabel: ({
+      children,
+      className,
+    }: {
+      children: React.ReactNode;
+      className?: string;
+    }) => React.createElement('div', { className }, children),
+
+    DropdownMenuSeparator: () => React.createElement('hr'),
   };
 });
 
@@ -93,11 +120,20 @@ vi.mock('next-auth/react', () => ({
 }));
 
 // ── next/navigation ───────────────────────────────────────────────────────────
+// AppHeader renders <LocaleSwitcher variant="header" /> which calls usePathname
+// in addition to useRouter. Stub it as '/' so the locale-strip regex matches.
 const mockRouterPush = vi.fn();
+const mockRouterReplace = vi.fn();
+const mockRouterRefresh = vi.fn();
 const mockSearchParams = vi.fn();
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: mockRouterPush }),
+  useRouter: () => ({
+    push: mockRouterPush,
+    replace: mockRouterReplace,
+    refresh: mockRouterRefresh,
+  }),
   useSearchParams: () => mockSearchParams(),
+  usePathname: () => '/',
 }));
 
 // ── tRPC client ───────────────────────────────────────────────────────────────

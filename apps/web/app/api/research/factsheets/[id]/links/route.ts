@@ -70,10 +70,9 @@ export async function POST(
   }
 }
 
-export async function DELETE(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
+// DELETE takes the link id in its body, so the dynamic [id] segment is unused
+// here — keep the signature unary to satisfy @typescript-eslint/no-unused-vars.
+export async function DELETE(request: Request) {
   try {
     const { familyDb } = await withAuth('ai:research', request);
     const body = await request.json();
