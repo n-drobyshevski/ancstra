@@ -9,7 +9,22 @@ const withAnalyzer = withBundleAnalyzer({
 
 const withNextIntl = createNextIntlPlugin('./i18n/request.ts');
 
+// Single source of truth for app version: apps/web/package.json (kept in
+// lockstep with root package.json by release-please's node-workspace plugin).
+// pnpm sets `npm_package_version` automatically when running package scripts
+// (build, dev, test), so no fs read is required — which avoids Turbopack's
+// NFT tracer flagging next.config.ts as a dynamic-import source for routes.
+const APP_VERSION = process.env.npm_package_version ?? '0.0.0';
+const APP_COMMIT =
+  process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ??
+  process.env.GITHUB_SHA?.slice(0, 7) ??
+  'local';
+
 const nextConfig: NextConfig = {
+  env: {
+    NEXT_PUBLIC_APP_VERSION: APP_VERSION,
+    NEXT_PUBLIC_APP_COMMIT: APP_COMMIT,
+  },
   serverExternalPackages: ['better-sqlite3'],
   experimental: {
     viewTransition: true,
