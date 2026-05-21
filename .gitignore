@@ -32,5 +32,8 @@ tests/test-results/
 # Local lint/test scratch output at repo root (e.g. `lint-current.txt`)
 /test-results/
 
+# Vitest coverage output (per-package)
+coverage/
+
 # CI build logs (root-level captured stdout)
 /build*.log

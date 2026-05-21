@@ -43,8 +43,30 @@ jobs:
       - name: Lint
         run: pnpm turbo lint
 
-      - name: Test
-        run: pnpm turbo test
+      - name: Test (with coverage)
+        run: pnpm turbo test:coverage
+
+      - name: Upload coverage artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ github.sha }}
+          path: |
+            apps/web/coverage/lcov.info
+            apps/web/coverage/coverage-summary.json
+            packages/*/coverage/lcov.info
+            packages/*/coverage/coverage-summary.json
+          retention-days: 14
+
+      - name: Coverage summary
+        if: always()
+        run: |
+          echo "## Coverage" >> $GITHUB_STEP_SUMMARY
+          for f in apps/web/coverage/coverage-summary.json packages/*/coverage/coverage-summary.json; do
+            if [ -f "$f" ]; then
+              node -e "const j=require('./'+process.argv[1]); const parts=process.argv[1].split('/'); const pkg=parts.slice(0,-2).join('/'); console.log('- '+pkg+': lines '+j.total.lines.pct+'% | branches '+j.total.branches.pct+'% | functions '+j.total.functions.pct+'%')" "$f" >> $GITHUB_STEP_SUMMARY || true
+            fi
+          done
 
       - name: Build
         run: pnpm turbo build

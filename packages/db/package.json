@@ -23,6 +23,7 @@
     "db:seed": "tsx src/seed.ts",
     "bench": "vitest bench",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit"
   },

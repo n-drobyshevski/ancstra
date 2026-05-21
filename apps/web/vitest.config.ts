@@ -4,6 +4,34 @@ import path from 'path';
 export default defineConfig({
   test: {
     globals: true,
+    coverage: {
+      provider: 'v8',
+      reporter: ['text-summary', 'html', 'lcov', 'json-summary'],
+      reportsDirectory: './coverage',
+      include: [
+        'lib/**/*.{ts,tsx}',
+        'server/**/*.{ts,tsx}',
+        'app/**/*.{ts,tsx}',
+        'components/**/*.{ts,tsx}',
+        'hooks/**/*.{ts,tsx}',
+        'i18n/**/*.ts',
+      ],
+      exclude: [
+        '**/*.test.{ts,tsx}',
+        '**/__tests__/**',
+        '**/__mocks__/**',
+        '.next/**',
+        'next-env.d.ts',
+        '**/*.d.ts',
+        'app/**/layout.tsx',
+        'app/**/loading.tsx',
+        'app/**/not-found.tsx',
+        'app/**/error.tsx',
+        'app/api/**/route.ts',
+        '**/page.tsx',
+      ],
+      thresholds: { lines: 0, functions: 0, branches: 0, statements: 0 },
+    },
   },
   resolve: {
     alias: {

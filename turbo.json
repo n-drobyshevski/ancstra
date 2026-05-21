@@ -33,6 +33,11 @@
     "typecheck": { "dependsOn": ["^build"] },
     "lint": { "dependsOn": ["^build"] },
     "test": { "dependsOn": ["^build"] },
+    "test:coverage": {
+      "dependsOn": ["^build"],
+      "outputs": ["coverage/**"],
+      "cache": true
+    },
     "db:generate": { "cache": false },
     "db:migrate": { "cache": false },
     "db:seed": { "cache": false },
