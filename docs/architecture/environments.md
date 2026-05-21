@@ -4,11 +4,11 @@ This is the operational runbook for our two deployed environments. Code lives in
 
 ## Branch model
 
-| Branch | Vercel scope | Domain | Backing services |
-|--------|-------------|--------|------------------|
-| `main` | Production | `ancstra.com`, `www.ancstra.com` | prod Turso central + family DBs, prod AUTH_SECRET, prod Anthropic key, Sentry `environment:production` |
-| `dev`  | Preview (branch=dev) | `dev.ancstra.com` | **dev** Turso central + family DBs (forked from prod), **separate** AUTH_SECRET, **separate** Anthropic key, Sentry `environment:development` |
-| `feat/*` | Preview | Vercel-generated `*.vercel.app` | inherits Preview env vars (= dev values by default) |
+| Branch | Vercel scope | URL | Backing services |
+|--------|-------------|-----|------------------|
+| `main` | Production | `https://ancstra-ndrobyshevskis-projects.vercel.app` (auto-assigned) | prod Turso central + family DBs, prod AUTH_SECRET, Sentry `environment:production` |
+| `dev`  | Preview (branch=dev) | `https://ancstra-git-dev-ndrobyshevskis-projects.vercel.app` (Vercel branch alias) | **dev** Turso central + family DBs (forked from prod), **separate** AUTH_SECRET, Sentry `environment:development` |
+| `feat/*` | Preview | Vercel-generated `*.vercel.app` URL per deploy | inherits Preview env vars (= dev values by default) |
 
 **Promotion flow**
 
@@ -20,15 +20,18 @@ feat/<name>  ──(PR, squash-merge)──►  dev  ──(release PR, fast-for
 - Fast-forward `dev → main` keeps `main`'s history linear and bisectable.
 - Never push directly to `main` or `dev` — both have branch protection.
 
+> **Custom domain (deferred).** We initially considered `ancstra.com` + `dev.ancstra.com` but the apex isn't currently owned. Either acquire the apex (or pick a different one) and add it under Vercel → Domains, pinning the dev subdomain to the `dev` branch — see ["Adding a custom domain later"](#adding-a-custom-domain-later) below.
+
 ## Adding a new environment variable
 
 When you introduce a new env var, **always** set it in both scopes. The Vercel dashboard makes one easy to forget. Workflow:
 
 ```
-vercel env add MY_VAR production
-vercel env add MY_VAR preview dev          # branch-scoped to dev
-vercel env add MY_VAR preview              # generic preview (used by other branches)
+vercel env add MY_VAR production --value "<prod-value>"
+vercel env add MY_VAR preview dev --value "<dev-value>" --yes --force
 ```
+
+(The `--yes --force` are needed because of a CLI non-interactive quirk; without them the v50 CLI prompts to disambiguate "all preview branches" vs a specific branch.)
 
 Then add it to:
 
@@ -50,20 +53,19 @@ Values listed differ between scopes. Anything not listed here is identical.
 
 | Variable | Production | Preview (dev) |
 |----------|-----------|---------------|
-| `NEXT_PUBLIC_APP_URL` | `https://ancstra.com` | `https://dev.ancstra.com` |
-| `AUTH_URL` | `https://ancstra.com` | `https://dev.ancstra.com` |
-| `CENTRAL_DATABASE_URL` | prod libsql URL | dev libsql URL |
+| `NEXT_PUBLIC_APP_URL` | `https://ancstra-ndrobyshevskis-projects.vercel.app` *(not yet set on prod; see [open prod cleanup](#open-prod-cleanup))* | `https://ancstra-git-dev-ndrobyshevskis-projects.vercel.app` |
+| `AUTH_URL` | (prod URL — not yet set, NextAuth falls back to `AUTH_TRUST_HOST` resolution) | `https://ancstra-git-dev-ndrobyshevskis-projects.vercel.app` |
+| `CENTRAL_DATABASE_URL` | prod libsql URL | `libsql://ancstra-central-dev-<org>.aws-eu-west-1.turso.io` |
 | `TURSO_AUTH_TOKEN` | prod token | dev-scoped token |
 | `AUTH_SECRET` | prod secret | independent random secret |
-| `ANTHROPIC_API_KEY` | prod key | independent dev key |
-| `AI_MONTHLY_BUDGET_USD` | prod budget | lower (~`5`) |
-| `FAMILYSEARCH_REDIRECT_URI` | `https://ancstra.com/api/auth/familysearch/callback` | `https://dev.ancstra.com/api/auth/familysearch/callback` |
+| `ANTHROPIC_API_KEY` | (not yet set in prod) | (not yet set in dev — provision when first AI feature ships) |
+| `AI_MONTHLY_BUDGET_USD` | (not yet set) | `5` |
 | `SENTRY_ENVIRONMENT` | `production` | `development` |
 | `NEXT_PUBLIC_SENTRY_ENVIRONMENT` | `production` | `development` |
 | `SENTRY_TRACES_SAMPLE_RATE` | `0.1` | `1.0` |
 | `NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE` | `0.1` | `1.0` |
 
-Shared across both: `GOOGLE_CLIENT_ID/SECRET`, `APPLE_CLIENT_ID/SECRET`, `FAMILYSEARCH_CLIENT_ID/SECRET`, `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_ORG`, `SENTRY_PROJECT`, `SENTRY_AUTH_TOKEN`, `NARA_API_KEY`, `AUTH_TRUST_HOST=true`.
+Shared across both (Production has them; dev got copies of the same values via the env-bootstrap script): `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_ORG`, `SENTRY_PROJECT`, `TURSO_ORG`, `TURSO_PLATFORM_TOKEN`, `HONO_WORKER_URL`, `GOTENBERG_URL`, `SEARXNG_URL`, `ENABLE_EXPERIMENTAL_COREPACK`, `AUTH_TRUST_HOST=true`. `SENTRY_AUTH_TOKEN` is intentionally empty in Production (source-map upload disabled).
 
 ## Turso provisioning (initial dev setup)
 
@@ -127,7 +129,7 @@ curl -sSfL https://get.tur.so/install.sh | bash
 
 ### Migration drift between prod and dev central
 
-Forking copies the schema as it exists *at the moment* of `turso db create --from-db`. The runtime `ensureCentralSchema()` in `packages/db/src/index.ts` only ADDs columns/tables — it cannot replay DROP, RENAME, or type-changing migrations. Any future destructive Drizzle migration **must** be applied to both DBs:
+Forking copies the schema as it exists *at the moment* of the fork. The runtime `ensureCentralSchema()` in `packages/db/src/index.ts` only ADDs columns/tables — it cannot replay DROP, RENAME, or type-changing migrations. Any future destructive Drizzle migration **must** be applied to both DBs:
 
 ```
 # Apply against prod
@@ -141,34 +143,30 @@ When in doubt, run a `drizzle-kit check` against both and compare output.
 
 ## OAuth provider configuration
 
-Single OAuth client per provider, multiple redirect URIs.
+Not currently wired (no `GOOGLE_CLIENT_ID`, `APPLE_CLIENT_ID`, or `FAMILYSEARCH_CLIENT_ID` in either env). When you do add OAuth:
 
 ### Google
 
 Google Cloud Console → APIs & Services → Credentials → OAuth 2.0 Client ID.
 
-- **Authorized redirect URIs** (add both):
-  - `https://ancstra.com/api/auth/callback/google`
-  - `https://dev.ancstra.com/api/auth/callback/google`
-- **Authorized JavaScript origins** (add both):
-  - `https://ancstra.com`
-  - `https://dev.ancstra.com`
+- **Authorized redirect URIs** (add one per environment):
+  - `https://<prod-url>/api/auth/callback/google`
+  - `https://ancstra-git-dev-ndrobyshevskis-projects.vercel.app/api/auth/callback/google`
+- **Authorized JavaScript origins** (add the corresponding apex origins).
+
+Vercel preview URLs are accepted by Google as redirect URIs — no custom domain required.
 
 ### Apple
 
-Apple Developer → Identifiers → Services IDs → your Service ID.
-
-- **Domains and Subdomains**: add `dev.ancstra.com`.
-- **Return URLs**: add `https://dev.ancstra.com/api/auth/callback/apple`.
-- **Domain verification**: download the domain association file from Apple and place it at `apps/web/public/.well-known/apple-developer-domain-association`. Apple's verifier will fetch it from both origins. If Apple gives you a per-origin file, host the dev one only on the dev deploy (Vercel doesn't let one branch override `public/` paths; use a tiny `apps/web/app/.well-known/route.ts` handler if needed).
+**Blocked until a custom apex domain is wired.** Apple Sign In requires domain verification (a file at `https://<apex>/.well-known/apple-developer-domain-association`) and Vercel's `*.vercel.app` hosts can't be verified because we don't own them. Acquire a custom domain first, then follow Apple Developer → Identifiers → Services IDs.
 
 ### FamilySearch
 
-Check whether your existing FamilySearch OAuth app accepts multiple redirect URIs. If not, register a separate sandbox app for dev and put those credentials in the Preview-dev scope only. `FAMILYSEARCH_REDIRECT_URI` is already per-env.
+Check whether the existing OAuth app accepts multiple redirect URIs. If not, register a separate sandbox app for dev. `FAMILYSEARCH_REDIRECT_URI` is already designed to be per-env.
 
 ## Cookie domain — important
 
-Never set `Domain=.ancstra.com` (or any apex `Domain=` attribute) on a session, CSRF, or auth cookie. With apex scope, a session set on `dev.ancstra.com` would be sent to `ancstra.com` and vice versa, completely defeating the isolation.
+Never set a `Domain=` attribute on a session, CSRF, or auth cookie. Without `Domain=`, browsers treat cookies as **host-only**, so prod and dev URLs (even when they're sibling vercel.app subdomains under `*.vercel.app`) get separate cookie jars. Setting `Domain=.vercel.app` would let any project on the platform see them — never do that. Same applies if you later move to a custom domain: `Domain=.your-domain.com` would cross-pollinate prod and dev.
 
 The codebase today does not set `Domain=` on any cookie — they're host-only by default. Keep it that way. A grep before merge:
 
@@ -188,7 +186,7 @@ You can save these as named views in the Sentry sidebar.
 ## Disaster recovery
 
 - **Rotate dev AUTH_SECRET**: `openssl rand -base64 32` → update Preview-dev scope → redeploy. No effect on prod.
-- **Rotate dev Anthropic key**: revoke + reissue in Anthropic console → update Preview-dev → redeploy. Prod unaffected.
+- **Rotate dev TURSO_AUTH_TOKEN**: call `turso.databases.rotateTokens('ancstra-central-dev')` via the SDK or hit the Platform API → update Preview-dev → redeploy.
 - **Rebuild dev central from scratch**: delete `ancstra-central-dev` + each `-dev` family DB, re-run `fork-prod-to-dev.ts`.
 - **Reset dev to current prod state**: same as rebuild — fork is destructive but cheap.
 
@@ -197,7 +195,29 @@ You can save these as named views in the Sentry sidebar.
 `apps/web/app/robots.ts` returns `Disallow: /` when `SENTRY_ENVIRONMENT === 'development'`. Verify after a dev deploy:
 
 ```
-curl https://dev.ancstra.com/robots.txt
+curl https://ancstra-git-dev-ndrobyshevskis-projects.vercel.app/robots.txt
 ```
 
 Should be `User-agent: *\nDisallow: /`.
+
+## Adding a custom domain later
+
+Plan when you acquire an apex (say, `ancstra.com`):
+
+1. In Vercel → Project → Settings → Domains:
+   - Add the apex + `www` → assign to Production.
+   - Add `dev.<apex>` → assign to Preview, scoped to git branch `dev`.
+2. At your DNS provider: A record for apex to Vercel's address (Vercel displays it), CNAMEs for `www` and `dev` to `cname.vercel-dns.com`.
+3. Update the Preview/dev env vars: `NEXT_PUBLIC_APP_URL=https://dev.<apex>`, `AUTH_URL=https://dev.<apex>`, `NEXTAUTH_URL=https://dev.<apex>`.
+4. Update the Production env vars similarly to `https://<apex>`.
+5. Unblock Apple Sign In (host the domain-association file at `apps/web/public/.well-known/apple-developer-domain-association`).
+6. Add `NEXT_PUBLIC_DOCS_URL=https://docs.<apex>` if you stand up a docs subdomain.
+
+## Open prod cleanup
+
+Two pre-existing issues in Production env vars, found during the dev rollout:
+
+1. **`NEXT_PUBLIC_APP_URL` is not set on Production.** `apps/web/app/sitemap.ts` falls back to the literal `https://ancstra.com`, which currently doesn't point at our deploy. Fix: `vercel env add NEXT_PUBLIC_APP_URL production --value "https://<prod-url>"`.
+2. **`NEXT_PUBLIC_SENTRY_DSN` and `SEARXNG_URL` end with a literal `\n`** in Production (data was pasted with a trailing newline). dotenv treats it as a real newline at runtime. Fix: `vercel env rm <name> production` then `vercel env add <name> production --value "<clean-value>"`.
+
+Both are independent of the `dev` rollout — the dev scope already has clean values.
