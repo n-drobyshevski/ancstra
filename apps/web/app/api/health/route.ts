@@ -2,10 +2,10 @@ import { NextResponse } from 'next/server';
 
 // Lightweight liveness + version endpoint. Used by ops dashboards, uptime
 // checks, and bug-report flows. Values come from build-time env injection in
-// next.config.ts so the response is static per-deploy (no DB reads here on
-// purpose — keep it cheap and dependency-free).
-export const dynamic = 'force-static';
-
+// next.config.ts (NEXT_PUBLIC_APP_VERSION / _COMMIT). Under cacheComponents
+// the handler runs per request — cheap because there's no IO. The legacy
+// `export const dynamic = 'force-static'` is intentionally absent: Next 16's
+// cacheComponents model rejects that route segment config.
 export function GET() {
   return NextResponse.json({
     status: 'ok',
