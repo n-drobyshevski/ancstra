@@ -1,4 +1,5 @@
 import { headers } from 'next/headers';
+import { connection } from 'next/server';
 import { auth } from '@/auth';
 import { parseRole, type Role } from '@ancstra/auth';
 import { eq, and, isNull } from 'drizzle-orm';
@@ -38,6 +39,7 @@ export interface AuthContext {
  * HANGING_PROMISE_REJECTION warnings during Next.js prerendering.
  */
 export async function getAuthContext(request?: Request): Promise<AuthContext | null> {
+  await connection();
   const headerStore = request?.headers ?? await headers();
   const userId = headerStore.get('x-user-id');
   if (!userId) return null;
