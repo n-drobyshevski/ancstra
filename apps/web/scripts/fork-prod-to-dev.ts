@@ -59,20 +59,29 @@ if (!PROD_CENTRAL_URL.startsWith('libsql://')) {
 
 const turso = createTursoApi({ org: TURSO_ORG, token: TURSO_PLATFORM_TOKEN });
 
-/** Parse libsql://<dbname>-<org>.<region>.turso.io → { dbName, region }. */
-function parseLibsqlUrl(url: string): { dbName: string; region: string } {
-  const host = url.replace(/^libsql:\/\//, '');
-  const [hostHead, ...rest] = host.split('.');
-  const region = rest.join('.').replace(/\.turso\.io$/, '');
+/**
+ * Parse a libsql URL → { dbName, region }. Handles two formats:
+ *   - 3-segment legacy: libsql://<dbname>-<org>.<region>.turso.io
+ *   - 2-segment modern: libsql://<dbname>-<org>.turso.io        (region implicit)
+ * `region` is null for the modern shape.
+ */
+function parseLibsqlUrl(url: string): { dbName: string; region: string | null } {
+  const m = url.match(/^libsql:\/\/([^.]+)(?:\.((?:[^.]+\.)*[^.]+))?\.turso\.io$/);
+  if (!m) {
+    throw new Error(`URL "${url}" does not match libsql://...turso.io`);
+  }
+  const hostHead = m[1];
+  const region = m[2] ?? null;
   const suffix = `-${TURSO_ORG}`;
   if (!hostHead.endsWith(suffix)) {
-    throw new Error(`URL "${url}" doesn't match -${TURSO_ORG} suffix`);
+    throw new Error(`URL "${url}" doesn't end with -${TURSO_ORG}`);
   }
   return { dbName: hostHead.slice(0, -suffix.length), region };
 }
 
-function buildLibsqlUrl(dbName: string, region: string): string {
-  return `libsql://${dbName}-${TURSO_ORG}.${region}.turso.io`;
+function buildLibsqlUrl(dbName: string, region: string | null): string {
+  const middle = region ? `.${region}` : '';
+  return `libsql://${dbName}-${TURSO_ORG}${middle}.turso.io`;
 }
 
 async function dbExists(name: string): Promise<boolean> {
@@ -181,7 +190,7 @@ async function main() {
       console.log(`  ${family.id}: not a libsql URL (${oldUrl}), skipping`);
       continue;
     }
-    let parsed: { dbName: string; region: string };
+    let parsed: { dbName: string; region: string | null };
     try {
       parsed = parseLibsqlUrl(oldUrl);
     } catch (e) {
