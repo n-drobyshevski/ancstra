@@ -11,8 +11,9 @@ import { proposedRelationships } from '../src/ai-schema';
  * minimal schema (persons + proposed_relationships) by hand rather than
  * running the drizzle-kit migrations so the test is self-contained.
  *
- * DDL mirrors `packages/db/migrations/0004_stiff_night_nurse.sql` for
- * proposed_relationships and the persons subset that the FKs reference.
+ * DDL mirrors `packages/db/migrations/0004_stiff_night_nurse.sql` (base
+ * table) and `packages/db/migrations/0010_abnormal_tomas.sql` (status
+ * CHECK constraint).
  */
 function createTestFamilyDb() {
   const sqlite = new Database(':memory:');
@@ -51,7 +52,9 @@ function createTestFamilyDb() {
       updated_at TEXT NOT NULL,
       version INTEGER NOT NULL DEFAULT 1,
       FOREIGN KEY (person1_id) REFERENCES persons(id) ON DELETE CASCADE,
-      FOREIGN KEY (person2_id) REFERENCES persons(id) ON DELETE CASCADE
+      FOREIGN KEY (person2_id) REFERENCES persons(id) ON DELETE CASCADE,
+      CONSTRAINT proposed_relationships_status_check
+        CHECK (status IN ('pending', 'validated', 'rejected', 'needs_info'))
     )
   `).run();
 
@@ -118,12 +121,21 @@ describe('proposed_relationships — schema contract', () => {
     },
   );
 
-  it.todo(
-    'rejects insert with an unknown status via DB-level CHECK constraint — ' +
-    'requires a follow-up migration; today the enum is type-system only (see ' +
-    'packages/db/migrations/0004_stiff_night_nurse.sql which omits CHECK). ' +
-    'When added, replace this with: ' +
-    'expect(() => insertProposal(db, { status: "bogus" as any })).toThrow(/CHECK/)',
+  it.each(['bogus', 'PENDING', '', 'pending_review'])(
+    "CHECK constraint rejects unknown status value %j (added in migration 0010)",
+    (badStatus) => {
+      let caught: unknown = null;
+      try {
+        insertProposal(db, { id: `pr-${badStatus || 'empty'}`, status: badStatus as never });
+      } catch (err) {
+        caught = err;
+      }
+      expect(caught, `expected CHECK constraint failure for status='${badStatus}'`).toBeInstanceOf(Error);
+      // Drizzle wraps the underlying better-sqlite3 error; the CHECK message
+      // surfaces on .cause (same pattern as gedcom/import-trust.test.ts).
+      const cause = (caught as Error & { cause?: unknown }).cause;
+      expect(String(cause ?? caught)).toMatch(/CHECK constraint failed/i);
+    },
   );
 
   it('FK cascades delete proposed_relationships rows when a referenced person is deleted', () => {

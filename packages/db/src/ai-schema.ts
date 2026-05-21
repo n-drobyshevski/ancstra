@@ -1,4 +1,5 @@
-import { sqliteTable, text, integer, real, index } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, real, index, check } from 'drizzle-orm/sqlite-core';
+import { sql } from 'drizzle-orm';
 import { persons } from './family-schema';
 
 // ==================== AI USAGE TRACKING ====================
@@ -44,4 +45,13 @@ export const proposedRelationships = sqliteTable('proposed_relationships', {
   index('idx_proposed_rels_status').on(table.status),
   index('idx_proposed_rels_person1').on(table.person1Id),
   index('idx_proposed_rels_person2').on(table.person2Id),
+  // DB-level enforcement of the status enum. This is the sink for external/AI
+  // sources whose payload the application type system can't fully vouch for,
+  // so a CHECK at the DB layer is the right defense-in-depth here. Project
+  // convention elsewhere is TS-only enums (e.g. families.validation_status);
+  // the deliberate exception here matches the trust boundary.
+  check(
+    'proposed_relationships_status_check',
+    sql`${table.status} IN ('pending', 'validated', 'rejected', 'needs_info')`,
+  ),
 ]);
