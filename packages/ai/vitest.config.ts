@@ -18,7 +18,8 @@ export default defineConfig({
         'migrations/**',
         '**/*.d.ts',
       ],
-      thresholds: { lines: 0, functions: 0, branches: 0, statements: 0 },
+      // Baseline 61.86 / 49.71 / 59.30 / 62.01 captured 2026-05-21 — see commit 763fa82.
+      thresholds: { lines: 56, branches: 44, functions: 54, statements: 57 },
     },
   },
 });

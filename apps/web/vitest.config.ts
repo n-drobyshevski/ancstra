@@ -30,7 +30,9 @@ export default defineConfig({
         'app/api/**/route.ts',
         '**/page.tsx',
       ],
-      thresholds: { lines: 0, functions: 0, branches: 0, statements: 0 },
+      // Baseline 18.73 / 15.16 / 12.38 / 18.76 captured 2026-05-21 — see commit 763fa82.
+      // Soft floor (baseline - 5) gates regression; new tests in tier-2 will raise this.
+      thresholds: { lines: 13, branches: 10, functions: 7, statements: 13 },
     },
   },
   resolve: {
