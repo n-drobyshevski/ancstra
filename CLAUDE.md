@@ -33,11 +33,11 @@
   is propagated to `apps/web/package.json` automatically by release-please's
   `node-workspace` plugin. Internal `@ancstra/*` packages stay at `0.0.1` —
   they're private and don't ship.
-- **Commit style is conventional-commits** (already in use). Bump rules:
-  - `feat:` → minor
+- **Commit style is conventional-commits** (already in use). Bump rules
+  (pre-1.0 — set by `bump-minor-pre-major: true` + `bump-patch-for-minor-pre-major: true`):
+  - `feat:` → patch (becomes minor once we cut 1.0.0)
   - `fix:` / `perf:` / `refactor:` → patch
-  - `BREAKING CHANGE:` footer or `feat!:` → major (but while `< 1.0.0`,
-    `bump-minor-pre-major: true` keeps these as minor — standard 0.x semantic)
+  - `BREAKING CHANGE:` footer or `feat!:` → minor (becomes major once we cut 1.0.0)
   - `chore:` / `docs:` / `test:` / `ci:` / `build:` / `style:` → no release
 - **To check if a release is warranted**, run from `dev`:
   ```bash
@@ -54,6 +54,24 @@
   triggers the Vercel production deploy.
 - **Release config**: `release-please-config.json` + `.release-please-manifest.json`
   at repo root. Workflow: `.github/workflows/release-please.yml`.
+- **Tagging invariant on `main`**: every commit on `main` MUST be reachable from
+  a `v*` tag. release-please-action creates these automatically when its release
+  PR merges. After any merge to `main`, verify:
+  ```bash
+  git fetch origin main --tags
+  git tag --contains origin/main || echo "MISSING TAG on $(git rev-parse --short origin/main)"
+  ```
+  If missing → re-trigger release-please from the Actions tab, OR create
+  manually: `gh release create vX.Y.Z --target main --generate-notes`.
+  Never let `main` accrete untagged commits — a single non-release PR landing
+  on `main` violates this; if it happens, open the next release PR immediately.
+- **dev → main merges MUST use "merge commit" or "rebase", NOT "squash".**
+  release-please parses individual conventional-commit messages on `main` to
+  compute bumps; squashing collapses them into one non-conventional message
+  (`release: prepare vX.Y.Z (#N)`) which release-please skips, producing no
+  release PR. Feature → dev squashing remains fine (release-please doesn't
+  watch dev). Until main's branch ruleset is updated to forbid squash, the
+  discipline is on you/Claude — pick "Create a merge commit" in the PR UI.
 - **The running version is exposed at**:
   - `/api/health` (JSON: `{ version, commit, builtAt, env }`)
   - Sidebar footer (`AppVersionBadge` component)
@@ -61,3 +79,6 @@
 - **Going to `1.0.0`**: when ready, push an empty commit with body
   `Release-As: 1.0.0` on `dev` so the next release-please PR bumps to 1.0.0
   regardless of conventional-commit rules.
+- **Baseline tag**: `v0.1.0` on `main` at SHA `79b3c75`, established 2026-05-21
+  alongside release-please adoption (https://github.com/n-drobyshevski/ancstra/releases/tag/v0.1.0).
+  All subsequent `vX.Y.Z` tags created by release-please.
