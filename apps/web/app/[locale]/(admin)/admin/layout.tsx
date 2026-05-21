@@ -1,11 +1,17 @@
 import { Suspense } from 'react';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { requirePlatformAdmin } from '@/lib/auth/platform-admin';
 import { AdminNav } from '@/components/admin/admin-nav';
 import { PagePadding } from '@/components/page-padding';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import Link from 'next/link';
 import { ShieldCheck } from 'lucide-react';
+import type { Locale } from '@/i18n/routing';
+
+interface AdminLayoutProps {
+  children: React.ReactNode;
+  params: Promise<{ locale: Locale }>;
+}
 
 /**
  * Inner async component holds the auth await. The chrome only renders for
@@ -16,7 +22,9 @@ import { ShieldCheck } from 'lucide-react';
  * predate the is_platform_admin claim) is uncached; Next 16 cacheComponents
  * requires Suspense around uncached reads, hence the wrapper below.
  */
-async function AdminLayoutGuarded({ children }: { children: React.ReactNode }) {
+async function AdminLayoutGuarded({ children, params }: AdminLayoutProps) {
+  const { locale } = await params;
+  setRequestLocale(locale);
   await requirePlatformAdmin();
   const t = await getTranslations('admin.layout');
 
@@ -45,14 +53,10 @@ async function AdminLayoutGuarded({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function AdminLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function AdminLayout({ children, params }: AdminLayoutProps) {
   return (
     <Suspense fallback={null}>
-      <AdminLayoutGuarded>{children}</AdminLayoutGuarded>
+      <AdminLayoutGuarded params={params}>{children}</AdminLayoutGuarded>
     </Suspense>
   );
 }

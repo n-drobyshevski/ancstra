@@ -164,29 +164,18 @@ function findViolations(): Violation[] {
 }
 
 /**
- * Known pre-existing violators captured 2026-05-21. Each entry is `<file>::<fn>`.
- * Tracked as TODOs to fix in a follow-up PR (see Tier 2 sequencing in the
- * coverage plan); this test fails on any NEW violator that doesn't appear in
- * this allowlist. Remove an entry once the fix lands.
+ * Allowlist of known pre-existing violators. Empty as of 2026-05-21 — the
+ * original 11 entries (admin/* pages + join/page.tsx) were fixed in the
+ * same PR that ships this test. Keeping the allowlist mechanism in place
+ * so any future "land the test now, fix the violator later" situation has
+ * the seam available.
  *
- * Fix recipe: either add `setRequestLocale(locale)` after `await params`
- * (and add `locale` to the params destructure if absent), or use the
- * explicit `getTranslations({ locale, namespace })` form which threads
- * locale through without needing setRequestLocale.
+ * Fix recipe (for any future entry): either add `setRequestLocale(locale)`
+ * after `await params` (adding `locale` to the params destructure if
+ * absent), or use the explicit `getTranslations({ locale, namespace })`
+ * form which threads locale through without needing setRequestLocale.
  */
-const KNOWN_VIOLATORS = new Set<string>([
-  'app/[locale]/(admin)/admin/families/page.tsx::generateMetadata',
-  'app/[locale]/(admin)/admin/families/page.tsx::AdminFamiliesContent',
-  'app/[locale]/(admin)/admin/families/[id]/page.tsx::generateMetadata',
-  'app/[locale]/(admin)/admin/families/[id]/page.tsx::AdminFamilyDetailContent',
-  'app/[locale]/(admin)/admin/layout.tsx::AdminLayoutGuarded',
-  'app/[locale]/(admin)/admin/page.tsx::AdminDashboardContent',
-  'app/[locale]/(admin)/admin/users/page.tsx::generateMetadata',
-  'app/[locale]/(admin)/admin/users/page.tsx::AdminUsersContent',
-  'app/[locale]/(admin)/admin/users/[id]/page.tsx::generateMetadata',
-  'app/[locale]/(admin)/admin/users/[id]/page.tsx::AdminUserDetailContent',
-  'app/[locale]/join/page.tsx::JoinContent',
-]);
+const KNOWN_VIOLATORS = new Set<string>([]);
 
 describe('setRequestLocale gates bare getTranslations under cacheComponents', () => {
   const violations = findViolations();

@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { connection } from 'next/server';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { auth } from '@/auth';
 import { acceptInvite, logActivity, type ActivityAction, validateInviteToken } from '@ancstra/auth';
 import { createCentralDb, centralSchema } from '@ancstra/db';
@@ -11,12 +11,16 @@ import { ErrorCard } from './error-card';
 import { JoinSignup } from './join-signup';
 import { SwitchAccountCard } from './switch-account-card';
 import { PublicLocaleSwitcher } from '@/components/auth/public-locale-switcher';
+import type { Locale } from '@/i18n/routing';
 
 interface JoinPageProps {
+  params: Promise<{ locale: Locale }>;
   searchParams: Promise<{ token?: string; auto?: string }>;
 }
 
-async function JoinContent({ searchParams }: JoinPageProps) {
+async function JoinContent({ params, searchParams }: JoinPageProps) {
+  const { locale } = await params;
+  setRequestLocale(locale);
   // Opt the whole route into runtime: token validation + session lookup are
   // dynamic by definition, no point trying to prerender.
   await connection();
@@ -100,12 +104,12 @@ async function JoinContent({ searchParams }: JoinPageProps) {
   );
 }
 
-export default function JoinPage({ searchParams }: JoinPageProps) {
+export default function JoinPage({ params, searchParams }: JoinPageProps) {
   return (
     <>
       <PublicLocaleSwitcher />
       <Suspense fallback={null}>
-        <JoinContent searchParams={searchParams} />
+        <JoinContent params={params} searchParams={searchParams} />
       </Suspense>
     </>
   );

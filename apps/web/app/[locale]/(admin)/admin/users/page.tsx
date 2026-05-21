@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { cacheLife, cacheTag } from 'next/cache';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { getCentralDb } from '@/lib/db-singleton';
 import { listAllUsers } from '@ancstra/auth/admin';
 import { requirePlatformAdmin } from '@/lib/auth/platform-admin';
@@ -9,9 +9,15 @@ import { UsersTable } from '@/components/admin/users-table';
 import { DataTableToolbar } from '@/components/admin/data-table-toolbar';
 import { DataTablePagination } from '@/components/admin/data-table-pagination';
 import { AddUserDialog } from '@/components/admin/add-user-dialog';
+import type { Locale } from '@/i18n/routing';
 
-export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations('admin.users.page');
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: Locale }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: 'admin.users.page' });
   return { title: `${t('heading')} — Admin` };
 }
 
@@ -26,10 +32,13 @@ async function getCachedUsersPage(q: string, offset: number) {
 }
 
 interface AdminUsersPageProps {
+  params: Promise<{ locale: Locale }>;
   searchParams: Promise<{ q?: string; offset?: string }>;
 }
 
-async function AdminUsersContent({ searchParams }: AdminUsersPageProps) {
+async function AdminUsersContent({ params, searchParams }: AdminUsersPageProps) {
+  const { locale } = await params;
+  setRequestLocale(locale);
   const sp = await searchParams;
   const q = sp.q?.trim() ?? '';
   const offset = Math.max(0, parseInt(sp.offset ?? '0', 10) || 0);
@@ -69,10 +78,10 @@ async function AdminUsersContent({ searchParams }: AdminUsersPageProps) {
   );
 }
 
-export default function AdminUsersPage({ searchParams }: AdminUsersPageProps) {
+export default function AdminUsersPage({ params, searchParams }: AdminUsersPageProps) {
   return (
     <Suspense fallback={null}>
-      <AdminUsersContent searchParams={searchParams} />
+      <AdminUsersContent params={params} searchParams={searchParams} />
     </Suspense>
   );
 }
