@@ -53,7 +53,7 @@ Values listed differ between scopes. Anything not listed here is identical.
 
 | Variable | Production | Preview (dev) |
 |----------|-----------|---------------|
-| `NEXT_PUBLIC_APP_URL` | `https://ancstra-ndrobyshevskis-projects.vercel.app` *(not yet set on prod; see [open prod cleanup](#open-prod-cleanup))* | `https://ancstra-git-dev-ndrobyshevskis-projects.vercel.app` |
+| `NEXT_PUBLIC_APP_URL` | `https://ancstra-ndrobyshevskis-projects.vercel.app` | `https://ancstra-git-dev-ndrobyshevskis-projects.vercel.app` |
 | `AUTH_URL` | (prod URL — not yet set, NextAuth falls back to `AUTH_TRUST_HOST` resolution) | `https://ancstra-git-dev-ndrobyshevskis-projects.vercel.app` |
 | `CENTRAL_DATABASE_URL` | prod libsql URL | `libsql://ancstra-central-dev-<org>.aws-eu-west-1.turso.io` |
 | `TURSO_AUTH_TOKEN` | prod token | dev-scoped token |
@@ -213,11 +213,3 @@ Plan when you acquire an apex (say, `ancstra.com`):
 5. Unblock Apple Sign In (host the domain-association file at `apps/web/public/.well-known/apple-developer-domain-association`).
 6. Add `NEXT_PUBLIC_DOCS_URL=https://docs.<apex>` if you stand up a docs subdomain.
 
-## Open prod cleanup
-
-Two pre-existing issues in Production env vars, found during the dev rollout:
-
-1. **`NEXT_PUBLIC_APP_URL` is not set on Production.** `apps/web/app/sitemap.ts` falls back to the literal `https://ancstra.com`, which currently doesn't point at our deploy. Fix: `vercel env add NEXT_PUBLIC_APP_URL production --value "https://<prod-url>"`.
-2. **`NEXT_PUBLIC_SENTRY_DSN` and `SEARXNG_URL` end with a literal `\n`** in Production (data was pasted with a trailing newline). dotenv treats it as a real newline at runtime. Fix: `vercel env rm <name> production` then `vercel env add <name> production --value "<clean-value>"`.
-
-Both are independent of the `dev` rollout — the dev scope already has clean values.
