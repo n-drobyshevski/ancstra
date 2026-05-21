@@ -141,6 +141,9 @@ importers:
       '@trpc/server':
         specifier: ^11
         version: 11.17.0(typescript@5.9.3)
+      '@tursodatabase/api':
+        specifier: ^2.0.0
+        version: 2.0.0
       '@xyflow/react':
         specifier: ^12.10.1
         version: 12.10.1(@types/react@19.2.14)(react-dom@19.2.4)(react@19.2.4)
@@ -6263,6 +6266,12 @@ packages:
     requiresBuild: true
     dev: true
     optional: true
+
+  /@tursodatabase/api@2.0.0:
+    resolution: {integrity: sha512-WMmIvG5qiJbyHmD2ZbYJxJwMbKfXIrCwXJFoMyoL5WCXgWtfTbNUNAgeBg1ltSEDO1eD+BEJmihlRQbFuG4P5w==}
+    dependencies:
+      whatwg-fetch: 3.6.20
+    dev: false
 
   /@tybys/wasm-util@0.10.1:
     resolution: {integrity: sha512-9tTaPJLSiejZKx+Bmog4uSubteqTvFrVrURwkmHixBo0G4seD0zUxp98E1DzUBJxLQ3NPwXrGKDiVjwx/DpPsg==}
@@ -17052,6 +17061,10 @@ packages:
     deprecated: Use @exodus/bytes instead for a more spec-conformant and faster implementation
     dependencies:
       iconv-lite: 0.6.3
+    dev: false
+
+  /whatwg-fetch@3.6.20:
+    resolution: {integrity: sha512-EqhiFU6daOA8kpjOWTL0olhVOF3i7OrFzSYiGsEMB8GcXS+RrzauAERX65xMeNWVqxA6HXH2m69Z9LaKKdisfg==}
     dev: false
 
   /whatwg-mimetype@4.0.0:

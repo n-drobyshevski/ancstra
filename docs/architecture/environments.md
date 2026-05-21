@@ -69,22 +69,61 @@ Shared across both: `GOOGLE_CLIENT_ID/SECRET`, `APPLE_CLIENT_ID/SECRET`, `FAMILY
 
 Single org `n-drobyshevski`, AWS EU West 1.
 
+### Recommended: run the fork script
+
+`apps/web/scripts/fork-prod-to-dev.ts` does everything via the official
+`@tursodatabase/api` SDK (HTTP Platform API) — **no `turso` CLI required**.
+It walks `family_registry`, forks every active family DB with a `-dev`
+suffix, mints a long-lived dev token, polls until the new central is
+queryable, and rewrites `family_registry.dbFilename` to point at the
+`-dev` URLs. Idempotent — safe to re-run; already-forked DBs are skipped.
+
 ```
-# Fork central
-turso db create ancstra-central-dev --from-db ancstra-central
-turso db tokens create ancstra-central-dev --expiration none
+# Required in apps/web/.env.local:
+#   CENTRAL_DATABASE_URL  prod libsql URL
+#   TURSO_AUTH_TOKEN      libsql client token for prod (read is enough)
+#   TURSO_ORG             org slug, e.g. n-drobyshevski
+#   TURSO_PLATFORM_TOKEN  Platform API token (database:create + tokens:create)
 
-# Fork each family DB (look up the list first)
-turso db shell ancstra-central "SELECT id, dbFilename FROM family_registry WHERE deletedAt IS NULL"
-# Then for each row:
-turso db create <family-name>-dev --from-db <family-name>
-turso db tokens create <family-name>-dev --expiration none
+# Dry-run first to see what would happen:
+pnpm --filter web exec tsx scripts/fork-prod-to-dev.ts --dry-run
 
-# Rewrite registry on the dev central so it points at the forked URLs
-turso db shell ancstra-central-dev "UPDATE family_registry SET dbFilename = REPLACE(dbFilename, '<prod-host>', '<prod-host-with-dev-suffix>')"
+# Execute:
+pnpm --filter web exec tsx scripts/fork-prod-to-dev.ts
 ```
 
-For a hands-off run, use `apps/web/scripts/fork-prod-to-dev.ts` — it walks the registry, mints `-dev` forks, and rewrites the URLs idempotently.
+The script prints the dev `CENTRAL_DATABASE_URL` and `TURSO_AUTH_TOKEN`
+at the end — paste those into Vercel (Preview scope, branch=dev).
+
+### Manual fallback (Turso web dashboard)
+
+If you'd rather click through the dashboard, the operations are:
+
+1. Databases → New database → seed from `ancstra-central` → name
+   `ancstra-central-dev`.
+2. For each row in prod's `family_registry`, repeat: new database, seed
+   from `<family-name>`, name `<family-name>-dev`.
+3. Generate a token for `ancstra-central-dev` (never expires, full access).
+4. Open the dashboard SQL shell against `ancstra-central-dev` and run, for
+   each family forked:
+   ```sql
+   UPDATE family_registry
+   SET dbFilename = REPLACE(dbFilename, '<prod-host>', '<prod-host-with-dev-suffix>')
+   WHERE id = '<family-id>';
+   ```
+
+### Turso CLI (optional, not required)
+
+The `turso` CLI is not installed by default on Windows (it ships only via
+WSL). The fork script above intentionally uses the HTTP Platform API so
+this isn't a blocker. If you do want it for ad-hoc commands like
+`turso db shell`, install via WSL Ubuntu:
+
+```
+wsl --install Ubuntu   # one-time
+# inside Ubuntu shell:
+curl -sSfL https://get.tur.so/install.sh | bash
+```
 
 ### Migration drift between prod and dev central
 
