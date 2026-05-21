@@ -3,6 +3,11 @@ import * as Sentry from '@sentry/nextjs';
 Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
 
+  // Release tag — sourced from root package.json via next.config env injection.
+  // Matches release set in server + edge configs so Sentry groups all events
+  // for a given version under one release.
+  release: process.env.NEXT_PUBLIC_APP_VERSION,
+
   sendDefaultPii: true,
 
   // Explicit env tag — set NEXT_PUBLIC_SENTRY_ENVIRONMENT per Vercel scope

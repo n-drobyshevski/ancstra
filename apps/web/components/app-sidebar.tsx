@@ -20,6 +20,7 @@ import {
 import { useLocale, useTranslations } from 'next-intl';
 import type { Permission } from '@ancstra/auth/types';
 import { LensSelector } from '@/components/sidebar/lens-selector';
+import { AppVersionBadge } from '@/components/app-version-badge';
 import { useVisibleNavItems } from '@/lib/nav/visible-items';
 import { docsUrl } from '@/lib/docs-url';
 import {
@@ -260,6 +261,7 @@ export function AppSidebar({ factsheetCount = 0 }: AppSidebarProps) {
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
+        <AppVersionBadge />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

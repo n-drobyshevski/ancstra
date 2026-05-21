@@ -3,6 +3,10 @@ import * as Sentry from '@sentry/nextjs';
 Sentry.init({
   dsn: process.env.SENTRY_DSN ?? process.env.NEXT_PUBLIC_SENTRY_DSN,
 
+  // Release tag — sourced from root package.json via next.config env injection.
+  // Lets Sentry group issues by version and surface regressions per release.
+  release: process.env.NEXT_PUBLIC_APP_VERSION,
+
   // Explicit env tag — Sentry SDK doesn't auto-read VERCEL_ENV. Set
   // SENTRY_ENVIRONMENT per Vercel scope (production / development) so events
   // are filterable in the dashboard.
