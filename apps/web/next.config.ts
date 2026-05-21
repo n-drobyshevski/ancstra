@@ -2,6 +2,8 @@ import withBundleAnalyzer from '@next/bundle-analyzer';
 import { withSentryConfig } from '@sentry/nextjs';
 import createNextIntlPlugin from 'next-intl/plugin';
 import type { NextConfig } from 'next';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 const withAnalyzer = withBundleAnalyzer({
   enabled: process.env.ANALYZE === 'true',
@@ -9,7 +11,25 @@ const withAnalyzer = withBundleAnalyzer({
 
 const withNextIntl = createNextIntlPlugin('./i18n/request.ts');
 
+// Single source of truth for app version: root package.json (bumped by
+// release-please). Propagated to the runtime as NEXT_PUBLIC_APP_VERSION so
+// it's available in client bundles, server code, Sentry, and /api/health.
+// Uses process.cwd() (= apps/web when next dev/build runs) to walk up to root,
+// rather than import.meta.url which doesn't survive Next.js config compilation.
+const rootPkg = JSON.parse(
+  readFileSync(resolve(process.cwd(), '../../package.json'), 'utf8'),
+) as { version?: string };
+const APP_VERSION = rootPkg.version ?? '0.0.0';
+const APP_COMMIT =
+  process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ??
+  process.env.GITHUB_SHA?.slice(0, 7) ??
+  'local';
+
 const nextConfig: NextConfig = {
+  env: {
+    NEXT_PUBLIC_APP_VERSION: APP_VERSION,
+    NEXT_PUBLIC_APP_COMMIT: APP_COMMIT,
+  },
   serverExternalPackages: ['better-sqlite3'],
   experimental: {
     viewTransition: true,
