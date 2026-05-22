@@ -3,12 +3,13 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
 import { cacheLife, cacheTag } from 'next/cache';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { getCentralDb } from '@/lib/db-singleton';
 import { getUserDetail, userExists } from '@ancstra/auth/admin';
 import { requirePlatformAdmin } from '@/lib/auth/platform-admin';
 import { UserDetail } from '@/components/admin/user-detail';
 import { Button } from '@/components/ui/button';
+import type { Locale } from '@/i18n/routing';
 
 async function getCachedUserDetail(id: string) {
   'use cache';
@@ -21,10 +22,10 @@ async function getCachedUserDetail(id: string) {
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ id: string; locale: Locale }>;
 }) {
-  const { id } = await params;
-  const t = await getTranslations('admin.users');
+  const { id, locale } = await params;
+  const t = await getTranslations({ locale, namespace: 'admin.users' });
   const db = await getCentralDb();
   if (!(await userExists(db, id))) {
     return { title: t('notFound') };
@@ -34,11 +35,12 @@ export async function generateMetadata({
 }
 
 interface AdminUserDetailPageProps {
-  params: Promise<{ id: string }>;
+  params: Promise<{ id: string; locale: Locale }>;
 }
 
 async function AdminUserDetailContent({ params }: AdminUserDetailPageProps) {
-  const { id } = await params;
+  const { id, locale } = await params;
+  setRequestLocale(locale);
   const viewer = await requirePlatformAdmin();
   const db = await getCentralDb();
   if (!(await userExists(db, id))) notFound();

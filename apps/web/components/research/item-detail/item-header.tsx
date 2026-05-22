@@ -36,7 +36,7 @@ interface ItemHeaderProps {
   onDeleted: () => void;
 }
 
-export function ItemHeader({ item, onStatusChange, onDeleted }: ItemHeaderProps) {
+export function ItemHeader({ item, onStatusChange: _onStatusChange, onDeleted }: ItemHeaderProps) {
   const router = useRouter();
   const [deleting, setDeleting] = useState(false);
 

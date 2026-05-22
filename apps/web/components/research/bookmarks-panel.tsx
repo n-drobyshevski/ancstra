@@ -13,7 +13,7 @@ interface BookmarksPanelProps {
   refreshKey?: number;
 }
 
-export function BookmarksPanel({ mode, refreshKey }: BookmarksPanelProps) {
+export function BookmarksPanel({ mode, refreshKey: _refreshKey }: BookmarksPanelProps) {
   const { data, isLoading } = useResearchItems();
   const items = data?.items ?? [];
   const displayItems = mode === 'landing' ? items.slice(0, 5) : items;

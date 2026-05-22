@@ -76,6 +76,16 @@
   - `/api/health` (JSON: `{ version, commit, builtAt, env }`)
   - Sidebar footer (`AppVersionBadge` component)
   - Sentry `release` tag (set in all three Sentry init files)
+- **Post-merge local cleanup**: the repo has `deleteBranchOnMerge` on, so GitHub
+  removes the remote branch when a PR merges — but git intentionally never
+  touches local branches, so they linger as `[gone]` after `git fetch --prune`.
+  Run `git prune-gone` (global alias on this machine) to fetch+prune and
+  force-delete every local whose upstream is gone. Safe because squash-merged
+  branches won't match `git branch -d`'s ancestry check, so `-D` is required
+  and the alias uses it. Alias body:
+  ```
+  !git fetch --prune && git for-each-ref --format="%(refname:short) %(upstream:track)" refs/heads | awk "/\[gone\]/ {print \$1}" | xargs -r -n1 git branch -D
+  ```
 - **Going to `1.0.0`**: when ready, push an empty commit with body
   `Release-As: 1.0.0` on `dev` so the next release-please PR bumps to 1.0.0
   regardless of conventional-commit rules.

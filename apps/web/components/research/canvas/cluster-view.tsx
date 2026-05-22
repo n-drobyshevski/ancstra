@@ -11,9 +11,7 @@ import {
   useNodesState,
   useEdgesState,
   useReactFlow,
-  addEdge,
   type Node,
-  type Edge,
   type Connection,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
@@ -31,12 +29,6 @@ import {
 import type { Factsheet, FactsheetLink } from '@/lib/research/factsheet-client';
 import { createFactsheetLink } from '@/lib/research/factsheet-client';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 
 const nodeTypes = { factsheetNode: FactsheetNode };

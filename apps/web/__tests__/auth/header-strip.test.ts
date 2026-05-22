@@ -31,6 +31,13 @@ vi.mock('next/headers', () => ({
   headers: vi.fn(async () => new Headers()),
 }));
 
+// getAuthContext awaits next/server's `connection()` as a dynamic-signal marker
+// (added in f9784657 for Next.js 16 cacheComponents). Outside a real request
+// scope it throws; mock it to a no-op so unit tests can exercise the function.
+vi.mock('next/server', () => ({
+  connection: vi.fn(async () => undefined),
+}));
+
 describe('header-strip / role re-derivation', () => {
   it('ignores forged x-family-role header — role comes from JWT', async () => {
     const forgedRequest = new Request('http://localhost/api/test', {

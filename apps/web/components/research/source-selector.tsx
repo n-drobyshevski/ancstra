@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Settings2, Check, Loader2 } from 'lucide-react';
+import { Settings2, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Popover,
@@ -85,7 +85,7 @@ export function SourceSelector({ onSelectionChange }: SourceSelectorProps) {
   const [selected, setSelected] = useState<Set<string>>(loadSelectedProviders);
   const [open, setOpen] = useState(false);
   const [healthMap, setHealthMap] = useState<Record<string, HealthStatus>>({});
-  const [healthLoading, setHealthLoading] = useState(false);
+  const [, setHealthLoading] = useState(false);
   const lastChecked = useRef<number>(0);
 
   // Fetch health when popover opens (throttled to once per 30s). The
@@ -115,7 +115,10 @@ export function SourceSelector({ onSelectionChange }: SourceSelectorProps) {
         setHealthMap(failed);
       })
       .finally(() => setHealthLoading(false));
-  }, [open]);
+    // healthMap is read for the early-return guard above; the throttle
+    // (lastChecked.current < 30s + non-empty map) blocks re-fetches when
+    // healthMap changes, so depending on it is safe.
+  }, [open, healthMap]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   // Persist and notify on change

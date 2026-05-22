@@ -132,7 +132,8 @@ export function TextPasteModal({ open, onOpenChange, onBookmark, personId }: Tex
     }
   }, [text, documentType, personId, onBookmark]);
 
-  const handleExtract = useCallback(async () => {
+  // Wired in once the /api/research/facts/extract route (and its AI deps) ships.
+  const _handleExtract = useCallback(async () => {
     setStep('extracting');
     setError(null);
 

@@ -1,16 +1,22 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { cacheLife, cacheTag } from 'next/cache';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { getCentralDb } from '@/lib/db-singleton';
 import { listAllFamilies } from '@ancstra/auth/admin';
 import { FamiliesTable } from '@/components/admin/families-table';
 import { DataTableToolbar } from '@/components/admin/data-table-toolbar';
 import { DataTablePagination } from '@/components/admin/data-table-pagination';
 import { AddFamilyDialog } from '@/components/admin/add-family-dialog';
+import type { Locale } from '@/i18n/routing';
 
-export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations('admin.families.page');
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: Locale }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: 'admin.families.page' });
   return { title: `${t('heading')} — Admin` };
 }
 
@@ -25,10 +31,13 @@ async function getCachedFamiliesPage(q: string, offset: number) {
 }
 
 interface AdminFamiliesPageProps {
+  params: Promise<{ locale: Locale }>;
   searchParams: Promise<{ q?: string; offset?: string }>;
 }
 
-async function AdminFamiliesContent({ searchParams }: AdminFamiliesPageProps) {
+async function AdminFamiliesContent({ params, searchParams }: AdminFamiliesPageProps) {
+  const { locale } = await params;
+  setRequestLocale(locale);
   const sp = await searchParams;
   const q = sp.q?.trim() ?? '';
   const offset = Math.max(0, parseInt(sp.offset ?? '0', 10) || 0);
@@ -67,10 +76,10 @@ async function AdminFamiliesContent({ searchParams }: AdminFamiliesPageProps) {
   );
 }
 
-export default function AdminFamiliesPage({ searchParams }: AdminFamiliesPageProps) {
+export default function AdminFamiliesPage({ params, searchParams }: AdminFamiliesPageProps) {
   return (
     <Suspense fallback={null}>
-      <AdminFamiliesContent searchParams={searchParams} />
+      <AdminFamiliesContent params={params} searchParams={searchParams} />
     </Suspense>
   );
 }

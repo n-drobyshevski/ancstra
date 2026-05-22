@@ -3,11 +3,12 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
 import { cacheLife, cacheTag } from 'next/cache';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { getCentralDb } from '@/lib/db-singleton';
 import { familyExists, getFamilyDetail } from '@ancstra/auth/admin';
 import { FamilyDetail } from '@/components/admin/family-detail';
 import { Button } from '@/components/ui/button';
+import type { Locale } from '@/i18n/routing';
 
 async function getCachedFamilyDetail(id: string) {
   'use cache';
@@ -20,10 +21,10 @@ async function getCachedFamilyDetail(id: string) {
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ id: string; locale: Locale }>;
 }) {
-  const { id } = await params;
-  const t = await getTranslations('admin.families');
+  const { id, locale } = await params;
+  const t = await getTranslations({ locale, namespace: 'admin.families' });
   const db = await getCentralDb();
   if (!(await familyExists(db, id))) {
     return { title: t('notFound') };
@@ -33,11 +34,12 @@ export async function generateMetadata({
 }
 
 interface AdminFamilyDetailPageProps {
-  params: Promise<{ id: string }>;
+  params: Promise<{ id: string; locale: Locale }>;
 }
 
 async function AdminFamilyDetailContent({ params }: AdminFamilyDetailPageProps) {
-  const { id } = await params;
+  const { id, locale } = await params;
+  setRequestLocale(locale);
   const db = await getCentralDb();
   if (!(await familyExists(db, id))) notFound();
   const data = await getCachedFamilyDetail(id);

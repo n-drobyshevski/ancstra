@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 /**
  * Cleanup script for the "37 families on 6 persons" anomaly.
  *
