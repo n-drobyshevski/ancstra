@@ -10,7 +10,7 @@ export function AppVersionBadge() {
   const commit = process.env.NEXT_PUBLIC_APP_COMMIT ?? 'local';
   return (
     <div
-      className="px-2 pt-1 text-[10px] leading-none text-muted-foreground/60 select-none"
+      className="px-2 pt-1 text-[10px] leading-none text-muted-foreground/60 select-none group-data-[collapsible=icon]:hidden"
       title={`Ancstra v${version} · ${commit}`}
     >
       <span className="font-mono">v{version}</span>
