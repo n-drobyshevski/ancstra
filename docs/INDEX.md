@@ -1,5 +1,7 @@
 # Ancstra — Planning Index
 
+> **Next release:** v0.2.0 (in preparation — see `CHANGELOG.md` once cut by release-please).
+
 ## Quick Links
 - [Vision & Scope](vision.md)
 - [Architecture Overview](architecture/overview.md)
