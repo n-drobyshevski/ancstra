@@ -307,7 +307,15 @@ function Sidebar({
   collapsible?: "offcanvas" | "icon" | "none"
 }) {
   const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
-  const swipe = useSwipeToClose(setOpenMobile, side)
+  // Destructured at render top so React Compiler doesn't see member access
+  // on a ref-bearing object during JSX render (react-hooks/refs).
+  const {
+    ref: swipeRef,
+    onPointerDown: onSwipePointerDown,
+    onPointerMove: onSwipePointerMove,
+    onPointerUp: onSwipePointerUp,
+    onPointerCancel: onSwipePointerCancel,
+  } = useSwipeToClose(setOpenMobile, side)
 
   if (collapsible === "none") {
     return (
@@ -328,11 +336,11 @@ function Sidebar({
     return (
       <Sheet open={openMobile} onOpenChange={setOpenMobile} {...props}>
         <SheetContent
-          ref={swipe.ref}
-          onPointerDown={swipe.onPointerDown}
-          onPointerMove={swipe.onPointerMove}
-          onPointerUp={swipe.onPointerUp}
-          onPointerCancel={swipe.onPointerCancel}
+          ref={swipeRef}
+          onPointerDown={onSwipePointerDown}
+          onPointerMove={onSwipePointerMove}
+          onPointerUp={onSwipePointerUp}
+          onPointerCancel={onSwipePointerCancel}
           dir={dir}
           data-sidebar="sidebar"
           data-slot="sidebar"
