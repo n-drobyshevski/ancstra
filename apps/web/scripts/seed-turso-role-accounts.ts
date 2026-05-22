@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 /**
  * One-shot, idempotent: add admin@/editor@/viewer@ancstra.app to the central
  * Turso DB and join them to the existing "Dev Family Tree" with the matching

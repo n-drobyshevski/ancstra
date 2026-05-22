@@ -11,7 +11,6 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { FACTSHEET_STATUS_CONFIG } from '@/lib/research/constants';
 import { cn } from '@/lib/utils';

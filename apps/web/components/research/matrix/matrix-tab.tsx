@@ -10,7 +10,6 @@ import {
 import {
   buildMatrix,
   useConclusionsForPerson,
-  type MatrixCell,
 } from '@/lib/research/matrix-helpers';
 import { MatrixCellComponent } from './matrix-cell';
 import { MatrixConclusionCell } from './matrix-conclusion-cell';

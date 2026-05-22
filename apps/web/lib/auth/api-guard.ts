@@ -1,12 +1,10 @@
 import { NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
 import * as Sentry from '@sentry/nextjs';
-import { requireAuthContext, type AuthContext } from './context';
+import { requireAuthContext } from './context';
 import {
   requirePermission,
   requireExperimentalFeature,
-  shouldModerate,
-  submitContribution,
   logActivity,
   ForbiddenError,
   type Permission,
