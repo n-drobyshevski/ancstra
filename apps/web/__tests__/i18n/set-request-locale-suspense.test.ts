@@ -99,8 +99,12 @@ function analyzeFunction(fn: ts.FunctionLikeDeclaration, sf: ts.SourceFile) {
 
 function findAsyncFunctionLikeDeclarations(sf: ts.SourceFile): ts.FunctionLikeDeclaration[] {
   const out: ts.FunctionLikeDeclaration[] = [];
-  function isAsync(node: ts.FunctionLikeDeclarationBase): boolean {
-    return !!node.modifiers?.some((m) => m.kind === ts.SyntaxKind.AsyncKeyword);
+  // TS 4.8+ removed the `.modifiers` accessor from FunctionLikeDeclarationBase;
+  // the supported API is `ts.getModifiers()` (returns readonly Modifier[] or
+  // undefined). The call sites below pass node kinds that all `canHaveModifiers`.
+  function isAsync(node: ts.FunctionLikeDeclaration): boolean {
+    const mods = ts.canHaveModifiers(node) ? ts.getModifiers(node) : undefined;
+    return !!mods?.some((m) => m.kind === ts.SyntaxKind.AsyncKeyword);
   }
   function visit(n: ts.Node): void {
     if (ts.isFunctionDeclaration(n) && isAsync(n)) out.push(n);

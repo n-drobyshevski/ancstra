@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { BaseContext } from '@/server/api/init';
 
-const ensureFamilySchemaMock = vi.fn(async () => undefined);
+const ensureFamilySchemaMock = vi.fn(
+  async (_db: unknown, _dbKey?: string): Promise<void> => undefined,
+);
 
 vi.mock('@/auth', () => ({ auth: vi.fn(async () => null) }));
 
@@ -14,7 +16,8 @@ vi.mock('@ancstra/db', async (importOriginal) => {
   return {
     ...actual,
     createFamilyDb: vi.fn(() => ({}) as never),
-    ensureFamilySchema: (...args: unknown[]) => ensureFamilySchemaMock(...args),
+    ensureFamilySchema: (...args: Parameters<typeof actual.ensureFamilySchema>) =>
+      ensureFamilySchemaMock(...args),
   };
 });
 

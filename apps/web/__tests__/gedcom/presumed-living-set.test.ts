@@ -131,7 +131,7 @@ describe('presumedLivingIds — set assembly edge cases', () => {
     ['with-death', false, 'death event short-circuits regardless of birth recency'],
     ['flag-dead', false, 'isLiving=false on persons row overrides absence of death event'],
   ] as const)('person %s is %s in set under default 100y threshold (reason: %s)',
-    async (personId, expected) => {
+    async (personId, expected, _reason) => {
       const caller = createCaller(ctx(100));
       await caller.gedcom.export({ mode: 'shareable' });
       const [data] = serializeMock.mock.calls[0]!;

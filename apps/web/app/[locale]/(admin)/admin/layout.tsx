@@ -10,7 +10,12 @@ import type { Locale } from '@/i18n/routing';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
-  params: Promise<{ locale: Locale }>;
+  // Next.js 16 typegen infers `params` as `{ locale: string }`. The parent
+  // [locale]/layout.tsx narrows via `hasLocale()` + `notFound()` before this
+  // layout ever runs, so by the time we await params here `locale` is
+  // guaranteed to be a valid `Locale`. We keep the type as `string` to match
+  // the typegen-generated `LayoutProps<"/[locale]/admin">` constraint.
+  params: Promise<{ locale: string }>;
 }
 
 /**
@@ -24,7 +29,9 @@ interface AdminLayoutProps {
  */
 async function AdminLayoutGuarded({ children, params }: AdminLayoutProps) {
   const { locale } = await params;
-  setRequestLocale(locale);
+  // Parent [locale]/layout.tsx already gates via hasLocale() + notFound(),
+  // so by the time this runs `locale` is guaranteed to be a valid Locale.
+  setRequestLocale(locale as Locale);
   await requirePlatformAdmin();
   const t = await getTranslations('admin.layout');
 
