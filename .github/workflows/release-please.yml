@@ -11,8 +11,12 @@ permissions:
 jobs:
   release-please:
     runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.rp.outputs.release_created }}
+      version: ${{ steps.rp.outputs.version }}
     steps:
       - uses: googleapis/release-please-action@v4
+        id: rp
         with:
           token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
           config-file: release-please-config.json
