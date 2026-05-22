@@ -53,7 +53,7 @@ jobs:
           fi
 
       - name: Skip if a back-sync PR is already open
-        if: steps.drift.outputs.skip != 'true'
+        if: steps.drift.outputs.skip == 'false'
         id: existing
         run: |
           n=$(gh pr list --head "$BRANCH" --base dev --state open --json number --jq '.[0].number // empty')
@@ -65,13 +65,13 @@ jobs:
           fi
 
       - name: Push sync branch (= main's tip)
-        if: steps.drift.outputs.skip != 'true' && steps.existing.outputs.skip != 'true'
+        if: steps.drift.outputs.skip == 'false' && steps.existing.outputs.skip == 'false'
         run: |
           git switch -c "$BRANCH"
           git push origin "$BRANCH"
 
       - name: Open PR and arm auto-merge (merge-commit only)
-        if: steps.drift.outputs.skip != 'true' && steps.existing.outputs.skip != 'true'
+        if: steps.drift.outputs.skip == 'false' && steps.existing.outputs.skip == 'false'
         run: |
           url=$(gh pr create \
             --base dev \
