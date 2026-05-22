@@ -15,7 +15,8 @@
     "@ancstra/db": "workspace:*"
   },
   "devDependencies": {
-    "vitest": "^4.1.0",
-    "typescript": "^5"
+    "@types/node": "^22.0.0",
+    "typescript": "^5",
+    "vitest": "^4.1.0"
   }
 }
