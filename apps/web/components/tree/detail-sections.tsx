@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
 import type { Person, Event as PersonEvent, PersonListItem, TreeData } from '@ancstra/shared';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BookOpen, Link2, UserPlus, Pencil, Trash2 } from 'lucide-react';
 import { personDetailCache, type PersonDetailEntry } from '@/lib/tree/person-detail-cache';

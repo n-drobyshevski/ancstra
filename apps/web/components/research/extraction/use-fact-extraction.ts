@@ -54,7 +54,6 @@ export function useFactExtraction({ researchItemId, researchItemTitle }: UseFact
       if (sel && sel.rangeCount > 0) {
         const range = sel.getRangeAt(0);
         const body = doc.body;
-        const fullText = body.textContent ?? '';
         const preRange = doc.createRange();
         preRange.selectNodeContents(body);
         preRange.setEnd(range.startContainer, range.startOffset);

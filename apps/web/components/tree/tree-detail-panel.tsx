@@ -21,7 +21,6 @@ import {
   sexTokens,
   useComputeLifespan,
   getInitials,
-  MiniAvatar,
   DetailFamily,
   DetailTimeline,
   DetailSources,

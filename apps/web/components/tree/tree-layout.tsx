@@ -342,14 +342,6 @@ export function TreeLayout({ viewData, focusPersonId }: TreeLayoutProps) {
     });
   }, [setFilters]);
 
-  const handleClearSearch = useCallback(() => {
-    void setFilters({ q: '', page: 1 });
-  }, [setFilters]);
-
-  const handleClearTopology = useCallback(() => {
-    void setFilters({ topologyMode: 'all', topologyAnchor: '', page: 1 });
-  }, [setFilters]);
-
   const handleToggleGaps = useCallback(() => {
     setShowGaps((v) => !v);
   }, []);

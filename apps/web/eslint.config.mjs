@@ -14,6 +14,18 @@ const eslintConfig = defineConfig([
       "react-hooks/static-components": "warn",
       "react-hooks/purity": "warn",
       "react-hooks/refs": "warn",
+      // Allow intentionally-unused bindings prefixed with `_` (the established
+      // convention in this repo for "I know it's unused, this is on purpose"
+      // — e.g. typed-but-ignored mock params, loop discard vars).
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_",
+          destructuredArrayIgnorePattern: "^_",
+        },
+      ],
     },
   },
   {

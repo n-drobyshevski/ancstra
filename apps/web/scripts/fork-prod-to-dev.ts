@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 /**
  * Fork the prod Turso central + family DBs into a dev set.
  *

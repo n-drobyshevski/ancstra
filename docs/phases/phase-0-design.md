@@ -1,8 +1,24 @@
 # Phase 0: UX/UI Design
 
+**Status:** ✅ Complete (2026-05-21)
 **Duration:** ~13 working days (3 calendar weeks)
 **Prerequisite:** None (documentation-only state)
 **Gate to Phase 1:** All Phase 1 screens have approved hi-fi mockups in Figma
+
+---
+
+## Completion Summary
+
+- 42 Figma frames produced covering Phase 1 wireframes + lo-fi flows.
+- **Hi-fi mockup gate intentionally relaxed** — the team opted to skip Phase 0's
+  hi-fi pass and use the lo-fi wireframes + Figma design system as Phase 1's
+  visual brief. The Heritage Modern + Indigo Heritage palette and adaptive-
+  density rules are codified in `design/design-system.md` and applied directly
+  in code.
+- Foundations (component inventory, IA, user flows, design system tokens) were
+  all delivered and remain the source of truth for new screens.
+- Closed forward into Phase 0.5 (technical spikes) → Phase 1 (core tree builder),
+  both currently in progress.
 
 ---
 

@@ -52,8 +52,12 @@ export function FactsheetsLayout({
 
   // Strip count fields to get base Factsheet[] for FactsheetDetail
   const allFactsheets = useMemo(
-    () => factsheets.map(({ factCount, linkCount, conflictCount, isUnanchored, ...fs }) => fs),
-    [factsheets]
+    () =>
+      factsheets.map(
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars -- destructured purely to omit from `...fs`
+        ({ factCount, linkCount, conflictCount, isUnanchored, ...fs }) => fs,
+      ),
+    [factsheets],
   );
 
   const setParam = useCallback(

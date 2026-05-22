@@ -8,7 +8,6 @@ import { and, eq, isNull } from 'drizzle-orm';
 import type { FamilyMembership } from '@/types/next-auth';
 import bcrypt from 'bcryptjs';
 import { AncstraAdapter } from '@ancstra/auth';
-import { linkOrCreateUser } from '@ancstra/auth';
 import { getCentralDbSync } from './lib/db-singleton';
 
 // Build providers list dynamically — skip OAuth providers if env vars missing

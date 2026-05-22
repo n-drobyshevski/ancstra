@@ -123,62 +123,6 @@ async function searchPersonsLike(
 }
 
 // ---------------------------------------------------------------------------
-// Private helper: build a PersonListItem from a personId
-// ---------------------------------------------------------------------------
-async function getPersonListItem(
-  db: Database,
-  personId: string,
-): Promise<PersonListItem | null> {
-  const row = await db
-    .select({
-      id: persons.id,
-      sex: persons.sex,
-      isLiving: persons.isLiving,
-    })
-    .from(persons)
-    .where(and(eq(persons.id, personId), isNull(persons.deletedAt)))
-    .get();
-
-  if (!row) return null;
-
-  const name = await db
-    .select({
-      givenName: personNames.givenName,
-      surname: personNames.surname,
-    })
-    .from(personNames)
-    .where(
-      and(
-        eq(personNames.personId, personId),
-        eq(personNames.isPrimary, true),
-      ),
-    )
-    .get();
-
-  const birthEvent = await db
-    .select({ dateOriginal: events.dateOriginal })
-    .from(events)
-    .where(and(eq(events.personId, personId), eq(events.eventType, 'birth')))
-    .get();
-
-  const deathEvent = await db
-    .select({ dateOriginal: events.dateOriginal })
-    .from(events)
-    .where(and(eq(events.personId, personId), eq(events.eventType, 'death')))
-    .get();
-
-  return {
-    id: row.id,
-    givenName: name?.givenName ?? '',
-    surname: name?.surname ?? '',
-    sex: row.sex,
-    isLiving: row.isLiving,
-    birthDate: birthEvent?.dateOriginal ?? null,
-    deathDate: deathEvent?.dateOriginal ?? null,
-  };
-}
-
-// ---------------------------------------------------------------------------
 // Private helper: batch-fetch PersonListItems from person_summary
 // ---------------------------------------------------------------------------
 async function getPersonListItemsBatch(

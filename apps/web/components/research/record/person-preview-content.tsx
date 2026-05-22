@@ -6,8 +6,6 @@ import {
   CalendarDays,
   MapPin,
   Users,
-  Heart,
-  Baby,
   Clock,
   ExternalLink,
 } from 'lucide-react';

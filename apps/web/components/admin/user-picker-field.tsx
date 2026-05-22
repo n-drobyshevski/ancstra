@@ -84,7 +84,6 @@ export function UserPickerField({
     },
   );
 
-  const data = search.data ?? [];
   const lowerQuery = query.trim().toLowerCase();
 
   const excludeSet = useMemo(
@@ -103,7 +102,9 @@ export function UserPickerField({
   // here so callers can exclude multiple users — the server-side
   // excludeUserId only takes one.
   const visible = useMemo(() => {
-    let result: ReadonlyArray<UserOption> = data;
+    // `search.data ?? []` inlined here so the fallback `[]` identity stays
+    // stable across renders (would otherwise force every useMemo to re-run).
+    let result: ReadonlyArray<UserOption> = search.data ?? [];
     if (excludeSet) {
       result = result.filter((u) => !excludeSet.has(u.id));
     }
@@ -115,7 +116,7 @@ export function UserPickerField({
       );
     }
     return result;
-  }, [data, lowerQuery, excludeSet]);
+  }, [search.data, lowerQuery, excludeSet]);
 
   // No useIsHydrated gate (which family-picker-field uses): isFetching is
   // only consumed for conditional element rendering (the in-input spinner
