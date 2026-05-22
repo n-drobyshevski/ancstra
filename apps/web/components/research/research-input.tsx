@@ -33,7 +33,7 @@ export const ResearchInput = forwardRef<ResearchInputHandle, ResearchInputProps>
   function ResearchInput({
     onSearch,
     onBookmark,
-    onOpenTextModal,
+    onOpenTextModal: _onOpenTextModal,
     placeholder = 'Search records or paste a URL...',
     externalQuery,
   }, ref) {

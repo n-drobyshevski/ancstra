@@ -11,7 +11,6 @@ import {
   useNodesState,
   useEdgesState,
   useReactFlow,
-  type Node,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
@@ -26,7 +25,6 @@ import {
   useFactsheetDetail,
   useFactsheetConflicts,
   promoteFactsheet,
-  resolveFactsheetConflict,
 } from '@/lib/research/factsheet-client';
 import { usePersonResearchItems } from '@/lib/research/evidence-client';
 import { Button } from '@/components/ui/button';
@@ -62,8 +60,8 @@ export function EvidenceView({
   onRefresh,
 }: EvidenceViewProps) {
   const { fitView } = useReactFlow();
-  const { detail, isLoading: detailLoading, refetch: refetchDetail } = useFactsheetDetail(factsheetId);
-  const { conflicts, refetch: refetchConflicts } = useFactsheetConflicts(factsheetId);
+  const { detail, isLoading: detailLoading } = useFactsheetDetail(factsheetId);
+  const { conflicts } = useFactsheetConflicts(factsheetId);
   const { items: researchItems } = usePersonResearchItems(personId);
 
   const conflictFactIds = useMemo(() => {

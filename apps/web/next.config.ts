@@ -75,6 +75,29 @@ const nextConfig: NextConfig = {
     // silently eats clicks on anything in that corner.
     position: 'bottom-right',
   },
+  turbopack: {
+    ignoreIssue: [
+      // Stale `.next/dev/cache/` symlinks from earlier `next dev` runs trip
+      // the NFT trace during `next build` on Windows. Cache is dev-only and
+      // unrelated to production output.
+      { path: '**/.next/dev/cache/**' },
+      // The settings/backup route uses `path.join(process.cwd(), '..', '..',
+      // ...)` to reach the monorepo's packages/db/data directory. This is a
+      // deliberate dev fallback (prod uses DATABASE_URL). The route already
+      // carries an inline `/* turbopackIgnore: true */` annotation per
+      // Next.js docs, but Turbopack 16.2.4's NFT tracer doesn't yet honour
+      // that comment for path operations — suppress at the config level.
+      {
+        path: '**/apps/web/**',
+        title: 'Encountered unexpected file in NFT list',
+      },
+      // Windows MAX_PATH (260 chars) limit hit by Turbopack when hard-linking
+      // OpenTelemetry's `import-in-the-middle` hashed copies into the NFT
+      // output cache. Affects cold builds on Windows only; does not impact
+      // runtime. No fix available short of enabling Windows long-paths.
+      { path: '**/.next/node_modules/import-in-the-middle*' },
+    ],
+  },
 };
 
 // Skip Sentry wrapper in local dev to avoid proxy compilation hang

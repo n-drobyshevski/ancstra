@@ -1,7 +1,6 @@
 'use client';
 
 import { useMemo, useState, useCallback } from 'react';
-import { cn } from '@/lib/utils';
 
 const COLLAPSED_STORAGE_KEY = 'ancstra:collapsed-providers';
 

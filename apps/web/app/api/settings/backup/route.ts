@@ -6,7 +6,7 @@ export async function POST(request: Request) {
   try {
     const { ctx } = await withAuth('settings:manage', request);
 
-    const dbPath = process.env.DATABASE_URL || join(process.cwd(), '..', '..', 'packages', 'db', 'data', ctx.dbFilename);
+    const dbPath = process.env.DATABASE_URL || join(/* turbopackIgnore: true */ process.cwd(), '..', '..', 'packages', 'db', 'data', ctx.dbFilename);
 
     try {
       const data = await readFile(dbPath);

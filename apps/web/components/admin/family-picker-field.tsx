@@ -101,7 +101,6 @@ export function FamilyPickerField({
     },
   );
 
-  const data = search.data ?? [];
   const lowerQuery = query.trim().toLowerCase();
 
   // Client-side narrow on the cached set using the IMMEDIATE query string.
@@ -120,7 +119,9 @@ export function FamilyPickerField({
     [excludeFamilyIds],
   );
   const visible = useMemo(() => {
-    let result: ReadonlyArray<FamilyOption> = data;
+    // `search.data ?? []` inlined here so the fallback `[]` identity stays
+    // stable across renders (would otherwise force every useMemo to re-run).
+    let result: ReadonlyArray<FamilyOption> = search.data ?? [];
     if (excludeSet) {
       result = result.filter((f) => !excludeSet.has(f.id));
     }
@@ -128,7 +129,7 @@ export function FamilyPickerField({
       result = result.filter((f) => f.name.toLowerCase().includes(lowerQuery));
     }
     return result;
-  }, [data, lowerQuery, excludeSet]);
+  }, [search.data, lowerQuery, excludeSet]);
 
   const isFetching = isHydrated && search.isFetching;
   const isCold = search.isPending; // no data yet — first fetch

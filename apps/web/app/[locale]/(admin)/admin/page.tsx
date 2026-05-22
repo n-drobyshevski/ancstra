@@ -2,13 +2,18 @@ import { Suspense } from 'react';
 import { connection } from 'next/server';
 import { cacheLife, cacheTag } from 'next/cache';
 import { eq } from 'drizzle-orm';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { centralSchema } from '@ancstra/db';
 import { getCentralDb } from '@/lib/db-singleton';
 import { getPlatformCounts, listAuditLog } from '@ancstra/auth/admin';
 import { DashboardCards } from '@/components/admin/dashboard-cards';
 import { RecentActivityWidget } from '@/components/admin/recent-activity-widget';
 import { ExperimentalPolicyCard } from '@/components/admin/experimental-policy-card';
+import type { Locale } from '@/i18n/routing';
+
+interface AdminDashboardPageProps {
+  params: Promise<{ locale: Locale }>;
+}
 
 // Cache the aggregate COUNT queries against Turso. With cacheLife('minutes')
 // the dashboard becomes near-instant on every hit after the first per minute.
@@ -58,7 +63,9 @@ async function getCachedExperimentalPolicy() {
   };
 }
 
-async function AdminDashboardContent() {
+async function AdminDashboardContent({ params }: AdminDashboardPageProps) {
+  const { locale } = await params;
+  setRequestLocale(locale);
   // Skip build-time prerender: this page is admin-only and its `'use cache'`
   // aggregations need a real Turso/SQLite connection. CI has no DB at build,
   // so prerender would fail and bake empty data into the cache for first hit.
@@ -96,10 +103,10 @@ async function AdminDashboardContent() {
   );
 }
 
-export default function AdminDashboardPage() {
+export default function AdminDashboardPage({ params }: AdminDashboardPageProps) {
   return (
     <Suspense fallback={null}>
-      <AdminDashboardContent />
+      <AdminDashboardContent params={params} />
     </Suspense>
   );
 }

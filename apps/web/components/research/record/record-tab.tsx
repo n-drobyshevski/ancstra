@@ -12,7 +12,6 @@ import {
   Users,
   Link2,
   Trash2,
-  StickyNote,
   ChevronRight,
 } from 'lucide-react';
 import type { PersonDetail, PersonListItem } from '@ancstra/shared';

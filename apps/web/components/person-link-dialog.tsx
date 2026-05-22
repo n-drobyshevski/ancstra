@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   Heart,
@@ -107,7 +106,6 @@ export function PersonLinkDialog({
   successAction,
 }: PersonLinkDialogProps) {
   const isMobile = useIsMobile();
-  const router = useRouter();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<PersonListItem[]>([]);
   const [searching, setSearching] = useState(false);

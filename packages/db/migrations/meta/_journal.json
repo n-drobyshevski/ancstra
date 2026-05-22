@@ -71,6 +71,13 @@
       "when": 1778408074883,
       "tag": "0009_parallel_stingray",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1779386976344,
+      "tag": "0010_abnormal_tomas",
+      "breakpoints": true
     }
   ]
 }
