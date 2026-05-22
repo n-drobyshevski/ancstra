@@ -14,16 +14,16 @@
 
 | System | Spec | Phase | Depth | Status |
 |--------|------|-------|-------|--------|
-| GEDCOM Import/Export | [spec](specs/gedcom-import.md) | 1 | impl-ready | Not Started |
-| Tree Visualization | [spec](specs/tree-visualization.md) | 1 | impl-ready | Not Started |
+| GEDCOM Import/Export | [spec](specs/gedcom-import.md) | 1 | impl-ready | In Progress |
+| Tree Visualization | [spec](specs/tree-visualization.md) | 1 | impl-ready | In Progress |
 | Relationship Validation | [spec](specs/relationship-validation.md) | 2 | design | Not Started |
 | FamilySearch API | [spec](specs/familysearch-api.md) | 2 | design | Not Started |
 | AI Research Assistant | [spec](specs/ai-research-assistant.md) | 2 | design | Not Started |
 | Record Matching | [spec](specs/record-matching.md) | 2 | design | Not Started |
-| Research Workspace | [spec](superpowers/specs/2026-03-22-research-workspace-design.md) | 2 | approved | Not Started |
+| Research Workspace | [spec](superpowers/specs/2026-03-22-research-workspace-design.md) | 2 | approved | In Progress |
 | Research → Tree Pipeline | [spec](superpowers/specs/2026-03-26-research-to-tree-pipeline-design.md) | 2 | approved | Complete |
 | Factsheet UI Components | [spec](superpowers/specs/2026-03-27-factsheet-ui-components-design.md) | 2 | approved | Complete |
-| Research Threads (overlay) | [spec](superpowers/specs/2026-05-10-research-threads-overlay-design.md) | 2 | approved | Not Started |
+| Research Threads (overlay) | [spec](superpowers/specs/2026-05-10-research-threads-overlay-design.md) | 2 | approved | In Progress |
 | Document Processing | [spec](specs/document-processing.md) | 3 | design | Not Started |
 | Photo Analysis | [spec](specs/photo-analysis.md) | Post-launch | design | Not Started |
 | DNA Integration | [spec](specs/dna-integration.md) | Post-launch | design | Not Started |
@@ -47,10 +47,10 @@
 
 | Phase | Plan | Duration | Status |
 |-------|------|----------|--------|
-| 0: UX/UI Design | [phase-0-design](phases/phase-0-design.md) | ~3 weeks | In Progress |
-| 0.5: Technical Spikes | [phase-0.5-spikes](phases/phase-0.5-spikes.md) | 1 week | Not Started |
-| 1: Core Tree Builder | [phase-1-core](phases/phase-1-core.md) | 8 weeks | Not Started |
-| 2: AI Search, Research & Matching | [phase-2-search](phases/phase-2-search.md) | 12 weeks | Not Started |
+| 0: UX/UI Design | [phase-0-design](phases/phase-0-design.md) | ~3 weeks | Complete |
+| 0.5: Technical Spikes | [phase-0.5-spikes](phases/phase-0.5-spikes.md) | 1 week | Complete |
+| 1: Core Tree Builder | [phase-1-core](phases/phase-1-core.md) | 8 weeks | In Progress |
+| 2: AI Search, Research & Matching | [phase-2-search](phases/phase-2-search.md) | 12 weeks | In Progress |
 | 3: Document Processing | [phase-3-documents](phases/phase-3-documents.md) | 7 weeks | Not Started |
 | 4: Auth & Collaboration | [phase-4-auth](phases/phase-4-auth.md) | 4 weeks | Not Started |
 | 5: AI Polish & Export | [phase-5-polish](phases/phase-5-polish.md) | 3 weeks | Not Started |
