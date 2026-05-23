@@ -13,7 +13,7 @@ export interface ConflictPair {
 }
 
 /** Fact types that naturally have multiple values and should not trigger conflicts. */
-export const MULTI_VALUED_TYPES = ['residence', 'occupation', 'child_name', 'other'] as const;
+export const MULTI_VALUED_TYPES = ['residence', 'occupation', 'child_name', 'sibling_name', 'other'] as const;
 
 /**
  * Detect conflicting facts for a person.
@@ -36,7 +36,7 @@ export async function detectConflicts(db: Database, personId: string): Promise<C
      AND f1.id < f2.id
      AND f1.fact_value != f2.fact_value
     WHERE f1.person_id = ${personId}
-      AND f1.fact_type NOT IN ('residence', 'occupation', 'child_name', 'other')
+      AND f1.fact_type NOT IN ('residence', 'occupation', 'child_name', 'sibling_name', 'other')
   `);
 
   return rows;
