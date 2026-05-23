@@ -82,7 +82,7 @@ beforeEach(() => {
       provider_record_id TEXT,
       discovery_method TEXT NOT NULL,
       search_query TEXT,
-      status TEXT NOT NULL DEFAULT 'draft',
+      status TEXT NOT NULL DEFAULT 'collected',
       promoted_source_id TEXT REFERENCES sources(id),
       created_by TEXT NOT NULL REFERENCES users(id),
       created_at TEXT NOT NULL,
@@ -118,7 +118,7 @@ beforeEach(() => {
   sqlite.prepare(
     `INSERT INTO research_items (id, title, discovery_method, status, created_by, created_at, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?)`
-  ).run('item-1', 'Test Research Item', 'search', 'draft', 'test-user-1', now, now);
+  ).run('item-1', 'Test Research Item', 'search', 'collected', 'test-user-1', now, now);
 });
 
 afterEach(() => {
