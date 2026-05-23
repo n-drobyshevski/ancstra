@@ -19,6 +19,8 @@ export type RelationshipType = (typeof RELATIONSHIP_TYPES)[number];
 // `low`      — single source with ambiguous signal, or AI inference no direct source
 // `unknown`  — no signal yet (initial state for partial extractions)
 // `contested` is orthogonal (boolean), NOT a confidence level.
+// NOTE: research_facts.confidence still uses 'disputed' on disk; aligned in
+// Bundle A Task 3 (migration + backfill).
 export const CONFIDENCE_BANDS = ['high', 'medium', 'low', 'unknown'] as const;
 export type Confidence = (typeof CONFIDENCE_BANDS)[number];
 
@@ -47,8 +49,11 @@ export function bandConfidence(score: number): Confidence {
 }
 
 // Map AI tool input enum (3-value) → factType for the new factsheet path. Spec §2.2.
+// 'spouse' is intentionally omitted — the AI tool's 3-value input enum has no
+// 'spouse' arm; it emits 'partner' and the user can upgrade to 'spouse' during
+// factsheet review. See spec §2.2 and §3.1.
 export function relationshipToFactType(
-  rel: 'parent_child' | 'partner' | 'sibling',
+  rel: Exclude<RelationshipType, 'spouse'>,
 ): 'parent_name' | 'spouse_name' | 'sibling_name' {
   if (rel === 'parent_child') return 'parent_name';
   if (rel === 'partner') return 'spouse_name';
