@@ -105,6 +105,8 @@ beforeEach(() => {
       factsheet_id TEXT,
       accepted INTEGER,
       confidence TEXT NOT NULL DEFAULT 'medium',
+      contested INTEGER NOT NULL DEFAULT 0,
+      provenance TEXT NOT NULL DEFAULT 'derived',
       extraction_method TEXT NOT NULL DEFAULT 'manual',
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL

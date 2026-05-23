@@ -44,16 +44,20 @@ export async function detectConflicts(db: Database, personId: string): Promise<C
 
 /**
  * Resolve a conflict by setting the winner's confidence to 'high'
- * and the loser's confidence to 'disputed'.
+ * and the loser to 'low' + contested=true.
+ *
+ * Bundle A 2026-05-23: `'disputed'` collapsed a state into a confidence
+ * level; the replacement is the orthogonal `contested` boolean alongside
+ * a 'low' confidence. See spec §3.2.
  */
 export async function resolveConflict(db: Database, winnerFactId: string, loserFactId: string): Promise<void> {
   await db.update(researchFacts)
-    .set({ confidence: 'high', updatedAt: new Date().toISOString() })
+    .set({ confidence: 'high', contested: false, updatedAt: new Date().toISOString() })
     .where(eq(researchFacts.id, winnerFactId))
     .run();
 
   await db.update(researchFacts)
-    .set({ confidence: 'disputed', updatedAt: new Date().toISOString() })
+    .set({ confidence: 'low', contested: true, updatedAt: new Date().toISOString() })
     .where(eq(researchFacts.id, loserFactId))
     .run();
 }
