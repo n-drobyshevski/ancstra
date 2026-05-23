@@ -1,8 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as schema from '@ancstra/db/schema';
 import { createTestCentralDb, type TestCentralDb } from '@ancstra/db/test-fixtures';
-import { createFact } from '../facts/queries';
-import { detectConflicts, resolveConflict, MULTI_VALUED_TYPES } from '../facts/conflicts';
+import { createFact, type CreateFactInput } from '../facts/queries';
 
 let sqlite: import('better-sqlite3').Database;
 let db: TestCentralDb;
@@ -78,7 +77,7 @@ beforeEach(() => {
       provider_record_id TEXT,
       discovery_method TEXT NOT NULL,
       search_query TEXT,
-      status TEXT NOT NULL DEFAULT 'draft',
+      status TEXT NOT NULL DEFAULT 'collected',
       promoted_source_id TEXT REFERENCES sources(id),
       created_by TEXT NOT NULL REFERENCES users(id),
       created_at TEXT NOT NULL,
@@ -110,8 +109,8 @@ beforeEach(() => {
     CREATE INDEX idx_research_facts_person_type ON research_facts(person_id, fact_type);
   `);
 
-  // Seed test user
   const now = new Date().toISOString();
+
   db.insert(schema.users)
     .values({
       id: 'test-user-1',
@@ -123,10 +122,9 @@ beforeEach(() => {
     })
     .run();
 
-  // Seed test person
   db.insert(schema.persons)
     .values({
-      id: 'person-1',
+      id: 'p1',
       sex: 'M',
       isLiving: false,
       createdBy: 'test-user-1',
@@ -135,155 +133,84 @@ beforeEach(() => {
     })
     .run();
 
-  // Seed research items
   db.insert(schema.researchItems)
     .values({
-      id: 'item-1',
-      title: 'Census Record 1850',
+      id: 'ri1',
+      title: 'Test Item',
       discoveryMethod: 'search',
       createdBy: 'test-user-1',
       createdAt: now,
       updatedAt: now,
     })
     .run();
-  db.insert(schema.researchItems)
-    .values({
-      id: 'item-2',
-      title: 'Birth Certificate',
-      discoveryMethod: 'paste_url',
-      createdBy: 'test-user-1',
-      createdAt: now,
-      updatedAt: now,
-    })
-    .run();
+
+  // Seed a source so we can create a source_citation referencing it.
+  (sqlite as unknown as { ['exec']: (s: string) => void })['exec'](`
+    INSERT INTO sources (id, title, created_by, created_at, updated_at)
+    VALUES ('src1', 'Test Source', 'test-user-1', '${now}', '${now}');
+    INSERT INTO source_citations (id, source_id, created_at)
+    VALUES ('sc1', 'src1', '${now}');
+  `);
 });
 
 afterEach(() => {
   sqlite.close();
 });
 
-describe('Conflict Detection', () => {
-  it('detects conflicting birth dates from different sources', async () => {
-    await createFact(db as any, {
-      personId: 'person-1',
-      factType: 'birth_date',
-      factValue: '1850-03-15',
-      researchItemId: 'item-1',
-      confidence: 'medium',
-      provenance: 'derived',
-    });
-    await createFact(db as any, {
-      personId: 'person-1',
-      factType: 'birth_date',
-      factValue: '1851-06-20',
-      researchItemId: 'item-2',
-      confidence: 'low',
-      provenance: 'derived',
-    });
+describe('createFact provenance validation (Bundle A F6)', () => {
+  const base: CreateFactInput = {
+    personId: 'p1',
+    factType: 'name',
+    factValue: 'John',
+    provenance: 'derived',
+    researchItemId: 'ri1',
+  };
 
-    const conflicts = await detectConflicts(db as any, 'person-1');
-    expect(conflicts).toHaveLength(1);
-    expect(conflicts[0].factType).toBe('birth_date');
-    const values = [conflicts[0].valueA, conflicts[0].valueB].sort();
-    expect(values).toEqual(['1850-03-15', '1851-06-20']);
-    expect(conflicts[0].factAId).toBeDefined();
-    expect(conflicts[0].factBId).toBeDefined();
+  it('rejects when provenance is missing', async () => {
+    const { provenance: _omit, ...rest } = base;
+    void _omit;
+    await expect(
+      createFact(db as any, rest as CreateFactInput),
+    ).rejects.toThrow(/provenance/i);
   });
 
-  it('does NOT flag matching values as conflicts', async () => {
-    await createFact(db as any, {
-      personId: 'person-1',
-      factType: 'birth_date',
-      factValue: '1850-03-15',
-      researchItemId: 'item-1',
-      provenance: 'derived',
-    });
-    await createFact(db as any, {
-      personId: 'person-1',
-      factType: 'birth_date',
-      factValue: '1850-03-15',
-      researchItemId: 'item-2',
-      provenance: 'derived',
-    });
-
-    const conflicts = await detectConflicts(db as any, 'person-1');
-    expect(conflicts).toHaveLength(0);
+  it('rejects provenance=cited without sourceCitationId', async () => {
+    await expect(
+      createFact(db as any, { ...base, provenance: 'cited', sourceCitationId: undefined }),
+    ).rejects.toThrow(/sourceCitationId/i);
   });
 
-  it('excludes multi-valued types (residence with different values = no conflict)', async () => {
-    await createFact(db as any, {
-      personId: 'person-1',
-      factType: 'residence',
-      factValue: 'New York, NY',
-      researchItemId: 'item-1',
-      provenance: 'derived',
+  it('accepts provenance=cited with sourceCitationId', async () => {
+    const row = await createFact(db as any, {
+      ...base,
+      provenance: 'cited',
+      sourceCitationId: 'sc1',
     });
-    await createFact(db as any, {
-      personId: 'person-1',
-      factType: 'residence',
-      factValue: 'Boston, MA',
-      researchItemId: 'item-2',
-      provenance: 'derived',
-    });
-
-    const conflicts = await detectConflicts(db as any, 'person-1');
-    expect(conflicts).toHaveLength(0);
+    expect(row.provenance).toBe('cited');
   });
 
-  it('excludes all MULTI_VALUED_TYPES from conflict detection', async () => {
-    for (const factType of MULTI_VALUED_TYPES) {
-      await createFact(db as any, {
-        personId: 'person-1',
-        factType: factType as any,
-        factValue: 'Value A',
-        researchItemId: 'item-1',
+  it('accepts provenance=derived with researchItemId', async () => {
+    const row = await createFact(db as any, { ...base, provenance: 'derived' });
+    expect(row.provenance).toBe('derived');
+  });
+
+  it('rejects provenance=derived without researchItemId or sourceCitationId', async () => {
+    await expect(
+      createFact(db as any, {
+        ...base,
         provenance: 'derived',
-      });
-      await createFact(db as any, {
-        personId: 'person-1',
-        factType: factType as any,
-        factValue: 'Value B',
-        researchItemId: 'item-2',
-        provenance: 'derived',
-      });
-    }
-
-    const conflicts = await detectConflicts(db as any, 'person-1');
-    expect(conflicts).toHaveLength(0);
+        researchItemId: undefined,
+        sourceCitationId: undefined,
+      }),
+    ).rejects.toThrow(/researchItemId/i);
   });
-});
 
-describe('Conflict Resolution', () => {
-  it('resolveConflict sets winner to high + uncontested, loser to low + contested', async () => {
-    const factA = await createFact(db as any, {
-      personId: 'person-1',
-      factType: 'birth_date',
-      factValue: '1850-03-15',
-      confidence: 'medium',
-      researchItemId: 'item-1',
-      provenance: 'derived',
+  it('accepts provenance=user_inference without any source', async () => {
+    const row = await createFact(db as any, {
+      ...base,
+      provenance: 'user_inference',
+      researchItemId: undefined,
     });
-    const factB = await createFact(db as any, {
-      personId: 'person-1',
-      factType: 'birth_date',
-      factValue: '1851-06-20',
-      confidence: 'low',
-      researchItemId: 'item-2',
-      provenance: 'derived',
-    });
-
-    await resolveConflict(db as any, factA.id, factB.id);
-
-    const facts = sqlite
-      .prepare('SELECT id, confidence, contested FROM research_facts ORDER BY id')
-      .all() as any[];
-    const winner = facts.find((f: any) => f.id === factA.id);
-    const loser = facts.find((f: any) => f.id === factB.id);
-
-    // Bundle A 2026-05-23: 'disputed' was replaced by low + contested=1.
-    expect(winner.confidence).toBe('high');
-    expect(winner.contested).toBe(0);
-    expect(loser.confidence).toBe('low');
-    expect(loser.contested).toBe(1);
+    expect(row.provenance).toBe('user_inference');
   });
 });

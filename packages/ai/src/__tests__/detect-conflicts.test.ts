@@ -97,15 +97,15 @@ beforeEach(() => {
     .run();
 
   // Conflicting birth dates
-  createFact(db as any, { personId: 'person-123', factType: 'birth_date', factValue: '1850', researchItemId: 'item-a', confidence: 'high' });
-  createFact(db as any, { personId: 'person-123', factType: 'birth_date', factValue: '1852', researchItemId: 'item-b', confidence: 'medium' });
+  createFact(db as any, { personId: 'person-123', factType: 'birth_date', factValue: '1850', researchItemId: 'item-a', confidence: 'high', provenance: 'derived' });
+  createFact(db as any, { personId: 'person-123', factType: 'birth_date', factValue: '1852', researchItemId: 'item-b', confidence: 'medium', provenance: 'derived' });
 
   // Non-conflicting
-  createFact(db as any, { personId: 'person-no-conflicts', factType: 'birth_date', factValue: '1860', researchItemId: 'item-a' });
+  createFact(db as any, { personId: 'person-no-conflicts', factType: 'birth_date', factValue: '1860', researchItemId: 'item-a', provenance: 'derived' });
 
   // Multi-valued (not conflicts)
-  createFact(db as any, { personId: 'person-456', factType: 'residence', factValue: 'New York, NY', researchItemId: 'item-a' });
-  createFact(db as any, { personId: 'person-456', factType: 'residence', factValue: 'Boston, MA', researchItemId: 'item-b' });
+  createFact(db as any, { personId: 'person-456', factType: 'residence', factValue: 'New York, NY', researchItemId: 'item-a', provenance: 'derived' });
+  createFact(db as any, { personId: 'person-456', factType: 'residence', factValue: 'Boston, MA', researchItemId: 'item-b', provenance: 'derived' });
 });
 
 afterEach(() => {

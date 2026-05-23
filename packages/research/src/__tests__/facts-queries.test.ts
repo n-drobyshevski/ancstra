@@ -186,6 +186,7 @@ describe('Research Facts CRUD queries', () => {
       factDateSort: 18500315,
       confidence: 'high',
       extractionMethod: 'manual',
+      provenance: 'user_inference',
     });
 
     expect(result.id).toBeDefined();
@@ -203,18 +204,21 @@ describe('Research Facts CRUD queries', () => {
       factType: 'death_date',
       factValue: '1920-11-01',
       factDateSort: 19201101,
+      provenance: 'user_inference',
     });
     await createFact(db as any, {
       personId: 'person-1',
       factType: 'birth_date',
       factValue: '1850-03-15',
       factDateSort: 18500315,
+      provenance: 'user_inference',
     });
     await createFact(db as any, {
       personId: 'person-1',
       factType: 'marriage_date',
       factValue: '1875-06-20',
       factDateSort: 18750620,
+      provenance: 'user_inference',
     });
 
     // Different person -- should not appear
@@ -223,6 +227,7 @@ describe('Research Facts CRUD queries', () => {
       factType: 'birth_date',
       factValue: '1855-01-01',
       factDateSort: 18550101,
+      provenance: 'user_inference',
     });
 
     const facts = await getFactsByPerson(db as any, 'person-1');
@@ -239,12 +244,14 @@ describe('Research Facts CRUD queries', () => {
       factType: 'residence',
       factValue: 'New York, NY',
       researchItemId: 'item-1',
+      provenance: 'derived',
     });
     await createFact(db as any, {
       personId: 'person-1',
       factType: 'occupation',
       factValue: 'Farmer',
       researchItemId: 'item-1',
+      provenance: 'derived',
     });
     // Different item -- should not appear
     await createFact(db as any, {
@@ -252,6 +259,7 @@ describe('Research Facts CRUD queries', () => {
       factType: 'birth_date',
       factValue: '1850-03-15',
       researchItemId: 'item-2',
+      provenance: 'derived',
     });
 
     const facts = await getFactsByResearchItem(db as any, 'item-1');
@@ -265,6 +273,7 @@ describe('Research Facts CRUD queries', () => {
       factType: 'birth_place',
       factValue: 'Boston, MA',
       confidence: 'low',
+      provenance: 'user_inference',
     });
 
     // ms-resolution updatedAt collides on fast CI; force a tick gap.
@@ -286,6 +295,7 @@ describe('Research Facts CRUD queries', () => {
       personId: 'person-1',
       factType: 'occupation',
       factValue: 'Blacksmith',
+      provenance: 'user_inference',
     });
 
     await deleteFact(db as any, created.id);

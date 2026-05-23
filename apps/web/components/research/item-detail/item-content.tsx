@@ -90,6 +90,9 @@ export function ItemContent({ item, onNotesChange, onRefresh, onScrapeJobStarted
         factsheetId,
         researchItemId: session.researchItemId,
         extractionMethod: 'manual' as const,
+        // Bundle A F6: provenance required. Facts extracted from a research item
+        // (manual or AI) are 'derived' until promoted to a formal citation.
+        provenance: 'derived' as const,
       }));
 
       const res = await fetch('/api/research/facts/batch', {

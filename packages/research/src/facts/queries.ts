@@ -1,6 +1,6 @@
 import { eq, asc, sql } from 'drizzle-orm';
 import { researchFacts } from '@ancstra/db';
-import type { Database } from '@ancstra/db';
+import type { Database, Confidence, Provenance } from '@ancstra/db';
 
 export interface CreateFactInput {
   personId?: string | null;
@@ -13,16 +13,52 @@ export interface CreateFactInput {
   researchItemId?: string;
   factsheetId?: string;
   sourceCitationId?: string;
-  confidence?: 'high' | 'medium' | 'low' | 'unknown';
+  confidence?: Confidence;
+  contested?: boolean;
+  /**
+   * Bundle A F6: provenance is REQUIRED at the API boundary.
+   * - 'cited'          → requires sourceCitationId
+   * - 'derived'        → requires researchItemId OR sourceCitationId
+   * - 'user_inference' → no source required
+   */
+  provenance: Provenance;
   extractionMethod?: 'manual' | 'ai_extracted' | 'ocr_extracted';
 }
 
 export interface UpdateFactInput {
   factValue?: string;
-  confidence?: 'high' | 'medium' | 'low' | 'unknown';
+  confidence?: Confidence;
+  contested?: boolean;
+}
+
+/**
+ * Validate provenance + source consistency.
+ * Throws on:
+ *   - missing provenance
+ *   - provenance='cited' without sourceCitationId
+ *   - provenance='derived' without researchItemId OR sourceCitationId
+ */
+function validateProvenance(input: CreateFactInput, label = 'createFact'): void {
+  if (!input.provenance) {
+    throw new Error(`${label}: provenance is required (cited | derived | user_inference)`);
+  }
+  if (input.provenance === 'cited' && !input.sourceCitationId) {
+    throw new Error(`${label}: provenance="cited" requires sourceCitationId`);
+  }
+  if (
+    input.provenance === 'derived' &&
+    !input.researchItemId &&
+    !input.sourceCitationId
+  ) {
+    throw new Error(
+      `${label}: provenance="derived" requires researchItemId or sourceCitationId`,
+    );
+  }
 }
 
 export async function createFact(db: Database, input: CreateFactInput) {
+  validateProvenance(input, 'createFact');
+
   const now = new Date().toISOString();
   const id = crypto.randomUUID();
 
@@ -37,6 +73,8 @@ export async function createFact(db: Database, input: CreateFactInput) {
       factsheetId: input.factsheetId ?? null,
       sourceCitationId: input.sourceCitationId ?? null,
       confidence: input.confidence ?? 'medium',
+      contested: input.contested ?? false,
+      provenance: input.provenance,
       extractionMethod: input.extractionMethod ?? 'manual',
       createdAt: now,
       updatedAt: now,
@@ -82,6 +120,11 @@ export async function getFactsByFactsheet(db: Database, factsheetId: string) {
 export async function batchCreateFacts(db: Database, inputs: CreateFactInput[]) {
   if (inputs.length === 0) return [];
 
+  // Validate the whole batch up-front so a bad row doesn't leave a partial insert.
+  for (let i = 0; i < inputs.length; i++) {
+    validateProvenance(inputs[i], `batchCreateFacts[${i}]`);
+  }
+
   const now = new Date().toISOString();
   const ids: string[] = [];
 
@@ -100,6 +143,8 @@ export async function batchCreateFacts(db: Database, inputs: CreateFactInput[]) 
         factsheetId: input.factsheetId ?? null,
         sourceCitationId: input.sourceCitationId ?? null,
         confidence: input.confidence ?? 'medium',
+        contested: input.contested ?? false,
+        provenance: input.provenance,
         extractionMethod: input.extractionMethod ?? 'manual',
         createdAt: now,
         updatedAt: now,
@@ -121,6 +166,7 @@ export async function updateFact(db: Database, factId: string, data: UpdateFactI
 
   if (data.factValue !== undefined) updates.factValue = data.factValue;
   if (data.confidence !== undefined) updates.confidence = data.confidence;
+  if (data.contested !== undefined) updates.contested = data.contested;
 
   await db.update(researchFacts)
     .set(updates)
