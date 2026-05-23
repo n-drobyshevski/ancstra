@@ -532,3 +532,4 @@ export * from './quality-queries';
 export { rebuildClosureTable, addChildToFamily, removeChildFromFamily } from './closure-table';
 export { rebuildAllSummaries, refreshSummary, refreshRelatedSummaries } from './person-summary';
 export { backupDatabase, pruneBackups, restoreDatabase } from './backup';
+export * from './vocab';
