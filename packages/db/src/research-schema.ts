@@ -1,5 +1,6 @@
 import { sqliteTable, text, integer, real, index, unique, primaryKey } from 'drizzle-orm/sqlite-core';
 import { persons, sources, sourceCitations } from './family-schema';
+import { RELATIONSHIP_TYPES, CONFIDENCE_BANDS } from './vocab';
 
 // ==================== SEARCH PROVIDERS ====================
 export const searchProviders = sqliteTable('search_providers', {
@@ -85,19 +86,26 @@ export const factsheets = sqliteTable('factsheets', {
 ]);
 
 // ==================== FACTSHEET LINKS (Relationship Graph) ====================
+// Bundle A 2026-05-23: relationshipType now includes 'partner'; confidence now
+// includes 'unknown'; new orthogonal `contested` boolean. Enums sourced from
+// `./vocab` (single source of truth — see vocab-consistency.test.ts).
 export const factsheetLinks = sqliteTable('factsheet_links', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   fromFactsheetId: text('from_factsheet_id').notNull().references(() => factsheets.id, { onDelete: 'cascade' }),
   toFactsheetId: text('to_factsheet_id').notNull().references(() => factsheets.id, { onDelete: 'cascade' }),
   relationshipType: text('relationship_type', {
-    enum: ['parent_child', 'spouse', 'sibling'],
+    enum: RELATIONSHIP_TYPES,
   }).notNull(),
   sourceFactId: text('source_fact_id'),  // FK to research_facts (defined below)
   // Directionality: for parent_child, from=parent, to=child
-  // For spouse/sibling, order is arbitrary
+  // For spouse/sibling/partner, order is arbitrary
   confidence: text('confidence', {
-    enum: ['high', 'medium', 'low'],
+    enum: CONFIDENCE_BANDS,
   }).notNull().default('medium'),
+  // Orthogonal to confidence — set true when the same relationship is
+  // asserted with conflicting facts (e.g. two different mothers proposed for
+  // the same child). UI surfaces this as a warning badge on the edge.
+  contested: integer('contested', { mode: 'boolean' }).notNull().default(false),
   // Persisted React Flow handle attachment (top|right|bottom|left) so the
   // edge re-renders on the side the user dragged to, not the default top.
   sourceHandle: text('source_handle'),

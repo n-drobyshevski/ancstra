@@ -33,6 +33,7 @@ const FULL_DDL = `
     relationship_type TEXT NOT NULL,
     source_fact_id TEXT,
     confidence TEXT NOT NULL DEFAULT 'medium',
+    contested INTEGER NOT NULL DEFAULT 0,
     source_handle TEXT, target_handle TEXT,
     created_at TEXT NOT NULL,
     UNIQUE(from_factsheet_id, to_factsheet_id, relationship_type)
