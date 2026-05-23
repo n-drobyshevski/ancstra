@@ -30,9 +30,13 @@
 - `dev` auto-deploys to `dev.ancstra.com` (staging). `main` auto-deploys to
   `ancstra.com` (production).
 - The canonical prod version lives in root `package.json` (`version` field) and
-  is propagated to `apps/web/package.json` automatically by release-please's
-  `node-workspace` plugin. Internal `@ancstra/*` packages stay at `0.0.1` —
-  they're private and don't ship.
+  is propagated to `apps/web/package.json` via release-please's `extra-files`
+  hook (see `release-please-config.json` — `$.version` on `apps/web/package.json`
+  is patched whenever the root version bumps). `next.config.ts` reads
+  `process.env.npm_package_version` at build, which pnpm sets from the
+  *executing* package — so `apps/web/package.json` MUST stay in lockstep with
+  root or the version badge and `/api/health` drift. Internal `@ancstra/*`
+  packages stay at `0.0.1` — they're private and don't ship.
 - **Commit style is conventional-commits** (already in use). Bump rules
   (pre-1.0 — set by `bump-minor-pre-major: true` + `bump-patch-for-minor-pre-major: true`):
   - `feat:` → patch (becomes minor once we cut 1.0.0)
