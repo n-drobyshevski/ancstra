@@ -79,7 +79,18 @@ export function buildTreeTableWhere(
   }
 
   if (filters.hasProposals) {
-    conditions.push(sql`EXISTS (SELECT 1 FROM proposed_relationships pr WHERE (pr.person1_id = ps.person_id OR pr.person2_id = ps.person_id) AND pr.status = 'pending')`);
+    // Bundle A 2026-05-23: reads from draft factsheets + research_facts.
+    // Matches both the asserting subject (rf.person_id) and the asserted
+    // target (rf.fact_value, which is person2Id post-T8 fix).
+    conditions.push(sql`EXISTS (
+      SELECT 1 FROM research_facts rf
+      JOIN factsheets fs ON fs.id = rf.factsheet_id
+      WHERE fs.status = 'draft'
+        AND fs.entity_type = 'family_unit'
+        AND rf.extraction_method = 'ai_extracted'
+        AND rf.fact_type IN ('parent_name', 'spouse_name', 'sibling_name')
+        AND (rf.person_id = ps.person_id OR rf.fact_value = ps.person_id)
+    )`);
   }
 
   return conditions;

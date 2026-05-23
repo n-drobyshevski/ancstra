@@ -24,9 +24,9 @@ import { families, children } from '@ancstra/db';
  *      surfaces here as a test failure (and forces the author to re-justify
  *      relying purely on the DB default).
  *
- * External / AI-sourced relationships live in the separate
- * `proposed_relationships` table — see
- * `packages/db/__tests__/proposed-relationships-lifecycle.test.ts`.
+ * External / AI-sourced relationships materialise as draft factsheets
+ * (entity_type='family_unit') with `research_facts` carrying the assertion
+ * (Bundle A 2026-05-23). The legacy `proposed_relationships` table is retired.
  */
 
 function createFamiliesAndChildrenTestDb() {

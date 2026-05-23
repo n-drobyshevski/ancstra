@@ -19,7 +19,9 @@ function createTestDb(): any {
     CREATE TABLE events (id TEXT PRIMARY KEY, event_type TEXT NOT NULL, date_original TEXT, date_sort INTEGER, date_modifier TEXT DEFAULT 'exact', date_end_sort INTEGER, place_text TEXT, description TEXT, person_id TEXT, family_id TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, version INTEGER NOT NULL DEFAULT 1);
     CREATE TABLE sources (id TEXT PRIMARY KEY, title TEXT NOT NULL, author TEXT, publisher TEXT, publication_date TEXT, repository_name TEXT, repository_url TEXT, source_type TEXT, notes TEXT, created_by TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, version INTEGER NOT NULL DEFAULT 1);
     CREATE TABLE source_citations (id TEXT PRIMARY KEY, source_id TEXT NOT NULL, citation_detail TEXT, citation_text TEXT, confidence TEXT NOT NULL DEFAULT 'medium', person_id TEXT, event_id TEXT, family_id TEXT, person_name_id TEXT, created_at TEXT NOT NULL, version INTEGER NOT NULL DEFAULT 1);
-    CREATE TABLE proposed_relationships (id TEXT PRIMARY KEY, relationship_type TEXT NOT NULL, person1_id TEXT NOT NULL, person2_id TEXT NOT NULL, source_type TEXT NOT NULL, source_detail TEXT, confidence REAL, status TEXT NOT NULL DEFAULT 'pending', validated_by TEXT, validated_at TEXT, rejection_reason TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, version INTEGER NOT NULL DEFAULT 1);
+    -- Bundle A: hasProposals filter reads from draft factsheets + research_facts.
+    CREATE TABLE factsheets (id TEXT PRIMARY KEY, title TEXT NOT NULL, entity_type TEXT NOT NULL DEFAULT 'person', status TEXT NOT NULL DEFAULT 'draft', notes TEXT, promoted_person_id TEXT, promoted_at TEXT, created_by TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
+    CREATE TABLE research_facts (id TEXT PRIMARY KEY, person_id TEXT NOT NULL, fact_type TEXT NOT NULL, fact_value TEXT NOT NULL, fact_date_sort INTEGER, research_item_id TEXT, source_citation_id TEXT, confidence TEXT NOT NULL DEFAULT 'medium', extraction_method TEXT NOT NULL DEFAULT 'manual', factsheet_id TEXT, accepted INTEGER, contested INTEGER NOT NULL DEFAULT 0, provenance TEXT NOT NULL DEFAULT 'derived', created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
     CREATE TABLE person_summary (
       person_id TEXT PRIMARY KEY,
       given_name TEXT NOT NULL DEFAULT '',
@@ -74,8 +76,16 @@ function srcCit(citId: string, personId: string) {
 function fam(id: string, p1: string | null, p2: string | null, status: string = 'confirmed') {
   db.run(sql`INSERT INTO families (id, partner1_id, partner2_id, relationship_type, validation_status, created_at, updated_at) VALUES (${id}, ${p1}, ${p2}, 'married', ${status}, ${NOW}, ${NOW})`);
 }
-function pr(id: string, p1: string, p2: string, status: string = 'pending') {
-  db.run(sql`INSERT INTO proposed_relationships (id, relationship_type, person1_id, person2_id, source_type, status, created_at, updated_at) VALUES (${id}, 'parent_child', ${p1}, ${p2}, 'ai_suggestion', ${status}, ${NOW}, ${NOW})`);
+// Bundle A: AI proposals now land as a draft family_unit factsheet with one
+// research_fact (fact_value = person2Id, extractionMethod='ai_extracted').
+// The legacy `status` arg is preserved at the call sites but ignored — the new
+// path keys off fs.status='draft' + extraction_method='ai_extracted', so any
+// non-pending statuses in old fixtures are silently treated as pending. None
+// of the in-tree tests currently exercise non-pending here.
+function pr(id: string, p1: string, p2: string, _status: string = 'pending') {
+  const fsId = `fs-${id}`;
+  db.run(sql`INSERT INTO factsheets (id, title, entity_type, status, created_by, created_at, updated_at) VALUES (${fsId}, 'proposed unit', 'family_unit', 'draft', 'test-user', ${NOW}, ${NOW})`);
+  db.run(sql`INSERT INTO research_facts (id, factsheet_id, person_id, fact_type, fact_value, confidence, extraction_method, created_at, updated_at) VALUES (${id}, ${fsId}, ${p1}, 'parent_name', ${p2}, 'medium', 'ai_extracted', ${NOW}, ${NOW})`);
 }
 
 // queryPersonsList now reads from the materialized person_summary table.
