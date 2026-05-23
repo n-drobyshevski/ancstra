@@ -4,13 +4,14 @@ import {
   createResearchItem,
   listResearchItems,
 } from '@ancstra/research';
+import type { ResearchItemStatus } from '@ancstra/db';
 
 export async function GET(request: Request) {
   try {
     const { familyDb } = await withAuth('ai:research', request);
 
     const { searchParams } = new URL(request.url);
-    const status = searchParams.get('status') as 'draft' | 'promoted' | 'dismissed' | null;
+    const status = searchParams.get('status') as ResearchItemStatus | null;
     const personId = searchParams.get('personId');
 
     const filters: Record<string, string> = {};

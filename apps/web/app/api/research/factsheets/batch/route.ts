@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
 import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
 import { batchDismissFactsheets, batchLinkFactsheets } from '@ancstra/research';
+import { RELATIONSHIP_TYPES, type RelationshipType } from '@ancstra/db';
 
 export async function POST(request: Request) {
   try {
@@ -29,7 +30,10 @@ export async function POST(request: Request) {
       if (!relationshipType) {
         return NextResponse.json({ error: 'relationshipType required for link action' }, { status: 400 });
       }
-      await batchLinkFactsheets(familyDb, factsheetIds, relationshipType as 'parent_child' | 'spouse' | 'sibling');
+      if (!(RELATIONSHIP_TYPES as readonly string[]).includes(relationshipType)) {
+        return NextResponse.json({ error: 'invalid relationshipType' }, { status: 400 });
+      }
+      await batchLinkFactsheets(familyDb, factsheetIds, relationshipType as RelationshipType);
       revalidateTag('factsheets-list', 'max');
       revalidateTag('factsheet-links', 'max');
       revalidateTag('factsheets', 'max');

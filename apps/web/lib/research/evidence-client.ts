@@ -115,13 +115,14 @@ export async function extractFacts(text: string, personContext?: string) {
 }
 
 // ---------------------------------------------------------------------------
-// promoteToCitation — PATCH /api/research/items/:id → status: 'promoted'
+// promoteToCitation — PATCH /api/research/items/:id → status: 'extracted'
+// (spec §3.3 research_items.status vocab — 'promoted' was renamed to 'extracted')
 // ---------------------------------------------------------------------------
 export async function promoteToCitation(researchItemId: string, _personId: string) {
   const res = await fetch(`/api/research/items/${encodeURIComponent(researchItemId)}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ status: 'promoted' }),
+    body: JSON.stringify({ status: 'extracted' }),
   });
 
   if (!res.ok) {

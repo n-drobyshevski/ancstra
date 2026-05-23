@@ -191,6 +191,9 @@ export function ClusterView({
             <Button size="sm" variant="outline" className="w-full justify-start text-xs" onClick={() => handleCreateLink('spouse')}>
               Spouse
             </Button>
+            <Button size="sm" variant="outline" className="w-full justify-start text-xs" onClick={() => handleCreateLink('partner')}>
+              Partner
+            </Button>
             <Button size="sm" variant="outline" className="w-full justify-start text-xs" onClick={() => handleCreateLink('sibling')}>
               Sibling
             </Button>

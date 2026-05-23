@@ -5,13 +5,14 @@ import { Button } from '@/components/ui/button';
 import { Loader2, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
 import { useActiveThread } from '@/lib/research/active-thread';
+import type { RelationshipType } from '@ancstra/db';
 
 interface MentionCascadeChipProps {
   sourceFactsheetId: string;
   sourceFactId: string;
   mentionedName: string;          // e.g., "Maria"
   relationshipLabel: string;      // e.g., "wife" — for the new factsheet title
-  relationshipType: 'parent_child' | 'spouse' | 'sibling';
+  relationshipType: RelationshipType;
   sourceTitle: string;            // for the reason field, e.g., "marriage cert"
   /** Called after successful cascade with the new factsheet id. */
   onCascade?: (newFactsheetId: string) => void;

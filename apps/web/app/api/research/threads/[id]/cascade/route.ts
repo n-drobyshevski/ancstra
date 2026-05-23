@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
 import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
 import { cascade } from '@ancstra/research';
+import { RELATIONSHIP_TYPES, type RelationshipType } from '@ancstra/db';
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -15,16 +16,17 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         { status: 400 }
       );
     }
-    if (!['parent_child', 'spouse', 'sibling'].includes(body.relationshipType)) {
+    if (!(RELATIONSHIP_TYPES as readonly string[]).includes(body.relationshipType)) {
       return NextResponse.json({ error: 'invalid relationshipType' }, { status: 400 });
     }
+    const relationshipType = body.relationshipType as RelationshipType;
 
     const result = await cascade(familyDb, {
       threadId,
       sourceFactsheetId: body.sourceFactsheetId,
       sourceFactId: body.sourceFactId,
       newFactsheetTitle: body.newFactsheetTitle,
-      relationshipType: body.relationshipType,
+      relationshipType,
       reason: body.reason ?? 'cascade',
       actorId: ctx.userId,
       confidence: body.confidence,

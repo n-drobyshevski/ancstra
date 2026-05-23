@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import type { FactsheetStatus, RelationshipType } from '@ancstra/db';
 
 // ---------------------------------------------------------------------------
 // Generic fetch hook helper.
@@ -54,7 +55,7 @@ export interface Factsheet {
   id: string;
   title: string;
   entityType: 'person' | 'couple' | 'family_unit';
-  status: 'draft' | 'ready' | 'promoted' | 'merged' | 'dismissed';
+  status: FactsheetStatus;
   notes: string | null;
   promotedPersonId: string | null;
   createdBy: string;
@@ -82,7 +83,7 @@ export interface FactsheetLink {
   id: string;
   fromFactsheetId: string;
   toFactsheetId: string;
-  relationshipType: 'parent_child' | 'spouse' | 'sibling';
+  relationshipType: RelationshipType;
   sourceFactId: string | null;
   confidence: string;
   sourceHandle: string | null;
@@ -358,7 +359,7 @@ export interface FactsheetLinkSuggestion {
   factValue: string;
   suggestedFactsheetId: string;
   suggestedFactsheetTitle: string;
-  relationshipType: 'parent_child' | 'spouse' | 'sibling';
+  relationshipType: RelationshipType;
 }
 
 export async function fetchLinkSuggestions(

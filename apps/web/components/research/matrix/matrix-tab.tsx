@@ -174,7 +174,7 @@ export function MatrixTab({ personId, personName = 'Person' }: MatrixTabProps) {
                     {source.status && (
                       <Badge
                         variant={
-                          source.status === 'promoted'
+                          source.status === 'extracted'
                             ? 'default'
                             : 'secondary'
                         }
@@ -316,7 +316,7 @@ export function MatrixTab({ personId, personName = 'Person' }: MatrixTabProps) {
                   <p className="text-sm mt-0.5">{selectedFactSource.title}</p>
                   <Badge
                     variant={
-                      selectedFactSource.status === 'promoted'
+                      selectedFactSource.status === 'extracted'
                         ? 'default'
                         : 'secondary'
                     }
