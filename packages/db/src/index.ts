@@ -213,6 +213,33 @@ async function ensureFamilySchemaInner(db: FamilyDatabase): Promise<void> {
     await db.run(sql`CREATE INDEX IF NOT EXISTS idx_research_facts_factsheet ON research_facts(factsheet_id)`);
   } catch { /* index already exists */ }
 
+  // Bundle A 2026-05-23: research_facts gains contested + provenance.
+  // factType enum gains sibling_name (no CHECK; TS enum is the truth).
+  try {
+    await db.run(sql`ALTER TABLE research_facts ADD COLUMN contested INTEGER NOT NULL DEFAULT 0`);
+  } catch { /* column already exists */ }
+  try {
+    await db.run(sql`ALTER TABLE research_facts ADD COLUMN provenance TEXT NOT NULL DEFAULT 'derived'`);
+  } catch { /* column already exists */ }
+
+  // 'disputed' was conflating a state with a level; new shape is low + contested=1.
+  await db.run(sql`
+    UPDATE research_facts
+    SET confidence = 'low', contested = 1
+    WHERE confidence = 'disputed'
+  `);
+
+  // Provenance backfill — derive from existing references.
+  await db.run(sql`
+    UPDATE research_facts
+    SET provenance = CASE
+      WHEN source_citation_id IS NOT NULL THEN 'cited'
+      WHEN research_item_id IS NOT NULL THEN 'derived'
+      ELSE 'user_inference'
+    END
+    WHERE provenance = 'derived' AND (source_citation_id IS NOT NULL OR research_item_id IS NULL)
+  `);
+
   // Research Threads Phase 1 (2026-05): link factsheets back to the thread
   // that spawned them. Nullable — factsheets created before threads existed
   // have no thread.

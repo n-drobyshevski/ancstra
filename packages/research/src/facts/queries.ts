@@ -7,19 +7,19 @@ export interface CreateFactInput {
   factType: 'name' | 'birth_date' | 'birth_place' | 'death_date' | 'death_place'
     | 'marriage_date' | 'marriage_place' | 'residence' | 'occupation'
     | 'immigration' | 'military_service' | 'religion' | 'ethnicity'
-    | 'parent_name' | 'spouse_name' | 'child_name' | 'other';
+    | 'parent_name' | 'spouse_name' | 'sibling_name' | 'child_name' | 'other';
   factValue: string;
   factDateSort?: number;
   researchItemId?: string;
   factsheetId?: string;
   sourceCitationId?: string;
-  confidence?: 'high' | 'medium' | 'low' | 'disputed';
+  confidence?: 'high' | 'medium' | 'low' | 'unknown';
   extractionMethod?: 'manual' | 'ai_extracted' | 'ocr_extracted';
 }
 
 export interface UpdateFactInput {
   factValue?: string;
-  confidence?: 'high' | 'medium' | 'low' | 'disputed';
+  confidence?: 'high' | 'medium' | 'low' | 'unknown';
 }
 
 export async function createFact(db: Database, input: CreateFactInput) {

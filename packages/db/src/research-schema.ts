@@ -1,6 +1,6 @@
 import { sqliteTable, text, integer, real, index, unique, primaryKey } from 'drizzle-orm/sqlite-core';
 import { persons, sources, sourceCitations } from './family-schema';
-import { RELATIONSHIP_TYPES, CONFIDENCE_BANDS } from './vocab';
+import { RELATIONSHIP_TYPES, CONFIDENCE_BANDS, PROVENANCE_VALUES } from './vocab';
 
 // ==================== SEARCH PROVIDERS ====================
 export const searchProviders = sqliteTable('search_providers', {
@@ -118,6 +118,13 @@ export const factsheetLinks = sqliteTable('factsheet_links', {
 ]);
 
 // ==================== RESEARCH FACTS ====================
+// Bundle A 2026-05-23: confidence now drawn from CONFIDENCE_BANDS (drops the
+// legacy 'disputed' value, gains 'unknown'); orthogonal `contested` boolean
+// supersedes the disputed-as-confidence-level pattern; new `provenance` enum
+// captures how the fact was sourced (cited / derived / user_inference);
+// `fact_type` enum gains 'sibling_name' for the AI proposeRelationship tool
+// path. All enums sourced from `./vocab` — no CHECK constraints at DB level;
+// TS is the single source of truth (see vocab-consistency.test.ts).
 export const researchFacts = sqliteTable('research_facts', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   personId: text('person_id').references(() => persons.id, { onDelete: 'cascade' }),
@@ -126,7 +133,7 @@ export const researchFacts = sqliteTable('research_facts', {
       'name', 'birth_date', 'birth_place', 'death_date', 'death_place',
       'marriage_date', 'marriage_place', 'residence', 'occupation',
       'immigration', 'military_service', 'religion', 'ethnicity',
-      'parent_name', 'spouse_name', 'child_name', 'other',
+      'parent_name', 'spouse_name', 'sibling_name', 'child_name', 'other',
     ],
   }).notNull(),
   factValue: text('fact_value').notNull(),
@@ -136,8 +143,12 @@ export const researchFacts = sqliteTable('research_facts', {
   factsheetId: text('factsheet_id').references(() => factsheets.id),
   accepted: integer('accepted', { mode: 'boolean' }),  // null=unresolved, true=accepted, false=rejected
   confidence: text('confidence', {
-    enum: ['high', 'medium', 'low', 'disputed'],
+    enum: CONFIDENCE_BANDS,
   }).notNull().default('medium'),
+  contested: integer('contested', { mode: 'boolean' }).notNull().default(false),
+  provenance: text('provenance', {
+    enum: PROVENANCE_VALUES,
+  }).notNull().default('derived'),
   extractionMethod: text('extraction_method', {
     enum: ['manual', 'ai_extracted', 'ocr_extracted'],
   }).notNull().default('manual'),

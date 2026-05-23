@@ -100,6 +100,8 @@ beforeEach(() => {
       factsheet_id TEXT,
       accepted INTEGER,
       confidence TEXT NOT NULL DEFAULT 'medium',
+      contested INTEGER NOT NULL DEFAULT 0,
+      provenance TEXT NOT NULL DEFAULT 'derived',
       extraction_method TEXT NOT NULL DEFAULT 'manual',
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
@@ -244,7 +246,7 @@ describe('Conflict Detection', () => {
 });
 
 describe('Conflict Resolution', () => {
-  it('resolveConflict sets winner to high, loser to disputed', async () => {
+  it('resolveConflict sets winner to high + uncontested, loser to low + contested', async () => {
     const factA = await createFact(db as any, {
       personId: 'person-1',
       factType: 'birth_date',
@@ -262,11 +264,16 @@ describe('Conflict Resolution', () => {
 
     await resolveConflict(db as any, factA.id, factB.id);
 
-    const facts = sqlite.prepare('SELECT id, confidence FROM research_facts ORDER BY id').all() as any[];
+    const facts = sqlite
+      .prepare('SELECT id, confidence, contested FROM research_facts ORDER BY id')
+      .all() as any[];
     const winner = facts.find((f: any) => f.id === factA.id);
     const loser = facts.find((f: any) => f.id === factB.id);
 
+    // Bundle A 2026-05-23: 'disputed' was replaced by low + contested=1.
     expect(winner.confidence).toBe('high');
-    expect(loser.confidence).toBe('disputed');
+    expect(winner.contested).toBe(0);
+    expect(loser.confidence).toBe('low');
+    expect(loser.contested).toBe(1);
   });
 });

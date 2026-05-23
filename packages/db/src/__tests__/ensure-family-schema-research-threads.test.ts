@@ -19,7 +19,18 @@ function createMinimalFamilyFixture() {
   // enables PRAGMA foreign_keys by default, so these must exist (even though the
   // smoke-test insert leaves the FK columns NULL).
   sqlite.prepare(`CREATE TABLE research_items (id TEXT PRIMARY KEY)`).run();
-  sqlite.prepare(`CREATE TABLE research_facts (id TEXT PRIMARY KEY)`).run();
+  // research_facts seeded with the columns ensureFamilySchema's Bundle A
+  // backfill UPDATEs reference (confidence/contested/provenance + the FK
+  // columns the CASE expression branches on). Columns added by ALTER inside
+  // ensureFamilySchema (factsheet_id, accepted, contested, provenance) are
+  // intentionally omitted here so we exercise the ALTER path — contested +
+  // provenance are added before the UPDATE so this is safe.
+  sqlite.prepare(`CREATE TABLE research_facts (
+    id TEXT PRIMARY KEY,
+    research_item_id TEXT,
+    source_citation_id TEXT,
+    confidence TEXT NOT NULL DEFAULT 'medium'
+  )`).run();
   sqlite.prepare(`CREATE TABLE sources (id TEXT PRIMARY KEY)`).run();
   // Pre-seed meta so ensureFamilySchema skips rebuildAllSummaries (which needs full schema).
   sqlite.prepare(`CREATE TABLE _ancstra_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)`).run();
