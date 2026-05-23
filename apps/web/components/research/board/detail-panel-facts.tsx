@@ -78,6 +78,9 @@ export function DetailPanelFacts({
           factType: newFactType,
           factValue: newFactValue.trim(),
           confidence: 'medium',
+          // Bundle A F6: provenance required. Manual fact entered from a
+          // research item is 'derived' (sourced from the item, not citation-grade yet).
+          provenance: 'derived',
         }),
       });
       if (!res.ok) {

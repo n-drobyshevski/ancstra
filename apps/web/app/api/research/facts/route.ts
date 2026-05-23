@@ -55,6 +55,15 @@ export async function POST(request: Request) {
       );
     }
 
+    // Bundle A F6: provenance is required at the API boundary.
+    const VALID_PROVENANCE = new Set(['cited', 'derived', 'user_inference']);
+    if (!body.provenance || !VALID_PROVENANCE.has(body.provenance)) {
+      return NextResponse.json(
+        { error: 'Validation failed: provenance must be one of cited | derived | user_inference' },
+        { status: 400 }
+      );
+    }
+
     const result = await createFact(familyDb, body);
 
     return NextResponse.json(result, { status: 201 });

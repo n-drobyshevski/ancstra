@@ -16,6 +16,7 @@ export async function POST(request: Request) {
     }
 
     // Validate each fact has required fields
+    const VALID_PROVENANCE = new Set(['cited', 'derived', 'user_inference']);
     for (const fact of body.facts) {
       if (!fact.factType || !fact.factValue) {
         return NextResponse.json(
@@ -26,6 +27,13 @@ export async function POST(request: Request) {
       if (!fact.personId && !fact.factsheetId) {
         return NextResponse.json(
           { error: 'Validation failed: each fact must have either personId or factsheetId' },
+          { status: 400 },
+        );
+      }
+      // Bundle A F6: provenance is required at the API boundary.
+      if (!fact.provenance || !VALID_PROVENANCE.has(fact.provenance)) {
+        return NextResponse.json(
+          { error: 'Validation failed: each fact must have provenance (cited | derived | user_inference)' },
           { status: 400 },
         );
       }
