@@ -85,7 +85,7 @@ beforeEach(() => {
       provider_record_id TEXT,
       discovery_method TEXT NOT NULL,
       search_query TEXT,
-      status TEXT NOT NULL DEFAULT 'draft',
+      status TEXT NOT NULL DEFAULT 'collected',
       promoted_source_id TEXT REFERENCES sources(id),
       created_by TEXT NOT NULL REFERENCES users(id),
       created_at TEXT NOT NULL,
@@ -148,7 +148,7 @@ describe('Research Items CRUD queries', () => {
 
     expect(result.id).toBeDefined();
     expect(result.title).toBe('Census Record 1850');
-    expect(result.status).toBe('draft');
+    expect(result.status).toBe('collected');
     expect(result.createdAt).toBeDefined();
   });
 

@@ -18,7 +18,7 @@ function createMinimalFamilyFixture() {
   // FK targets referenced by research_threads / research_thread_events. better-sqlite3
   // enables PRAGMA foreign_keys by default, so these must exist (even though the
   // smoke-test insert leaves the FK columns NULL).
-  sqlite.prepare(`CREATE TABLE research_items (id TEXT PRIMARY KEY)`).run();
+  sqlite.prepare(`CREATE TABLE research_items (id TEXT PRIMARY KEY, status TEXT NOT NULL DEFAULT 'collected')`).run();
   // research_facts seeded with the columns ensureFamilySchema's Bundle A
   // backfill UPDATEs reference (confidence/contested/provenance + the FK
   // columns the CASE expression branches on). Columns added by ALTER inside

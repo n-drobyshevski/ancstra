@@ -240,6 +240,14 @@ async function ensureFamilySchemaInner(db: FamilyDatabase): Promise<void> {
     WHERE provenance = 'derived' AND (source_citation_id IS NOT NULL OR research_item_id IS NULL)
   `);
 
+  // Bundle A 2026-05-23: research_items.status rename to lifecycle vocab.
+  // 'merged' collapses into 'extracted' (was only set when an item fed multiple
+  // factsheets, which 'extracted' already implies — see spec §3.3).
+  await db.run(sql`UPDATE research_items SET status = 'collected' WHERE status = 'draft'`);
+  await db.run(sql`UPDATE research_items SET status = 'processed' WHERE status = 'ready'`);
+  await db.run(sql`UPDATE research_items SET status = 'extracted' WHERE status IN ('promoted', 'merged')`);
+  await db.run(sql`UPDATE research_items SET status = 'discarded' WHERE status = 'dismissed'`);
+
   // Research Threads Phase 1 (2026-05): link factsheets back to the thread
   // that spawned them. Nullable — factsheets created before threads existed
   // have no thread.

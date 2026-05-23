@@ -1,6 +1,6 @@
 import { sqliteTable, text, integer, real, index, unique, primaryKey } from 'drizzle-orm/sqlite-core';
 import { persons, sources, sourceCitations } from './family-schema';
-import { RELATIONSHIP_TYPES, CONFIDENCE_BANDS, PROVENANCE_VALUES } from './vocab';
+import { RELATIONSHIP_TYPES, CONFIDENCE_BANDS, PROVENANCE_VALUES, RESEARCH_ITEM_STATUSES } from './vocab';
 
 // ==================== SEARCH PROVIDERS ====================
 export const searchProviders = sqliteTable('search_providers', {
@@ -38,8 +38,8 @@ export const researchItems = sqliteTable('research_items', {
   }).notNull(),
   searchQuery: text('search_query'),
   status: text('status', {
-    enum: ['draft', 'ready', 'promoted', 'merged', 'dismissed'],
-  }).notNull().default('draft'),
+    enum: RESEARCH_ITEM_STATUSES,
+  }).notNull().default('collected'),
   // @deprecated — column retained for backward compat, no longer written
   promotedSourceId: text('promoted_source_id').references(() => sources.id),
   createdBy: text('created_by').notNull(),
