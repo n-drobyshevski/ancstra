@@ -58,7 +58,11 @@ export async function executeProposeRelationship(
   const name1 = [p1[0].given_name, p1[0].surname].filter(Boolean).join(' ') || person1Id;
   const name2 = [p2[0].given_name, p2[0].surname].filter(Boolean).join(' ') || person2Id;
   const factType = relationshipToFactType(relationshipType);
-  const factValue = `${name2} (${relationshipType})`;
+  // Bundle A: factValue is person2Id (stable ID-keyed key for duplicate
+  // detection across renames). Human-readable rendering happens at the
+  // factsheet title/notes level; downstream rendering of this fact joins
+  // back to persons via this ID.
+  const factValue = person2Id;
 
   // Duplicate detection — same (person1, factType, factValue) on a draft factsheet.
   const existing = await db.all<{ factsheet_id: string }>(sql`

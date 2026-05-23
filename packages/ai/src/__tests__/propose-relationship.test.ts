@@ -103,6 +103,9 @@ describe('proposeRelationship (Bundle A — factsheet path)', () => {
     const facts = getFactsBy(result.factsheetId);
     expect(facts).toHaveLength(1);
     expect(facts[0].fact_type).toBe('parent_name');
+    expect(facts[0].fact_value).toBe('p-2');
+    expect(facts[0].factsheet_id).toBe(result.factsheetId);
+    expect(facts[0].person_id).toBe('p-1');
     expect(facts[0].confidence).toBe('high');
     expect(facts[0].provenance).toBe('user_inference');
     expect(facts[0].extraction_method).toBe('ai_extracted');
