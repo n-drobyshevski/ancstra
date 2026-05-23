@@ -163,35 +163,43 @@ async function ensureFamilySchemaInner(db: FamilyDatabase): Promise<void> {
     sql`SELECT sql FROM sqlite_master WHERE type='table' AND name='factsheet_links'`,
   );
   if (linksRow && !linksRow.sql.includes("'partner'")) {
-    await db.run(sql`PRAGMA foreign_keys = OFF`);
-    await db.run(sql`ALTER TABLE factsheet_links RENAME TO __old_factsheet_links`);
-    await db.run(sql`
-      CREATE TABLE factsheet_links (
-        id TEXT PRIMARY KEY,
-        from_factsheet_id TEXT NOT NULL REFERENCES factsheets(id) ON DELETE CASCADE,
-        to_factsheet_id TEXT NOT NULL REFERENCES factsheets(id) ON DELETE CASCADE,
-        relationship_type TEXT NOT NULL
-          CHECK (relationship_type IN ('parent_child', 'spouse', 'partner', 'sibling')),
-        source_fact_id TEXT,
-        confidence TEXT NOT NULL DEFAULT 'medium'
-          CHECK (confidence IN ('high', 'medium', 'low', 'unknown')),
-        contested INTEGER NOT NULL DEFAULT 0,
-        source_handle TEXT,
-        target_handle TEXT,
-        created_at TEXT NOT NULL,
-        UNIQUE (from_factsheet_id, to_factsheet_id, relationship_type)
-      )
-    `);
-    await db.run(sql`
-      INSERT INTO factsheet_links (id, from_factsheet_id, to_factsheet_id, relationship_type, source_fact_id, confidence, contested, source_handle, target_handle, created_at)
-      SELECT id, from_factsheet_id, to_factsheet_id, relationship_type, source_fact_id,
-             confidence, COALESCE(contested, 0), source_handle, target_handle, created_at
-      FROM __old_factsheet_links
-    `);
-    await db.run(sql`DROP TABLE __old_factsheet_links`);
-    await db.run(sql`CREATE INDEX IF NOT EXISTS idx_factsheet_links_from ON factsheet_links(from_factsheet_id)`);
-    await db.run(sql`CREATE INDEX IF NOT EXISTS idx_factsheet_links_to ON factsheet_links(to_factsheet_id)`);
-    await db.run(sql`PRAGMA foreign_keys = ON`);
+    await db.run(sql`BEGIN IMMEDIATE`);
+    try {
+      await db.run(sql`PRAGMA foreign_keys = OFF`);
+      await db.run(sql`ALTER TABLE factsheet_links RENAME TO __old_factsheet_links`);
+      await db.run(sql`
+        CREATE TABLE factsheet_links (
+          id TEXT PRIMARY KEY,
+          from_factsheet_id TEXT NOT NULL REFERENCES factsheets(id) ON DELETE CASCADE,
+          to_factsheet_id TEXT NOT NULL REFERENCES factsheets(id) ON DELETE CASCADE,
+          relationship_type TEXT NOT NULL
+            CHECK (relationship_type IN ('parent_child', 'spouse', 'partner', 'sibling')),
+          source_fact_id TEXT,
+          confidence TEXT NOT NULL DEFAULT 'medium'
+            CHECK (confidence IN ('high', 'medium', 'low', 'unknown')),
+          contested INTEGER NOT NULL DEFAULT 0,
+          source_handle TEXT,
+          target_handle TEXT,
+          created_at TEXT NOT NULL,
+          UNIQUE (from_factsheet_id, to_factsheet_id, relationship_type)
+        )
+      `);
+      await db.run(sql`
+        INSERT INTO factsheet_links (id, from_factsheet_id, to_factsheet_id, relationship_type, source_fact_id, confidence, contested, source_handle, target_handle, created_at)
+        SELECT id, from_factsheet_id, to_factsheet_id, relationship_type, source_fact_id,
+               confidence, COALESCE(contested, 0), source_handle, target_handle, created_at
+        FROM __old_factsheet_links
+      `);
+      await db.run(sql`DROP TABLE __old_factsheet_links`);
+      await db.run(sql`CREATE INDEX IF NOT EXISTS idx_factsheet_links_from ON factsheet_links(from_factsheet_id)`);
+      await db.run(sql`CREATE INDEX IF NOT EXISTS idx_factsheet_links_to ON factsheet_links(to_factsheet_id)`);
+      await db.run(sql`COMMIT`);
+      await db.run(sql`PRAGMA foreign_keys = ON`);
+    } catch (err) {
+      await db.run(sql`ROLLBACK`);
+      await db.run(sql`PRAGMA foreign_keys = ON`);
+      throw err;
+    }
   }
 
   // Add factsheet columns to research_facts if not present
