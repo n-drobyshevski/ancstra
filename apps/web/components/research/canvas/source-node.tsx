@@ -6,23 +6,27 @@ import type { CanvasNodeData } from './canvas-utils';
 
 type SourceNodeType = Node<CanvasNodeData, 'source'>;
 
+// research_items.status vocab (spec §3.3): collected/processed/extracted/discarded.
 const statusColors: Record<string, { dot: string; badge: string; badgeText: string }> = {
-  draft: { dot: 'bg-primary', badge: 'bg-primary/10 text-primary border-primary/20', badgeText: 'Draft' },
-  promoted: { dot: 'bg-green-500', badge: 'bg-green-100 text-green-800 border-green-200', badgeText: 'Promoted' },
-  dismissed: { dot: 'bg-gray-400', badge: 'bg-gray-100 text-gray-600 border-gray-200', badgeText: 'Dismissed' },
+  collected: { dot: 'bg-primary', badge: 'bg-primary/10 text-primary border-primary/20', badgeText: 'Collected' },
+  processed: { dot: 'bg-blue-500', badge: 'bg-blue-100 text-blue-800 border-blue-200', badgeText: 'Processed' },
+  extracted: { dot: 'bg-green-500', badge: 'bg-green-100 text-green-800 border-green-200', badgeText: 'Extracted' },
+  discarded: { dot: 'bg-gray-400', badge: 'bg-gray-100 text-gray-600 border-gray-200', badgeText: 'Discarded' },
 };
 
+// `contested` is now orthogonal (boolean), but we keep the legacy `disputed` color
+// here in case stale persisted confidence values land in this view.
 const confidenceColors: Record<string, string> = {
   high: 'bg-green-500',
   medium: 'bg-amber-400',
   low: 'bg-red-500',
-  disputed: 'bg-red-600',
+  unknown: 'bg-gray-400',
 };
 
 function SourceNodeComponent({ data, selected }: NodeProps<SourceNodeType>) {
-  const status = data.status ?? 'draft';
-  const isPromoted = status === 'promoted';
-  const colors = statusColors[status] ?? statusColors.draft;
+  const status = data.status ?? 'collected';
+  const isPromoted = status === 'extracted';
+  const colors = statusColors[status] ?? statusColors.collected;
 
   return (
     <>

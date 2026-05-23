@@ -65,9 +65,9 @@ export function buildCanvasNodes(
   const nodes: Node<CanvasNodeData>[] = [];
   let col = 0;
 
-  // Research items / promoted sources
+  // Research items: extracted ones render as 'source' (citation-style), rest as 'research_item'.
   for (const item of researchItems) {
-    const nodeType = item.status === 'promoted' ? 'source' : 'research_item';
+    const nodeType = item.status === 'extracted' ? 'source' : 'research_item';
     const key = `${nodeType}:${item.id}`;
     const pos = posMap.get(key) ?? { x: col * 280, y: 0 };
     col++;
@@ -144,7 +144,7 @@ export function buildConflictEdges(
     for (const fact of conflict.facts) {
       if (fact.researchItemId && itemIds.has(fact.researchItemId)) {
         const sourceType =
-          researchItems.find((it) => it.id === fact.researchItemId)?.status === 'promoted'
+          researchItems.find((it) => it.id === fact.researchItemId)?.status === 'extracted'
             ? 'source'
             : 'research_item';
         edges.push({

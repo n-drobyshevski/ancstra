@@ -7,16 +7,16 @@ export async function DELETE(request: Request) {
   try {
     const { familyDb } = await withAuth('settings:manage', request);
 
-    // Count dismissed items before deleting
+    // Count discarded items before deleting
     const [{ count }] = await familyDb
       .select({ count: sql<number>`count(*)` })
       .from(researchItems)
-      .where(eq(researchItems.status, 'dismissed'))
+      .where(eq(researchItems.status, 'discarded'))
       .all();
 
-    // Delete dismissed research items
+    // Delete discarded research items
     await familyDb.delete(researchItems)
-      .where(eq(researchItems.status, 'dismissed'))
+      .where(eq(researchItems.status, 'discarded'))
       .run();
 
     return NextResponse.json({ cleared: count });

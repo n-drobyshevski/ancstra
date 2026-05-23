@@ -7,7 +7,7 @@ import {
 } from '@ancstra/db';
 import { getFamilyDb } from '@/lib/db';
 
-type FactsheetStatus = 'draft' | 'ready' | 'promoted' | 'merged' | 'dismissed';
+import type { FactsheetStatus } from '@ancstra/db';
 
 // ---------------------------------------------------------------------------
 // Editor hero — My contributions status (per-user, all statuses)
@@ -74,8 +74,9 @@ export async function getCachedMyContributionsStatus(
 // ---------------------------------------------------------------------------
 /**
  * Number of unprocessed AI-suggested research items: `discoveryMethod =
- * 'ai_suggestion'` AND `status = 'draft'` (not yet promoted/dismissed).
- * Family-wide (research is collaborative), not per-user.
+ * 'ai_suggestion'` AND `status = 'collected'` (initial lifecycle state — not
+ * yet processed/extracted/discarded). Family-wide (research is collaborative),
+ * not per-user.
  */
 export async function getCachedAiSuggestionsCount(dbFilename: string): Promise<number> {
   'use cache';
@@ -89,7 +90,7 @@ export async function getCachedAiSuggestionsCount(dbFilename: string): Promise<n
     .where(
       and(
         eq(researchItems.discoveryMethod, 'ai_suggestion'),
-        eq(researchItems.status, 'draft'),
+        eq(researchItems.status, 'collected'),
       ),
     )
     .all();

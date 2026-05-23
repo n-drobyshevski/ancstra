@@ -100,9 +100,9 @@ export function buildMatrix(
   facts: FactInput[],
   items: ResearchItemInput[],
 ): MatrixData {
-  // Build sources from research items (exclude dismissed)
+  // Build sources from research items (exclude discarded — spec §3.3)
   const sources: MatrixSource[] = items
-    .filter((it) => it.status !== 'dismissed')
+    .filter((it) => it.status !== 'discarded')
     .map((it) => ({
       id: it.id,
       title: it.title,

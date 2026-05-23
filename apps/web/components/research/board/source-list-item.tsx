@@ -15,9 +15,10 @@ interface SourceListItemProps {
 }
 
 const STATUS_DOT: Record<string, { color: string; label: string }> = {
-  promoted: { color: 'bg-green-500', label: 'SOURCE' },
-  draft: { color: 'bg-yellow-500', label: 'DRAFT' },
-  dismissed: { color: 'bg-muted-foreground/50', label: 'DISMISSED' },
+  extracted: { color: 'bg-green-500', label: 'SOURCE' },
+  collected: { color: 'bg-yellow-500', label: 'COLLECTED' },
+  processed: { color: 'bg-blue-500', label: 'PROCESSED' },
+  discarded: { color: 'bg-muted-foreground/50', label: 'DISCARDED' },
 };
 
 export function SourceListItem({
@@ -29,7 +30,7 @@ export function SourceListItem({
   isSelected,
   onClick,
 }: SourceListItemProps) {
-  const dot = STATUS_DOT[status] ?? STATUS_DOT.draft;
+  const dot = STATUS_DOT[status] ?? STATUS_DOT.collected;
 
   const preview =
     snippet && snippet.length > 80 ? snippet.slice(0, 80) + '...' : snippet;
@@ -52,9 +53,10 @@ export function SourceListItem({
         <span
           className={cn(
             'text-[10px] font-semibold tracking-wide uppercase',
-            status === 'promoted' && 'text-status-success-text',
-            status === 'draft' && 'text-status-warning-text',
-            status === 'dismissed' && 'text-muted-foreground',
+            status === 'extracted' && 'text-status-success-text',
+            status === 'collected' && 'text-status-warning-text',
+            status === 'processed' && 'text-status-info-text',
+            status === 'discarded' && 'text-muted-foreground',
           )}
         >
           {dot.label}

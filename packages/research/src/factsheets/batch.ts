@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
 import { factsheets, factsheetLinks } from '@ancstra/db';
-import type { Database } from '@ancstra/db';
+import type { Database, RelationshipType } from '@ancstra/db';
 
 export async function batchDismissFactsheets(db: Database, ids: string[]) {
   if (ids.length === 0) return;
@@ -16,7 +16,7 @@ export async function batchDismissFactsheets(db: Database, ids: string[]) {
 export async function batchLinkFactsheets(
   db: Database,
   factsheetIds: string[],
-  relationshipType: 'parent_child' | 'spouse' | 'sibling'
+  relationshipType: RelationshipType
 ) {
   if (factsheetIds.length < 2) return;
   const now = new Date().toISOString();

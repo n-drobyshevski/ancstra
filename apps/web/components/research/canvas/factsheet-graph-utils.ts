@@ -54,15 +54,19 @@ const CENTER_NODE_HEIGHT = 60;
 
 // ---- Edge style configs ----
 
+// Bundle A spec §3.1: `partner` is visually identical to `spouse` (asserted
+// but undocumented union). Both render with the same edge style and label.
 export const LINK_EDGE_STYLES: Record<string, { stroke: string; strokeDasharray?: string; strokeWidth: number }> = {
   parent_child: { stroke: '#4f6bed', strokeWidth: 2 },
   spouse: { stroke: '#9ca3af', strokeDasharray: '4,3', strokeWidth: 1.5 },
+  partner: { stroke: '#9ca3af', strokeDasharray: '4,3', strokeWidth: 1.5 },
   sibling: { stroke: '#d4d4d8', strokeDasharray: '2,2', strokeWidth: 1 },
 };
 
 export const LINK_LABELS: Record<string, string> = {
   parent_child: 'parent',
   spouse: 'spouse',
+  partner: 'partner',
   sibling: 'sibling',
 };
 

@@ -124,12 +124,17 @@ export function ProofTab({ personId, personName = 'Unknown' }: ProofTabProps) {
 
       for (const item of items) {
         if (!existingIds.has(item.id)) {
+          // The persisted SourceEntry.type uses the legacy 'promoted'/'draft'
+          // labels so existing localStorage payloads stay readable, but the
+          // *source* check is research_items.status (new vocab: 'extracted'
+          // means promoted-to-citation; spec §3.3).
+          const isExtracted = item.status === 'extracted';
           merged.push({
             sourceId: item.id,
             title: item.title,
-            type: item.status === 'promoted' ? 'promoted' : 'draft',
+            type: isExtracted ? 'promoted' : 'draft',
             note: '',
-            included: item.status === 'promoted',
+            included: isExtracted,
           });
         }
       }

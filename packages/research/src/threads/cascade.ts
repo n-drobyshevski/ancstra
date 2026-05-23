@@ -1,13 +1,13 @@
 import { eq, sql } from 'drizzle-orm';
 import { factsheets, factsheetLinks, researchThreadEvents, researchThreads } from '@ancstra/db';
-import type { Database } from '@ancstra/db';
+import type { Database, RelationshipType } from '@ancstra/db';
 
 export interface CascadeInput {
   threadId: string | null;
   sourceFactsheetId: string;
   sourceFactId: string;
   newFactsheetTitle: string;
-  relationshipType: 'parent_child' | 'spouse' | 'sibling';
+  relationshipType: RelationshipType;
   reason: string;
   actorId: string;
   confidence?: 'high' | 'medium' | 'low';

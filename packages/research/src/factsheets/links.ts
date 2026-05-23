@@ -1,11 +1,11 @@
 import { eq, sql } from 'drizzle-orm';
 import { factsheetLinks, factsheets, researchFacts } from '@ancstra/db';
-import type { Database } from '@ancstra/db';
+import type { Database, RelationshipType } from '@ancstra/db';
 
 export interface CreateFactsheetLinkInput {
   fromFactsheetId: string;
   toFactsheetId: string;
-  relationshipType: 'parent_child' | 'spouse' | 'sibling';
+  relationshipType: RelationshipType;
   sourceFactId?: string;
   confidence?: 'high' | 'medium' | 'low';
   sourceHandle?: string | null;
@@ -119,7 +119,7 @@ export async function suggestFactsheetLinks(db: Database, factsheetId: string) {
     factValue: string;
     suggestedFactsheetId: string;
     suggestedFactsheetTitle: string;
-    relationshipType: 'parent_child' | 'spouse' | 'sibling';
+    relationshipType: RelationshipType;
   }> = [];
 
   for (const fact of relationFacts) {

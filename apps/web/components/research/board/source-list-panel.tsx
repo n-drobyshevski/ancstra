@@ -29,24 +29,29 @@ interface SourceListPanelProps {
   onSelectItem: (id: string) => void;
 }
 
-type StatusGroup = 'promoted' | 'draft' | 'dismissed';
+// research_items.status vocab (spec §3.3): collected/processed/extracted/discarded.
+// UI groups: extracted (the "sources" — promoted to citation), processed/collected
+// (in-flight working items), discarded (dismissed).
+type StatusGroup = 'extracted' | 'collected' | 'processed' | 'discarded';
 
-const GROUP_ORDER: StatusGroup[] = ['promoted', 'draft', 'dismissed'];
+const GROUP_ORDER: StatusGroup[] = ['extracted', 'processed', 'collected', 'discarded'];
 
 const GROUP_LABELS: Record<StatusGroup, string> = {
-  promoted: 'Sources',
-  draft: 'Drafts',
-  dismissed: 'Dismissed',
+  extracted: 'Sources',
+  processed: 'Processed',
+  collected: 'Collected',
+  discarded: 'Discarded',
 };
 
 function groupItems(items: ResearchItem[]): Record<StatusGroup, ResearchItem[]> {
   const groups: Record<StatusGroup, ResearchItem[]> = {
-    promoted: [],
-    draft: [],
-    dismissed: [],
+    extracted: [],
+    processed: [],
+    collected: [],
+    discarded: [],
   };
   for (const item of items) {
-    const key = (item.status as StatusGroup) in groups ? (item.status as StatusGroup) : 'draft';
+    const key = (item.status as StatusGroup) in groups ? (item.status as StatusGroup) : 'collected';
     groups[key].push(item);
   }
   return groups;
@@ -85,7 +90,7 @@ export function SourceListPanel({
         const groupItems = groups[group];
         if (groupItems.length === 0) return null;
 
-        const isDismissed = group === 'dismissed';
+        const isDismissed = group === 'discarded';
         const isOpen = isDismissed ? dismissedOpen : true;
 
         return (

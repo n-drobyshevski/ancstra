@@ -36,8 +36,8 @@ export function buildMatrix(
   facts: Fact[],
   items: ResearchItem[],
 ): { columns: ResearchItem[]; rows: MatrixRow[] } {
-  // Only include items that are promoted or draft (not dismissed)
-  const columns = items.filter((it) => it.status !== 'dismissed');
+  // Only include items that aren't discarded (research_items.status vocab — spec §3.3)
+  const columns = items.filter((it) => it.status !== 'discarded');
 
   // Collect unique fact types
   const factTypes = Array.from(new Set(facts.map((f) => f.factType))).sort();

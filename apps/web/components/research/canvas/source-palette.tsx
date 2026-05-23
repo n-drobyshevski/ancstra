@@ -19,12 +19,15 @@ export function SourcePalette({
 }: SourcePaletteProps) {
   const [filter, setFilter] = useState('');
 
+  // research_items.status vocab (spec §3.3): collected/processed/extracted/discarded.
+  // "drafts" = in-flight items (collected or processed, not discarded); "promoted"
+  // shelf = items that have been extracted to citations.
   const drafts = useMemo(
     () =>
       researchItems.filter(
         (it) =>
-          it.status !== 'promoted' &&
-          it.status !== 'dismissed' &&
+          it.status !== 'extracted' &&
+          it.status !== 'discarded' &&
           it.title.toLowerCase().includes(filter.toLowerCase()),
       ),
     [researchItems, filter],
@@ -34,7 +37,7 @@ export function SourcePalette({
     () =>
       researchItems.filter(
         (it) =>
-          it.status === 'promoted' &&
+          it.status === 'extracted' &&
           it.title.toLowerCase().includes(filter.toLowerCase()),
       ),
     [researchItems, filter],
@@ -44,7 +47,7 @@ export function SourcePalette({
     event: React.DragEvent,
     item: ResearchItemShape,
   ) {
-    const nodeType = item.status === 'promoted' ? 'source' : 'research_item';
+    const nodeType = item.status === 'extracted' ? 'source' : 'research_item';
     event.dataTransfer.setData(
       'application/ancstra-research',
       JSON.stringify({
@@ -60,7 +63,7 @@ export function SourcePalette({
   }
 
   function isOnCanvas(item: ResearchItemShape) {
-    const nodeType = item.status === 'promoted' ? 'source' : 'research_item';
+    const nodeType = item.status === 'extracted' ? 'source' : 'research_item';
     return nodesOnCanvas.has(`${nodeType}-${item.id}`);
   }
 

@@ -1,7 +1,8 @@
 import { tool } from 'ai';
 import { z } from 'zod/v3';
 import { listResearchItems } from '@ancstra/research';
-import type { Database } from '@ancstra/db';
+import type { Database, ResearchItemStatus } from '@ancstra/db';
+import { RESEARCH_ITEM_STATUSES } from '@ancstra/db';
 
 /**
  * Create the getResearchItems tool bound to a database instance.
@@ -11,12 +12,15 @@ export function createGetResearchItemsTool(db: Database) {
     description: 'Retrieve research items (records, notes, scraped pages) from the research workspace, optionally filtered by person or status',
     inputSchema: z.object({
       personId: z.string().optional().describe('Filter by person ID'),
-      status: z.enum(['draft', 'promoted', 'dismissed']).optional().describe('Filter by status'),
+      status: z
+        .enum(RESEARCH_ITEM_STATUSES as unknown as [string, ...string[]])
+        .optional()
+        .describe('Filter by status (collected/processed/extracted/discarded)'),
     }),
     execute: async ({ personId, status }) => {
       const items = await listResearchItems(db, {
         personId,
-        status,
+        status: status as ResearchItemStatus | undefined,
       });
 
       return {
