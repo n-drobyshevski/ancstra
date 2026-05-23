@@ -1,6 +1,6 @@
 import { eq, desc, and, sql } from 'drizzle-orm';
 import { researchItems, researchItemPersons } from '@ancstra/db';
-import type { Database } from '@ancstra/db';
+import type { Database, ResearchItemStatus } from '@ancstra/db';
 
 export interface CreateResearchItemInput {
   title: string;
@@ -18,7 +18,7 @@ export interface CreateResearchItemInput {
 export interface ResearchItemFilters {
   personId?: string;
   createdBy?: string;
-  status?: string;
+  status?: ResearchItemStatus;
 }
 
 export async function createResearchItem(db: Database, input: CreateResearchItemInput) {
@@ -84,7 +84,7 @@ export async function listResearchItems(db: Database, filters?: ResearchItemFilt
   }
 
   if (filters?.status) {
-    conditions.push(eq(researchItems.status, filters.status as 'draft'));
+    conditions.push(eq(researchItems.status, filters.status));
   }
 
   // If filtering by personId, we need a subquery
