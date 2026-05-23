@@ -248,6 +248,12 @@ async function ensureFamilySchemaInner(db: FamilyDatabase): Promise<void> {
   await db.run(sql`UPDATE research_items SET status = 'extracted' WHERE status IN ('promoted', 'merged')`);
   await db.run(sql`UPDATE research_items SET status = 'discarded' WHERE status = 'dismissed'`);
 
+  // Bundle A 2026-05-23: retire proposed_relationships side-channel.
+  // AI proposeRelationship tool now materialises a factsheet instead (T8).
+  // Reader-side rewired to factsheets in T4.5. Safe to drop.
+  // Idempotent — DROP IF EXISTS is safe on DBs that never had the table.
+  await db.run(sql`DROP TABLE IF EXISTS proposed_relationships`);
+
   // Research Threads Phase 1 (2026-05): link factsheets back to the thread
   // that spawned them. Nullable — factsheets created before threads existed
   // have no thread.
