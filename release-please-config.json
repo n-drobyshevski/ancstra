@@ -19,7 +19,12 @@
     { "type": "style", "section": "Style", "hidden": true }
   ],
   "packages": {
-    ".": { "package-name": "ancstra" }
+    ".": {
+      "package-name": "ancstra",
+      "extra-files": [
+        { "type": "json", "path": "apps/web/package.json", "jsonpath": "$.version" }
+      ]
+    }
   },
   "plugins": ["node-workspace"]
 }
