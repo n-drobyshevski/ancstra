@@ -74,7 +74,7 @@ describe('buildPersonsWhere', () => {
     expect(buildPersonsWhere({ ...baseFilters, complGte: 60 })).toHaveLength(1);
   });
 
-  it('adds proposed_relationships EXISTS when hasProposals=true', () => {
+  it('adds draft-factsheet EXISTS when hasProposals=true', () => {
     expect(buildPersonsWhere({ ...baseFilters, hasProposals: true })).toHaveLength(1);
   });
 

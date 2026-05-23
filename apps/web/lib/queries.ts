@@ -708,11 +708,16 @@ export async function getTreeData(db: Database): Promise<TreeData> {
 // ---------------------------------------------------------------------------
 // Exported: pending proposed relationships (canvas overlay)
 //
-// Per CLAUDE.md, AI/API discoveries land in `proposed_relationships` and are
-// kept off the canonical tree until validated. The web app stores each user's
-// tree in its own SQLite DB (see authContext.dbFilename), so there is no
-// treeId scoping — every row belongs to this user's tree. The JOIN against
-// `persons` skips proposals whose endpoints have been soft-deleted.
+// Bundle A 2026-05-23: reads from factsheets + research_facts instead of the
+// retired proposed_relationships table. AI proposeRelationship now materialises
+// a draft factsheet (entityType='family_unit', status='draft') with one
+// research_fact carrying the assertion (person_id = person1Id, fact_value =
+// person2Id, extraction_method='ai_extracted'). The function name and the
+// `ProposedRelationshipForCanvas` shape are preserved so the canvas overlay
+// component needs no changes — a rename can land as a separate noise-only PR.
+//
+// The JOIN against `persons` skips assertions whose endpoints have been
+// soft-deleted.
 // ---------------------------------------------------------------------------
 export interface ProposedRelationshipForCanvas {
   id: string;
@@ -733,28 +738,60 @@ export async function getProposedRelationshipsForTree(
   db: Database,
 ): Promise<ProposedRelationshipForCanvas[]> {
   const rows = await db.all<{
-    id: string;
+    factsheet_id: string;
     person1_id: string;
     person2_id: string;
-    relationship_type: ProposedRelationshipForCanvas['relationshipType'];
-    source_type: ProposedRelationshipForCanvas['sourceType'];
-    confidence: number | null;
+    fact_type: 'parent_name' | 'spouse_name' | 'sibling_name';
+    confidence_band: 'high' | 'medium' | 'low' | 'unknown';
   }>(sql`
-    SELECT pr.id, pr.person1_id, pr.person2_id, pr.relationship_type,
-           pr.source_type, pr.confidence
-    FROM proposed_relationships pr
-    JOIN persons p1 ON p1.id = pr.person1_id
-    JOIN persons p2 ON p2.id = pr.person2_id
-    WHERE pr.status = 'pending'
+    SELECT rf.factsheet_id   AS factsheet_id,
+           rf.person_id      AS person1_id,
+           rf.fact_value     AS person2_id,
+           rf.fact_type      AS fact_type,
+           rf.confidence     AS confidence_band
+    FROM research_facts rf
+    JOIN factsheets fs ON fs.id = rf.factsheet_id
+    JOIN persons p1 ON p1.id = rf.person_id
+    JOIN persons p2 ON p2.id = rf.fact_value
+    WHERE fs.status = 'draft'
+      AND fs.entity_type = 'family_unit'
+      AND rf.extraction_method = 'ai_extracted'
+      AND rf.fact_type IN ('parent_name', 'spouse_name', 'sibling_name')
       AND p1.deleted_at IS NULL
       AND p2.deleted_at IS NULL
   `);
+
   return rows.map((r) => ({
-    id: r.id,
+    id: r.factsheet_id,
     person1Id: r.person1_id,
     person2Id: r.person2_id,
-    relationshipType: r.relationship_type,
-    sourceType: r.source_type,
-    confidence: r.confidence,
+    relationshipType: factTypeToRelationship(r.fact_type),
+    sourceType: 'ai_suggestion' as const,
+    confidence: confidenceBandToNumeric(r.confidence_band),
   }));
+}
+
+// Helpers — kept local to where they're used. The factType → relationship
+// mapping is the inverse of relationshipToFactType() in @ancstra/db/vocab,
+// with one nuance: 'spouse_name' maps to 'partner' (not 'spouse') because
+// that's the AI tool's input enum's default (spec §3.1 — 3-value enum; users
+// upgrade to 'spouse' during factsheet review).
+function factTypeToRelationship(
+  factType: 'parent_name' | 'spouse_name' | 'sibling_name',
+): 'parent_child' | 'partner' | 'sibling' {
+  if (factType === 'parent_name') return 'parent_child';
+  if (factType === 'sibling_name') return 'sibling';
+  return 'partner';
+}
+
+// Inverse of bandConfidence() in packages/db/src/vocab.ts: midpoint of each
+// band. Preserves enough signal for the canvas overlay's visual treatment
+// (currently uniform amber for all proposals — see proposed-edge.tsx).
+function confidenceBandToNumeric(
+  band: 'high' | 'medium' | 'low' | 'unknown',
+): number | null {
+  if (band === 'high') return 0.925;
+  if (band === 'medium') return 0.70;
+  if (band === 'low') return 0.375;
+  return null;
 }

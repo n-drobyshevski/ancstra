@@ -332,26 +332,8 @@ CREATE TABLE IF NOT EXISTS ai_usage (
 );
 CREATE INDEX IF NOT EXISTS idx_ai_usage_user_month ON ai_usage(user_id, created_at);
 
--- ==================== PROPOSED RELATIONSHIPS (ai-schema) ====================
-CREATE TABLE IF NOT EXISTS proposed_relationships (
-  id TEXT PRIMARY KEY,
-  relationship_type TEXT NOT NULL,
-  person1_id TEXT NOT NULL REFERENCES persons(id) ON DELETE CASCADE,
-  person2_id TEXT NOT NULL REFERENCES persons(id) ON DELETE CASCADE,
-  source_type TEXT NOT NULL,
-  source_detail TEXT,
-  confidence REAL,
-  status TEXT NOT NULL DEFAULT 'pending',
-  validated_by TEXT,
-  validated_at TEXT,
-  rejection_reason TEXT,
-  created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL,
-  version INTEGER NOT NULL DEFAULT 1
-);
-CREATE INDEX IF NOT EXISTS idx_proposed_rels_status ON proposed_relationships(status);
-CREATE INDEX IF NOT EXISTS idx_proposed_rels_person1 ON proposed_relationships(person1_id);
-CREATE INDEX IF NOT EXISTS idx_proposed_rels_person2 ON proposed_relationships(person2_id);
+-- Bundle A 2026-05-23: proposed_relationships retired — AI proposals now
+-- materialise draft factsheets. No bootstrap DDL needed.
 
 -- ==================== MATCH CANDIDATES (matching-schema) ====================
 CREATE TABLE IF NOT EXISTS match_candidates (
