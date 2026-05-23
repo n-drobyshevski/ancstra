@@ -196,23 +196,24 @@ export const explainRecord = tool({
   },
 });
 
+// packages/ai/src/tools/propose-relationship.ts
+// Bundle A (2026-05-23): now materialises a draft factsheet.
+
 export const proposeRelationship = tool({
-  description: 'Propose a relationship between two people based on discovered evidence. Creates a pending proposal for editor validation — does NOT directly modify the family tree.',
+  description: 'Propose a relationship between two people based on discovered evidence. Creates a draft factsheet that the user reviews — does NOT directly modify the family tree.',
   parameters: z.object({
-    person1Id: z.string().describe('First person ID (parent for parent-child)'),
-    person2Id: z.string().describe('Second person ID (child for parent-child)'),
-    relationshipType: z.enum(['parent_child', 'partner', 'sibling'])
-      .describe('Type of relationship discovered'),
-    evidence: z.string().describe('Summary of evidence supporting this relationship'),
-    confidence: z.number().min(0).max(1).describe('Confidence level 0-1'),
-    sourceRecordId: z.string().optional().describe('ID of the source record that supports this'),
+    person1Id: z.string(),
+    person2Id: z.string(),
+    relationshipType: z.enum(['parent_child', 'partner', 'sibling']),
+    evidence: z.string(),
+    confidence: z.number().min(0).max(1),
+    sourceRecordId: z.string().optional(),
   }),
-  execute: async ({ person1Id, person2Id, relationshipType, evidence, confidence, sourceRecordId }) => {
-    // Insert into proposed_relationships table
-    // source_type = 'ai_suggestion'
-    // source_detail = evidence summary + sourceRecordId
-    // Notify editors via activity feed
-    // Return the proposal ID and status
+  execute: async (params) => {
+    // Inserts factsheets (entityType='family_unit', status='draft') and
+    // research_facts (factType per relationshipToFactType, confidence
+    // banded via bandConfidence, provenance derived from sourceRecordId).
+    // Returns { factsheetId, status: 'draft', message }.
   },
 });
 ```
@@ -334,15 +335,15 @@ export async function checkBudget(db: DrizzleDatabase, monthlyLimitUsd = 10): Pr
 
 ## Integration with Relationship Validation
 
-When Claude discovers or suggests a relationship between two people, it uses the `proposeRelationship` tool to create a **pending proposal** in the database. This never directly modifies the `families` or `children` tables.
+When Claude discovers or suggests a relationship between two people, it uses the `proposeRelationship` tool to create a **draft factsheet** in the database. This never directly modifies the `families` or `children` tables.
 
 The flow:
 1. AI analyzes records and finds evidence of a parent-child relationship
 2. Calls `proposeRelationship` tool with evidence summary and confidence score
-3. Database creates entry in `proposed_relationships` table with status='pending'
-4. Editor sees proposal in validation queue with evidence and source record links
-5. Editor can accept (moves to `families`/`children`), reject, or request more info
-6. Upon acceptance, relationship is confirmed and `relationship_justifications` record captures the editor's reasoning
+3. Database creates a factsheet (`entityType='family_unit'`, `status='draft'`) with one `research_fact` carrying the evidence and banded confidence
+4. User sees the draft in the standard factsheet UI with evidence and source record links
+5. User can promote the factsheet (moves relationship to `families`/`children`), discard it, or add more research facts before promoting
+6. Upon promotion, the relationship is confirmed and the factsheet moves to `status='active'`
 
 This ensures humans remain in control of the tree structure while AI acts as a powerful research assistant.
 
@@ -420,4 +421,4 @@ The `filterForPrivacy` function (from [data model](data-model.md)) strips living
 
 - [Product Vision](../vision.md) — AI capabilities as core value prop
 - [Architecture Overview](overview.md) — How AI integrates with Next.js API routes
-- [Data Model](data-model.md) — Relationship validation workflow, proposed_relationships table
+- [Data Model](data-model.md) — Relationship validation workflow, factsheets + research_facts tables
