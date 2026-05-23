@@ -67,7 +67,11 @@ function scanLine(line: string): boolean {
 }
 
 describe('vocab consistency (Bundle A guard)', () => {
-  it('no legacy research_items.status or research_facts.confidence literals remain in src', () => {
+  // Walks the whole repo's apps/ + packages/ tree (~thousands of statSync calls)
+  // — passes in ~600ms in isolation but the default 5s timeout fires under CPU
+  // contention when vitest parallelises with other test files. 30s is generous
+  // headroom that still catches a genuine infinite-loop regression.
+  it('no legacy research_items.status or research_facts.confidence literals remain in src', { timeout: 30_000 }, () => {
     const offenders: Array<{ file: string; line: number; text: string }> = [];
     for (const dir of SCAN_DIRS) {
       const root = path.join(REPO_ROOT, dir);
