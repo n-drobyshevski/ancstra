@@ -126,30 +126,73 @@ async function ensureFamilySchemaInner(db: FamilyDatabase): Promise<void> {
   await db.run(sql`CREATE INDEX IF NOT EXISTS idx_factsheets_status ON factsheets(status)`);
   await db.run(sql`CREATE INDEX IF NOT EXISTS idx_factsheets_created_by ON factsheets(created_by)`);
 
+  // Bundle A 2026-05-23: factsheet_links gains 'partner' relationship_type,
+  // 'unknown' confidence band, and orthogonal `contested` boolean. The
+  // legacy ALTERs for source_handle/target_handle are subsumed by this
+  // CREATE TABLE — legacy DBs predating those columns will still have them
+  // because ensureFamilySchemaInner ran the ALTERs on a prior cold start
+  // before this code shipped. The recreate-if-no-partner block below also
+  // preserves them on copy.
   await db.run(sql`
     CREATE TABLE IF NOT EXISTS factsheet_links (
       id TEXT PRIMARY KEY,
       from_factsheet_id TEXT NOT NULL REFERENCES factsheets(id) ON DELETE CASCADE,
       to_factsheet_id TEXT NOT NULL REFERENCES factsheets(id) ON DELETE CASCADE,
       relationship_type TEXT NOT NULL
-        CHECK (relationship_type IN ('parent_child', 'spouse', 'sibling')),
+        CHECK (relationship_type IN ('parent_child', 'spouse', 'partner', 'sibling')),
       source_fact_id TEXT,
       confidence TEXT NOT NULL DEFAULT 'medium'
-        CHECK (confidence IN ('high', 'medium', 'low')),
-      created_at TEXT NOT NULL
+        CHECK (confidence IN ('high', 'medium', 'low', 'unknown')),
+      contested INTEGER NOT NULL DEFAULT 0,
+      source_handle TEXT,
+      target_handle TEXT,
+      created_at TEXT NOT NULL,
+      UNIQUE (from_factsheet_id, to_factsheet_id, relationship_type)
     )
   `);
   await db.run(sql`CREATE INDEX IF NOT EXISTS idx_factsheet_links_from ON factsheet_links(from_factsheet_id)`);
   await db.run(sql`CREATE INDEX IF NOT EXISTS idx_factsheet_links_to ON factsheet_links(to_factsheet_id)`);
 
-  // Persisted React Flow handle attachment columns (added 2026-04 — see
-  // factsheet-graph-view.tsx). Older DBs predate these columns, so we ALTER.
+  // Bundle A 2026-05-23: existing DBs predate the partner/contested expansion.
+  // SQLite has no ALTER CHECK — rename-old, create-new, copy-data, drop-old.
   try {
-    await db.run(sql`ALTER TABLE factsheet_links ADD COLUMN source_handle TEXT`);
+    await db.run(sql`ALTER TABLE factsheet_links ADD COLUMN contested INTEGER NOT NULL DEFAULT 0`);
   } catch { /* column already exists */ }
-  try {
-    await db.run(sql`ALTER TABLE factsheet_links ADD COLUMN target_handle TEXT`);
-  } catch { /* column already exists */ }
+
+  const [linksRow] = await db.all<{ sql: string }>(
+    sql`SELECT sql FROM sqlite_master WHERE type='table' AND name='factsheet_links'`,
+  );
+  if (linksRow && !linksRow.sql.includes("'partner'")) {
+    await db.run(sql`PRAGMA foreign_keys = OFF`);
+    await db.run(sql`ALTER TABLE factsheet_links RENAME TO __old_factsheet_links`);
+    await db.run(sql`
+      CREATE TABLE factsheet_links (
+        id TEXT PRIMARY KEY,
+        from_factsheet_id TEXT NOT NULL REFERENCES factsheets(id) ON DELETE CASCADE,
+        to_factsheet_id TEXT NOT NULL REFERENCES factsheets(id) ON DELETE CASCADE,
+        relationship_type TEXT NOT NULL
+          CHECK (relationship_type IN ('parent_child', 'spouse', 'partner', 'sibling')),
+        source_fact_id TEXT,
+        confidence TEXT NOT NULL DEFAULT 'medium'
+          CHECK (confidence IN ('high', 'medium', 'low', 'unknown')),
+        contested INTEGER NOT NULL DEFAULT 0,
+        source_handle TEXT,
+        target_handle TEXT,
+        created_at TEXT NOT NULL,
+        UNIQUE (from_factsheet_id, to_factsheet_id, relationship_type)
+      )
+    `);
+    await db.run(sql`
+      INSERT INTO factsheet_links (id, from_factsheet_id, to_factsheet_id, relationship_type, source_fact_id, confidence, contested, source_handle, target_handle, created_at)
+      SELECT id, from_factsheet_id, to_factsheet_id, relationship_type, source_fact_id,
+             confidence, COALESCE(contested, 0), source_handle, target_handle, created_at
+      FROM __old_factsheet_links
+    `);
+    await db.run(sql`DROP TABLE __old_factsheet_links`);
+    await db.run(sql`CREATE INDEX IF NOT EXISTS idx_factsheet_links_from ON factsheet_links(from_factsheet_id)`);
+    await db.run(sql`CREATE INDEX IF NOT EXISTS idx_factsheet_links_to ON factsheet_links(to_factsheet_id)`);
+    await db.run(sql`PRAGMA foreign_keys = ON`);
+  }
 
   // Add factsheet columns to research_facts if not present
   try {
