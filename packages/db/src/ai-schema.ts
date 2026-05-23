@@ -1,6 +1,4 @@
-import { sqliteTable, text, integer, real, index, check } from 'drizzle-orm/sqlite-core';
-import { sql } from 'drizzle-orm';
-import { persons } from './family-schema';
+import { sqliteTable, text, integer, real, index } from 'drizzle-orm/sqlite-core';
 
 // ==================== AI USAGE TRACKING ====================
 export const aiUsage = sqliteTable('ai_usage', {
@@ -17,41 +15,4 @@ export const aiUsage = sqliteTable('ai_usage', {
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
 }, (table) => [
   index('idx_ai_usage_user_month').on(table.userId, table.createdAt),
-]);
-
-// ==================== PROPOSED RELATIONSHIPS ====================
-export const proposedRelationships = sqliteTable('proposed_relationships', {
-  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  relationshipType: text('relationship_type', {
-    enum: ['parent_child', 'partner', 'sibling'],
-  }).notNull(),
-  person1Id: text('person1_id').notNull().references(() => persons.id, { onDelete: 'cascade' }),
-  person2Id: text('person2_id').notNull().references(() => persons.id, { onDelete: 'cascade' }),
-  sourceType: text('source_type', {
-    enum: ['familysearch', 'nara', 'ai_suggestion', 'record_match', 'ocr_extraction', 'user_proposal'],
-  }).notNull(),
-  sourceDetail: text('source_detail'),
-  confidence: real('confidence'),
-  status: text('status', {
-    enum: ['pending', 'validated', 'rejected', 'needs_info'],
-  }).notNull().default('pending'),
-  validatedBy: text('validated_by'),
-  validatedAt: text('validated_at'),
-  rejectionReason: text('rejection_reason'),
-  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
-  updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
-  version: integer('version').notNull().default(1),
-}, (table) => [
-  index('idx_proposed_rels_status').on(table.status),
-  index('idx_proposed_rels_person1').on(table.person1Id),
-  index('idx_proposed_rels_person2').on(table.person2Id),
-  // DB-level enforcement of the status enum. This is the sink for external/AI
-  // sources whose payload the application type system can't fully vouch for,
-  // so a CHECK at the DB layer is the right defense-in-depth here. Project
-  // convention elsewhere is TS-only enums (e.g. families.validation_status);
-  // the deliberate exception here matches the trust boundary.
-  check(
-    'proposed_relationships_status_check',
-    sql`${table.status} IN ('pending', 'validated', 'rejected', 'needs_info')`,
-  ),
 ]);
