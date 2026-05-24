@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import { createHash } from 'crypto';
 import type { Database } from '@ancstra/db';
+import { FactsheetNotPromotedError } from './unmerge';
 
 /**
  * Bundle C 2026-05-24 — patch-on-second-promote helpers.
@@ -14,7 +15,7 @@ import type { Database } from '@ancstra/db';
  */
 
 export type FieldDelta = {
-  field: 'dateOriginal' | 'dateSort' | 'placeText' | 'description';
+  field: 'dateOriginal' | 'dateSort' | 'placeText';
   before: unknown;
   after: unknown;
 };
@@ -55,7 +56,7 @@ export type PatchDiff = {
 export class LegacyPromotionNotPatchableError extends Error {
   constructor(public factsheetId: string) {
     super(
-      `Factsheet ${factsheetId} was promoted before live-link support (events have no source_factsheet_id). Unmerge and re-promote to enable patching.`,
+      `Factsheet ${factsheetId} cannot be patched: person has events without source_factsheet_id (legacy promotion or manually-created events). Unmerge and re-promote, or detach the live link, to resolve.`,
     );
     this.name = 'LegacyPromotionNotPatchableError';
   }
@@ -104,9 +105,10 @@ interface FactsheetRow {
  * Compute the diff between a factsheet's accepted facts and the existing
  * promoted person's events. PURE — no writes.
  *
- * Throws LegacyPromotionNotPatchableError if the promoted person has events
- * with NO source_factsheet_id set (legacy promotion pre-Bundle C) and none
- * of its events are tagged with this factsheetId.
+ * Throws LegacyPromotionNotPatchableError if the promoted person has ANY
+ * events without source_factsheet_id — whether pure legacy (all untracked)
+ * or mixed (some tracked + some manually-added). Patching a mixed person
+ * would silently duplicate/diverge from the untracked rows.
  */
 export async function computePatchDiff(
   db: Database,
@@ -121,24 +123,22 @@ export async function computePatchDiff(
     throw new Error(`computePatchDiff: factsheet ${factsheetId} not found`);
   }
   if (fs.status !== 'promoted' || !fs.promoted_person_id) {
-    throw new Error(`computePatchDiff: factsheet ${factsheetId} is not promoted`);
+    throw new FactsheetNotPromotedError(factsheetId);
   }
   const personId = fs.promoted_person_id;
 
-  // Legacy guard: any events for this person without source_factsheet_id, AND
-  // none tagged with our factsheet id → legacy promotion (pre-Bundle C).
-  const probeRows = await db.all<{ has_tracked: number | null; has_untracked: number | null }>(sql`
+  // Legacy/mixed-state guard: refuse whenever ANY events on the person lack a
+  // source_factsheet_id. This covers both pure legacy promotions (all
+  // untracked) and mixed states where a user added events manually after a
+  // Bundle C promote. Patching in either case would leave the untracked rows
+  // in place and silently duplicate/diverge from them.
+  const probeRows = await db.all<{ has_untracked: number | null }>(sql`
     SELECT
-      SUM(CASE WHEN source_factsheet_id = ${factsheetId} THEN 1 ELSE 0 END) AS has_tracked,
       SUM(CASE WHEN source_factsheet_id IS NULL THEN 1 ELSE 0 END) AS has_untracked
     FROM events WHERE person_id = ${personId}
   `);
   const probe = probeRows[0];
-  if (
-    probe &&
-    Number(probe.has_tracked ?? 0) === 0 &&
-    Number(probe.has_untracked ?? 0) > 0
-  ) {
+  if (probe && Number(probe.has_untracked ?? 0) > 0) {
     throw new LegacyPromotionNotPatchableError(factsheetId);
   }
 
@@ -198,21 +198,26 @@ export async function computePatchDiff(
       continue;
     }
     const deltas: FieldDelta[] = [];
-    if (existing.date_original !== group.dateOriginal) {
+    // Silent-retain semantics: a null group value means "factsheet is silent on
+    // this field" (e.g. AI surfaced birth_date but no birth_place). Treat that
+    // as retain-existing rather than as an assertion of null — otherwise a
+    // silent factsheet would clear existing event data. Only an explicit
+    // non-null factsheet value (that differs) produces a delta.
+    if (group.dateOriginal !== null && existing.date_original !== group.dateOriginal) {
       deltas.push({
         field: 'dateOriginal',
         before: existing.date_original,
         after: group.dateOriginal,
       });
     }
-    if (existing.date_sort !== group.dateSort) {
+    if (group.dateSort !== null && existing.date_sort !== group.dateSort) {
       deltas.push({
         field: 'dateSort',
         before: existing.date_sort,
         after: group.dateSort,
       });
     }
-    if (existing.place_text !== group.placeText) {
+    if (group.placeText !== null && existing.place_text !== group.placeText) {
       deltas.push({
         field: 'placeText',
         before: existing.place_text,
@@ -311,12 +316,6 @@ export async function applyPatchDiff(
         await db.run(sql`
           UPDATE events
           SET place_text = ${delta.after as string | null}, updated_at = ${now}
-          WHERE id = ${ev.eventId}
-        `);
-      } else if (delta.field === 'description') {
-        await db.run(sql`
-          UPDATE events
-          SET description = ${delta.after as string | null}, updated_at = ${now}
           WHERE id = ${ev.eventId}
         `);
       }

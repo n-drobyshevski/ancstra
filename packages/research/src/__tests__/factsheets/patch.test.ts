@@ -254,6 +254,107 @@ describe('computePatchDiff', () => {
       LegacyPromotionNotPatchableError,
     );
   });
+
+  // Test A — mixed-state: one tracked event for F1 plus one untracked manual
+  // event. Guard must refuse: applying a diff here would leave the untracked
+  // row in place and the person would silently diverge from the factsheet.
+  it('throws LegacyPromotionNotPatchableError on mixed tracked + untracked events', async () => {
+    const ts = '2026-05-24T10:00:00.000Z';
+    client()
+      .prepare(
+        `INSERT INTO events
+           (id, person_id, event_type, date_original, date_sort, place_text,
+            source_factsheet_id, created_at, updated_at)
+         VALUES ('E2', 'P1', 'death', '1950', 19500101, 'Paris', NULL, ?, ?)`,
+      )
+      .run(ts, ts);
+
+    addFact({
+      id: 'rf-bd',
+      factType: 'birth_date',
+      factValue: '12 March 1887',
+      factDateSort: 18870312,
+    });
+
+    await expect(computePatchDiff(db as any, 'F1')).rejects.toBeInstanceOf(
+      LegacyPromotionNotPatchableError,
+    );
+  });
+
+  // Test B — silent-retain: factsheet has only birth_date, no birth_place.
+  // The existing event's place_text must NOT be cleared.
+  it('treats factsheet silence on a field as retain-existing (no delta, no clobber)', async () => {
+    addFact({
+      id: 'rf-bd',
+      factType: 'birth_date',
+      factValue: '1887',
+      factDateSort: 1887,
+    });
+    // Reset E1 to a clean shape: date='1887', place='St. Petersburg'.
+    client()
+      .prepare(
+        `UPDATE events
+         SET date_original = '1887', date_sort = 1887, place_text = 'St. Petersburg'
+         WHERE id = 'E1'`,
+      )
+      .run();
+
+    const diff = await computePatchDiff(db as any, 'F1');
+
+    expect(diff.events.modified).toHaveLength(0);
+    expect(diff.events.unchanged).toContain('E1');
+    const placeDelta = diff.events.modified[0]?.deltas.find(
+      (d) => d.field === 'placeText',
+    );
+    expect(placeDelta).toBeUndefined();
+
+    await db.run(sql`BEGIN`);
+    await applyPatchDiff(db as any, diff, { actorId: 'u' });
+    await db.run(sql`COMMIT`);
+
+    const row = client()
+      .prepare(`SELECT place_text FROM events WHERE id = 'E1'`)
+      .get() as { place_text: string | null };
+    expect(row.place_text).toBe('St. Petersburg');
+  });
+
+  // Test C — symmetry: factsheet has only birth_place (Moscow), no date facts.
+  // Only placeText should be in deltas; dateOriginal/dateSort untouched.
+  it('produces only the explicit field delta when other group fields are silent', async () => {
+    addFact({ id: 'rf-bp', factType: 'birth_place', factValue: 'Moscow' });
+
+    const diff = await computePatchDiff(db as any, 'F1');
+
+    expect(diff.events.modified).toHaveLength(1);
+    expect(diff.events.modified[0].eventId).toBe('E1');
+    const fields = diff.events.modified[0].deltas.map((d) => d.field).sort();
+    expect(fields).toEqual(['placeText']);
+    const placeDelta = diff.events.modified[0].deltas[0];
+    expect(placeDelta.before).toBe('St. Petersburg');
+    expect(placeDelta.after).toBe('Moscow');
+  });
+
+  // Test D — positive case for the legacy guard: zero events on the promoted
+  // person is acceptable. The guard only fires on UNTRACKED events; an empty
+  // person should compute a fully-add diff.
+  it('treats zero-events person as fully-add (no legacy error)', async () => {
+    client().prepare(`DELETE FROM events WHERE person_id = 'P1'`).run();
+
+    addFact({
+      id: 'rf-bd',
+      factType: 'birth_date',
+      factValue: '1887',
+      factDateSort: 1887,
+    });
+
+    const diff = await computePatchDiff(db as any, 'F1');
+
+    expect(diff.events.added).toHaveLength(1);
+    expect(diff.events.added[0].eventType).toBe('birth');
+    expect(diff.events.added[0].dateOriginal).toBe('1887');
+    expect(diff.events.modified).toHaveLength(0);
+    expect(diff.events.unchanged).toHaveLength(0);
+  });
 });
 
 describe('applyPatchDiff', () => {
