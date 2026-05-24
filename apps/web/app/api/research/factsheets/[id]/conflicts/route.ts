@@ -40,6 +40,7 @@ export async function POST(
 
     revalidateTag(`factsheet-${factsheetId}`, 'max');
     revalidateTag('factsheets-list', 'max');
+    revalidateTag('inbox-count', 'max');
 
     return NextResponse.json({ success: true });
   } catch (err) {

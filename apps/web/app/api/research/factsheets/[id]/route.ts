@@ -46,6 +46,7 @@ export async function PUT(
     revalidateTag('factsheets-list', 'max');
     revalidateTag(`factsheet-${id}`, 'max');
     revalidateTag('factsheet-count', 'max');
+    revalidateTag('inbox-count', 'max');
 
     return NextResponse.json(result);
   } catch (err) {
@@ -69,6 +70,7 @@ export async function DELETE(
     revalidateTag(`factsheet-${id}`, 'max');
     revalidateTag('factsheet-count', 'max');
     revalidateTag('factsheet-links', 'max');
+    revalidateTag('inbox-count', 'max');
 
     return NextResponse.json({ success: true });
   } catch (err) {

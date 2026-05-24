@@ -23,6 +23,7 @@ export async function POST(
       revalidateTag('factsheets-list', 'max');
       revalidateTag('factsheet-count', 'max');
       revalidateTag('factsheets', 'max');
+      revalidateTag('inbox-count', 'max');
       return NextResponse.json(result);
     }
 
@@ -50,6 +51,7 @@ export async function POST(
     revalidateTag('factsheets-list', 'max');
     revalidateTag(`factsheet-${factsheetId}`, 'max');
     revalidateTag('factsheet-count', 'max');
+    revalidateTag('inbox-count', 'max');
     return NextResponse.json(result);
   } catch (err) {
     try { return handleAuthError(err); } catch { /* not auth */ }

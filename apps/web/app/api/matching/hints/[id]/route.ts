@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
 import { matchCandidates } from '@ancstra/db';
 import { eq } from 'drizzle-orm';
@@ -48,6 +49,8 @@ export async function PATCH(
       .where(eq(matchCandidates.id, id))
       .get();
 
+    revalidateTag(`hints-person-${existing.personId}`, 'max');
+    revalidateTag('inbox-count', 'max');
     return NextResponse.json(updated);
   } catch (err) {
     try { return handleAuthError(err); } catch { /* not an auth error */ }
