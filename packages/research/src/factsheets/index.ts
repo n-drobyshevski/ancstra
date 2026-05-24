@@ -38,3 +38,13 @@ export {
 export type { PromoteSingleInput, PromoteSingleResult, PromoteClusterResult } from './promote';
 
 export { batchDismissFactsheets, batchLinkFactsheets } from './batch';
+
+export {
+  unmergeFactsheet,
+  isPersonDirtySincePromote,
+  isClusterPromoted,
+  FactsheetNotPromotedError,
+  PersonDirtyError,
+  ClusterPromotedError,
+} from './unmerge';
+export type { UnmergeFactsheetInput, UnmergeFactsheetResult } from './unmerge';
