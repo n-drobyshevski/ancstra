@@ -244,4 +244,27 @@ describe('GET /api/inbox', () => {
       expect(item.threadId).toBeNull();
     }
   });
+
+  it('hasMore=false when type filter fits all results on one page', async () => {
+    // Seed has 2 pending hints (mc1, mc2). Request limit=2 with type=hint.
+    // Before fix: hasMore = 0 + 2 < counts.total(all types) = true (wrong).
+    // After fix:  hasMore = 0 + 2 < 2 = false (correct).
+    authSuccess(testDb);
+    const res = await GET(makeRequest('type=hint&limit=2'));
+    expect(res.status).toBe(200);
+    const body = await res.json() as { items: unknown[]; hasMore: boolean };
+    expect(body.items.length).toBe(2);
+    expect(body.hasMore).toBe(false);
+  });
+
+  it('hasMore=true when more filtered results exist beyond limit', async () => {
+    // Seed has 2 pending hints. Requesting limit=1 with type=hint leaves 1 more.
+    // After fix:  hasMore = 0 + 1 < 2 = true (correct).
+    authSuccess(testDb);
+    const res = await GET(makeRequest('type=hint&limit=1'));
+    expect(res.status).toBe(200);
+    const body = await res.json() as { items: unknown[]; hasMore: boolean };
+    expect(body.items.length).toBe(1);
+    expect(body.hasMore).toBe(true);
+  });
 });
