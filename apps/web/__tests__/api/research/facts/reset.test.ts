@@ -269,4 +269,40 @@ describe('POST /api/research/facts/:id/reset', () => {
     const body = await res.json();
     expect(body.error).toBe('reason-required');
   });
+
+  // -------------------------------------------------------------------------
+  // Guard: not found
+  // -------------------------------------------------------------------------
+
+  it('returns 404 for nonexistent fact', async () => {
+    authSuccess(testDb);
+    const res = await POST(
+      new Request('http://x', { method: 'POST', body: JSON.stringify({ reason: 'r' }) }),
+      { params: Promise.resolve({ id: 'rf-does-not-exist' }) },
+    );
+    expect(res.status).toBe(404);
+    expect((await res.json()).error).toBe('not-found');
+  });
+
+  // -------------------------------------------------------------------------
+  // Cache revalidation
+  // -------------------------------------------------------------------------
+
+  it('revalidates tags on success', async () => {
+    authSuccess(testDb);
+    const params = Promise.resolve({ id: RF_ACCEPTED });
+    await POST(makeRequest(RF_ACCEPTED, { reason: 'Reset it' }), { params });
+
+    const calls = vi.mocked(revalidateTag).mock.calls;
+    const tags = calls.map(([tag]) => tag);
+    expect(tags).toContain('factsheets-list');
+    expect(tags).toContain(`factsheet-${FS_DRAFT}`);
+    expect(tags).toContain('factsheet-count');
+    expect(tags).toContain('inbox-count');
+
+    // All calls must use 'max' as second argument
+    for (const [, second] of calls) {
+      expect(second).toBe('max');
+    }
+  });
 });
