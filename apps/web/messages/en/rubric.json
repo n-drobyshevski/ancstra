@@ -1,22 +1,28 @@
 {
+  "labels": {
+    "title": "Confidence rubric",
+    "meaning": "What it means:",
+    "typical": "Typical:",
+    "formula": "Computed:"
+  },
   "high": {
-    "meaning": "Evidence is consistent and well-cited.",
-    "typical": "Birth certificate or primary record.",
-    "formula": "Computed when avg evidence score ≥ 0.85."
+    "meaning": "Evidence is consistent and well-cited. Safe to rely on without further research.",
+    "typical": "Birth certificate, parish register, OR 2+ independent secondary sources agreeing.",
+    "formula": "Computed when avg evidence score ≥ 0.85. Set once at creation; edit manually to override."
   },
   "medium": {
-    "meaning": "One credible source supports this.",
-    "typical": "Single secondary source.",
-    "formula": "Computed when avg evidence score 0.55–0.85."
+    "meaning": "One credible source supports this; corroboration would strengthen it.",
+    "typical": "Single secondary source (census, biography), or family lore with an anchor date.",
+    "formula": "Computed when avg evidence score is between 0.55 and 0.85."
   },
   "low": {
-    "meaning": "Weak or single uncited source.",
-    "typical": "Uncited inference.",
-    "formula": "Computed when avg evidence score 0.20–0.55."
+    "meaning": "Weak or single uncited source. Treat as a working hypothesis, not a fact.",
+    "typical": "Uncited inference, single oral-tradition claim, or partial AI extraction without source.",
+    "formula": "Computed when avg evidence score is between 0.20 and 0.55."
   },
   "unknown": {
-    "meaning": "Insufficient evidence to band.",
-    "typical": "No supporting source.",
-    "formula": "Computed when avg evidence score < 0.20."
+    "meaning": "Insufficient or contradictory evidence to band. Not 'wrong' — just unbanded.",
+    "typical": "No supporting source, or two equally-weighted sources contradicting each other.",
+    "formula": "Computed when avg evidence score is below 0.20."
   }
 }

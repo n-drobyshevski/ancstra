@@ -11,6 +11,7 @@ import { ConfidenceChip } from '@/components/confidence/confidence-chip';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const enMessages: any = {
   rubric: {
+    labels:  { title: 'Confidence rubric', meaning: 'What it means:', typical: 'Typical:', formula: 'Computed:' },
     high:    { meaning: 'Evidence is consistent and well-cited.', typical: 'Birth certificate.', formula: 'Computed when avg evidence score ≥ 0.85.' },
     medium:  { meaning: 'One credible source supports this.',     typical: 'Single secondary.',   formula: 'Computed when avg evidence score 0.55-0.85.' },
     low:     { meaning: 'Weak or single uncited source.',         typical: 'Uncited inference.',  formula: 'Computed when avg evidence score 0.20-0.55.' },

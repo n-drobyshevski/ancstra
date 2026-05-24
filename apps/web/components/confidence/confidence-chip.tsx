@@ -50,6 +50,7 @@ function useBandTranslations(band: Confidence): BandTranslations {
 
 export function ConfidenceChip({ band, label, inert }: ConfidenceChipProps) {
   const rubric = useBandTranslations(band);
+  const labels = useTranslations('rubric.labels');
   const displayLabel = label ?? band;
 
   const pill = (
@@ -76,14 +77,14 @@ export function ConfidenceChip({ band, label, inert }: ConfidenceChipProps) {
           </span>
         </div>
         <p className="text-xs text-slate-900 leading-relaxed mb-2">
-          <strong>What it means:</strong> {rubric.meaning}
+          <strong>{labels('meaning')}</strong> {rubric.meaning}
         </p>
         <p className="text-[11px] text-slate-600 leading-snug mb-2">
-          <strong>Typical:</strong> {rubric.typical}
+          <strong>{labels('typical')}</strong> {rubric.typical}
         </p>
         <hr className="border-slate-100 my-2" />
         <p className="text-[10px] text-slate-500 leading-snug">
-          <strong>Computed:</strong> {rubric.formula}
+          <strong>{labels('formula')}</strong> {rubric.formula}
         </p>
       </HoverCardContent>
     </HoverCard>
