@@ -1,6 +1,7 @@
 import { Suspense } from 'react';
 import { getAuthContext } from '@/lib/auth/context';
 import { getCachedFactsheetCount } from '@/lib/cache/factsheets';
+import { getCachedInboxCount } from '@/lib/cache/inbox';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/app-sidebar';
 import { AppSidebarSkeleton } from '@/components/skeletons/app-sidebar-skeleton';
@@ -20,8 +21,11 @@ import { InstallPrompt } from '@/components/pwa/install-prompt';
 async function AppSidebarServer() {
   const authContext = await getAuthContext();
   if (!authContext) return null;
-  const factsheetCount = await getCachedFactsheetCount(authContext.dbFilename);
-  return <AppSidebar factsheetCount={factsheetCount} />;
+  const [factsheetCount, inboxCount] = await Promise.all([
+    getCachedFactsheetCount(authContext.dbFilename),
+    getCachedInboxCount(authContext.dbFilename),
+  ]);
+  return <AppSidebar factsheetCount={factsheetCount} inboxCount={inboxCount} />;
 }
 
 export default function AuthLayout({
