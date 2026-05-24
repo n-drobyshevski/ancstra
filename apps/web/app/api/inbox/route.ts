@@ -26,8 +26,8 @@ export async function GET(request: Request) {
     const limit = Math.min(200, Math.max(1, parseInt(url.searchParams.get('limit') ?? '50', 10) || 50));
 
     const [items, counts] = await Promise.all([
-      listInboxItems(familyDb, { type: typeFilter, threadId: threadFilter as any, personId, offset, limit }),
-      countInboxItems(familyDb, { threadId: threadFilter as any, personId }),
+      listInboxItems(familyDb, { type: typeFilter, threadId: threadFilter, personId, offset, limit }),
+      countInboxItems(familyDb, { threadId: threadFilter, personId }),
     ]);
 
     const filteredTotal = typeFilter
