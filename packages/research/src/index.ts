@@ -101,6 +101,12 @@ export {
   promoteFactsheetCluster,
   batchDismissFactsheets,
   batchLinkFactsheets,
+  unmergeFactsheet,
+  isPersonDirtySincePromote,
+  isClusterPromoted,
+  FactsheetNotPromotedError,
+  PersonDirtyError,
+  ClusterPromotedError,
 } from './factsheets';
 export type {
   CreateFactsheetInput,
@@ -114,6 +120,8 @@ export type {
   PromoteSingleInput,
   PromoteSingleResult,
   PromoteClusterResult,
+  UnmergeFactsheetInput,
+  UnmergeFactsheetResult,
 } from './factsheets';
 
 // Scrape Jobs
