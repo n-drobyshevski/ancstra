@@ -237,6 +237,10 @@ export const researchThreadEvents = sqliteTable('research_thread_events', {
       'fact_unrejected',
       'hint_reset',
       'gedcom_disputed',
+      // Bundle C 2026-05-24:
+      'factsheet_patched',
+      'factsheet_detached',
+      'factsheet_force_repromoted',
     ],
   }).notNull(),
   actorId: text('actor_id').notNull(), // user uuid or 'ai'

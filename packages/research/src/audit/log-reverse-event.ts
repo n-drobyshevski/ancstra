@@ -15,7 +15,11 @@ export type ReverseEventType =
   | 'fact_unaccepted'
   | 'fact_unrejected'
   | 'hint_reset'
-  | 'gedcom_disputed';
+  | 'gedcom_disputed'
+  // Bundle C 2026-05-24:
+  | 'factsheet_patched'
+  | 'factsheet_detached'
+  | 'factsheet_force_repromoted';
 
 export interface ReverseEventInput {
   db: Database;
