@@ -285,10 +285,14 @@ async function ensureFamilySchemaInner(db: FamilyDatabase): Promise<void> {
   await db.run(sql`CREATE INDEX IF NOT EXISTS idx_threads_created_by ON research_threads(created_by)`);
   await db.run(sql`CREATE INDEX IF NOT EXISTS idx_threads_updated_at ON research_threads(updated_at)`);
 
+  // Bundle B 2026-05-24: thread_id is NULLable here so fresh DBs get the
+  // right shape directly (Inbox-context reverse transitions may not be tied
+  // to a thread). The table-recreate block below handles legacy DBs that
+  // were created with thread_id TEXT NOT NULL.
   await db.run(sql`
     CREATE TABLE IF NOT EXISTS research_thread_events (
       id TEXT PRIMARY KEY NOT NULL,
-      thread_id TEXT NOT NULL REFERENCES research_threads(id) ON DELETE CASCADE,
+      thread_id TEXT REFERENCES research_threads(id) ON DELETE CASCADE,
       event_type TEXT NOT NULL,
       actor_id TEXT NOT NULL,
       factsheet_id TEXT REFERENCES factsheets(id) ON DELETE SET NULL,
@@ -305,6 +309,56 @@ async function ensureFamilySchemaInner(db: FamilyDatabase): Promise<void> {
   await db.run(sql`CREATE INDEX IF NOT EXISTS idx_thread_events_thread ON research_thread_events(thread_id, occurred_at)`);
   await db.run(sql`CREATE INDEX IF NOT EXISTS idx_thread_events_factsheet ON research_thread_events(factsheet_id)`);
   await db.run(sql`CREATE INDEX IF NOT EXISTS idx_thread_events_person ON research_thread_events(person_id)`);
+
+  // Bundle B 2026-05-24: research_thread_events.thread_id must become NULLable
+  // for Inbox-context reverse transitions that aren't tied to a thread.
+  // SQLite has no ALTER COLUMN — rename-old, create-new, copy-data, drop-old.
+  const [eventsTableRow] = await db.all<{ sql: string }>(
+    sql`SELECT sql FROM sqlite_master WHERE type='table' AND name='research_thread_events'`,
+  );
+  if (eventsTableRow && eventsTableRow.sql.match(/thread_id TEXT NOT NULL/)) {
+    await db.run(sql`PRAGMA foreign_keys = OFF`);
+    await db.run(sql`BEGIN IMMEDIATE`);
+    try {
+      await db.run(sql`ALTER TABLE research_thread_events RENAME TO __old_research_thread_events`);
+      await db.run(sql`
+        CREATE TABLE research_thread_events (
+          id TEXT PRIMARY KEY,
+          thread_id TEXT REFERENCES research_threads(id) ON DELETE CASCADE,
+          event_type TEXT NOT NULL,
+          actor_id TEXT NOT NULL,
+          factsheet_id TEXT REFERENCES factsheets(id) ON DELETE SET NULL,
+          person_id TEXT REFERENCES persons(id) ON DELETE SET NULL,
+          research_item_id TEXT REFERENCES research_items(id) ON DELETE SET NULL,
+          research_fact_id TEXT REFERENCES research_facts(id) ON DELETE SET NULL,
+          source_id TEXT REFERENCES sources(id) ON DELETE SET NULL,
+          link_id TEXT REFERENCES factsheet_links(id) ON DELETE SET NULL,
+          reason TEXT,
+          payload_json TEXT,
+          occurred_at TEXT NOT NULL
+        )
+      `);
+      await db.run(sql`
+        INSERT INTO research_thread_events
+          (id, thread_id, event_type, actor_id, factsheet_id, person_id,
+           research_item_id, research_fact_id, source_id, link_id,
+           reason, payload_json, occurred_at)
+        SELECT id, thread_id, event_type, actor_id, factsheet_id, person_id,
+               research_item_id, research_fact_id, source_id, link_id,
+               reason, payload_json, occurred_at
+        FROM __old_research_thread_events
+      `);
+      await db.run(sql`DROP TABLE __old_research_thread_events`);
+      await db.run(sql`CREATE INDEX IF NOT EXISTS idx_thread_events_thread ON research_thread_events(thread_id, occurred_at)`);
+      await db.run(sql`CREATE INDEX IF NOT EXISTS idx_thread_events_factsheet ON research_thread_events(factsheet_id)`);
+      await db.run(sql`CREATE INDEX IF NOT EXISTS idx_thread_events_person ON research_thread_events(person_id)`);
+      await db.run(sql`COMMIT`);
+    } catch (err) {
+      await db.run(sql`ROLLBACK`);
+      throw err;
+    }
+    await db.run(sql`PRAGMA foreign_keys = ON`);
+  }
 
   await db.run(sql`
     CREATE TABLE IF NOT EXISTS person_summary (

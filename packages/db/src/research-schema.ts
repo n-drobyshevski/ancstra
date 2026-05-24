@@ -215,17 +215,28 @@ export const researchThreads = sqliteTable('research_threads', {
 ]);
 
 // ==================== RESEARCH THREAD EVENTS (Chronological Journey) ====================
+// Bundle B 2026-05-24: thread_id becomes nullable for Inbox-context reversals
+// (events not tied to a research thread). 6 new event types added for STR-3.
 export const researchThreadEvents = sqliteTable('research_thread_events', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  threadId: text('thread_id').notNull().references(() => researchThreads.id, { onDelete: 'cascade' }),
+  // Bundle B: NULLable. Inbox-context reverse transitions may not be tied to a thread.
+  threadId: text('thread_id').references(() => researchThreads.id, { onDelete: 'cascade' }),
   eventType: text('event_type', {
     enum: [
+      // Bundle A 15 values:
       'thread_started', 'item_attached', 'fact_extracted',
       'factsheet_created', 'factsheet_linked', 'mention_followed',
       'mention_extracted',
       'conflict_resolved', 'duplicate_resolved', 'factsheet_promoted',
       'relationship_proposed',
       'note_added', 'thread_paused', 'thread_resolved', 'thread_abandoned',
+      // Bundle B 2026-05-24 — STR-3 reverse transitions:
+      'factsheet_unmerged',
+      'factsheet_restored',
+      'fact_unaccepted',
+      'fact_unrejected',
+      'hint_reset',
+      'gedcom_disputed',
     ],
   }).notNull(),
   actorId: text('actor_id').notNull(), // user uuid or 'ai'
