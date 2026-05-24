@@ -150,15 +150,21 @@ export async function isClusterPromoted(
   return _isClusterPromotedForPerson(db, row.promoted_person_id, row.promoted_at);
 }
 
-export async function unmergeFactsheet(
+/**
+ * Inner transaction body for unmerge. Caller MUST have already opened a
+ * transaction (BEGIN IMMEDIATE) and is responsible for COMMIT/ROLLBACK.
+ *
+ * Performs cluster + dirty checks, then deletes promotion artifacts.
+ * Does NOT write the audit event — caller writes it (so audit can sit inside
+ * a multi-step outer transaction like force-repromote in Bundle C Task 8).
+ *
+ * Returns deletion counts plus the resolved personId and promotedAt that
+ * the caller may need for downstream operations (e.g. logging).
+ */
+export async function _unmergeFactsheetInTransaction(
   db: Database,
-  input: UnmergeFactsheetInput,
-): Promise<UnmergeFactsheetResult> {
-  const trimmed = input.reason?.trim() ?? '';
-  if (trimmed.length === 0) {
-    throw new ReasonRequiredError('unmergeFactsheet', 'reason is required');
-  }
-
+  input: Pick<UnmergeFactsheetInput, 'factsheetId'>,
+): Promise<UnmergeFactsheetResult & { personId: string; promotedAt: string }> {
   const fsRows = await db.all<{
     status: string;
     promoted_person_id: string | null;
@@ -191,84 +197,108 @@ export async function unmergeFactsheet(
   const now = new Date().toISOString();
   const deleted = { persons: 0, events: 0, names: 0, sources: 0, citations: 0 };
 
+  // 1. Find sources to delete via the citations that will be removed. We
+  //    capture source IDs BEFORE deleting citations because the citation
+  //    row is our only link back to the source.
+  //
+  //    Inclusive >= is intentional: citations CREATED at promotion are
+  //    artifacts of promotion and must be removed. Contrast with the dirty
+  //    check above, which uses strict > to allow rows that were created
+  //    AT promotion time to count as "not edited since".
+  const citationSourceIds = await db.all<{ source_id: string }>(sql`
+    SELECT DISTINCT source_id FROM source_citations
+    WHERE person_id = ${personId} AND created_at >= ${promotedAt}
+  `);
+
+  // 2. Delete citations first (FK dependency: citations → sources).
+  const citDel = await db.run(sql`
+    DELETE FROM source_citations
+    WHERE person_id = ${personId} AND created_at >= ${promotedAt}
+  `);
+  deleted.citations = readChanges(citDel);
+
+  // 3. Delete the sources that backed those citations — but ONLY if no other
+  //    citation still references them. Production schema has ON DELETE CASCADE
+  //    from source_citations to sources, so an unguarded DELETE would cascade
+  //    and destroy citations belonging to other persons (e.g. a shared census
+  //    record cited on two different promoted factsheets). The NOT EXISTS
+  //    check is sufficient because step 2 already removed THIS person's
+  //    citations — any remaining citations belong to other persons (or
+  //    no person at all, person_id IS NULL).
+  for (const { source_id } of citationSourceIds) {
+    const srcDel = await db.run(sql`
+      DELETE FROM sources
+      WHERE id = ${source_id}
+        AND NOT EXISTS (
+          SELECT 1 FROM source_citations
+          WHERE source_id = ${source_id}
+        )
+    `);
+    deleted.sources += readChanges(srcDel);
+  }
+
+  // 4. Delete events (depends on persons via person_id, but no FK in our
+  //    schema; safe to delete before persons).
+  const evDel = await db.run(sql`DELETE FROM events WHERE person_id = ${personId}`);
+  deleted.events = readChanges(evDel);
+
+  // 5. Delete person_names. CASCADE on persons would also handle this but we
+  //    do it explicitly for accurate `deleted.names` count.
+  const nameDel = await db.run(sql`DELETE FROM person_names WHERE person_id = ${personId}`);
+  deleted.names = readChanges(nameDel);
+
+  // 6. Delete the person row itself.
+  const personDel = await db.run(sql`DELETE FROM persons WHERE id = ${personId}`);
+  deleted.persons = readChanges(personDel);
+
+  // 7. Unlink research_facts from the now-deleted citations so they revert
+  //    to "unsourced" state inside the factsheet.
+  await db.run(sql`
+    UPDATE research_facts
+    SET source_citation_id = NULL, updated_at = ${now}
+    WHERE factsheet_id = ${input.factsheetId}
+      AND source_citation_id IS NOT NULL
+  `);
+
+  // 8. Revert factsheet status back to 'ready' for re-promotion.
+  await db.run(sql`
+    UPDATE factsheets
+    SET status = 'ready',
+        promoted_person_id = NULL,
+        promoted_at = NULL,
+        updated_at = ${now}
+    WHERE id = ${input.factsheetId}
+  `);
+
+  return { deleted, personId, promotedAt };
+}
+
+/**
+ * Public wrapper — preserves the original public signature.
+ * Opens its own transaction, calls inner, writes audit event, commits.
+ *
+ * Bundle C Task 5 refactor: extracted `_unmergeFactsheetInTransaction` so the
+ * /repromote-force endpoint (Task 8) can compose unmerge+promote inside a
+ * single outer transaction. This wrapper's behavior is unchanged.
+ */
+export async function unmergeFactsheet(
+  db: Database,
+  input: UnmergeFactsheetInput,
+): Promise<UnmergeFactsheetResult> {
+  const trimmed = input.reason?.trim() ?? '';
+  if (trimmed.length === 0) {
+    throw new ReasonRequiredError('unmergeFactsheet', 'reason is required');
+  }
+
   // Explicit BEGIN/COMMIT/ROLLBACK — Drizzle's db.transaction(async tx) breaks
   // on better-sqlite3 (see project memory feedback_drizzle_transactions.md).
   await db.run(sql`BEGIN IMMEDIATE`);
   try {
-    // 1. Find sources to delete via the citations that will be removed. We
-    //    capture source IDs BEFORE deleting citations because the citation
-    //    row is our only link back to the source.
-    //
-    //    Inclusive >= is intentional: citations CREATED at promotion are
-    //    artifacts of promotion and must be removed. Contrast with the dirty
-    //    check above, which uses strict > to allow rows that were created
-    //    AT promotion time to count as "not edited since".
-    const citationSourceIds = await db.all<{ source_id: string }>(sql`
-      SELECT DISTINCT source_id FROM source_citations
-      WHERE person_id = ${personId} AND created_at >= ${promotedAt}
-    `);
+    const result = await _unmergeFactsheetInTransaction(db, {
+      factsheetId: input.factsheetId,
+    });
 
-    // 2. Delete citations first (FK dependency: citations → sources).
-    const citDel = await db.run(sql`
-      DELETE FROM source_citations
-      WHERE person_id = ${personId} AND created_at >= ${promotedAt}
-    `);
-    deleted.citations = readChanges(citDel);
-
-    // 3. Delete the sources that backed those citations — but ONLY if no other
-    //    citation still references them. Production schema has ON DELETE CASCADE
-    //    from source_citations to sources, so an unguarded DELETE would cascade
-    //    and destroy citations belonging to other persons (e.g. a shared census
-    //    record cited on two different promoted factsheets). The NOT EXISTS
-    //    check is sufficient because step 2 already removed THIS person's
-    //    citations — any remaining citations belong to other persons (or
-    //    no person at all, person_id IS NULL).
-    for (const { source_id } of citationSourceIds) {
-      const srcDel = await db.run(sql`
-        DELETE FROM sources
-        WHERE id = ${source_id}
-          AND NOT EXISTS (
-            SELECT 1 FROM source_citations
-            WHERE source_id = ${source_id}
-          )
-      `);
-      deleted.sources += readChanges(srcDel);
-    }
-
-    // 4. Delete events (depends on persons via person_id, but no FK in our
-    //    schema; safe to delete before persons).
-    const evDel = await db.run(sql`DELETE FROM events WHERE person_id = ${personId}`);
-    deleted.events = readChanges(evDel);
-
-    // 5. Delete person_names. CASCADE on persons would also handle this but we
-    //    do it explicitly for accurate `deleted.names` count.
-    const nameDel = await db.run(sql`DELETE FROM person_names WHERE person_id = ${personId}`);
-    deleted.names = readChanges(nameDel);
-
-    // 6. Delete the person row itself.
-    const personDel = await db.run(sql`DELETE FROM persons WHERE id = ${personId}`);
-    deleted.persons = readChanges(personDel);
-
-    // 7. Unlink research_facts from the now-deleted citations so they revert
-    //    to "unsourced" state inside the factsheet.
-    await db.run(sql`
-      UPDATE research_facts
-      SET source_citation_id = NULL, updated_at = ${now}
-      WHERE factsheet_id = ${input.factsheetId}
-        AND source_citation_id IS NOT NULL
-    `);
-
-    // 8. Revert factsheet status back to 'ready' for re-promotion.
-    await db.run(sql`
-      UPDATE factsheets
-      SET status = 'ready',
-          promoted_person_id = NULL,
-          promoted_at = NULL,
-          updated_at = ${now}
-      WHERE id = ${input.factsheetId}
-    `);
-
-    // 9. Audit log — inside the transaction so row mutations + audit are atomic.
+    // Audit log — inside the transaction so row mutations + audit are atomic.
     await logReverseEvent({
       db,
       eventType: 'factsheet_unmerged',
@@ -276,14 +306,13 @@ export async function unmergeFactsheet(
       actorId: input.actorId,
       threadId: input.threadId ?? null,
       factsheetId: input.factsheetId,
-      personId,
+      personId: result.personId,
     });
 
     await db.run(sql`COMMIT`);
+    return { deleted: result.deleted };
   } catch (err) {
     await db.run(sql`ROLLBACK`);
     throw err;
   }
-
-  return { deleted };
 }
