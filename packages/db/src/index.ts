@@ -155,8 +155,21 @@ async function ensureFamilySchemaInner(db: FamilyDatabase): Promise<void> {
 
   // Bundle A 2026-05-23: existing DBs predate the partner/contested expansion.
   // SQLite has no ALTER CHECK — rename-old, create-new, copy-data, drop-old.
+  //
+  // Deep-legacy fix 2026-05-24: the rebuild block below INSERT...SELECTs from
+  // the old table, including columns source_handle/target_handle/contested.
+  // DBs that predate Bundle A AND predate those earlier additive ALTERs (very
+  // old dev DBs) don't have those columns, so the SELECT throws
+  // "no such column: contested". Pre-ALTER them defensively here so the rebuild's
+  // SELECT always finds what it needs. Each ALTER is idempotent via try/catch.
   try {
     await db.run(sql`ALTER TABLE factsheet_links ADD COLUMN contested INTEGER NOT NULL DEFAULT 0`);
+  } catch { /* column already exists */ }
+  try {
+    await db.run(sql`ALTER TABLE factsheet_links ADD COLUMN source_handle TEXT`);
+  } catch { /* column already exists */ }
+  try {
+    await db.run(sql`ALTER TABLE factsheet_links ADD COLUMN target_handle TEXT`);
   } catch { /* column already exists */ }
 
   const [linksRow] = await db.all<{ sql: string }>(
