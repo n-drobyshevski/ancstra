@@ -74,6 +74,7 @@ export interface FactsheetFact {
   factsheetId: string | null;
   accepted: boolean | null;
   confidence: string;
+  contested?: boolean;
   extractionMethod: string;
   createdAt: string;
   updatedAt: string;

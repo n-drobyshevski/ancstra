@@ -93,6 +93,7 @@ export function FactsheetFactsSection({
               sourceTitle={fact.researchItemId ? researchItemTitles.get(fact.researchItemId) : undefined}
               onAccept={() => handleAccept(fact.id, fact.factType)}
               onReject={() => handleReject(fact.id, fact.factType)}
+              onChanged={onDataChanged}
             />
           ))}
         </div>

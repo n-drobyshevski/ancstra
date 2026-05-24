@@ -55,6 +55,10 @@ export function HintsPanel({ personId, localPerson }: HintsPanelProps) {
     await refetch();
   }, [refetch]);
 
+  const handleReset = useCallback(async () => {
+    await refetch();
+  }, [refetch]);
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -131,6 +135,7 @@ export function HintsPanel({ personId, localPerson }: HintsPanelProps) {
               onAccept={handleAccept}
               onReject={handleReject}
               onMaybe={handleMaybe}
+              onReset={handleReset}
             />
           ))}
         </div>

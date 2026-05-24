@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Check, X, HelpCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Check, X, HelpCircle, ChevronDown, ChevronUp, RotateCcw } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ProviderBadge } from '@/components/research/provider-badge';
+import { ReverseActionDialog } from '@/components/inbox/reverse-action-dialog';
 import { HintComparison } from './hint-comparison';
 import type { PersonSummary, ExternalRecordData } from './hint-comparison';
 
@@ -27,6 +28,7 @@ interface HintCardProps {
   onAccept: (id: string) => void;
   onReject: (id: string) => void;
   onMaybe: (id: string) => void;
+  onReset?: (id: string) => void | Promise<void>;
 }
 
 function scoreColor(score: number): string {
@@ -54,9 +56,23 @@ function ScoreBreakdown({ components }: { components: Record<string, number> }) 
   );
 }
 
-export function HintCard({ hint, localPerson, onAccept, onReject, onMaybe }: HintCardProps) {
+export function HintCard({ hint, localPerson, onAccept, onReject, onMaybe, onReset }: HintCardProps) {
   const [expanded, setExpanded] = useState(false);
+  const [resetOpen, setResetOpen] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
+
+  const handleReset = useCallback(async (reason: string) => {
+    const res = await fetch(`/api/matching/hints/${hint.id}/reset`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({} as { message?: string; error?: string }));
+      throw new Error(body.message || body.error || 'Reset failed');
+    }
+    if (onReset) await onReset(hint.id);
+  }, [hint.id, onReset]);
 
   const parsed = JSON.parse(hint.externalData) as ExternalRecordData & {
     components?: Record<string, number>;
@@ -131,33 +147,46 @@ export function HintCard({ hint, localPerson, onAccept, onReject, onMaybe }: Hin
 
         {/* Action buttons */}
         <div className="flex items-center gap-2 mt-3">
-          <Button
-            variant="outline"
-            size="sm"
-            className="text-status-success-text hover:bg-status-success-bg"
-            onClick={() => onAccept(hint.id)}
-          >
-            <Check className="size-3.5 mr-1" />
-            Accept
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="text-status-error-text hover:bg-status-error-bg"
-            onClick={() => onReject(hint.id)}
-          >
-            <X className="size-3.5 mr-1" />
-            Reject
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="text-primary hover:bg-primary/10"
-            onClick={() => onMaybe(hint.id)}
-          >
-            <HelpCircle className="size-3.5 mr-1" />
-            Maybe
-          </Button>
+          {hint.matchStatus === 'pending' ? (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-status-success-text hover:bg-status-success-bg"
+                onClick={() => onAccept(hint.id)}
+              >
+                <Check className="size-3.5 mr-1" />
+                Accept
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-status-error-text hover:bg-status-error-bg"
+                onClick={() => onReject(hint.id)}
+              >
+                <X className="size-3.5 mr-1" />
+                Reject
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-primary hover:bg-primary/10"
+                onClick={() => onMaybe(hint.id)}
+              >
+                <HelpCircle className="size-3.5 mr-1" />
+                Maybe
+              </Button>
+            </>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setResetOpen(true)}
+            >
+              <RotateCcw className="size-3.5 mr-1" />
+              Reset
+            </Button>
+          )}
 
           <div className="flex-1" />
 
@@ -177,6 +206,14 @@ export function HintCard({ hint, localPerson, onAccept, onReject, onMaybe }: Hin
           </div>
         )}
       </CardContent>
+      <ReverseActionDialog
+        open={resetOpen}
+        onOpenChange={setResetOpen}
+        title="Reset hint"
+        description={`Hint is currently ${hint.matchStatus}. Reset returns it to pending.`}
+        actionLabel="Reset"
+        onConfirm={handleReset}
+      />
     </Card>
   );
 }

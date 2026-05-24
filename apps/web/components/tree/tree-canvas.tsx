@@ -523,6 +523,7 @@ function TreeCanvasInner({ treeData, defaultLayout, proposedRelationships, focus
           edgeType: edge.type as string,
           edgeFamilyId: (edge.data as { familyId?: string })?.familyId,
           edgeChildId: edge.type === 'parentChild' ? edge.target : undefined,
+          edgeValidationStatus: (edge.data as { validationStatus?: string })?.validationStatus,
         },
         selectionIds: [],
       });

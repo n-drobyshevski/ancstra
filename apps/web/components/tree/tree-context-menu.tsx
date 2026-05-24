@@ -23,7 +23,9 @@ import {
   Download,
   Highlighter,
   XCircle,
+  Flag,
 } from 'lucide-react';
+import { ReverseActionDialog } from '@/components/inbox/reverse-action-dialog';
 import { normalizeSurname } from '@/lib/tree/surname-highlight';
 import type { PersonListItem } from '@ancstra/shared';
 
@@ -55,6 +57,7 @@ export type ContextMenuSurface =
       edgeFamilyId?: string;
       edgeChildId?: string;
       edgeType?: string;
+      edgeValidationStatus?: string;
     }
   | { kind: 'pane' };
 
@@ -532,15 +535,63 @@ function EdgeItems({
     kind: 'edge';
     edgeId: string;
     edgeFamilyId?: string;
+    edgeChildId?: string;
+    edgeType?: string;
+    edgeValidationStatus?: string;
   };
 }) {
   const t = useTranslations('tree.contextMenu');
+  const [disputeOpen, setDisputeOpen] = React.useState(false);
+
+  // Dispute targets the family for partner edges, the child for parent-child edges.
+  const disputeKind: 'family' | 'child' | null =
+    surface.edgeType === 'parentChild' && surface.edgeChildId
+      ? 'child'
+      : surface.edgeFamilyId
+        ? 'family'
+        : null;
+  const canDispute =
+    disputeKind !== null && surface.edgeValidationStatus === 'confirmed';
+
+  const handleDispute = async (reason: string) => {
+    const url =
+      disputeKind === 'child'
+        ? `/api/children/${surface.edgeChildId}/dispute`
+        : `/api/families/${surface.edgeFamilyId}/dispute`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({} as { error?: string; message?: string }));
+      throw new Error(body.message || body.error || 'Dispute failed');
+    }
+    toast.success('Relationship disputed');
+    onClose();
+    // Refresh tree to reflect new validation_status.
+    if (typeof window !== 'undefined') window.location.reload();
+  };
+
   // Note: the previously-considered "Edit relationship details" item
   // (router.push(`/families/${familyId}`)) was dropped — only an API
   // route exists at /api/families/[id]; there's no UI page, so the
   // navigation would 404. Re-add this when a families/[id] page lands.
   return (
     <>
+      {canDispute && (
+        <RoleGate permission="family:edit">
+          <DropdownMenuItem
+            onSelect={(e) => {
+              e.preventDefault();
+              setDisputeOpen(true);
+            }}
+          >
+            <Flag />
+            <span>Dispute relationship</span>
+          </DropdownMenuItem>
+        </RoleGate>
+      )}
       <RoleGate permission="family:delete">
         <DropdownMenuItem
           variant="destructive"
@@ -553,6 +604,14 @@ function EdgeItems({
           <span>{t('deleteRelationship')}</span>
         </DropdownMenuItem>
       </RoleGate>
+      <ReverseActionDialog
+        open={disputeOpen}
+        onOpenChange={setDisputeOpen}
+        title={disputeKind === 'child' ? 'Dispute child-parent link' : 'Dispute relationship'}
+        description="Flag this relationship as disputed. The edge stays in the tree but is marked for review."
+        actionLabel="Dispute"
+        onConfirm={handleDispute}
+      />
     </>
   );
 }
