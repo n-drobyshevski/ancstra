@@ -14,6 +14,7 @@ type Messages = {
   tree: typeof import('./messages/en/tree.json');
   settings: typeof import('./messages/en/settings.json');
   admin: typeof import('./messages/en/admin.json');
+  rubric: typeof import('./messages/en/rubric.json');
 };
 
 declare module 'next-intl' {

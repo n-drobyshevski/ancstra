@@ -1,0 +1,22 @@
+{
+  "high": {
+    "meaning": "Evidence is consistent and well-cited.",
+    "typical": "Birth certificate or primary record.",
+    "formula": "Computed when avg evidence score ≥ 0.85."
+  },
+  "medium": {
+    "meaning": "One credible source supports this.",
+    "typical": "Single secondary source.",
+    "formula": "Computed when avg evidence score 0.55–0.85."
+  },
+  "low": {
+    "meaning": "Weak or single uncited source.",
+    "typical": "Uncited inference.",
+    "formula": "Computed when avg evidence score 0.20–0.55."
+  },
+  "unknown": {
+    "meaning": "Insufficient evidence to band.",
+    "typical": "No supporting source.",
+    "formula": "Computed when avg evidence score < 0.20."
+  }
+}

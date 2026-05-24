@@ -14,6 +14,7 @@ export const NAMESPACES = [
   'tree',
   'settings',
   'admin',
+  'rubric',
 ] as const;
 
 export type Namespace = (typeof NAMESPACES)[number];
