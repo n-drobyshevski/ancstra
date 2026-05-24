@@ -98,6 +98,13 @@ export const events = sqliteTable('events', {
   personId: text('person_id').references(() => persons.id, { onDelete: 'cascade' }),
   familyId: text('family_id').references(() => families.id, { onDelete: 'cascade' }),
   contested: integer('contested', { mode: 'boolean' }).notNull().default(false),
+  // Bundle C 2026-05-24: tracks which factsheet promoted this event.
+  // Nullable for GEDCOM-imported and manually-created events.
+  // PATCH-on-second-promote uses this for event dedup (see Bundle C spec §4.1).
+  // Note: factsheets is defined in research-schema.ts (which imports family-schema),
+  // so a direct .references(() => factsheets.id) would be circular. The FK is
+  // enforced via the migration SQL and ensureFamilySchemaInner ALTER.
+  sourceFactsheetId: text('source_factsheet_id'),
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
   updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
   version: integer('version').notNull().default(1),
@@ -107,6 +114,7 @@ export const events = sqliteTable('events', {
   index('idx_events_type').on(table.eventType),
   // Birth-event lookup in getCachedRecentPersons filters by person + event_type
   index('idx_events_person_type').on(table.personId, table.eventType),
+  index('idx_events_source_factsheet').on(table.sourceFactsheetId),
 ]);
 
 // ==================== SOURCES ====================

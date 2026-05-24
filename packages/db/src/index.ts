@@ -379,6 +379,15 @@ async function ensureFamilySchemaInner(db: FamilyDatabase): Promise<void> {
     await db.run(sql`ALTER TABLE events ADD COLUMN contested INTEGER NOT NULL DEFAULT 0`);
   } catch { /* column already exists */ }
 
+  // Bundle C 2026-05-24: events.source_factsheet_id tracks promote origin
+  // for PATCH dedup. See spec §4.1.
+  try {
+    await db.run(sql`ALTER TABLE events ADD COLUMN source_factsheet_id TEXT REFERENCES factsheets(id) ON DELETE SET NULL`);
+  } catch { /* column already exists */ }
+  try {
+    await db.run(sql`CREATE INDEX IF NOT EXISTS idx_events_source_factsheet ON events(source_factsheet_id)`);
+  } catch { /* index already exists */ }
+
   await db.run(sql`
     CREATE TABLE IF NOT EXISTS person_summary (
       person_id TEXT PRIMARY KEY REFERENCES persons(id) ON DELETE CASCADE,
