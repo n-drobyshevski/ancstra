@@ -48,6 +48,21 @@ export function bandConfidence(score: number): Confidence {
   return 'unknown';
 }
 
+// Bundle C 2026-05-24: rubric metadata for the inline HoverCard explanation.
+// Strings live in apps/web/messages/{en,ru}.json under the `rubric` namespace;
+// this constant maps each band to its i18n key and a score-range label.
+// AST guard packages/db/__tests__/vocab-consistency.test.ts extends to forbid
+// literal rubric copy outside vocab.ts + messages/*.json.
+export const CONFIDENCE_BAND_META: Record<Confidence, {
+  messageKey: `rubric.${Confidence}`;
+  scoreLabel: string;
+}> = {
+  high:    { messageKey: 'rubric.high',    scoreLabel: 'score ≥ 0.85' },
+  medium:  { messageKey: 'rubric.medium',  scoreLabel: '0.55 ≤ score < 0.85' },
+  low:     { messageKey: 'rubric.low',     scoreLabel: '0.20 ≤ score < 0.55' },
+  unknown: { messageKey: 'rubric.unknown', scoreLabel: 'score < 0.20' },
+} as const;
+
 // Map AI tool input enum (3-value) → factType for the new factsheet path. Spec §2.2.
 // 'spouse' is intentionally omitted — the AI tool's 3-value input enum has no
 // 'spouse' arm; it emits 'partner' and the user can upgrade to 'spouse' during

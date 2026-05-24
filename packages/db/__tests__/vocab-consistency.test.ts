@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
+import { CONFIDENCE_BAND_META, CONFIDENCE_BANDS } from '../src/vocab';
 
 const REPO_ROOT = path.resolve(__dirname, '../../..');
 
@@ -65,6 +66,26 @@ function scanLine(line: string): boolean {
   }
   return false;
 }
+
+describe('CONFIDENCE_BAND_META (Bundle C)', () => {
+  it('has a key for every confidence band', () => {
+    const metaKeys = Object.keys(CONFIDENCE_BAND_META).sort();
+    const bandValues = [...CONFIDENCE_BANDS].sort();
+    expect(metaKeys).toEqual(bandValues);
+  });
+
+  it('messageKey matches the band name', () => {
+    for (const band of CONFIDENCE_BANDS) {
+      expect(CONFIDENCE_BAND_META[band].messageKey).toBe(`rubric.${band}`);
+    }
+  });
+
+  it('scoreLabel is non-empty', () => {
+    for (const band of CONFIDENCE_BANDS) {
+      expect(CONFIDENCE_BAND_META[band].scoreLabel.length).toBeGreaterThan(0);
+    }
+  });
+});
 
 describe('vocab consistency (Bundle A guard)', () => {
   // Walks the whole repo's apps/ + packages/ tree (~thousands of statSync calls)
