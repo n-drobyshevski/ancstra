@@ -40,7 +40,7 @@ export async function softDetachFactsheet(
   `);
   const fs = fsRows[0];
   if (!fs) throw new Error(`softDetachFactsheet: factsheet ${input.factsheetId} not found`);
-  if (fs.status !== 'promoted' || !fs.promoted_person_id) {
+  if (fs.status !== 'promoted' || !fs.promoted_person_id || !fs.promoted_at) {
     throw new FactsheetNotPromotedError(input.factsheetId);
   }
 
