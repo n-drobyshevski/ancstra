@@ -15,6 +15,7 @@ import {
   HelpCircle,
   FileStack,
   Workflow,
+  Inbox,
   type LucideIcon,
 } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
@@ -43,6 +44,7 @@ type NavItemKey =
   | 'people'
   | 'tree'
   | 'research'
+  | 'inbox'
   | 'factsheets'
   | 'threads'
   | 'importExport'
@@ -74,6 +76,7 @@ const coreItems: NavItem[] = [
 
 const researchItems: NavItem[] = [
   { key: 'research', href: '/research', icon: Microscope, permission: 'ai:research' },
+  { key: 'inbox', href: '/inbox', icon: Inbox, permission: 'ai:research' },
   {
     key: 'factsheets',
     href: '/research/factsheets',
@@ -168,9 +171,10 @@ function NavGroup({
 
 interface AppSidebarProps {
   factsheetCount?: number;
+  inboxCount?: number;
 }
 
-export function AppSidebar({ factsheetCount = 0 }: AppSidebarProps) {
+export function AppSidebar({ factsheetCount = 0, inboxCount = 0 }: AppSidebarProps) {
   const pathname = usePathname();
   const locale = useLocale();
   const { setOpenMobile, openMobile, isMobile } = useSidebar();
@@ -182,6 +186,7 @@ export function AppSidebar({ factsheetCount = 0 }: AppSidebarProps) {
   // Inject live badge counts into nav items
   const researchWithBadges = researchItems.map((item) => {
     if (item.href === '/research/factsheets') return { ...item, badge: factsheetCount };
+    if (item.href === '/inbox') return { ...item, badge: inboxCount };
     return item;
   });
 
