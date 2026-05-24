@@ -126,6 +126,9 @@ export {
 } from './items/scrape-jobs';
 export type { CreateScrapeJobInput } from './items/scrape-jobs';
 
+// ==================== AUDIT HELPERS ====================
+export * from './audit';
+
 // ==================== THREADS ====================
 export {
   createThread,
