@@ -97,6 +97,7 @@ export const events = sqliteTable('events', {
   description: text('description'),
   personId: text('person_id').references(() => persons.id, { onDelete: 'cascade' }),
   familyId: text('family_id').references(() => families.id, { onDelete: 'cascade' }),
+  contested: integer('contested', { mode: 'boolean' }).notNull().default(false),
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
   updatedAt: text('updated_at').notNull().$defaultFn(() => new Date().toISOString()),
   version: integer('version').notNull().default(1),

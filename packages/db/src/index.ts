@@ -361,6 +361,11 @@ async function ensureFamilySchemaInner(db: FamilyDatabase): Promise<void> {
     await db.run(sql`PRAGMA foreign_keys = ON`);
   }
 
+  // Bundle B 2026-05-24: events gains `contested` boolean for GEDCOM dispute affordance.
+  try {
+    await db.run(sql`ALTER TABLE events ADD COLUMN contested INTEGER NOT NULL DEFAULT 0`);
+  } catch { /* column already exists */ }
+
   await db.run(sql`
     CREATE TABLE IF NOT EXISTS person_summary (
       person_id TEXT PRIMARY KEY REFERENCES persons(id) ON DELETE CASCADE,
