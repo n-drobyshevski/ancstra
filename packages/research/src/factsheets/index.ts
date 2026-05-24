@@ -48,3 +48,11 @@ export {
   ClusterPromotedError,
 } from './unmerge';
 export type { UnmergeFactsheetInput, UnmergeFactsheetResult } from './unmerge';
+
+export {
+  computePatchDiff,
+  applyPatchDiff,
+  hashPatchDiff,
+  LegacyPromotionNotPatchableError,
+} from './patch';
+export type { PatchDiff, FieldDelta, AddedEvent, ModifiedEvent, AddedCitation } from './patch';

@@ -107,6 +107,10 @@ export {
   FactsheetNotPromotedError,
   PersonDirtyError,
   ClusterPromotedError,
+  computePatchDiff,
+  applyPatchDiff,
+  hashPatchDiff,
+  LegacyPromotionNotPatchableError,
 } from './factsheets';
 export type {
   CreateFactsheetInput,
@@ -122,6 +126,11 @@ export type {
   PromoteClusterResult,
   UnmergeFactsheetInput,
   UnmergeFactsheetResult,
+  PatchDiff,
+  FieldDelta,
+  AddedEvent,
+  ModifiedEvent,
+  AddedCitation,
 } from './factsheets';
 
 // Scrape Jobs
