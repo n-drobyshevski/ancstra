@@ -10,7 +10,7 @@ export async function GET(request: Request) {
     const threadFilter = threadParam === 'untriaged' ? 'untriaged' : threadParam || undefined;
     const personId = url.searchParams.get('personId') || undefined;
 
-    const counts = await countInboxItems(familyDb, { threadId: threadFilter as any, personId });
+    const counts = await countInboxItems(familyDb, { threadId: threadFilter, personId });
     return NextResponse.json({ counts });
   } catch (err) {
     try { return handleAuthError(err); } catch { /* not auth */ }
