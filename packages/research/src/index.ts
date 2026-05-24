@@ -111,6 +111,7 @@ export {
   applyPatchDiff,
   hashPatchDiff,
   LegacyPromotionNotPatchableError,
+  softDetachFactsheet,
 } from './factsheets';
 export type {
   CreateFactsheetInput,
@@ -126,6 +127,8 @@ export type {
   PromoteClusterResult,
   UnmergeFactsheetInput,
   UnmergeFactsheetResult,
+  SoftDetachInput,
+  SoftDetachResult,
   PatchDiff,
   FieldDelta,
   AddedEvent,
