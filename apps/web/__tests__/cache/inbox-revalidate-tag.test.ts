@@ -52,6 +52,11 @@ const FORWARD_ROUTES = [
   'research/factsheets/[id]/conflicts/route.ts',
   // Match-hint PATCH (accept / reject / maybe) — removes from pending Inbox
   'matching/hints/[id]/route.ts',
+  // Bundle C routes ───────────────────────────────────────────────────────
+  // Soft-detach — clears promote link, item returns to inbox-ready state
+  'research/factsheets/[id]/detach/route.ts',
+  // Force-repromote — discards edits, atomically unmerges + re-promotes
+  'research/factsheets/[id]/repromote-force/route.ts',
 ];
 
 describe('inbox-count revalidation discipline (Bundle B §3.3)', () => {
