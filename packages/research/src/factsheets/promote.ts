@@ -56,32 +56,34 @@ const FACT_TO_EVENT: Record<string, string> = {
 };
 
 /**
- * Promote a single factsheet to a person.
- * Mode 'create': creates a new person from the factsheet's facts.
- * Mode 'merge': adds new facts/events to an existing person.
+ * Inner transaction body for single-factsheet promote. Caller MUST have
+ * opened a transaction; responsible for COMMIT/ROLLBACK.
+ *
+ * Used by:
+ *   - public `promoteSingleFactsheet` (wraps with own transaction)
+ *   - /repromote-force endpoint (one outer transaction wraps unmerge+promote)
+ *
+ * Behavior is identical to the previous inline body with one exception:
+ *   - The events INSERT now sets `sourceFactsheetId` (Bundle C Task 1 added
+ *     the column; this task populates it on every first-promote so we can
+ *     later surface "promoted from factsheet X" + drive force-repromote).
+ *
+ * Does NOT call `refreshSummary` or emit thread events — those live in the
+ * public wrapper so /repromote-force can choose when to fire them after the
+ * combined outer transaction commits.
+ *
+ * The `now` ISO timestamp is threaded from the caller so unmerge + promote
+ * inside the same outer transaction share a consistent timestamp.
  */
-export async function promoteSingleFactsheet(
+export async function _promoteSingleFactsheetInTransaction(
   db: Database,
   input: PromoteSingleInput,
+  now: string,
 ): Promise<PromoteSingleResult> {
-  // Validate promotability (skip when caller has already validated)
-  if (!input.skipValidation) {
-    const check = await isFactsheetPromotable(db, input.factsheetId);
-    if (!check.promotable) {
-      throw new Error(`Factsheet not promotable: ${check.blockers.join(', ')}`);
-    }
-  }
-
-  if (input.mode === 'merge' && !input.mergeTargetPersonId) {
-    throw new Error('mergeTargetPersonId required for merge mode');
-  }
-
-  // Fetch factsheet title once (needed both for the event reason and to keep
-  // a single read; we still UPDATE the row inside the transaction below).
-  const fsRows = await db.all<{ title: string }>(sql`
-    SELECT title FROM factsheets WHERE id = ${input.factsheetId}
-  `);
-  const factsheetTitle = fsRows[0]?.title ?? input.factsheetId;
+  const mode = input.mode;
+  let personId: string;
+  let eventsCreated = 0;
+  let sourcesCreated = 0;
 
   // Get accepted/unresolved facts (skip rejected)
   const facts = await db.all<{
@@ -102,142 +104,183 @@ export async function promoteSingleFactsheet(
     ORDER BY fact_type
   `);
 
+  if (mode === 'create') {
+    // Extract name and sex from facts
+    const nameFact = facts.find(f => f.factType === 'name');
+    const nameParts = (nameFact?.factValue ?? 'Unknown').split(' ');
+    const givenName = nameParts[0] ?? 'Unknown';
+    const surname = nameParts.slice(1).join(' ') || '';
+
+    personId = crypto.randomUUID();
+
+    await db.insert(persons)
+      .values({
+        id: personId,
+        sex: 'U',
+        isLiving: false,
+        privacyLevel: 'public',
+        createdBy: input.userId,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .run();
+
+    await db.insert(personNames)
+      .values({
+        id: crypto.randomUUID(),
+        personId,
+        nameType: 'birth',
+        givenName,
+        surname,
+        isPrimary: true,
+        createdAt: now,
+      })
+      .run();
+  } else {
+    personId = input.mergeTargetPersonId!;
+  }
+
+  // Create events from date/place facts
+  const eventGroups = new Map<string, { date?: string; place?: string; dateFact?: typeof facts[0]; placeFact?: typeof facts[0] }>();
+
+  for (const fact of facts) {
+    const eventType = FACT_TO_EVENT[fact.factType];
+    if (!eventType) continue;
+
+    const group = eventGroups.get(eventType) ?? {};
+    if (fact.factType.endsWith('_date')) {
+      group.date = fact.factValue;
+      group.dateFact = fact;
+    } else if (fact.factType.endsWith('_place')) {
+      group.place = fact.factValue;
+      group.placeFact = fact;
+    }
+    eventGroups.set(eventType, group);
+  }
+
+  for (const [eventType, group] of eventGroups) {
+    const eventId = crypto.randomUUID();
+    await db.insert(events)
+      .values({
+        id: eventId,
+        personId,
+        eventType: eventType as any,
+        // Bundle C Task 5: stamp source factsheet on every promotion-created
+        // event (both create + merge modes) so /repromote-force can attribute
+        // and so the UI can surface "promoted from factsheet X".
+        sourceFactsheetId: input.factsheetId,
+        dateOriginal: group.date ?? null,
+        dateSort: group.dateFact?.factDateSort ?? null,
+        placeText: group.place ?? null,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .run();
+    eventsCreated++;
+  }
+
+  // Create source + citations from linked research items
+  const researchItemIds = [...new Set(facts.filter(f => f.researchItemId).map(f => f.researchItemId!))];
+
+  for (const riId of researchItemIds) {
+    const items = await db.select().from(researchItems).where(eq(researchItems.id, riId)).all();
+    const item = items[0];
+    if (!item) continue;
+
+    const sourceId = crypto.randomUUID();
+    const citationId = crypto.randomUUID();
+
+    await db.insert(sources)
+      .values({
+        id: sourceId,
+        title: item.title,
+        repositoryUrl: item.url ?? null,
+        sourceType: 'online' as any,
+        createdBy: input.userId,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .run();
+
+    await db.insert(sourceCitations)
+      .values({
+        id: citationId,
+        sourceId,
+        personId,
+        confidence: 'medium',
+        createdAt: now,
+      })
+      .run();
+
+    // Link facts to citation
+    await db.run(sql`
+      UPDATE research_facts
+      SET source_citation_id = ${citationId}, updated_at = ${now}
+      WHERE factsheet_id = ${input.factsheetId}
+        AND research_item_id = ${riId}
+    `);
+
+    sourcesCreated++;
+  }
+
+  // Update factsheet status
+  await db.update(factsheets)
+    .set({
+      status: (mode === 'create' ? 'promoted' : 'merged') as any,
+      promotedPersonId: personId,
+      promotedAt: now,
+      updatedAt: now,
+    })
+    .where(eq(factsheets.id, input.factsheetId))
+    .run();
+
+  return {
+    personId,
+    eventsCreated,
+    sourcesCreated,
+    mode: mode === 'create' ? 'created' : 'merged',
+  };
+}
+
+/**
+ * Promote a single factsheet to a person.
+ * Mode 'create': creates a new person from the factsheet's facts.
+ * Mode 'merge': adds new facts/events to an existing person.
+ *
+ * Bundle C Task 5 refactor: extracted `_promoteSingleFactsheetInTransaction`
+ * so /repromote-force can compose unmerge+promote in one outer transaction.
+ * The public signature and behavior of this wrapper are unchanged.
+ */
+export async function promoteSingleFactsheet(
+  db: Database,
+  input: PromoteSingleInput,
+): Promise<PromoteSingleResult> {
+  // Validate promotability (skip when caller has already validated)
+  if (!input.skipValidation) {
+    const check = await isFactsheetPromotable(db, input.factsheetId);
+    if (!check.promotable) {
+      throw new Error(`Factsheet not promotable: ${check.blockers.join(', ')}`);
+    }
+  }
+
+  if (input.mode === 'merge' && !input.mergeTargetPersonId) {
+    throw new Error('mergeTargetPersonId required for merge mode');
+  }
+
+  // Fetch factsheet title once (needed for the thread event after success).
+  const fsRows = await db.all<{ title: string }>(sql`
+    SELECT title FROM factsheets WHERE id = ${input.factsheetId}
+  `);
+  const factsheetTitle = fsRows[0]?.title ?? input.factsheetId;
+
   const now = new Date().toISOString();
-  let personId: string;
-  let eventsCreated = 0;
-  let sourcesCreated = 0;
-  const mode = input.mode;
+  let result: PromoteSingleResult;
 
   // Use explicit BEGIN/COMMIT/ROLLBACK — Drizzle's db.transaction(async tx)
   // breaks on better-sqlite3 (see project memory feedback_drizzle_transactions).
   await db.run(sql`BEGIN`);
   try {
-    if (mode === 'create') {
-      // Extract name and sex from facts
-      const nameFact = facts.find(f => f.factType === 'name');
-      const nameParts = (nameFact?.factValue ?? 'Unknown').split(' ');
-      const givenName = nameParts[0] ?? 'Unknown';
-      const surname = nameParts.slice(1).join(' ') || '';
-
-      personId = crypto.randomUUID();
-
-      await db.insert(persons)
-        .values({
-          id: personId,
-          sex: 'U',
-          isLiving: false,
-          privacyLevel: 'public',
-          createdBy: input.userId,
-          createdAt: now,
-          updatedAt: now,
-        })
-        .run();
-
-      await db.insert(personNames)
-        .values({
-          id: crypto.randomUUID(),
-          personId,
-          nameType: 'birth',
-          givenName,
-          surname,
-          isPrimary: true,
-          createdAt: now,
-        })
-        .run();
-    } else {
-      personId = input.mergeTargetPersonId!;
-    }
-
-    // Create events from date/place facts
-    const eventGroups = new Map<string, { date?: string; place?: string; dateFact?: typeof facts[0]; placeFact?: typeof facts[0] }>();
-
-    for (const fact of facts) {
-      const eventType = FACT_TO_EVENT[fact.factType];
-      if (!eventType) continue;
-
-      const group = eventGroups.get(eventType) ?? {};
-      if (fact.factType.endsWith('_date')) {
-        group.date = fact.factValue;
-        group.dateFact = fact;
-      } else if (fact.factType.endsWith('_place')) {
-        group.place = fact.factValue;
-        group.placeFact = fact;
-      }
-      eventGroups.set(eventType, group);
-    }
-
-    for (const [eventType, group] of eventGroups) {
-      const eventId = crypto.randomUUID();
-      await db.insert(events)
-        .values({
-          id: eventId,
-          personId,
-          eventType: eventType as any,
-          dateOriginal: group.date ?? null,
-          dateSort: group.dateFact?.factDateSort ?? null,
-          placeText: group.place ?? null,
-          createdAt: now,
-          updatedAt: now,
-        })
-        .run();
-      eventsCreated++;
-    }
-
-    // Create source + citations from linked research items
-    const researchItemIds = [...new Set(facts.filter(f => f.researchItemId).map(f => f.researchItemId!))];
-
-    for (const riId of researchItemIds) {
-      const items = await db.select().from(researchItems).where(eq(researchItems.id, riId)).all();
-      const item = items[0];
-      if (!item) continue;
-
-      const sourceId = crypto.randomUUID();
-      const citationId = crypto.randomUUID();
-
-      await db.insert(sources)
-        .values({
-          id: sourceId,
-          title: item.title,
-          repositoryUrl: item.url ?? null,
-          sourceType: 'online' as any,
-          createdBy: input.userId,
-          createdAt: now,
-          updatedAt: now,
-        })
-        .run();
-
-      await db.insert(sourceCitations)
-        .values({
-          id: citationId,
-          sourceId,
-          personId,
-          confidence: 'medium',
-          createdAt: now,
-        })
-        .run();
-
-      // Link facts to citation
-      await db.run(sql`
-        UPDATE research_facts
-        SET source_citation_id = ${citationId}, updated_at = ${now}
-        WHERE factsheet_id = ${input.factsheetId}
-          AND research_item_id = ${riId}
-      `);
-
-      sourcesCreated++;
-    }
-
-    // Update factsheet status
-    await db.update(factsheets)
-      .set({
-        status: (mode === 'create' ? 'promoted' : 'merged') as any,
-        promotedPersonId: personId,
-        promotedAt: now,
-        updatedAt: now,
-      })
-      .where(eq(factsheets.id, input.factsheetId))
-      .run();
-
+    result = await _promoteSingleFactsheetInTransaction(db, input, now);
     await db.run(sql`COMMIT`);
   } catch (err) {
     await db.run(sql`ROLLBACK`);
@@ -247,7 +290,7 @@ export async function promoteSingleFactsheet(
   // Promotion creates/updates events + source_citations for this person, so
   // person_summary needs a refresh to reflect the new facets (has_source,
   // sources_count, completeness, dates/places).
-  await refreshSummary(db, personId!);
+  await refreshSummary(db, result.personId);
 
   // Emit thread event when a research thread is active. Fire-and-forget:
   // emission failure must never roll back a successful promotion.
@@ -258,7 +301,7 @@ export async function promoteSingleFactsheet(
         eventType: 'factsheet_promoted',
         actorId: input.userId,
         factsheetId: input.factsheetId,
-        personId: personId!,
+        personId: result.personId,
         reason: `Promoted "${factsheetTitle}" to person`,
       });
     } catch (err) {
@@ -266,12 +309,7 @@ export async function promoteSingleFactsheet(
     }
   }
 
-  return {
-    personId: personId!,
-    eventsCreated,
-    sourcesCreated,
-    mode: mode === 'create' ? 'created' : 'merged',
-  };
+  return result;
 }
 
 /**
