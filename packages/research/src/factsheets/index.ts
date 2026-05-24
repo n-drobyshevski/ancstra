@@ -34,6 +34,7 @@ export type { DuplicateMatch } from './duplicate-check';
 export {
   promoteSingleFactsheet,
   promoteFactsheetCluster,
+  _promoteSingleFactsheetInTransaction,
 } from './promote';
 export type { PromoteSingleInput, PromoteSingleResult, PromoteClusterResult } from './promote';
 
@@ -41,6 +42,7 @@ export { batchDismissFactsheets, batchLinkFactsheets } from './batch';
 
 export {
   unmergeFactsheet,
+  _unmergeFactsheetInTransaction,
   isPersonDirtySincePromote,
   isClusterPromoted,
   FactsheetNotPromotedError,
