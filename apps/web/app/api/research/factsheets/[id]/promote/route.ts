@@ -100,6 +100,16 @@ export async function POST(
       });
     }
 
+    // Data-integrity guard: status='promoted' but no promoted_person_id is
+    // corruption (or a migration gap). Surface explicitly instead of falling
+    // through to UnsupportedState which would be a misleading diagnostic.
+    if (fsRow.status === 'promoted' && !fsRow.promoted_person_id) {
+      return NextResponse.json({
+        error: 'PromotedWithoutPersonId',
+        message: 'Factsheet status is promoted but promoted_person_id is null. Manual repair required.',
+      }, { status: 422 });
+    }
+
     // -----------------------------------------------------------------------
     // PATCH-on-clean / refuse-on-dirty path (status='promoted')
     // -----------------------------------------------------------------------
@@ -193,6 +203,7 @@ function revalidateAll(factsheetId: string) {
   revalidateTag('persons', 'max');
   revalidateTag('tree-data', 'max');
   revalidateTag('dashboard-stats', 'max');
+  revalidateTag('factsheets', 'max');
   revalidateTag('factsheets-list', 'max');
   revalidateTag(`factsheet-${factsheetId}`, 'max');
   revalidateTag('factsheet-count', 'max');
