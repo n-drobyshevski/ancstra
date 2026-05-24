@@ -30,10 +30,15 @@ export async function GET(request: Request) {
       countInboxItems(familyDb, { threadId: threadFilter as any, personId }),
     ]);
 
+    const filteredTotal = typeFilter
+      ? (Array.isArray(typeFilter) ? typeFilter : [typeFilter])
+          .reduce((sum, t) => sum + (counts.byType[t] ?? 0), 0)
+      : counts.total;
+
     return NextResponse.json({
       items,
       counts,
-      hasMore: offset + items.length < counts.total,
+      hasMore: offset + items.length < filteredTotal,
     });
   } catch (err) {
     try { return handleAuthError(err); } catch { /* not auth */ }
