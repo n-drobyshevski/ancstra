@@ -71,6 +71,7 @@ beforeEach(() => {
       description TEXT,
       person_id TEXT REFERENCES persons(id) ON DELETE CASCADE,
       family_id TEXT REFERENCES families(id) ON DELETE CASCADE,
+      contested INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
       version INTEGER NOT NULL DEFAULT 1

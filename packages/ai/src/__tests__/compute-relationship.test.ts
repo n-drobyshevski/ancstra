@@ -47,6 +47,7 @@ beforeEach(() => {
       date_original TEXT, date_sort INTEGER, date_modifier TEXT DEFAULT 'exact',
       date_end_sort INTEGER, place_text TEXT, description TEXT,
       person_id TEXT, family_id TEXT,
+      contested INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
       version INTEGER NOT NULL DEFAULT 1
     );
