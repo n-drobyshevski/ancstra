@@ -49,6 +49,12 @@ const DDL = `
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
   );
+  -- Test fixture intentionally omits ON DELETE CASCADE on source_citations.source_id
+  -- so the explicit citation-then-source delete order can run without FK violations.
+  -- Production schema HAS the cascade; the cross-driver readChanges() helper handles
+  -- the counts uniformly. The new NOT EXISTS guard on the source DELETE is what
+  -- prevents orphan-cascade data-loss in prod — the fixture only validates the
+  -- count-and-ordering logic.
   CREATE TABLE source_citations (
     id TEXT PRIMARY KEY,
     source_id TEXT NOT NULL REFERENCES sources(id),
@@ -257,7 +263,7 @@ describe('unmergeFactsheet', () => {
 
     await expect(
       unmergeFactsheet(db as any, { factsheetId: 'fs2', reason: 'r', actorId: 'u1' }),
-    ).rejects.toThrow(/not in promoted state|FactsheetNotPromoted/);
+    ).rejects.toThrow(/not in promoted state/);
   });
 
   it('refuses dirty persons (event edited after promotion)', async () => {
@@ -316,6 +322,46 @@ describe('unmergeFactsheet', () => {
     ).run();
     expect(await isClusterPromoted(db as any, 'fs8')).toBe(true);
     expect(await isClusterPromoted(db as any, 'fs9')).toBe(true);
+  });
+
+  it('preserves sources cited by other persons (no orphan cascade)', async () => {
+    // Two unrelated promotions, 60s apart (well outside the ±5s cluster window).
+    seedPromoted('fs-shared-1', 'p-shared-1', '2026-05-24T10:00:00.000Z');
+    seedPromoted('fs-shared-2', 'p-shared-2', '2026-05-24T10:01:00.000Z');
+
+    // Add a second citation to p-shared-1's source from p-shared-2 — simulates
+    // a shared source (e.g. census record) cited by two factsheets.
+    client().prepare(
+      `INSERT INTO source_citations (id, source_id, person_id, created_at) VALUES (?, ?, ?, ?)`,
+    ).run('sc-shared-extra', 'src-p-shared-1', 'p-shared-2', '2026-05-24T10:00:30.000Z');
+
+    // Unmerge fs-shared-1.
+    const result = await unmergeFactsheet(db as any, {
+      factsheetId: 'fs-shared-1',
+      reason: 'testing shared source preservation',
+      actorId: 'u1',
+    });
+
+    // The source SHOULD still exist (it's cited by p-shared-2).
+    const source = client().prepare(`SELECT id FROM sources WHERE id = ?`).get('src-p-shared-1');
+    expect(source).toBeDefined();
+
+    // p-shared-2's citation to the shared source SHOULD still exist.
+    const remainingCitation = client().prepare(
+      `SELECT id FROM source_citations WHERE source_id = ? AND person_id = ?`,
+    ).get('src-p-shared-1', 'p-shared-2');
+    expect(remainingCitation).toBeDefined();
+
+    // p-shared-1's original citation should be gone.
+    const originalCitation = client().prepare(
+      `SELECT id FROM source_citations WHERE id = ?`,
+    ).get('sc-p-shared-1');
+    expect(originalCitation).toBeUndefined();
+
+    // The deleted.sources count should reflect 0 sources deleted because the
+    // shared source still has a citation from p-shared-2.
+    expect(result.deleted.sources).toBe(0);
+    expect(result.deleted.citations).toBe(1);
   });
 
   it('persists thread_id when provided', async () => {

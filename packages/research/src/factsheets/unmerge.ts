@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import type { Database } from '@ancstra/db';
 import { logReverseEvent } from '../audit/log-reverse-event';
+import { ReasonRequiredError } from '../audit/reason';
 
 /**
  * Bundle B 2026-05-24 — atomic single-factsheet unmerge.
@@ -92,24 +93,24 @@ export async function isPersonDirtySincePromote(
  * appears as a partner in a `families` row OR a child in a `children` row
  * whose created_at is within ±5s of the factsheet's promoted_at.
  * See spec §7 — ISO-8601 strings sort lexicographically so SQL BETWEEN works.
+ *
+ * False-positive risk: two unrelated solo promotions within 5s of each
+ * other (one creating a family row) will both be refused. Accepted
+ * tradeoff per spec §7 — refuse-on-ambiguity is safer than
+ * accept-and-corrupt for v1. Future enhancement: store cluster_promotion_id
+ * on the factsheets row at promotion time to make the check exact.
  */
-export async function isClusterPromoted(
+
+/**
+ * Private — performs the cluster check with already-resolved person/promotion
+ * values. `unmergeFactsheet` calls this directly so it doesn't re-fetch the
+ * factsheet row it already loaded for the status guard.
+ */
+async function _isClusterPromotedForPerson(
   db: Database,
-  factsheetId: string,
+  personId: string,
+  promotedAt: string,
 ): Promise<boolean> {
-  const fs = await db.all<{
-    promoted_person_id: string | null;
-    promoted_at: string | null;
-  }>(sql`
-    SELECT promoted_person_id, promoted_at
-    FROM factsheets WHERE id = ${factsheetId}
-  `);
-  const row = fs[0];
-  if (!row || !row.promoted_person_id || !row.promoted_at) return false;
-
-  const personId = row.promoted_person_id;
-  const promotedAt = row.promoted_at;
-
   const t = new Date(promotedAt).getTime();
   const lo = new Date(t - 5_000).toISOString();
   const hi = new Date(t + 5_000).toISOString();
@@ -129,13 +130,33 @@ export async function isClusterPromoted(
   return (children[0]?.n ?? 0) > 0;
 }
 
+/**
+ * Public — keeps the original signature for standalone callers (e.g. tests
+ * and external probes). Fetches the factsheet row first, then delegates.
+ */
+export async function isClusterPromoted(
+  db: Database,
+  factsheetId: string,
+): Promise<boolean> {
+  const fs = await db.all<{
+    promoted_person_id: string | null;
+    promoted_at: string | null;
+  }>(sql`
+    SELECT promoted_person_id, promoted_at
+    FROM factsheets WHERE id = ${factsheetId}
+  `);
+  const row = fs[0];
+  if (!row || !row.promoted_person_id || !row.promoted_at) return false;
+  return _isClusterPromotedForPerson(db, row.promoted_person_id, row.promoted_at);
+}
+
 export async function unmergeFactsheet(
   db: Database,
   input: UnmergeFactsheetInput,
 ): Promise<UnmergeFactsheetResult> {
   const trimmed = input.reason?.trim() ?? '';
   if (trimmed.length === 0) {
-    throw new Error('unmergeFactsheet: reason is required');
+    throw new ReasonRequiredError('unmergeFactsheet', 'reason is required');
   }
 
   const fsRows = await db.all<{
@@ -158,7 +179,8 @@ export async function unmergeFactsheet(
   const promotedAt = fs.promoted_at;
 
   // Cluster guard FIRST — if it's part of a cluster, no point checking dirtiness.
-  if (await isClusterPromoted(db, input.factsheetId)) {
+  // Use the private helper to avoid re-fetching the factsheet row we already have.
+  if (await _isClusterPromotedForPerson(db, personId, promotedAt)) {
     throw new ClusterPromotedError(input.factsheetId);
   }
 
@@ -176,6 +198,11 @@ export async function unmergeFactsheet(
     // 1. Find sources to delete via the citations that will be removed. We
     //    capture source IDs BEFORE deleting citations because the citation
     //    row is our only link back to the source.
+    //
+    //    Inclusive >= is intentional: citations CREATED at promotion are
+    //    artifacts of promotion and must be removed. Contrast with the dirty
+    //    check above, which uses strict > to allow rows that were created
+    //    AT promotion time to count as "not edited since".
     const citationSourceIds = await db.all<{ source_id: string }>(sql`
       SELECT DISTINCT source_id FROM source_citations
       WHERE person_id = ${personId} AND created_at >= ${promotedAt}
@@ -188,9 +215,23 @@ export async function unmergeFactsheet(
     `);
     deleted.citations = readChanges(citDel);
 
-    // 3. Delete the sources that backed those citations.
+    // 3. Delete the sources that backed those citations — but ONLY if no other
+    //    citation still references them. Production schema has ON DELETE CASCADE
+    //    from source_citations to sources, so an unguarded DELETE would cascade
+    //    and destroy citations belonging to other persons (e.g. a shared census
+    //    record cited on two different promoted factsheets). The NOT EXISTS
+    //    check is sufficient because step 2 already removed THIS person's
+    //    citations — any remaining citations belong to other persons (or
+    //    no person at all, person_id IS NULL).
     for (const { source_id } of citationSourceIds) {
-      const srcDel = await db.run(sql`DELETE FROM sources WHERE id = ${source_id}`);
+      const srcDel = await db.run(sql`
+        DELETE FROM sources
+        WHERE id = ${source_id}
+          AND NOT EXISTS (
+            SELECT 1 FROM source_citations
+            WHERE source_id = ${source_id}
+          )
+      `);
       deleted.sources += readChanges(srcDel);
     }
 
