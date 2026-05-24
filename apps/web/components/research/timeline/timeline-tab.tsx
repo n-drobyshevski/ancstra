@@ -10,6 +10,7 @@ import {
   usePersonResearchItems,
   usePersonConflicts,
 } from '@/lib/research/evidence-client';
+import { ReverseActionDialog } from '@/components/inbox/reverse-action-dialog';
 import { TimelineEvent } from './timeline-event';
 import { EventForm } from '@/components/event-form';
 
@@ -77,6 +78,7 @@ export function TimelineTab({ personId, events = [] }: TimelineTabProps) {
 
   const [showAddEvent, setShowAddEvent] = useState(false);
   const [editingEvent, setEditingEvent] = useState<PersonEvent | null>(null);
+  const [disputingEventId, setDisputingEventId] = useState<string | null>(null);
 
   // Source name map for research items
   const sourceMap = new Map(items.map((it) => [it.id, it.title]));
@@ -131,6 +133,25 @@ export function TimelineTab({ personId, events = [] }: TimelineTabProps) {
       toast.error('Failed to delete event');
     }
   }, []);
+
+  // Dispute event handler — uses ReverseActionDialog.
+  const handleDisputeEvent = useCallback(async (reason: string) => {
+    if (!disputingEventId) return;
+    const res = await fetch(
+      `/api/persons/${personId}/events/${disputingEventId}/dispute`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason }),
+      },
+    );
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({} as { error?: string; message?: string }));
+      throw new Error(body.message || body.error || 'Dispute failed');
+    }
+    toast.success('Event disputed');
+    window.location.reload();
+  }, [personId, disputingEventId]);
 
   // Empty state
   if (all.length === 0) {
@@ -201,22 +222,28 @@ export function TimelineTab({ personId, events = [] }: TimelineTabProps) {
 
     const isEditable = entry.entrySource === 'event' && !PROTECTED_TYPES.has(entry.factType);
 
-    datedElements.push(
-      <TimelineEvent
-        key={entry.id}
-        date={formatDate(entry.date)}
-        factType={entry.factType}
-        factValue={entry.factValue}
-        confidence={entry.confidence}
-        sourceName={entry.sourceName}
-        hasConflict={entry.hasConflict}
-        isLast={isLast}
-        entrySource={entry.entrySource}
-        editable={isEditable}
-        onEdit={() => entry.eventData && setEditingEvent(entry.eventData)}
-        onDelete={() => entry.eventData && handleDeleteEvent(entry.eventData.id)}
-      />,
-    );
+    {
+      const ev = entry.eventData as (PersonEvent & { contested?: boolean }) | undefined;
+      const isContested = ev?.contested === true;
+      datedElements.push(
+        <TimelineEvent
+          key={entry.id}
+          date={formatDate(entry.date)}
+          factType={entry.factType}
+          factValue={entry.factValue}
+          confidence={entry.confidence}
+          sourceName={entry.sourceName}
+          hasConflict={entry.hasConflict}
+          isLast={isLast}
+          entrySource={entry.entrySource}
+          editable={isEditable}
+          contested={isContested}
+          onEdit={() => ev && setEditingEvent(ev)}
+          onDelete={() => ev && handleDeleteEvent(ev.id)}
+          onDispute={ev && !isContested ? () => setDisputingEventId(ev.id) : undefined}
+        />,
+      );
+    }
   }
 
   return (
@@ -242,6 +269,15 @@ export function TimelineTab({ personId, events = [] }: TimelineTabProps) {
       {/* Dated events */}
       {datedElements.length > 0 && <div>{datedElements}</div>}
 
+      <ReverseActionDialog
+        open={disputingEventId !== null}
+        onOpenChange={(open) => { if (!open) setDisputingEventId(null); }}
+        title="Dispute event"
+        description="Flag this event as contested. It stays in the timeline but is marked as disputed for follow-up."
+        actionLabel="Dispute"
+        onConfirm={handleDisputeEvent}
+      />
+
       {/* Undated section */}
       {undated.length > 0 && (
         <div className="space-y-1">
@@ -265,6 +301,8 @@ export function TimelineTab({ personId, events = [] }: TimelineTabProps) {
                 );
               }
 
+              const ev = entry.eventData as (PersonEvent & { contested?: boolean }) | undefined;
+              const isContested = ev?.contested === true;
               return (
                 <TimelineEvent
                   key={entry.id}
@@ -277,8 +315,10 @@ export function TimelineTab({ personId, events = [] }: TimelineTabProps) {
                   isLast={i === undated.length - 1}
                   entrySource={entry.entrySource}
                   editable={isEditable}
-                  onEdit={() => entry.eventData && setEditingEvent(entry.eventData)}
-                  onDelete={() => entry.eventData && handleDeleteEvent(entry.eventData.id)}
+                  contested={isContested}
+                  onEdit={() => ev && setEditingEvent(ev)}
+                  onDelete={() => ev && handleDeleteEvent(ev.id)}
+                  onDispute={ev && !isContested ? () => setDisputingEventId(ev.id) : undefined}
                 />
               );
             })}

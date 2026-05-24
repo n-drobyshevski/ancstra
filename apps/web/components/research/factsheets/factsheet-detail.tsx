@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { MoreHorizontal } from 'lucide-react';
+import { MoreHorizontal, Undo2, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { FACTSHEET_STATUS_CONFIG, FACTSHEET_ENTITY_TYPE_LABELS } from '@/lib/research/constants';
@@ -12,6 +12,7 @@ import {
   type FactsheetDetail as FactsheetDetailType,
   type Factsheet,
 } from '@/lib/research/factsheet-client';
+import { ReverseActionDialog } from '@/components/inbox/reverse-action-dialog';
 import { FactsheetFactsSection } from './factsheet-facts-section';
 import { FactsheetLinksSection } from './factsheet-links-section';
 import { FactsheetLinkDialog } from './factsheet-link-dialog';
@@ -32,6 +33,8 @@ export function FactsheetDetail({
   const [notes, setNotes] = useState(detail.notes ?? '');
   const [notesTimer, setNotesTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
+  const [unmergeOpen, setUnmergeOpen] = useState(false);
+  const [restoreOpen, setRestoreOpen] = useState(false);
   const { conflicts, refetch: refetchConflicts } = useFactsheetConflicts(detail.id);
 
   const statusCfg = FACTSHEET_STATUS_CONFIG[detail.status] ?? FACTSHEET_STATUS_CONFIG.draft;
@@ -58,6 +61,38 @@ export function FactsheetDetail({
     refetchConflicts();
   }, [onDataChanged, refetchConflicts]);
 
+  const handleUnmerge = useCallback(async (reason: string) => {
+    const res = await fetch(`/api/research/factsheets/${detail.id}/unmerge`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({} as { error?: string; message?: string }));
+      if (body.error === 'dirty' || body.error === 'cluster-promoted') {
+        toast.error(`Cannot unmerge: ${body.message ?? body.error}`);
+        return;
+      }
+      throw new Error(body.message || body.error || 'Unmerge failed');
+    }
+    toast.success('Factsheet unmerged');
+    handleDataChanged();
+  }, [detail.id, handleDataChanged]);
+
+  const handleRestore = useCallback(async (reason: string) => {
+    const res = await fetch(`/api/research/factsheets/${detail.id}/restore`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({} as { error?: string; message?: string }));
+      throw new Error(body.message || body.error || 'Restore failed');
+    }
+    toast.success('Factsheet restored');
+    handleDataChanged();
+  }, [detail.id, handleDataChanged]);
+
   const unresolvedConflicts = conflicts.filter((c) =>
     c.facts.some((f) => f.accepted === null),
   );
@@ -81,6 +116,28 @@ export function FactsheetDetail({
           {!isTerminal && (
             <Button variant="outline" size="sm" className="h-7 text-xs text-green-600 border-green-600/30 hover:bg-green-600/10">
               Promote to Tree
+            </Button>
+          )}
+          {detail.status === 'promoted' && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => setUnmergeOpen(true)}
+            >
+              <Undo2 className="size-3 mr-1" />
+              Unmerge
+            </Button>
+          )}
+          {detail.status === 'dismissed' && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => setRestoreOpen(true)}
+            >
+              <RotateCcw className="size-3 mr-1" />
+              Restore
             </Button>
           )}
           <Button variant="outline" size="sm" className="h-7 w-7 p-0">
@@ -142,6 +199,25 @@ export function FactsheetDetail({
         allFactsheets={allFactsheets}
         existingLinks={detail.links}
         onLinked={handleDataChanged}
+      />
+
+      <ReverseActionDialog
+        open={unmergeOpen}
+        onOpenChange={setUnmergeOpen}
+        title="Unmerge factsheet"
+        description="This will delete the promoted person, events, and source citations created at promotion time. The factsheet returns to ready status."
+        actionLabel="Unmerge"
+        destructive
+        onConfirm={handleUnmerge}
+      />
+
+      <ReverseActionDialog
+        open={restoreOpen}
+        onOpenChange={setRestoreOpen}
+        title="Restore factsheet"
+        description="Restore this dismissed factsheet to ready so it can be edited or promoted again."
+        actionLabel="Restore"
+        onConfirm={handleRestore}
       />
     </div>
   );

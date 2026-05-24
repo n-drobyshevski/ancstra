@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertTriangle, Pencil, Trash2 } from 'lucide-react';
+import { AlertTriangle, Pencil, Trash2, Flag } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -40,8 +40,12 @@ interface TimelineEventProps {
   entrySource?: 'event' | 'fact';
   /** If true, show edit/delete action buttons */
   editable?: boolean;
+  /** True when the underlying row has been marked contested */
+  contested?: boolean;
   onEdit?: () => void;
   onDelete?: () => void;
+  /** When provided, surface a Dispute button (only useful for event rows). */
+  onDispute?: () => void;
 }
 
 export function TimelineEvent({
@@ -54,8 +58,10 @@ export function TimelineEvent({
   isLast,
   entrySource = 'fact',
   editable,
+  contested,
   onEdit,
   onDelete,
+  onDispute,
 }: TimelineEventProps) {
   const conf = CONFIDENCE_BADGE[confidence] ?? CONFIDENCE_BADGE.medium;
   const isEvent = entrySource === 'event';
@@ -88,15 +94,35 @@ export function TimelineEvent({
         )}
         <div className="flex items-center gap-2">
           <p className="text-sm font-semibold capitalize">{factType}</p>
-          {editable && (
+          {(editable || onDispute) && (
             <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-              <Button variant="ghost" size="icon" className="size-6" onClick={onEdit}>
-                <Pencil className="size-3" />
-              </Button>
-              <Button variant="ghost" size="icon" className="size-6 text-destructive" onClick={onDelete}>
-                <Trash2 className="size-3" />
-              </Button>
+              {editable && (
+                <>
+                  <Button variant="ghost" size="icon" className="size-6" onClick={onEdit}>
+                    <Pencil className="size-3" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="size-6 text-destructive" onClick={onDelete}>
+                    <Trash2 className="size-3" />
+                  </Button>
+                </>
+              )}
+              {onDispute && !contested && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-6 text-amber-500 hover:text-amber-400"
+                  onClick={onDispute}
+                  title="Dispute event"
+                >
+                  <Flag className="size-3" />
+                </Button>
+              )}
             </div>
+          )}
+          {contested && (
+            <Badge variant="destructive" className="text-[10px]">
+              disputed
+            </Badge>
           )}
         </div>
         <p className="text-sm text-foreground/80">{factValue}</p>
