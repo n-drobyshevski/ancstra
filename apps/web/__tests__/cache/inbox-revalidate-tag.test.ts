@@ -36,7 +36,7 @@ const REVERSE_ROUTES = [
   'matching/hints/[id]/reset/route.ts',
   'families/[id]/dispute/route.ts',
   'children/[id]/dispute/route.ts',
-  'persons/[personId]/events/[eventId]/dispute/route.ts',
+  'persons/[id]/events/[eventId]/dispute/route.ts',
 ];
 
 // ── Forward-transition routes (T21) ────────────────────────────────────────

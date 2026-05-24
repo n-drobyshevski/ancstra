@@ -7,11 +7,14 @@ import { getActiveThreadIdFromCookies } from '@/lib/research/active-thread-serve
 
 export async function POST(
   request: Request,
-  { params }: { params: Promise<{ personId: string; eventId: string }> },
+  { params }: { params: Promise<{ id: string; eventId: string }> },
 ) {
   try {
     const { familyDb, ctx } = await withAuth('ai:research', request);
-    const { personId, eventId } = await params;
+    // Destructure with rename: the URL slug is `id` (matching the persons/[id]
+    // convention) but semantically it's a person id — keep referring to it as
+    // `personId` in the body of the handler for clarity.
+    const { id: personId, eventId } = await params;
     const body = await request.json().catch(() => ({}));
     const reason = requireReason(body, 'event-dispute');
     const threadId = await getActiveThreadIdFromCookies(ctx.familyId);
@@ -58,7 +61,7 @@ export async function POST(
     if (err instanceof ReasonRequiredError) {
       return NextResponse.json({ error: 'reason-required', message: err.message }, { status: 400 });
     }
-    console.error('[persons/[personId]/events/[eventId]/dispute POST]', err);
+    console.error('[persons/[id]/events/[eventId]/dispute POST]', err);
     return NextResponse.json({ error: String(err) }, { status: 500 });
   }
 }
