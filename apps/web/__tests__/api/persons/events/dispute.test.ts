@@ -23,7 +23,7 @@ vi.mock('next/cache', () => ({ revalidateTag: vi.fn() }));
 // Import the module under test and the mocked helpers AFTER vi.mock calls.
 // ---------------------------------------------------------------------------
 
-import { POST } from '@/app/api/persons/[personId]/events/[eventId]/dispute/route';
+import { POST } from '@/app/api/persons/[id]/events/[eventId]/dispute/route';
 import { withAuth } from '@/lib/auth/api-guard';
 import { revalidateTag } from 'next/cache';
 
@@ -153,7 +153,7 @@ describe('POST /api/persons/:personId/events/:eventId/dispute', () => {
 
   it('flips contested 0 → 1 and emits gedcom_disputed with events target', async () => {
     authSuccess(testDb);
-    const params = Promise.resolve({ personId: PERSON_ID, eventId: EV_FRESH });
+    const params = Promise.resolve({ id: PERSON_ID, eventId: EV_FRESH });
     const res = await POST(makeRequest(PERSON_ID, EV_FRESH, { reason: 'Wrong birth date' }), { params });
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -180,7 +180,7 @@ describe('POST /api/persons/:personId/events/:eventId/dispute', () => {
 
   it('refuses already-contested', async () => {
     authSuccess(testDb);
-    const params = Promise.resolve({ personId: PERSON_ID, eventId: EV_ALREADY });
+    const params = Promise.resolve({ id: PERSON_ID, eventId: EV_ALREADY });
     const res = await POST(makeRequest(PERSON_ID, EV_ALREADY, { reason: 'Test' }), { params });
     expect(res.status).toBe(400);
     const body = await res.json();
@@ -193,7 +193,7 @@ describe('POST /api/persons/:personId/events/:eventId/dispute', () => {
 
   it('refuses mismatched personId/eventId pair', async () => {
     authSuccess(testDb);
-    const params = Promise.resolve({ personId: 'wrong-person', eventId: EV_FRESH });
+    const params = Promise.resolve({ id: 'wrong-person', eventId: EV_FRESH });
     const res = await POST(makeRequest('wrong-person', EV_FRESH, { reason: 'Test' }), { params });
     expect(res.status).toBe(404);
     expect((await res.json()).error).toBe('not-found');
@@ -205,7 +205,7 @@ describe('POST /api/persons/:personId/events/:eventId/dispute', () => {
 
   it('refuses empty reason', async () => {
     authSuccess(testDb);
-    const params = Promise.resolve({ personId: PERSON_ID, eventId: EV_FRESH });
+    const params = Promise.resolve({ id: PERSON_ID, eventId: EV_FRESH });
     const res = await POST(makeRequest(PERSON_ID, EV_FRESH, { reason: '' }), { params });
     expect(res.status).toBe(400);
     const body = await res.json();
@@ -218,7 +218,7 @@ describe('POST /api/persons/:personId/events/:eventId/dispute', () => {
 
   it('revalidates tags on success', async () => {
     authSuccess(testDb);
-    const params = Promise.resolve({ personId: PERSON_ID, eventId: EV_FRESH });
+    const params = Promise.resolve({ id: PERSON_ID, eventId: EV_FRESH });
     await POST(makeRequest(PERSON_ID, EV_FRESH, { reason: 'Wrong birth date' }), { params });
 
     const calls = vi.mocked(revalidateTag).mock.calls;
