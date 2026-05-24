@@ -133,14 +133,6 @@ export type {
   AddedCitation,
 } from './factsheets';
 
-export {
-  softDetachFactsheet,
-} from './factsheets/detach';
-export type {
-  SoftDetachInput,
-  SoftDetachResult,
-} from './factsheets/detach';
-
 // Scrape Jobs
 export {
   createScrapeJob,
