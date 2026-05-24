@@ -316,7 +316,7 @@ async function ensureFamilySchemaInner(db: FamilyDatabase): Promise<void> {
   const [eventsTableRow] = await db.all<{ sql: string }>(
     sql`SELECT sql FROM sqlite_master WHERE type='table' AND name='research_thread_events'`,
   );
-  if (eventsTableRow && eventsTableRow.sql.match(/thread_id TEXT NOT NULL/)) {
+  if (eventsTableRow && eventsTableRow.sql.includes('thread_id TEXT NOT NULL')) {
     await db.run(sql`PRAGMA foreign_keys = OFF`);
     await db.run(sql`BEGIN IMMEDIATE`);
     try {
@@ -355,6 +355,7 @@ async function ensureFamilySchemaInner(db: FamilyDatabase): Promise<void> {
       await db.run(sql`COMMIT`);
     } catch (err) {
       await db.run(sql`ROLLBACK`);
+      await db.run(sql`PRAGMA foreign_keys = ON`);
       throw err;
     }
     await db.run(sql`PRAGMA foreign_keys = ON`);
