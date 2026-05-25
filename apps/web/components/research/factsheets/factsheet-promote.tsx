@@ -1,16 +1,18 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { ChevronDown, Check, X, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import {
   useFactsheetDuplicates,
-  promoteFactsheet,
   type FactsheetConflict,
   type DuplicateMatch,
 } from '@/lib/research/factsheet-client';
+import { RepromoteDirtyModal } from '@/components/factsheets/repromote-dirty-modal';
+import type { PatchDiff } from '@ancstra/research';
 
 interface FactsheetPromoteProps {
   factsheetId: string;
@@ -23,12 +25,17 @@ interface FactsheetPromoteProps {
 export function FactsheetPromote({
   factsheetId, factCount, unresolvedConflicts, hasLinks, onPromoted,
 }: FactsheetPromoteProps) {
+  const router = useRouter();
   const [expanded, setExpanded] = useState(false);
   const [step, setStep] = useState(1);
   const [checkDups, setCheckDups] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState<DuplicateMatch | null>(null);
   const [mode, setMode] = useState<'create' | 'merge' | null>(null);
   const [promoting, setPromoting] = useState(false);
+  const [reason, setReason] = useState('');
+  const [dirtyModalState, setDirtyModalState] = useState<
+    { open: false } | { open: true; diff: PatchDiff; diffHash: string }
+  >({ open: false });
 
   const { matches, isLoading: dupsLoading } = useFactsheetDuplicates(factsheetId, checkDups);
 
@@ -43,20 +50,51 @@ export function FactsheetPromote({
     if (!mode) return;
     setPromoting(true);
     try {
-      await promoteFactsheet(
-        factsheetId,
-        mode,
-        mode === 'merge' ? selectedMatch?.personId : undefined,
-        hasLinks,
-      );
-      toast.success('Promoted to tree');
+      const res = await fetch(`/api/research/factsheets/${factsheetId}/promote`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mode,
+          mergeTargetPersonId: mode === 'merge' ? selectedMatch?.personId : undefined,
+          cluster: hasLinks,
+          reason: reason.trim() || 'Promoted from factsheet workspace',
+        }),
+      });
+
+      if (res.status === 409) {
+        const body = await res.json() as { error: string; diff: PatchDiff; diffHash: string };
+        if (body.error === 'PersonDirty') {
+          setDirtyModalState({ open: true, diff: body.diff, diffHash: body.diffHash });
+          return;
+        }
+      }
+
+      if (res.status === 422) {
+        const body = await res.json() as { error: string; message?: string };
+        toast.error(body.message ?? body.error);
+        return;
+      }
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({ error: 'Promotion failed' })) as { error?: string; message?: string };
+        toast.error(body.message ?? body.error ?? 'Promotion failed');
+        return;
+      }
+
+      const body = await res.json() as { mode: 'first' | 'patched'; personId?: string };
+      if (body.mode === 'first') {
+        toast.success('Person created');
+      } else if (body.mode === 'patched') {
+        toast.success('Person updated');
+      } else {
+        toast.success('Promoted to tree');
+      }
+      router.refresh();
       onPromoted();
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Promotion failed');
     } finally {
       setPromoting(false);
     }
-  }, [factsheetId, mode, selectedMatch, hasLinks, onPromoted]);
+  }, [factsheetId, mode, selectedMatch, hasLinks, reason, onPromoted, router]);
 
   return (
     <div className="rounded-lg border border-border overflow-hidden">
@@ -172,6 +210,18 @@ export function FactsheetPromote({
                     : `Will merge facts into ${selectedMatch?.givenName} ${selectedMatch?.surname}.`}
                   {hasLinks && ' Connected factsheets will be promoted as a family unit.'}
                 </p>
+                <div className="mb-3">
+                  <label className="block text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1">
+                    Reason (optional)
+                  </label>
+                  <textarea
+                    value={reason}
+                    onChange={(e) => setReason(e.target.value)}
+                    placeholder="Why are you promoting this factsheet?"
+                    rows={2}
+                    className="w-full rounded border border-input bg-transparent px-2 py-1 text-xs resize-none focus:outline-none placeholder:text-muted-foreground/50"
+                  />
+                </div>
                 <div className="flex justify-end gap-2">
                   <Button
                     variant="ghost"
@@ -196,6 +246,31 @@ export function FactsheetPromote({
           </div>
         </div>
       )}
+
+      {dirtyModalState.open ? (
+        <RepromoteDirtyModal
+          open={true}
+          factsheetId={factsheetId}
+          diff={dirtyModalState.diff}
+          diffHash={dirtyModalState.diffHash}
+          onClose={() => setDirtyModalState({ open: false })}
+          onSuccess={(successMode, payload) => {
+            if (successMode === 'force-repromoted') {
+              toast.success('Re-promoted with new person');
+              const personPayload = payload as { personId?: string };
+              if (personPayload.personId) {
+                router.push(`/persons/${personPayload.personId}`);
+              } else {
+                router.refresh();
+              }
+            } else {
+              toast.success('Live link detached; person preserved');
+              router.refresh();
+            }
+            onPromoted();
+          }}
+        />
+      ) : null}
     </div>
   );
 }
