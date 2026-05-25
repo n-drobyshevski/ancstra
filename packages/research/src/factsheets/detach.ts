@@ -2,7 +2,12 @@ import { sql } from 'drizzle-orm';
 import type { Database } from '@ancstra/db';
 import { logReverseEvent } from '../audit/log-reverse-event';
 import { ReasonRequiredError } from '../audit/reason';
-import { FactsheetNotPromotedError, ClusterPromotedError, isClusterPromoted } from './unmerge';
+import { FactsheetNotPromotedError } from './unmerge';
+import {
+  getClusterMembership,
+  ClusterDetachNotSupportedError,
+  LegacyClusterNotSupportedError,
+} from './cluster';
 
 /**
  * Bundle C 2026-05-24 — soft-detach a promoted factsheet.
@@ -44,8 +49,12 @@ export async function softDetachFactsheet(
     throw new FactsheetNotPromotedError(input.factsheetId);
   }
 
-  if (await isClusterPromoted(db, input.factsheetId)) {
-    throw new ClusterPromotedError(input.factsheetId);
+  const membership = await getClusterMembership(db, input.factsheetId);
+  if (membership.kind === 'precise') {
+    throw new ClusterDetachNotSupportedError(input.factsheetId, membership.clusterPromotionId);
+  }
+  if (membership.kind === 'legacy') {
+    throw new LegacyClusterNotSupportedError(input.factsheetId);
   }
 
   const previousPersonId = fs.promoted_person_id;

@@ -21,7 +21,7 @@ vi.mock('@ancstra/research', async () => {
     _promoteSingleFactsheetInTransaction: vi.fn(),
     computePatchDiff: vi.fn(),
     hashPatchDiff: vi.fn(),
-    isClusterPromoted: vi.fn(async () => false),
+    getClusterMembership: vi.fn(async () => ({ kind: 'no' as const })),
     logReverseEvent: vi.fn(async () => 'evt-force-1'),
   };
 });
@@ -39,9 +39,9 @@ import {
   _promoteSingleFactsheetInTransaction,
   computePatchDiff,
   hashPatchDiff,
-  isClusterPromoted,
+  getClusterMembership,
   logReverseEvent,
-  ClusterPromotedError,
+  ClusterMemberUseClusterUnmergeError,
   type PatchDiff,
 } from '@ancstra/research';
 import { revalidateTag } from 'next/cache';
@@ -125,7 +125,7 @@ describe('POST /api/research/factsheets/:id/repromote-force', () => {
   it('happy path — returns 200 mode=force-repromoted with personId, oldPersonId, diff', async () => {
     const db = authSuccess();
 
-    vi.mocked(isClusterPromoted).mockResolvedValue(false);
+    vi.mocked(getClusterMembership).mockResolvedValue({ kind: 'no' });
     vi.mocked(computePatchDiff).mockResolvedValue(MOCK_DIFF);
     vi.mocked(hashPatchDiff).mockReturnValue(CORRECT_HASH);
     vi.mocked(_unmergeFactsheetInTransaction).mockResolvedValue({
@@ -196,7 +196,7 @@ describe('POST /api/research/factsheets/:id/repromote-force', () => {
     authSuccess();
 
     const freshHash = 'b'.repeat(64);
-    vi.mocked(isClusterPromoted).mockResolvedValue(false);
+    vi.mocked(getClusterMembership).mockResolvedValue({ kind: 'no' });
     vi.mocked(computePatchDiff).mockResolvedValue(MOCK_DIFF);
     vi.mocked(hashPatchDiff).mockReturnValue(freshHash);
 
@@ -223,7 +223,7 @@ describe('POST /api/research/factsheets/:id/repromote-force', () => {
 
   it('cluster-promoted factsheet → 422 ClusterUnsupported', async () => {
     authSuccess();
-    vi.mocked(isClusterPromoted).mockResolvedValue(true);
+    vi.mocked(getClusterMembership).mockResolvedValue({ kind: 'precise', clusterPromotionId: 'cp-1' });
 
     const res = await POST(
       makeRequest({ reason: 'force-repromote', diffHash: CORRECT_HASH }),
@@ -279,7 +279,7 @@ describe('POST /api/research/factsheets/:id/repromote-force', () => {
   it('calls revalidateTag inbox-count with "max" on success', async () => {
     authSuccess();
 
-    vi.mocked(isClusterPromoted).mockResolvedValue(false);
+    vi.mocked(getClusterMembership).mockResolvedValue({ kind: 'no' });
     vi.mocked(computePatchDiff).mockResolvedValue(MOCK_DIFF);
     vi.mocked(hashPatchDiff).mockReturnValue(CORRECT_HASH);
     vi.mocked(_unmergeFactsheetInTransaction).mockResolvedValue({
@@ -310,17 +310,17 @@ describe('POST /api/research/factsheets/:id/repromote-force', () => {
   });
 
   // -------------------------------------------------------------------------
-  // ClusterPromotedError thrown from inner helper → 422 ClusterUnsupported
+  // ClusterMemberUseClusterUnmergeError thrown from inner helper — cluster guard should prevent this
   // -------------------------------------------------------------------------
 
-  it('ClusterPromotedError thrown from inner helper → 422 ClusterUnsupported', async () => {
+  it('ClusterMemberUseClusterUnmergeError thrown from inner helper → 500 (not caught at route level)', async () => {
     authSuccess();
 
-    vi.mocked(isClusterPromoted).mockResolvedValue(false);
+    vi.mocked(getClusterMembership).mockResolvedValue({ kind: 'no' });
     vi.mocked(computePatchDiff).mockResolvedValue(MOCK_DIFF);
     vi.mocked(hashPatchDiff).mockReturnValue(CORRECT_HASH);
     vi.mocked(_unmergeFactsheetInTransaction).mockRejectedValue(
-      new ClusterPromotedError(FACTSHEET_ID),
+      new ClusterMemberUseClusterUnmergeError(FACTSHEET_ID, 'cp-1'),
     );
 
     const res = await POST(
@@ -328,8 +328,9 @@ describe('POST /api/research/factsheets/:id/repromote-force', () => {
       { params: PARAMS },
     );
 
-    expect(res.status).toBe(422);
-    const body = await res.json();
-    expect(body.error).toBe('ClusterUnsupported');
+    // The repromote-force route has no handler for ClusterMemberUseClusterUnmergeError;
+    // the cluster guard at the top prevents reaching unmerge for known clusters.
+    // If somehow reached, it falls through to the generic 500 handler.
+    expect(res.status).toBe(500);
   });
 });

@@ -5,7 +5,7 @@ import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
 import {
   promoteSingleFactsheet,
   promoteFactsheetCluster,
-  isClusterPromoted,
+  getClusterMembership,
   isPersonDirtySincePromote,
   computePatchDiff,
   applyPatchDiff,
@@ -116,7 +116,8 @@ export async function POST(
     if (fsRow.status === 'promoted' && fsRow.promoted_person_id) {
       // Cluster guard FIRST — patching one factsheet in a cluster can't
       // express what the user actually wants for the partner/child links.
-      if (await isClusterPromoted(familyDb, factsheetId)) {
+      const membership = await getClusterMembership(familyDb, factsheetId);
+      if (membership.kind === 'precise' || membership.kind === 'legacy') {
         return NextResponse.json({ error: 'ClusterUnsupported' }, { status: 422 });
       }
 

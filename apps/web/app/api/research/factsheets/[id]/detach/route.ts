@@ -6,7 +6,8 @@ import {
   requireReason,
   ReasonRequiredError,
   FactsheetNotPromotedError,
-  ClusterPromotedError,
+  ClusterDetachNotSupportedError,
+  LegacyClusterNotSupportedError,
 } from '@ancstra/research';
 import { getActiveThreadIdFromCookies } from '@/lib/research/active-thread-server';
 
@@ -52,7 +53,7 @@ export async function POST(
     if (err instanceof FactsheetNotPromotedError) {
       return NextResponse.json({ error: 'FactsheetNotPromoted', message: err.message }, { status: 422 });
     }
-    if (err instanceof ClusterPromotedError) {
+    if (err instanceof ClusterDetachNotSupportedError || err instanceof LegacyClusterNotSupportedError) {
       return NextResponse.json({ error: 'ClusterUnsupported', message: err.message }, { status: 422 });
     }
     try { return handleAuthError(err); } catch { /* not auth */ }
