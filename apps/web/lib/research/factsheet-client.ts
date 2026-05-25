@@ -167,6 +167,54 @@ export function useFactsheetConflicts(factsheetId: string | null) {
 }
 
 // ---------------------------------------------------------------------------
+// Cluster membership types — mirrored from @ancstra/research ClusterMembership
+// and ClusterMember for client-safe consumption.
+// ---------------------------------------------------------------------------
+
+export type ClusterMembership =
+  | { kind: 'no' }
+  | { kind: 'precise'; clusterPromotionId: string }
+  | { kind: 'legacy' };
+
+export interface ClusterMemberRow {
+  factsheetId: string;
+  factsheetTitle: string;
+  personId: string;
+  personGivenName: string | null;
+  personSurname: string | null;
+}
+
+export interface ClusterEdgeCount {
+  families: number;
+  children: number;
+}
+
+// ---------------------------------------------------------------------------
+// useFactsheetCluster — fetch /api/research/factsheets/:id/cluster
+// Only fires for 'promoted' factsheets to avoid unnecessary requests.
+// ---------------------------------------------------------------------------
+export function useFactsheetCluster(
+  factsheetId: string | null,
+  status: string | null,
+) {
+  const enabled = !!factsheetId && status === 'promoted';
+  const { data, isLoading, error, refetch } = useFetchData<{
+    membership: ClusterMembership;
+    members: ClusterMemberRow[];
+    edgeCount: ClusterEdgeCount;
+  }>(enabled ? `/api/research/factsheets/${factsheetId}/cluster` : null);
+
+  return {
+    membership: data?.membership ?? { kind: 'no' as const },
+    clusterMembers: data?.members ?? [],
+    clusterEdgeCount: data?.edgeCount ?? { families: 0, children: 0 },
+    isLoading,
+    error,
+    refetch,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // useFactsheetDuplicates — fetch /api/research/factsheets/:id/duplicates
 // ---------------------------------------------------------------------------
 export function useFactsheetDuplicates(factsheetId: string | null, enabled: boolean) {

@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { MoreHorizontal, Undo2, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -9,10 +11,12 @@ import { cn } from '@/lib/utils';
 import {
   updateFactsheet,
   useFactsheetConflicts,
+  useFactsheetCluster,
   type FactsheetDetail as FactsheetDetailType,
   type Factsheet,
 } from '@/lib/research/factsheet-client';
 import { ReverseActionDialog } from '@/components/inbox/reverse-action-dialog';
+import { ClusterUnmergeDialog } from './cluster-unmerge-dialog';
 import { FactsheetFactsSection } from './factsheet-facts-section';
 import { FactsheetLinksSection } from './factsheet-links-section';
 import { FactsheetLinkDialog } from './factsheet-link-dialog';
@@ -30,12 +34,21 @@ interface FactsheetDetailProps {
 export function FactsheetDetail({
   detail, allFactsheets, researchItemTitles, personId, onDataChanged, onSelectFactsheet,
 }: FactsheetDetailProps) {
+  const router = useRouter();
+  const t = useTranslations('factsheet');
   const [notes, setNotes] = useState(detail.notes ?? '');
   const [notesTimer, setNotesTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [unmergeOpen, setUnmergeOpen] = useState(false);
+  const [unmergeClusterOpen, setUnmergeClusterOpen] = useState(false);
   const [restoreOpen, setRestoreOpen] = useState(false);
   const { conflicts, refetch: refetchConflicts } = useFactsheetConflicts(detail.id);
+  const {
+    membership,
+    clusterMembers,
+    clusterEdgeCount,
+    refetch: refetchCluster,
+  } = useFactsheetCluster(detail.id, detail.status);
 
   const statusCfg = FACTSHEET_STATUS_CONFIG[detail.status] ?? FACTSHEET_STATUS_CONFIG.draft;
   const isTerminal = detail.status === 'promoted' || detail.status === 'merged' || detail.status === 'dismissed';
@@ -59,7 +72,8 @@ export function FactsheetDetail({
   const handleDataChanged = useCallback(() => {
     onDataChanged();
     refetchConflicts();
-  }, [onDataChanged, refetchConflicts]);
+    refetchCluster();
+  }, [onDataChanged, refetchConflicts, refetchCluster]);
 
   const handleUnmerge = useCallback(async (reason: string) => {
     const res = await fetch(`/api/research/factsheets/${detail.id}/unmerge`, {
@@ -93,6 +107,21 @@ export function FactsheetDetail({
     handleDataChanged();
   }, [detail.id, handleDataChanged]);
 
+  const handleUnmergeCluster = useCallback(async (reason: string) => {
+    const res = await fetch(`/api/research/factsheets/${detail.id}/unmerge-cluster`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({} as { error?: string; message?: string }));
+      throw new Error(body.message || body.error || 'Cluster unmerge failed');
+    }
+    toast.success('Cluster unmerged');
+    router.refresh();
+    handleDataChanged();
+  }, [detail.id, handleDataChanged, router]);
+
   const unresolvedConflicts = conflicts.filter((c) =>
     c.facts.some((f) => f.accepted === null),
   );
@@ -118,7 +147,30 @@ export function FactsheetDetail({
               Promote to Tree
             </Button>
           )}
-          {detail.status === 'promoted' && (
+          {detail.status === 'promoted' && membership.kind === 'precise' && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => setUnmergeClusterOpen(true)}
+            >
+              <Undo2 className="size-3 mr-1" />
+              {t('actions.unmergeCluster')} ({clusterMembers.length})
+            </Button>
+          )}
+          {detail.status === 'promoted' && membership.kind === 'legacy' && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs"
+              disabled
+              title={t('errors.legacyClusterNotSupported')}
+            >
+              <Undo2 className="size-3 mr-1" />
+              {t('actions.unmergeCluster')}
+            </Button>
+          )}
+          {detail.status === 'promoted' && membership.kind === 'no' && (
             <Button
               variant="outline"
               size="sm"
@@ -218,6 +270,15 @@ export function FactsheetDetail({
         description="Restore this dismissed factsheet to ready so it can be edited or promoted again."
         actionLabel="Restore"
         onConfirm={handleRestore}
+      />
+
+      <ClusterUnmergeDialog
+        open={unmergeClusterOpen}
+        onOpenChange={setUnmergeClusterOpen}
+        factsheetId={detail.id}
+        members={clusterMembers}
+        edgeCount={clusterEdgeCount}
+        onConfirm={handleUnmergeCluster}
       />
     </div>
   );
