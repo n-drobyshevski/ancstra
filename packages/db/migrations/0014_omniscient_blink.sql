@@ -1,0 +1,2 @@
+ALTER TABLE `factsheets` ADD `cluster_promotion_id` text;--> statement-breakpoint
+CREATE INDEX `idx_factsheets_cluster_promotion_id` ON `factsheets` (`cluster_promotion_id`) WHERE "factsheets"."cluster_promotion_id" IS NOT NULL;

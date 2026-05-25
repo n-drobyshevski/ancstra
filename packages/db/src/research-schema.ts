@@ -1,4 +1,5 @@
 import { sqliteTable, text, integer, real, index, unique, primaryKey } from 'drizzle-orm/sqlite-core';
+import { sql } from 'drizzle-orm';
 import { persons, sources, sourceCitations } from './family-schema';
 import { RELATIONSHIP_TYPES, CONFIDENCE_BANDS, PROVENANCE_VALUES, RESEARCH_ITEM_STATUSES } from './vocab';
 
@@ -74,6 +75,12 @@ export const factsheets = sqliteTable('factsheets', {
   notes: text('notes'),
   promotedPersonId: text('promoted_person_id').references(() => persons.id),
   promotedAt: text('promoted_at'),
+  // Bundle D 2026-05-25: cluster identity stamp written by promoteFactsheetCluster.
+  // NULL for solo-promoted factsheets and unpromoted factsheets.
+  // Shared across all factsheets that were promoted as one cluster — used by
+  // getClusterMembership for precise (non-heuristic) cluster detection.
+  // See Bundle D spec §2.1.
+  clusterPromotionId: text('cluster_promotion_id'),
   createdThreadId: text('created_thread_id'),  // FK to research_threads (added below)
   createdBy: text('created_by').notNull(),
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
@@ -83,6 +90,11 @@ export const factsheets = sqliteTable('factsheets', {
   index('idx_factsheets_created_by').on(table.createdBy),
   index('idx_factsheets_promoted_person').on(table.promotedPersonId),
   index('idx_factsheets_thread').on(table.createdThreadId),
+  // Bundle D 2026-05-25: partial index — only non-NULL cluster_promotion_id rows.
+  // Cluster lookup (getClusterMembership / getClusterMembers) is by cluster_promotion_id.
+  index('idx_factsheets_cluster_promotion_id')
+    .on(table.clusterPromotionId)
+    .where(sql`${table.clusterPromotionId} IS NOT NULL`),
 ]);
 
 // ==================== FACTSHEET LINKS (Relationship Graph) ====================
