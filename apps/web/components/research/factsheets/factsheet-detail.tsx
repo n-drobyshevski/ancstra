@@ -241,6 +241,7 @@ export function FactsheetDetail({
           unresolvedConflicts={unresolvedConflicts}
           hasLinks={detail.links.length > 0}
           onPromoted={onDataChanged}
+          onRequestClusterUnmerge={() => setUnmergeClusterOpen(true)}
         />
       )}
 

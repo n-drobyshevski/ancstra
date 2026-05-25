@@ -20,10 +20,15 @@ interface FactsheetPromoteProps {
   unresolvedConflicts: FactsheetConflict[];
   hasLinks: boolean;
   onPromoted: () => void;
+  /**
+   * Bundle D 2026-05-25: forwarded to RepromoteDirtyModal so the cluster-detach
+   * error banner can open the cluster unmerge dialog. Wired in factsheet-detail.
+   */
+  onRequestClusterUnmerge?: () => void;
 }
 
 export function FactsheetPromote({
-  factsheetId, factCount, unresolvedConflicts, hasLinks, onPromoted,
+  factsheetId, factCount, unresolvedConflicts, hasLinks, onPromoted, onRequestClusterUnmerge,
 }: FactsheetPromoteProps) {
   const router = useRouter();
   const [expanded, setExpanded] = useState(false);
@@ -254,6 +259,7 @@ export function FactsheetPromote({
           diff={dirtyModalState.diff}
           diffHash={dirtyModalState.diffHash}
           onClose={() => setDirtyModalState({ open: false })}
+          onRequestClusterUnmerge={onRequestClusterUnmerge}
           onSuccess={(successMode, payload) => {
             if (successMode === 'force-repromoted') {
               toast.success('Re-promoted with new person');
