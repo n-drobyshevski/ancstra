@@ -109,22 +109,23 @@ describe('POST /api/research/factsheets/:id/detach', () => {
     expect(body.message).toBeDefined();
   });
 
-  it('returns 422 with error=ClusterUnsupported when ClusterDetachNotSupportedError is thrown', async () => {
+  it('returns 422 with error=ClusterDetachNotSupported + hint URL when ClusterDetachNotSupportedError is thrown', async () => {
     authSuccess();
     vi.mocked(softDetachFactsheet).mockRejectedValue(new ClusterDetachNotSupportedError('fs-1', 'cp-1'));
     const res = await POST(makeRequest({ reason: 'wrong cluster' }), { params: PARAMS });
     expect(res.status).toBe(422);
     const body = await res.json();
-    expect(body.error).toBe('ClusterUnsupported');
+    expect(body.error).toBe('ClusterDetachNotSupported');
+    expect(body.hint).toMatch(/\/api\/research\/factsheets\/fs-1\/unmerge-cluster$/);
   });
 
-  it('returns 422 with error=ClusterUnsupported when LegacyClusterNotSupportedError is thrown', async () => {
+  it('returns 422 with error=LegacyClusterNotSupported when LegacyClusterNotSupportedError is thrown', async () => {
     authSuccess();
     vi.mocked(softDetachFactsheet).mockRejectedValue(new LegacyClusterNotSupportedError('fs-1'));
     const res = await POST(makeRequest({ reason: 'legacy cluster' }), { params: PARAMS });
     expect(res.status).toBe(422);
     const body = await res.json();
-    expect(body.error).toBe('ClusterUnsupported');
+    expect(body.error).toBe('LegacyClusterNotSupported');
   });
 
   // -------------------------------------------------------------------------
