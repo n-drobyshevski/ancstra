@@ -71,11 +71,20 @@ async function queryFactsheetDrafts(
     id: string; title: string; status: string; entity_type: string;
     created_thread_id: string | null; thread_title: string | null;
     created_at: string; updated_at: string; fact_count: number;
+    cluster_unmerge_payload: string | null;
   }>(sql`
     SELECT fs.id, fs.title, fs.status, fs.entity_type,
            fs.created_thread_id, t.title AS thread_title,
            fs.created_at, fs.updated_at,
-           (SELECT COUNT(*) FROM research_facts rf WHERE rf.factsheet_id = fs.id) AS fact_count
+           (SELECT COUNT(*) FROM research_facts rf WHERE rf.factsheet_id = fs.id) AS fact_count,
+           (
+             SELECT rte.payload_json FROM research_thread_events rte
+             WHERE rte.factsheet_id = fs.id
+               AND rte.event_type = 'factsheet_unmerged'
+               AND rte.payload_json LIKE '%clusterUnmergeId%'
+             ORDER BY rte.occurred_at DESC
+             LIMIT 1
+           ) AS cluster_unmerge_payload
     FROM factsheets fs
     LEFT JOIN research_threads t ON t.id = fs.created_thread_id
     WHERE fs.status IN ('draft', 'ready')
@@ -85,22 +94,32 @@ async function queryFactsheetDrafts(
   return rows
     .filter(r => matchThread(r.created_thread_id, filters?.threadId))
     .filter(() => !filters?.personId)
-    .map(r => ({
-      id: `factsheet_draft:${r.id}`,
-      type: 'factsheet_draft' as const,
-      entityId: r.id,
-      title: r.title,
-      subtitle: `${r.fact_count} fact${r.fact_count === 1 ? '' : 's'} · ${r.status}`,
-      threadId: r.created_thread_id,
-      threadTitle: r.thread_title,
-      personId: null,
-      personName: null,
-      createdAt: r.created_at,
-      updatedAt: r.updated_at,
-      factsheetStatus: r.status as 'draft' | 'ready',
-      factCount: Number(r.fact_count),
-      entityType: r.entity_type as 'person' | 'couple',
-    }));
+    .map(r => {
+      let clusterUnmergeId: string | null = null;
+      if (r.cluster_unmerge_payload) {
+        try {
+          const p = JSON.parse(r.cluster_unmerge_payload) as { clusterUnmergeId?: string };
+          clusterUnmergeId = p.clusterUnmergeId ?? null;
+        } catch { /* malformed JSON — ignore */ }
+      }
+      return {
+        id: `factsheet_draft:${r.id}`,
+        type: 'factsheet_draft' as const,
+        entityId: r.id,
+        title: r.title,
+        subtitle: `${r.fact_count} fact${r.fact_count === 1 ? '' : 's'} · ${r.status}`,
+        threadId: r.created_thread_id,
+        threadTitle: r.thread_title,
+        personId: null,
+        personName: null,
+        createdAt: r.created_at,
+        updatedAt: r.updated_at,
+        factsheetStatus: r.status as 'draft' | 'ready',
+        factCount: Number(r.fact_count),
+        entityType: r.entity_type as 'person' | 'couple',
+        clusterUnmergeId,
+      };
+    });
 }
 
 async function queryAIProposals(

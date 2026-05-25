@@ -30,6 +30,14 @@ export interface FactsheetDraftItem extends InboxItemBase {
   factsheetStatus: 'draft' | 'ready';
   factCount: number;
   entityType: 'person' | 'couple';
+  /**
+   * Bundle D 2026-05-25: set when the factsheet was recently returned to
+   * ready/draft status via a cluster unmerge. Value is the clusterUnmergeId
+   * from the most recent `factsheet_unmerged` audit event with that field in
+   * its payload. Used by the inbox row to render a "Cluster member" badge.
+   * NULL for solo unmerged or non-unmerged factsheets.
+   */
+  clusterUnmergeId: string | null;
 }
 
 export interface AIProposalItem extends InboxItemBase {

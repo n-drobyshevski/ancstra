@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   Dialog,
   DialogContent,
@@ -16,7 +17,12 @@ import type { PatchDiff } from '@ancstra/research';
  * Bundle C 2026-05-24 — modal shown when promote returns 409 PersonDirty.
  * Lets the user choose to detach (preserve manual edits) or force-repromote
  * (discard manual edits).
+ *
+ * Bundle D 2026-05-25 — detach path now handles 422 ClusterDetachNotSupported:
+ * renders an inline error banner with a link to open the cluster unmerge dialog.
+ *
  * See: docs/superpowers/specs/2026-05-24-research-flow-unification-bundle-c-design.md §6
+ * See: docs/superpowers/specs/2026-05-25-research-flow-unification-bundle-d-design.md §6.4
  */
 
 export interface RepromoteDirtyModalProps {
@@ -26,6 +32,12 @@ export interface RepromoteDirtyModalProps {
   diffHash: string;
   onClose: () => void;
   onSuccess: (mode: 'force-repromoted' | 'detached', payload: unknown) => void;
+  /**
+   * Bundle D 2026-05-25: called when the user clicks the cluster-unmerge link
+   * in the ClusterDetachNotSupported error banner. Caller (factsheet-detail)
+   * wires this to open the cluster unmerge dialog.
+   */
+  onRequestClusterUnmerge?: () => void;
 }
 
 export function RepromoteDirtyModal({
@@ -35,11 +47,14 @@ export function RepromoteDirtyModal({
   diffHash: initialHash,
   onClose,
   onSuccess,
+  onRequestClusterUnmerge,
 }: RepromoteDirtyModalProps) {
+  const t = useTranslations('factsheet');
   const [reason, setReason] = useState('');
   const [diff, setDiff] = useState<PatchDiff>(initialDiff);
   const [diffHash, setDiffHash] = useState(initialHash);
   const [staleWarning, setStaleWarning] = useState(false);
+  const [detachError, setDetachError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const reasonValid = reason.trim().length > 0;
@@ -75,12 +90,20 @@ export function RepromoteDirtyModal({
   async function handleDetach() {
     if (!reasonValid || busy) return;
     setBusy(true);
+    setDetachError(null);
     try {
       const res = await fetch(`/api/research/factsheets/${factsheetId}/detach`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reason: reason.trim() }),
       });
+      if (res.status === 422) {
+        const body = await res.json().catch(() => ({} as { error?: string }));
+        if (body.error === 'ClusterDetachNotSupported') {
+          setDetachError(t('errors.clusterDetachNotSupported'));
+          return;
+        }
+      }
       if (!res.ok) throw new Error(`detach failed: ${res.status}`);
       const body = await res.json() as unknown;
       onSuccess('detached', body);
@@ -103,6 +126,27 @@ export function RepromoteDirtyModal({
             className="rounded bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-900"
           >
             The person was edited again while you were reviewing. Updated diff shown.
+          </div>
+        ) : null}
+
+        {detachError ? (
+          <div
+            role="alert"
+            className="rounded-md bg-destructive/10 border border-destructive/30 px-3 py-2 text-sm text-destructive"
+          >
+            {detachError}
+            {onRequestClusterUnmerge && (
+              <>
+                {' '}
+                <button
+                  type="button"
+                  className="underline font-medium"
+                  onClick={() => { onClose(); onRequestClusterUnmerge(); }}
+                >
+                  {t('actions.unmergeCluster')}
+                </button>
+              </>
+            )}
           </div>
         ) : null}
 

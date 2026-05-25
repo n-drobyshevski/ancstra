@@ -77,6 +77,21 @@ const DDL = `
     reviewed_at TEXT,
     created_at TEXT NOT NULL
   );
+  CREATE TABLE research_thread_events (
+    id TEXT PRIMARY KEY,
+    thread_id TEXT,
+    event_type TEXT NOT NULL,
+    actor_id TEXT NOT NULL,
+    factsheet_id TEXT,
+    person_id TEXT,
+    research_item_id TEXT,
+    research_fact_id TEXT,
+    source_id TEXT,
+    link_id TEXT,
+    reason TEXT,
+    payload_json TEXT,
+    occurred_at TEXT NOT NULL
+  );
 `;
 
 let db: TestCentralDb;
@@ -227,5 +242,37 @@ describe('inbox queries (Bundle B §2)', () => {
     const counts = await countInboxItems(db as never);
     expect(Object.keys(counts.byType).sort()).toEqual(['ai_proposal', 'conflict', 'factsheet_draft', 'hint']);
     expect(counts.byType.factsheet_draft).toBe(0);
+  });
+
+  it('factsheet_draft items have clusterUnmergeId=null when no cluster-unmerge event', async () => {
+    const items = await listInboxItems(db as never, { type: 'factsheet_draft' });
+    for (const item of items) {
+      if (item.type === 'factsheet_draft') {
+        expect(item.clusterUnmergeId).toBeNull();
+      }
+    }
+  });
+
+  it('factsheet_draft item has clusterUnmergeId set when a factsheet_unmerged event with clusterUnmergeId exists', async () => {
+    const cuid = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
+    client().prepare(
+      `INSERT INTO research_thread_events (id, event_type, actor_id, factsheet_id, reason, payload_json, occurred_at)
+       VALUES ('rte-1', 'factsheet_unmerged', 'u1', 'fs-r1', 'unmerge test',
+               '${JSON.stringify({ clusterUnmergeId: cuid, clusterPromotionId: 'cp-1', clusterSize: 2 })}',
+               '2026-05-24T11:00:00Z')`,
+    ).run();
+
+    const items = await listInboxItems(db as never, { type: 'factsheet_draft' });
+    const r1 = items.find(i => i.entityId === 'fs-r1');
+    expect(r1?.type).toBe('factsheet_draft');
+    if (r1?.type === 'factsheet_draft') {
+      expect(r1.clusterUnmergeId).toBe(cuid);
+    }
+
+    // Other factsheets without the event should still have null
+    const d1 = items.find(i => i.entityId === 'fs-d1');
+    if (d1?.type === 'factsheet_draft') {
+      expect(d1.clusterUnmergeId).toBeNull();
+    }
   });
 });

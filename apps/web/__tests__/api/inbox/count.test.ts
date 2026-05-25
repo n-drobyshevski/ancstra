@@ -91,6 +91,21 @@ const DDL = `
     reviewed_at TEXT,
     created_at TEXT NOT NULL
   );
+  CREATE TABLE research_thread_events (
+    id TEXT PRIMARY KEY,
+    thread_id TEXT,
+    event_type TEXT NOT NULL,
+    actor_id TEXT NOT NULL,
+    factsheet_id TEXT,
+    person_id TEXT,
+    research_item_id TEXT,
+    research_fact_id TEXT,
+    source_id TEXT,
+    link_id TEXT,
+    reason TEXT,
+    payload_json TEXT,
+    occurred_at TEXT NOT NULL
+  );
 `;
 
 // ---------------------------------------------------------------------------
