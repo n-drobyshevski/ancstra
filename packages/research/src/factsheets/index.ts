@@ -61,3 +61,14 @@ export type { PatchDiff, FieldDelta, AddedEvent, ModifiedEvent, AddedCitation } 
 
 export { softDetachFactsheet } from './detach';
 export type { SoftDetachInput, SoftDetachResult } from './detach';
+
+export {
+  getClusterMembership,
+  getClusterMemberFactsheetIds,
+  getClusterMembers,
+  getClusterEdgeCount,
+  ClusterDetachNotSupportedError,
+  ClusterMemberUseClusterUnmergeError,
+  LegacyClusterNotSupportedError,
+} from './cluster';
+export type { ClusterMembership, ClusterMember } from './cluster';

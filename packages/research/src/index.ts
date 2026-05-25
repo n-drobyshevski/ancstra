@@ -114,6 +114,13 @@ export {
   hashPatchDiff,
   LegacyPromotionNotPatchableError,
   softDetachFactsheet,
+  getClusterMembership,
+  getClusterMemberFactsheetIds,
+  getClusterMembers,
+  getClusterEdgeCount,
+  ClusterDetachNotSupportedError,
+  ClusterMemberUseClusterUnmergeError,
+  LegacyClusterNotSupportedError,
 } from './factsheets';
 export type {
   CreateFactsheetInput,
@@ -136,6 +143,8 @@ export type {
   AddedEvent,
   ModifiedEvent,
   AddedCitation,
+  ClusterMembership,
+  ClusterMember,
 } from './factsheets';
 
 // Scrape Jobs

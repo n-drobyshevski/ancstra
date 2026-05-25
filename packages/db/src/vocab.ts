@@ -63,6 +63,18 @@ export const CONFIDENCE_BAND_META: Record<Confidence, {
   unknown: { messageKey: 'rubric.unknown', scoreLabel: 'score < 0.20' },
 } as const;
 
+// Bundle D 2026-05-25: refusal-kind constants for cluster operations.
+// Mirror the `.kind` field of the corresponding error classes in
+// `packages/research/src/factsheets/cluster.ts`. The AST guard in
+// `packages/db/__tests__/vocab-consistency.test.ts` enforces the match.
+// See: docs/superpowers/specs/2026-05-25-research-flow-unification-bundle-d-design.md §5.1.
+export const CLUSTER_OP_REFUSAL_KINDS = [
+  'ClusterDetachNotSupported',
+  'ClusterMemberUseClusterUnmerge',
+  'LegacyClusterNotSupported',
+] as const;
+export type ClusterOpRefusalKind = (typeof CLUSTER_OP_REFUSAL_KINDS)[number];
+
 // Map AI tool input enum (3-value) → factType for the new factsheet path. Spec §2.2.
 // 'spouse' is intentionally omitted — the AI tool's 3-value input enum has no
 // 'spouse' arm; it emits 'partner' and the user can upgrade to 'spouse' during

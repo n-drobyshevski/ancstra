@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
-import { CONFIDENCE_BAND_META, CONFIDENCE_BANDS } from '../src/vocab';
+import { CONFIDENCE_BAND_META, CONFIDENCE_BANDS, CLUSTER_OP_REFUSAL_KINDS } from '../src/vocab';
 
 const REPO_ROOT = path.resolve(__dirname, '../../..');
 
@@ -83,6 +83,40 @@ describe('CONFIDENCE_BAND_META (Bundle C)', () => {
   it('scoreLabel is non-empty', () => {
     for (const band of CONFIDENCE_BANDS) {
       expect(CONFIDENCE_BAND_META[band].scoreLabel.length).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe('CLUSTER_OP_REFUSAL_KINDS (Bundle D)', () => {
+  it('contains exactly the three Bundle D refusal kinds', () => {
+    expect([...CLUSTER_OP_REFUSAL_KINDS].sort()).toEqual(
+      ['ClusterDetachNotSupported', 'ClusterMemberUseClusterUnmerge', 'LegacyClusterNotSupported'].sort(),
+    );
+  });
+
+  // AST guard: every kind in CLUSTER_OP_REFUSAL_KINDS must correspond to an
+  // exported error class in `packages/research/src/factsheets/cluster.ts`
+  // with a matching `.kind` field literal. Regex-grep matches the existing
+  // AST-guard pattern in this file (Bundle A's scanLine approach).
+  it('every refusal kind maps to an error class with matching `.kind` in cluster.ts', () => {
+    const clusterSrc = readFileSync(
+      path.resolve(__dirname, '../../research/src/factsheets/cluster.ts'),
+      'utf8',
+    );
+    for (const kind of CLUSTER_OP_REFUSAL_KINDS) {
+      // Each kind must appear as `readonly kind = '<kind>' as const` on an
+      // exported class — that's how the discriminated union narrows at call sites.
+      expect(clusterSrc).toMatch(new RegExp(`readonly kind = '${kind}' as const`));
+    }
+  });
+
+  it('every refusal kind has an `export class <Kind>Error` declaration in cluster.ts', () => {
+    const clusterSrc = readFileSync(
+      path.resolve(__dirname, '../../research/src/factsheets/cluster.ts'),
+      'utf8',
+    );
+    for (const kind of CLUSTER_OP_REFUSAL_KINDS) {
+      expect(clusterSrc).toMatch(new RegExp(`export class ${kind}Error extends Error`));
     }
   });
 });
