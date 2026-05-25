@@ -388,6 +388,19 @@ async function ensureFamilySchemaInner(db: FamilyDatabase): Promise<void> {
     await db.run(sql`CREATE INDEX IF NOT EXISTS idx_events_source_factsheet ON events(source_factsheet_id)`);
   } catch { /* index already exists */ }
 
+  // Bundle D 2026-05-25: factsheets.cluster_promotion_id stamps cluster identity
+  // for precise (non-heuristic) cluster detection. See spec §2.1.
+  try {
+    await db.run(sql`ALTER TABLE factsheets ADD COLUMN cluster_promotion_id TEXT`);
+  } catch { /* column already exists — idempotent */ }
+  try {
+    await db.run(sql`
+      CREATE INDEX IF NOT EXISTS idx_factsheets_cluster_promotion_id
+      ON factsheets(cluster_promotion_id)
+      WHERE cluster_promotion_id IS NOT NULL
+    `);
+  } catch { /* index already exists — idempotent */ }
+
   await db.run(sql`
     CREATE TABLE IF NOT EXISTS person_summary (
       person_id TEXT PRIMARY KEY REFERENCES persons(id) ON DELETE CASCADE,
