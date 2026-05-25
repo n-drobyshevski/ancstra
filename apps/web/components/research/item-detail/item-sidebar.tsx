@@ -2,14 +2,12 @@
 
 import { ExternalLink } from 'lucide-react';
 import Link from 'next/link';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ProviderBadge } from '../provider-badge';
 import { useResearchItemFacts } from '@/lib/research/evidence-client';
-import {
-  DISCOVERY_METHOD_LABELS,
-  CONFIDENCE_VARIANT,
-} from '@/lib/research/constants';
+import { DISCOVERY_METHOD_LABELS } from '@/lib/research/constants';
+import { ConfidenceChip } from '@/components/confidence/confidence-chip';
+import type { Confidence } from '@ancstra/db';
 
 interface ItemSidebarProps {
   item: {
@@ -66,9 +64,7 @@ export function ItemSidebar({ item }: ItemSidebarProps) {
                   <span className="text-muted-foreground">{formatFactType(fact.factType)}</span>
                   <p className="font-medium">{fact.factValue}</p>
                 </div>
-                <Badge variant={CONFIDENCE_VARIANT[fact.confidence] ?? 'outline'} className="shrink-0 text-[10px]">
-                  {fact.confidence}
-                </Badge>
+                <ConfidenceChip band={(fact.confidence as Confidence) ?? 'unknown'} />
               </div>
             ))}
             <div className="border-t border-border pt-2 text-center">

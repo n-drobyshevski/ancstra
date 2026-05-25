@@ -1,17 +1,9 @@
 'use client';
 
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-
-const CONFIDENCE_BADGE: Record<
-  string,
-  { label: string; variant: 'default' | 'secondary' | 'destructive' }
-> = {
-  high: { label: 'High', variant: 'default' },
-  medium: { label: 'Medium', variant: 'secondary' },
-  low: { label: 'Low', variant: 'destructive' },
-};
+import { ConfidenceChip } from '@/components/confidence/confidence-chip';
+import type { Confidence } from '@ancstra/db';
 
 export interface ConflictFact {
   id: string;
@@ -35,8 +27,6 @@ export function ConflictCard({
   onResolve,
   isResolving,
 }: ConflictCardProps) {
-  const confA = CONFIDENCE_BADGE[factA.confidence] ?? CONFIDENCE_BADGE.medium;
-  const confB = CONFIDENCE_BADGE[factB.confidence] ?? CONFIDENCE_BADGE.medium;
 
   return (
     <Card size="sm" className="border-l-2 border-l-destructive/40">
@@ -53,9 +43,7 @@ export function ConflictCard({
                 {factA.sourceTitle}
               </p>
             )}
-            <Badge variant={confA.variant} className="text-[10px]">
-              {confA.label}
-            </Badge>
+            <ConfidenceChip band={(factA.confidence as Confidence) ?? 'medium'} />
           </div>
 
           {/* VS divider */}
@@ -73,9 +61,7 @@ export function ConflictCard({
                 {factB.sourceTitle}
               </p>
             )}
-            <Badge variant={confB.variant} className="text-[10px]">
-              {confB.label}
-            </Badge>
+            <ConfidenceChip band={(factB.confidence as Confidence) ?? 'medium'} />
           </div>
         </div>
 
