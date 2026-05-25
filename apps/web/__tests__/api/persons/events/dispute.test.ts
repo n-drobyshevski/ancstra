@@ -52,6 +52,7 @@ const BOOTSTRAP_DDL = `
     date_sort INTEGER,
     date_original TEXT,
     place TEXT,
+    source_factsheet_id TEXT,
     contested INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
