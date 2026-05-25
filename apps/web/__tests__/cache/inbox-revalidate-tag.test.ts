@@ -57,6 +57,9 @@ const FORWARD_ROUTES = [
   'research/factsheets/[id]/detach/route.ts',
   // Force-repromote — discards edits, atomically unmerges + re-promotes
   'research/factsheets/[id]/repromote-force/route.ts',
+  // Bundle D routes ───────────────────────────────────────────────────────
+  // Cluster unmerge — reverses an entire cluster promotion atomically
+  'research/factsheets/[id]/unmerge-cluster/route.ts',
 ];
 
 describe('inbox-count revalidation discipline (Bundle B §3.3)', () => {
