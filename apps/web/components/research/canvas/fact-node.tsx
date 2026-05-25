@@ -2,6 +2,8 @@
 import { memo } from 'react';
 import { Handle, Position, type Node, type NodeProps } from '@xyflow/react';
 import type { FactNodeData } from './factsheet-graph-utils';
+import { ConfidenceChip } from '@/components/confidence/confidence-chip';
+import type { Confidence } from '@ancstra/db';
 
 type FactNodeType = Node<FactNodeData, 'factNode'>;
 
@@ -51,11 +53,7 @@ function FactNodeComponent({ data }: NodeProps<FactNodeType>) {
           <div className="text-[10px] font-semibold text-foreground">{label}</div>
           <div className="text-[10px] text-muted-foreground truncate">{fact.factValue}</div>
           <div className="flex items-center gap-1 mt-1">
-            <span
-              className="inline-block size-[5px] rounded-full"
-              style={{ backgroundColor: borderColor }}
-            />
-            <span className="text-[9px] text-muted-foreground">{fact.confidence}</span>
+            <ConfidenceChip band={(fact.confidence as Confidence) ?? 'unknown'} inert />
           </div>
         </div>
       </div>

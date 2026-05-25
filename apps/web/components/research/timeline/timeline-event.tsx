@@ -4,6 +4,8 @@ import { AlertTriangle, Pencil, Trash2, Flag } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { ConfidenceChip } from '@/components/confidence/confidence-chip';
+import type { Confidence } from '@ancstra/db';
 
 const EVENT_DOT_COLORS: Record<string, string> = {
   birth: 'border-green-500 bg-green-500/20',
@@ -17,15 +19,6 @@ const EVENT_DOT_COLORS: Record<string, string> = {
   burial: 'border-stone-400 bg-stone-400/20',
   christening: 'border-indigo-400 bg-indigo-400/20',
   baptism: 'border-indigo-400 bg-indigo-400/20',
-};
-
-const CONFIDENCE_BADGE: Record<
-  string,
-  { label: string; variant: 'default' | 'secondary' | 'destructive' }
-> = {
-  high: { label: 'High', variant: 'default' },
-  medium: { label: 'Medium', variant: 'secondary' },
-  low: { label: 'Low', variant: 'destructive' },
 };
 
 interface TimelineEventProps {
@@ -63,7 +56,6 @@ export function TimelineEvent({
   onDelete,
   onDispute,
 }: TimelineEventProps) {
-  const conf = CONFIDENCE_BADGE[confidence] ?? CONFIDENCE_BADGE.medium;
   const isEvent = entrySource === 'event';
 
   return (
@@ -137,9 +129,7 @@ export function TimelineEvent({
               Event
             </Badge>
           )}
-          <Badge variant={conf.variant} className="text-[10px]">
-            {conf.label}
-          </Badge>
+          <ConfidenceChip band={(confidence as Confidence) ?? 'unknown'} />
         </div>
       </div>
     </div>

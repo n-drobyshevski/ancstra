@@ -7,14 +7,14 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { CONFIDENCE_VARIANT } from '@/lib/research/constants';
 import {
   assignFactToFactsheet,
   type FactsheetFact,
 } from '@/lib/research/factsheet-client';
+import { ConfidenceChip } from '@/components/confidence/confidence-chip';
+import type { Confidence } from '@ancstra/db';
 
 interface AssignFactsPopoverProps {
   factsheetId: string;
@@ -107,7 +107,6 @@ export function AssignFactsPopover({
             <div className="max-h-56 overflow-y-auto space-y-1">
               {facts.map((fact) => {
                 const isSelected = selected.has(fact.id);
-                const confVariant = CONFIDENCE_VARIANT[fact.confidence] ?? 'secondary';
                 return (
                   <label
                     key={fact.id}
@@ -125,9 +124,7 @@ export function AssignFactsPopover({
                       </span>
                       <span className="ml-1.5 text-xs">{fact.factValue}</span>
                     </div>
-                    <Badge variant={confVariant} className="text-[9px] h-4 px-1 shrink-0">
-                      {fact.confidence}
-                    </Badge>
+                    <ConfidenceChip band={(fact.confidence as Confidence) ?? 'unknown'} />
                   </label>
                 );
               })}

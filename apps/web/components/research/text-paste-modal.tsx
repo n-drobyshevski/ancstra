@@ -18,8 +18,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
+import { ConfidenceChip } from '@/components/confidence/confidence-chip';
 
 interface ExtractedFact {
   factType: string;
@@ -37,11 +37,6 @@ const DOCUMENT_TYPES = [
   { value: 'other', label: 'Other' },
 ] as const;
 
-const CONFIDENCE_COLORS: Record<string, 'default' | 'secondary' | 'outline'> = {
-  high: 'default',
-  medium: 'secondary',
-  low: 'outline',
-};
 
 type ModalStep = 'input' | 'saving' | 'extracting' | 'results' | 'bookmarked' | 'error';
 
@@ -237,9 +232,7 @@ export function TextPasteModal({ open, onOpenChange, onBookmark, personId }: Tex
                     </span>
                     <p className="text-sm truncate">{fact.factValue}</p>
                   </div>
-                  <Badge variant={CONFIDENCE_COLORS[fact.confidence] ?? 'outline'}>
-                    {fact.confidence}
-                  </Badge>
+                  <ConfidenceChip band={fact.confidence} />
                 </div>
               ))}
             </div>

@@ -5,11 +5,12 @@ import { RotateCcw, Flag } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { CONFIDENCE_VARIANT } from '@/lib/research/constants';
 import { Badge } from '@/components/ui/badge';
 import { ReverseActionDialog } from '@/components/inbox/reverse-action-dialog';
 import type { FactsheetFact } from '@/lib/research/factsheet-client';
 import { MentionCascadeChip } from '../threads/mention-cascade-chip';
+import { ConfidenceChip } from '@/components/confidence/confidence-chip';
+import type { Confidence } from '@ancstra/db';
 
 interface FactsheetFactRowProps {
   fact: FactsheetFact;
@@ -30,7 +31,6 @@ export function FactsheetFactRow({
   const isResolved = isAccepted || isRejected;
   const isContested = fact.contested === true;
   const canDispute = !isContested && fact.confidence !== 'unknown';
-  const confVariant = CONFIDENCE_VARIANT[fact.confidence] ?? 'secondary';
 
   const [resetOpen, setResetOpen] = useState(false);
   const [disputeOpen, setDisputeOpen] = useState(false);
@@ -141,9 +141,7 @@ export function FactsheetFactRow({
               contested
             </Badge>
           )}
-          <Badge variant={confVariant} className="text-[9px] h-4 px-1.5">
-            {fact.confidence}
-          </Badge>
+          <ConfidenceChip band={(fact.confidence as Confidence) ?? 'unknown'} />
         </div>
       </div>
 

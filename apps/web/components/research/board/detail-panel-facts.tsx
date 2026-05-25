@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { Plus, Sparkles, Loader2 } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -14,6 +13,8 @@ import {
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { extractFacts } from '@/lib/research/evidence-client';
+import { ConfidenceChip } from '@/components/confidence/confidence-chip';
+import type { Confidence } from '@ancstra/db';
 
 interface Fact {
   id: string;
@@ -45,12 +46,6 @@ const FACT_TYPES = [
   'Religion',
   'Other',
 ];
-
-const CONFIDENCE_BADGE: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' }> = {
-  high: { label: 'High', variant: 'default' },
-  medium: { label: 'Medium', variant: 'secondary' },
-  low: { label: 'Low', variant: 'destructive' },
-};
 
 export function DetailPanelFacts({
   facts,
@@ -136,9 +131,7 @@ export function DetailPanelFacts({
       {/* Existing facts */}
       {facts.length > 0 ? (
         <div className="space-y-1.5">
-          {facts.map((fact) => {
-            const conf = CONFIDENCE_BADGE[fact.confidence] ?? CONFIDENCE_BADGE.medium;
-            return (
+          {facts.map((fact) => (
               <div
                 key={fact.id}
                 className="flex items-center justify-between gap-2 rounded-md bg-muted/50 px-2.5 py-1.5"
@@ -149,12 +142,9 @@ export function DetailPanelFacts({
                   </p>
                   <p className="text-sm truncate">{fact.factValue}</p>
                 </div>
-                <Badge variant={conf.variant} className="shrink-0 text-[10px]">
-                  {conf.label}
-                </Badge>
+                <ConfidenceChip band={(fact.confidence as Confidence) ?? 'medium'} />
               </div>
-            );
-          })}
+            ))}
         </div>
       ) : (
         <p className="text-xs text-muted-foreground">No facts extracted yet.</p>
