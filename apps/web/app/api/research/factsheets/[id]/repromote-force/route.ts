@@ -71,6 +71,10 @@ export async function POST(
     try {
       const unmergeResult = await _unmergeFactsheetInTransaction(familyDb, {
         factsheetId,
+        // Force-repromote explicitly discards manual edits; dirty check already
+        // passed at the route level (diffHash confirmed). Skip the inner check
+        // so the force path is not blocked by PersonDirtyError.
+        skipDirtyCheck: true,
       });
       oldPersonId = unmergeResult.personId;
 

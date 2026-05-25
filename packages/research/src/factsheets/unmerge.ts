@@ -163,7 +163,7 @@ export async function isClusterPromoted(
  */
 export async function _unmergeFactsheetInTransaction(
   db: Database,
-  input: Pick<UnmergeFactsheetInput, 'factsheetId'>,
+  input: Pick<UnmergeFactsheetInput, 'factsheetId'> & { skipDirtyCheck?: boolean },
 ): Promise<UnmergeFactsheetResult & { personId: string; promotedAt: string }> {
   const fsRows = await db.all<{
     status: string;
@@ -190,7 +190,7 @@ export async function _unmergeFactsheetInTransaction(
     throw new ClusterPromotedError(input.factsheetId);
   }
 
-  if (await isPersonDirtySincePromote(db, personId, promotedAt)) {
+  if (!input.skipDirtyCheck && await isPersonDirtySincePromote(db, personId, promotedAt)) {
     throw new PersonDirtyError(personId);
   }
 
