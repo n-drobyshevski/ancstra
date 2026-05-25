@@ -366,6 +366,227 @@ export async function applyPatchDiff(
   return { eventsAdded, eventsModified, citationsAdded };
 }
 
+// ---------------------------------------------------------------------------
+// Pending edge changes (Bundle D 2026-05-25)
+// See: docs/superpowers/specs/2026-05-25-research-flow-unification-bundle-d-design.md §3.2
+// ---------------------------------------------------------------------------
+
+export type PendingEdgeChange = {
+  fromFactsheetId: string;
+  toFactsheetId: string;
+  relationshipType: 'spouse' | 'parent_child';
+};
+
+export type PendingEdgeChanges = {
+  added: PendingEdgeChange[];
+  removed: PendingEdgeChange[];
+};
+
+interface FactsheetLinkRow {
+  from_factsheet_id: string;
+  to_factsheet_id: string;
+  relationship_type: string;
+}
+
+interface FactsheetMemberRow {
+  id: string;
+  promoted_person_id: string | null;
+  cluster_promotion_id: string | null;
+}
+
+interface FamilyRow {
+  partner1_id: string | null;
+  partner2_id: string | null;
+}
+
+interface ChildRow {
+  person_id: string;
+  family_id: string;
+}
+
+interface FamilyPersonRow {
+  person_id: string | null;
+}
+
+/**
+ * Approximate diff of `factsheet_links` for the cluster vs the currently-promoted
+ * families/children graph. PURE — no writes.
+ *
+ * "added"   = link in factsheet_links for cluster members whose corresponding
+ *             families/children row is missing.
+ * "removed" = families/children row referencing cluster members whose
+ *             corresponding link is missing.
+ *
+ * Approximate by design (spec §3.2) — informational-only, never authoritative.
+ * Returns `{ added: [], removed: [] }` when there is no edge drift.
+ *
+ * Caller must pass the `clusterPromotionId` (resolved by `getClusterMembership`
+ * before calling this function — no redundant DB fetch here).
+ */
+export async function computePendingEdgeChanges(
+  db: Database,
+  clusterPromotionId: string,
+): Promise<PendingEdgeChanges> {
+  // 1. Resolve all cluster member factsheets + their promoted person IDs.
+  const memberRows = await db.all<FactsheetMemberRow>(sql`
+    SELECT id, promoted_person_id, cluster_promotion_id
+    FROM factsheets
+    WHERE cluster_promotion_id = ${clusterPromotionId}
+      AND promoted_person_id IS NOT NULL
+  `);
+  if (memberRows.length === 0) return { added: [], removed: [] };
+
+  // Build cross-reference maps.
+  const factsheetToPersonId = new Map<string, string>();
+  const personToFactsheetId = new Map<string, string>();
+  for (const row of memberRows) {
+    if (row.promoted_person_id) {
+      factsheetToPersonId.set(row.id, row.promoted_person_id);
+      personToFactsheetId.set(row.promoted_person_id, row.id);
+    }
+  }
+
+  const memberFactsheetIds = memberRows.map((r) => r.id);
+  const memberPersonIds = [...personToFactsheetId.keys()];
+
+  // 2. Fetch current factsheet_links between cluster members.
+  //    Only links where BOTH endpoints are cluster members are relevant for
+  //    edge-drift detection (cross-cluster or external links are out of scope).
+  const fsIdsSql = sql.join(memberFactsheetIds.map((id) => sql`${id}`), sql`, `);
+  const linkRows = await db.all<FactsheetLinkRow>(sql`
+    SELECT from_factsheet_id, to_factsheet_id, relationship_type
+    FROM factsheet_links
+    WHERE from_factsheet_id IN (${fsIdsSql})
+      AND to_factsheet_id IN (${fsIdsSql})
+  `);
+
+  // Normalise to only 'spouse' and 'parent_child' (those are the only two
+  // relationship types that map directly to families/children rows).
+  const relevantLinks = linkRows.filter(
+    (l) => l.relationship_type === 'spouse' || l.relationship_type === 'parent_child',
+  );
+
+  // 3. Fetch current families rows for cluster members.
+  const personIdsSql = sql.join(memberPersonIds.map((id) => sql`${id}`), sql`, `);
+  const familyRows = await db.all<FamilyRow>(sql`
+    SELECT partner1_id, partner2_id FROM families
+    WHERE (partner1_id IN (${personIdsSql}) OR partner2_id IN (${personIdsSql}))
+      AND deleted_at IS NULL
+  `);
+
+  // 4. Fetch children rows for cluster member persons.
+  //    We need the family_id to cross-check which families we already have.
+  const childRows = await db.all<ChildRow>(sql`
+    SELECT person_id, family_id FROM children
+    WHERE person_id IN (${personIdsSql})
+  `);
+
+  // For parent_child detection we need to know which persons are parents in
+  // each family row (partner1/partner2 are the parents).
+  // Build a set of "parent person IDs" per family_id for the children we have.
+  const familyParentPersonIds = new Map<string, string[]>();
+  for (const f of familyRows) {
+    // We need family id — re-query to get ids.
+  }
+  // Re-fetch families with their IDs so we can correlate with children.
+  const familyIdRows = await db.all<{ id: string; partner1_id: string | null; partner2_id: string | null }>(sql`
+    SELECT id, partner1_id, partner2_id FROM families
+    WHERE (partner1_id IN (${personIdsSql}) OR partner2_id IN (${personIdsSql}))
+      AND deleted_at IS NULL
+  `);
+  for (const f of familyIdRows) {
+    familyParentPersonIds.set(f.id, [f.partner1_id, f.partner2_id].filter(Boolean) as string[]);
+  }
+
+  // ---------------------------------------------------------------------------
+  // 5. Build "edge keys" for the factsheet_links side.
+  //    Key format: `${fromFs}::${toFs}::${type}` (canonical — from < to for
+  //    spouse links which are inherently symmetric; parent_child is directed).
+  // ---------------------------------------------------------------------------
+
+  function linkKey(fromFs: string, toFs: string, type: 'spouse' | 'parent_child'): string {
+    if (type === 'spouse') {
+      const [a, b] = [fromFs, toFs].sort();
+      return `${a}::${b}::spouse`;
+    }
+    return `${fromFs}::${toFs}::parent_child`;
+  }
+
+  const linkEdgeKeys = new Set<string>();
+  const linkEdgeByKey = new Map<string, PendingEdgeChange>();
+  for (const l of relevantLinks) {
+    const type = l.relationship_type as 'spouse' | 'parent_child';
+    const k = linkKey(l.from_factsheet_id, l.to_factsheet_id, type);
+    linkEdgeKeys.add(k);
+    linkEdgeByKey.set(k, {
+      fromFactsheetId: l.from_factsheet_id,
+      toFactsheetId: l.to_factsheet_id,
+      relationshipType: type,
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // 6. Build "edge keys" for the families/children side.
+  //    spouse edge: family with two cluster-member partners.
+  //    parent_child edge: child row whose family has a cluster-member parent.
+  // ---------------------------------------------------------------------------
+
+  const familyEdgeKeys = new Set<string>();
+  const familyEdgeByKey = new Map<string, PendingEdgeChange>();
+
+  for (const fam of familyIdRows) {
+    const p1Fs = fam.partner1_id ? personToFactsheetId.get(fam.partner1_id) : undefined;
+    const p2Fs = fam.partner2_id ? personToFactsheetId.get(fam.partner2_id) : undefined;
+
+    if (p1Fs && p2Fs) {
+      // Both partners are cluster members → spouse edge.
+      const k = linkKey(p1Fs, p2Fs, 'spouse');
+      familyEdgeKeys.add(k);
+      familyEdgeByKey.set(k, {
+        fromFactsheetId: p1Fs,
+        toFactsheetId: p2Fs,
+        relationshipType: 'spouse',
+      });
+    }
+  }
+
+  for (const child of childRows) {
+    const childFs = personToFactsheetId.get(child.person_id);
+    if (!childFs) continue;
+    const parents = familyParentPersonIds.get(child.family_id) ?? [];
+    for (const parentPersonId of parents) {
+      const parentFs = personToFactsheetId.get(parentPersonId);
+      if (!parentFs) continue;
+      // parent → child direction
+      const k = linkKey(parentFs, childFs, 'parent_child');
+      familyEdgeKeys.add(k);
+      familyEdgeByKey.set(k, {
+        fromFactsheetId: parentFs,
+        toFactsheetId: childFs,
+        relationshipType: 'parent_child',
+      });
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // 7. Diff.
+  //    added   = in linkEdgeKeys but NOT in familyEdgeKeys
+  //    removed = in familyEdgeKeys but NOT in linkEdgeKeys
+  // ---------------------------------------------------------------------------
+
+  const added: PendingEdgeChange[] = [];
+  for (const [k, edge] of linkEdgeByKey) {
+    if (!familyEdgeKeys.has(k)) added.push(edge);
+  }
+
+  const removed: PendingEdgeChange[] = [];
+  for (const [k, edge] of familyEdgeByKey) {
+    if (!linkEdgeKeys.has(k)) removed.push(edge);
+  }
+
+  return { added, removed };
+}
+
 /**
  * Canonical SHA-256 hash of a PatchDiff. Stable across input orderings of
  * `unchanged` arrays and `deltas` arrays within a modified event; sensitive

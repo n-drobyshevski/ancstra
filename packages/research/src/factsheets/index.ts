@@ -54,8 +54,9 @@ export {
   applyPatchDiff,
   hashPatchDiff,
   LegacyPromotionNotPatchableError,
+  computePendingEdgeChanges,
 } from './patch';
-export type { PatchDiff, FieldDelta, AddedEvent, ModifiedEvent, AddedCitation } from './patch';
+export type { PatchDiff, FieldDelta, AddedEvent, ModifiedEvent, AddedCitation, PendingEdgeChanges, PendingEdgeChange } from './patch';
 
 export { softDetachFactsheet } from './detach';
 export type { SoftDetachInput, SoftDetachResult } from './detach';

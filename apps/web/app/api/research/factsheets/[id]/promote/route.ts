@@ -11,6 +11,7 @@ import {
   applyPatchDiff,
   hashPatchDiff,
   LegacyPromotionNotPatchableError,
+  computePendingEdgeChanges,
   logReverseEvent,
   requireReason,
   ReasonRequiredError,
@@ -114,11 +115,11 @@ export async function POST(
     // PATCH-on-clean / refuse-on-dirty path (status='promoted')
     // -----------------------------------------------------------------------
     if (fsRow.status === 'promoted' && fsRow.promoted_person_id) {
-      // Cluster guard FIRST — patching one factsheet in a cluster can't
-      // express what the user actually wants for the partner/child links.
+      // Cluster membership check — three-state discriminated union.
       const membership = await getClusterMembership(familyDb, factsheetId);
-      if (membership.kind === 'precise' || membership.kind === 'legacy') {
-        return NextResponse.json({ error: 'ClusterUnsupported' }, { status: 422 });
+
+      if (membership.kind === 'legacy') {
+        return NextResponse.json({ error: 'LegacyClusterNotSupported' }, { status: 422 });
       }
 
       // Compute diff. May throw LegacyPromotionNotPatchableError when the
@@ -142,20 +143,31 @@ export async function POST(
       const fsTimestamps = (await familyDb.all<{ promoted_at: string }>(sql`
         SELECT promoted_at FROM factsheets WHERE id = ${factsheetId}
       `))[0];
-      if (
+      const isDirty = !!(
         fsTimestamps?.promoted_at &&
         await isPersonDirtySincePromote(familyDb, fsRow.promoted_person_id, fsTimestamps.promoted_at)
-      ) {
+      );
+
+      if (isDirty) {
         const diffHash = hashPatchDiff(diff);
+        const clusterMember = membership.kind === 'precise';
         return NextResponse.json({
           error: 'PersonDirty',
           personId: fsRow.promoted_person_id,
           diff,
           diffHash,
+          ...(clusterMember ? { clusterMember: true } : {}),
         }, { status: 409 });
       }
 
       // Clean — apply patch atomically (helpers run inside an outer tx).
+      // For cluster members, also compute pending edge changes (informational).
+      const pendingEdgeChanges =
+        membership.kind === 'precise'
+          ? await computePendingEdgeChanges(familyDb, membership.clusterPromotionId)
+          : null;
+      const clusterMember = membership.kind === 'precise';
+
       await familyDb.run(sql`BEGIN IMMEDIATE`);
       try {
         const counts = await applyPatchDiff(familyDb, diff, { actorId: ctx.userId });
@@ -167,7 +179,15 @@ export async function POST(
           threadId: threadId ?? null,
           factsheetId,
           personId: fsRow.promoted_person_id,
-          payload: { diff, mode: 'patched' },
+          payload: {
+            diff,
+            mode: 'patched',
+            ...(clusterMember ? { clusterMember: true } : {}),
+            ...(pendingEdgeChanges &&
+              (pendingEdgeChanges.added.length > 0 || pendingEdgeChanges.removed.length > 0)
+              ? { pendingEdgeChanges }
+              : {}),
+          },
         });
         await familyDb.run(sql`COMMIT`);
         revalidateAll(factsheetId);
@@ -176,6 +196,8 @@ export async function POST(
           personId: fsRow.promoted_person_id,
           diff,
           ...counts,
+          ...(clusterMember ? { clusterMember: true } : {}),
+          ...(pendingEdgeChanges ? { pendingEdgeChanges } : {}),
         });
       } catch (err) {
         await familyDb.run(sql`ROLLBACK`);
