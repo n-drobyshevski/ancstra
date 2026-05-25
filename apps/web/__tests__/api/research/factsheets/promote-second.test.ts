@@ -24,6 +24,7 @@ vi.mock('@ancstra/research', async () => {
     isPersonDirtySincePromote: vi.fn(async () => false),
     computePatchDiff: vi.fn(),
     applyPatchDiff: vi.fn(async () => ({ eventsAdded: 0, eventsModified: 0, citationsAdded: 0 })),
+    computePendingEdgeChanges: vi.fn(async () => ({ added: [], removed: [] })),
     logReverseEvent: vi.fn(async () => 'evt-1'),
   };
 });
@@ -43,10 +44,12 @@ import {
   isPersonDirtySincePromote,
   computePatchDiff,
   applyPatchDiff,
+  computePendingEdgeChanges,
   logReverseEvent,
   hashPatchDiff,
   LegacyPromotionNotPatchableError,
   type PatchDiff,
+  type PendingEdgeChanges,
 } from '@ancstra/research';
 import { revalidateTag } from 'next/cache';
 
@@ -224,20 +227,20 @@ describe('POST /api/research/factsheets/:id/promote (auto-detect)', () => {
   });
 
   // -------------------------------------------------------------------------
-  // 4. cluster factsheet → 422 ClusterUnsupported
+  // 4. legacy cluster factsheet → 422 LegacyClusterNotSupported
   // -------------------------------------------------------------------------
 
-  it('promoted cluster factsheet returns 422 ClusterUnsupported', async () => {
+  it('legacy cluster factsheet returns 422 LegacyClusterNotSupported', async () => {
     const db = makeFamilyDb([
       [{ status: 'promoted', promoted_person_id: PERSON_ID }],
     ]);
     authSuccess(db);
-    vi.mocked(getClusterMembership).mockResolvedValue({ kind: 'precise', clusterPromotionId: 'cp-1' });
+    vi.mocked(getClusterMembership).mockResolvedValue({ kind: 'legacy' });
 
     const res = await POST(makeRequest({ reason: 're-promote' }), { params: PARAMS });
     expect(res.status).toBe(422);
     const body = await res.json();
-    expect(body.error).toBe('ClusterUnsupported');
+    expect(body.error).toBe('LegacyClusterNotSupported');
   });
 
   // -------------------------------------------------------------------------
@@ -339,5 +342,98 @@ describe('POST /api/research/factsheets/:id/promote (auto-detect)', () => {
     expect(vi.mocked(promoteFactsheetCluster)).toHaveBeenCalledWith(
       db, FACTSHEET_ID, 'u1', null,
     );
+  });
+
+  // -------------------------------------------------------------------------
+  // 10. cluster member, clean person, edges drifted → 200 mode=patched,
+  //     clusterMember: true, pendingEdgeChanges.added contains the new edge
+  // -------------------------------------------------------------------------
+
+  it('cluster member clean with drifted edges returns 200 mode=patched with clusterMember+pendingEdgeChanges', async () => {
+    const CLUSTER_ID = 'cp-abc';
+    const diff = makeDiff();
+    const pendingEdgeChanges: PendingEdgeChanges = {
+      added: [
+        { fromFactsheetId: FACTSHEET_ID, toFactsheetId: 'fs-2', relationshipType: 'spouse' },
+      ],
+      removed: [],
+    };
+
+    const db = makeFamilyDb([
+      [{ status: 'promoted', promoted_person_id: PERSON_ID }], // factsheet status read
+      [{ promoted_at: PROMOTED_AT }], // promoted_at for dirty check
+    ]);
+    authSuccess(db);
+    vi.mocked(getClusterMembership).mockResolvedValue({
+      kind: 'precise',
+      clusterPromotionId: CLUSTER_ID,
+    });
+    vi.mocked(computePatchDiff).mockResolvedValue(diff);
+    vi.mocked(isPersonDirtySincePromote).mockResolvedValue(false);
+    vi.mocked(computePendingEdgeChanges).mockResolvedValue(pendingEdgeChanges);
+    vi.mocked(applyPatchDiff).mockResolvedValue({
+      eventsAdded: 0, eventsModified: 0, citationsAdded: 0,
+    });
+
+    const res = await POST(makeRequest({ reason: 'cluster re-promote' }), { params: PARAMS });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.mode).toBe('patched');
+    expect(body.personId).toBe(PERSON_ID);
+    expect(body.clusterMember).toBe(true);
+    expect(body.pendingEdgeChanges).toEqual(pendingEdgeChanges);
+    expect(body.pendingEdgeChanges.added).toHaveLength(1);
+    expect(body.pendingEdgeChanges.added[0].fromFactsheetId).toBe(FACTSHEET_ID);
+    expect(body.pendingEdgeChanges.added[0].relationshipType).toBe('spouse');
+
+    // computePendingEdgeChanges must have been called with the cluster ID
+    expect(vi.mocked(computePendingEdgeChanges)).toHaveBeenCalledWith(
+      db,
+      CLUSTER_ID,
+    );
+  });
+
+  // -------------------------------------------------------------------------
+  // 11. cluster member, dirty person → 409 PersonDirty with clusterMember: true
+  // -------------------------------------------------------------------------
+
+  it('cluster member dirty person returns 409 PersonDirty with clusterMember: true', async () => {
+    const CLUSTER_ID = 'cp-xyz';
+    const diff = makeDiff({
+      events: {
+        added: [],
+        modified: [
+          {
+            eventId: 'e-1', eventType: 'birth',
+            deltas: [{ field: 'placeText', before: 'NYC', after: 'Brooklyn' }],
+          },
+        ],
+        unchanged: [],
+      },
+    });
+
+    const db = makeFamilyDb([
+      [{ status: 'promoted', promoted_person_id: PERSON_ID }],
+      [{ promoted_at: PROMOTED_AT }],
+    ]);
+    authSuccess(db);
+    vi.mocked(getClusterMembership).mockResolvedValue({
+      kind: 'precise',
+      clusterPromotionId: CLUSTER_ID,
+    });
+    vi.mocked(computePatchDiff).mockResolvedValue(diff);
+    vi.mocked(isPersonDirtySincePromote).mockResolvedValue(true);
+
+    const res = await POST(makeRequest({ reason: 'cluster re-promote' }), { params: PARAMS });
+    expect(res.status).toBe(409);
+    const body = await res.json();
+    expect(body.error).toBe('PersonDirty');
+    expect(body.personId).toBe(PERSON_ID);
+    expect(body.diff).toEqual(diff);
+    expect(body.diffHash).toBe(hashPatchDiff(diff));
+    expect(body.clusterMember).toBe(true);
+
+    // computePendingEdgeChanges must NOT have been called on dirty path
+    expect(vi.mocked(computePendingEdgeChanges)).not.toHaveBeenCalled();
   });
 });
