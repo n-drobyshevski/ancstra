@@ -27,6 +27,13 @@ export interface PromoteSingleInput {
   skipValidation?: boolean;
   /** When set, emits a 'factsheet_promoted' thread event after success. */
   threadId?: string | null;
+  /**
+   * Bundle D 2026-05-25: cluster identity stamp. When set, written to the
+   * factsheets row's `cluster_promotion_id` column at promote time. Generated
+   * by promoteFactsheetCluster (one UUID per cluster, shared across members).
+   * Unused for solo promote. See spec §3.1.
+   */
+  clusterPromotionId?: string;
 }
 
 export interface PromoteSingleResult {
@@ -229,6 +236,9 @@ export async function _promoteSingleFactsheetInTransaction(
       status: (mode === 'create' ? 'promoted' : 'merged') as any,
       promotedPersonId: personId,
       promotedAt: now,
+      // Bundle D 2026-05-25: write the cluster identity when caller is
+      // promoteFactsheetCluster. NULL for solo promote.
+      clusterPromotionId: input.clusterPromotionId ?? null,
       updatedAt: now,
     })
     .where(eq(factsheets.id, input.factsheetId))
@@ -316,6 +326,16 @@ export async function promoteSingleFactsheet(
  * Promote a cluster of linked factsheets as a family unit.
  * Creates persons for each factsheet, then wires relationships
  * based on factsheet_links.
+ *
+ * Bundle D 2026-05-25 changes:
+ *   - Generates a shared `clusterPromotionId` UUID and stamps it on every
+ *     member factsheet via `_promoteSingleFactsheetInTransaction`. This
+ *     enables precise (non-heuristic) cluster detection via `getClusterMembership`.
+ *   - Phase 1 (promote each member) + phase 2 (wire families/children) now
+ *     run inside a SINGLE outer `BEGIN IMMEDIATE / COMMIT / ROLLBACK` so the
+ *     entire cluster promotion is atomic. Prior behavior wrote families/children
+ *     in a SEPARATE transaction — a correctness gap where phase-2 failure
+ *     could leave half-promoted cluster members.
  */
 export async function promoteFactsheetCluster(
   db: Database,
@@ -324,29 +344,45 @@ export async function promoteFactsheetCluster(
   threadId?: string | null,
 ): Promise<PromoteClusterResult> {
   const clusterIds = await getFactsheetCluster(db, rootFactsheetId);
+  if (clusterIds.length === 0) {
+    throw new Error(`No cluster found for factsheet ${rootFactsheetId}`);
+  }
+
+  // Bundle D 2026-05-25: one UUID per cluster, stamped on every member
+  // factsheet so getClusterMembership can resolve membership precisely
+  // (replaces Bundle B's ±5s heuristic). See spec §3.1.
+  const clusterPromotionId = crypto.randomUUID();
+  const now = new Date().toISOString();
   const results: PromoteSingleResult[] = [];
   let familiesCreated = 0;
   let childLinksCreated = 0;
-
-  // Phase 1: Promote each factsheet individually
   const factsheetToPersonId = new Map<string, string>();
 
-  for (const fsId of clusterIds) {
-    const result = await promoteSingleFactsheet(db, {
-      factsheetId: fsId,
-      mode: 'create',
-      userId,
-      threadId,
-    });
-    factsheetToPersonId.set(fsId, result.personId);
-    results.push(result);
-  }
-
-  // Phase 2: Wire relationships from links — raw BEGIN/COMMIT/ROLLBACK to
-  // stay compatible with better-sqlite3 (project memory feedback_drizzle_transactions).
-  const now = new Date().toISOString();
-  await db.run(sql`BEGIN`);
+  // Bundle D 2026-05-25: phase 1 (promote each member) + phase 2 (wire
+  // families/children) now share a single outer transaction so the whole
+  // cluster is atomic. Prior behavior wrote families/children in a SEPARATE
+  // transaction, which could leave a half-promoted cluster if phase 2 failed.
+  await db.run(sql`BEGIN IMMEDIATE`);
   try {
+    // Phase 1: promote each factsheet, stamping cluster_promotion_id.
+    for (const fsId of clusterIds) {
+      const result = await _promoteSingleFactsheetInTransaction(
+        db,
+        {
+          factsheetId: fsId,
+          mode: 'create',
+          userId,
+          threadId,
+          skipValidation: true,
+          clusterPromotionId,
+        },
+        now,
+      );
+      factsheetToPersonId.set(fsId, result.personId);
+      results.push(result);
+    }
+
+    // Phase 2: wire relationships from links.
     for (const fsId of clusterIds) {
       const links = await db.select()
         .from(factsheetLinks)
@@ -373,8 +409,8 @@ export async function promoteFactsheetCluster(
             .run();
           familiesCreated++;
         } else if (link.relationshipType === 'parent_child') {
-          // from=parent, to=child — find or create family for parent
-          const existingFamilies = await db.all(sql`
+          // from=parent, to=child — find or create family for parent.
+          const existingFamilies = await db.all<{ id: string }>(sql`
             SELECT id FROM families
             WHERE partner1_id = ${fromPersonId} OR partner2_id = ${fromPersonId}
             LIMIT 1
@@ -382,13 +418,14 @@ export async function promoteFactsheetCluster(
 
           let familyId: string;
           if (existingFamilies.length > 0) {
-            familyId = (existingFamilies[0] as any).id;
+            familyId = existingFamilies[0].id;
           } else {
             familyId = crypto.randomUUID();
             await db.insert(families)
               .values({
                 id: familyId,
                 partner1Id: fromPersonId,
+                partner2Id: null,
                 relationshipType: 'unknown',
                 validationStatus: 'confirmed',
                 createdAt: now,
@@ -403,7 +440,6 @@ export async function promoteFactsheetCluster(
               id: crypto.randomUUID(),
               familyId,
               personId: toPersonId,
-              relationshipToParent1: 'biological',
               createdAt: now,
             })
             .run();
@@ -411,6 +447,7 @@ export async function promoteFactsheetCluster(
         }
       }
     }
+
     await db.run(sql`COMMIT`);
   } catch (err) {
     await db.run(sql`ROLLBACK`);

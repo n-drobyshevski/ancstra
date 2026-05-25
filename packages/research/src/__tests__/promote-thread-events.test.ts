@@ -28,6 +28,7 @@ const DDL = `
     entity_type TEXT NOT NULL DEFAULT 'person',
     status TEXT NOT NULL DEFAULT 'draft',
     notes TEXT, promoted_person_id TEXT, promoted_at TEXT,
+    cluster_promotion_id TEXT,
     created_thread_id TEXT, created_by TEXT NOT NULL,
     created_at TEXT NOT NULL, updated_at TEXT NOT NULL
   );
@@ -70,9 +71,11 @@ const DDL = `
   );
   CREATE TABLE events (
     id TEXT PRIMARY KEY, event_type TEXT NOT NULL,
+    source_factsheet_id TEXT,
     date_original TEXT, date_sort INTEGER, date_modifier TEXT DEFAULT 'exact',
     date_end_sort INTEGER, place_text TEXT, description TEXT,
     person_id TEXT, family_id TEXT,
+    contested INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
     version INTEGER NOT NULL DEFAULT 1
   );
