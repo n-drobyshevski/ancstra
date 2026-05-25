@@ -48,6 +48,7 @@ const BOOTSTRAP_SQL = `
     title TEXT NOT NULL,
     entity_type TEXT NOT NULL DEFAULT 'person',
     status TEXT NOT NULL DEFAULT 'draft',
+    cluster_promotion_id TEXT,
     created_by TEXT NOT NULL,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL

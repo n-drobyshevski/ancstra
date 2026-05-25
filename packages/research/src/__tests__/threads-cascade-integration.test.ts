@@ -23,6 +23,7 @@ const FULL_DDL = `
     entity_type TEXT NOT NULL DEFAULT 'person',
     status TEXT NOT NULL DEFAULT 'draft',
     notes TEXT, promoted_person_id TEXT, promoted_at TEXT,
+    cluster_promotion_id TEXT,
     created_thread_id TEXT, created_by TEXT NOT NULL,
     created_at TEXT NOT NULL, updated_at TEXT NOT NULL
   );
