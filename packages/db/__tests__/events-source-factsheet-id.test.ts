@@ -29,6 +29,7 @@ CREATE TABLE factsheets (
   id TEXT PRIMARY KEY,
   title TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'draft',
+  cluster_promotion_id TEXT,
   created_by TEXT NOT NULL,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL

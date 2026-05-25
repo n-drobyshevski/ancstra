@@ -21,7 +21,7 @@ function createTestDb(): any {
   const sqlite = new Database(':memory:');
   sqlite.exec(`
     CREATE TABLE persons (id TEXT PRIMARY KEY, sex TEXT NOT NULL DEFAULT 'U', is_living INTEGER NOT NULL DEFAULT 1, privacy_level TEXT NOT NULL DEFAULT 'private', notes TEXT, created_by TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, deleted_at TEXT, version INTEGER NOT NULL DEFAULT 1);
-    CREATE TABLE factsheets (id TEXT PRIMARY KEY, title TEXT NOT NULL, entity_type TEXT NOT NULL DEFAULT 'person', status TEXT NOT NULL DEFAULT 'draft', notes TEXT, promoted_person_id TEXT, promoted_at TEXT, created_by TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
+    CREATE TABLE factsheets (id TEXT PRIMARY KEY, title TEXT NOT NULL, entity_type TEXT NOT NULL DEFAULT 'person', status TEXT NOT NULL DEFAULT 'draft', notes TEXT, promoted_person_id TEXT, promoted_at TEXT, cluster_promotion_id TEXT, created_by TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
     CREATE TABLE research_facts (id TEXT PRIMARY KEY, person_id TEXT NOT NULL, fact_type TEXT NOT NULL, fact_value TEXT NOT NULL, fact_date_sort INTEGER, research_item_id TEXT, source_citation_id TEXT, confidence TEXT NOT NULL DEFAULT 'medium', extraction_method TEXT NOT NULL DEFAULT 'manual', factsheet_id TEXT, accepted INTEGER, contested INTEGER NOT NULL DEFAULT 0, provenance TEXT NOT NULL DEFAULT 'derived', created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
   `);
   return drizzle(sqlite, { schema }) as any;

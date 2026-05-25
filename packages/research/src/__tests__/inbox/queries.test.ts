@@ -36,6 +36,7 @@ const DDL = `
     notes TEXT,
     promoted_person_id TEXT,
     promoted_at TEXT,
+    cluster_promotion_id TEXT,
     created_thread_id TEXT,
     created_by TEXT NOT NULL,
     created_at TEXT NOT NULL,

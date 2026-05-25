@@ -9,7 +9,7 @@
  */
 export const RESEARCH_THREAD_EVENTS_BOOTSTRAP_SQL = `
   CREATE TABLE research_threads (id TEXT PRIMARY KEY, title TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'active', created_by TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
-  CREATE TABLE factsheets (id TEXT PRIMARY KEY, title TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'draft', created_by TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
+  CREATE TABLE factsheets (id TEXT PRIMARY KEY, title TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'draft', cluster_promotion_id TEXT, created_by TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
   CREATE TABLE persons (id TEXT PRIMARY KEY, created_by TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
   CREATE TABLE research_items (id TEXT PRIMARY KEY, title TEXT NOT NULL, created_by TEXT NOT NULL, discovery_method TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'collected', created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
   CREATE TABLE research_facts (id TEXT PRIMARY KEY, fact_type TEXT NOT NULL, fact_value TEXT NOT NULL, confidence TEXT NOT NULL DEFAULT 'medium', contested INTEGER NOT NULL DEFAULT 0, provenance TEXT NOT NULL DEFAULT 'derived', extraction_method TEXT NOT NULL DEFAULT 'manual', created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
