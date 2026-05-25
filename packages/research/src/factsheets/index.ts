@@ -44,10 +44,8 @@ export {
   unmergeFactsheet,
   _unmergeFactsheetInTransaction,
   isPersonDirtySincePromote,
-  isClusterPromoted,
   FactsheetNotPromotedError,
   PersonDirtyError,
-  ClusterPromotedError,
 } from './unmerge';
 export type { UnmergeFactsheetInput, UnmergeFactsheetResult } from './unmerge';
 

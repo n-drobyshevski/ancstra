@@ -3,8 +3,8 @@ import { createTestCentralDb, type TestCentralDb } from '@ancstra/db/test-fixtur
 import {
   unmergeFactsheet,
   isPersonDirtySincePromote,
-  isClusterPromoted,
 } from '../../factsheets/unmerge';
+import { getClusterMembership } from '../../factsheets/cluster';
 
 // Comprehensive DDL — unmerge touches many tables. Matches production
 // family-schema shape sufficient for unmerge's reads, deletes, and audit insert.
@@ -314,15 +314,15 @@ describe('unmergeFactsheet', () => {
     expect(dirty).toBe(true);
   });
 
-  it('isClusterPromoted detects ±5s window membership', async () => {
+  it('getClusterMembership returns legacy for ±5s window membership (no cluster_promotion_id)', async () => {
     seedPromoted('fs8', 'p8', '2026-05-24T10:00:00.000Z');
     seedPromoted('fs9', 'p9', '2026-05-24T10:00:03.000Z');
     client().prepare(
       `INSERT INTO families (id, partner1_id, partner2_id, validation_status, created_at, updated_at)
        VALUES ('fam2', 'p8', 'p9', 'confirmed', '2026-05-24T10:00:03.500Z', '2026-05-24T10:00:03.500Z')`,
     ).run();
-    expect(await isClusterPromoted(db as any, 'fs8')).toBe(true);
-    expect(await isClusterPromoted(db as any, 'fs9')).toBe(true);
+    expect((await getClusterMembership(db as any, 'fs8')).kind).toBe('legacy');
+    expect((await getClusterMembership(db as any, 'fs9')).kind).toBe('legacy');
   });
 
   it('preserves sources cited by other persons (no orphan cascade)', async () => {

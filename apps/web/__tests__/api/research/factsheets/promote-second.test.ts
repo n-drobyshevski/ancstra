@@ -20,7 +20,7 @@ vi.mock('@ancstra/research', async () => {
     ...actual,
     promoteSingleFactsheet: vi.fn(),
     promoteFactsheetCluster: vi.fn(),
-    isClusterPromoted: vi.fn(async () => false),
+    getClusterMembership: vi.fn(async () => ({ kind: 'no' as const })),
     isPersonDirtySincePromote: vi.fn(async () => false),
     computePatchDiff: vi.fn(),
     applyPatchDiff: vi.fn(async () => ({ eventsAdded: 0, eventsModified: 0, citationsAdded: 0 })),
@@ -39,7 +39,7 @@ import { withAuth } from '@/lib/auth/api-guard';
 import {
   promoteSingleFactsheet,
   promoteFactsheetCluster,
-  isClusterPromoted,
+  getClusterMembership,
   isPersonDirtySincePromote,
   computePatchDiff,
   applyPatchDiff,
@@ -153,7 +153,7 @@ describe('POST /api/research/factsheets/:id/promote (auto-detect)', () => {
     ]);
     authSuccess(db);
     vi.mocked(computePatchDiff).mockResolvedValue(diff);
-    vi.mocked(isClusterPromoted).mockResolvedValue(false);
+    vi.mocked(getClusterMembership).mockResolvedValue({ kind: 'no' });
     vi.mocked(isPersonDirtySincePromote).mockResolvedValue(false);
     vi.mocked(applyPatchDiff).mockResolvedValue({
       eventsAdded: 1, eventsModified: 0, citationsAdded: 0,
@@ -209,7 +209,7 @@ describe('POST /api/research/factsheets/:id/promote (auto-detect)', () => {
     ]);
     authSuccess(db);
     vi.mocked(computePatchDiff).mockResolvedValue(diff);
-    vi.mocked(isClusterPromoted).mockResolvedValue(false);
+    vi.mocked(getClusterMembership).mockResolvedValue({ kind: 'no' });
     vi.mocked(isPersonDirtySincePromote).mockResolvedValue(true);
 
     const res = await POST(makeRequest({ reason: 'refine' }), { params: PARAMS });
@@ -232,7 +232,7 @@ describe('POST /api/research/factsheets/:id/promote (auto-detect)', () => {
       [{ status: 'promoted', promoted_person_id: PERSON_ID }],
     ]);
     authSuccess(db);
-    vi.mocked(isClusterPromoted).mockResolvedValue(true);
+    vi.mocked(getClusterMembership).mockResolvedValue({ kind: 'precise', clusterPromotionId: 'cp-1' });
 
     const res = await POST(makeRequest({ reason: 're-promote' }), { params: PARAMS });
     expect(res.status).toBe(422);
@@ -249,7 +249,7 @@ describe('POST /api/research/factsheets/:id/promote (auto-detect)', () => {
       [{ status: 'promoted', promoted_person_id: PERSON_ID }],
     ]);
     authSuccess(db);
-    vi.mocked(isClusterPromoted).mockResolvedValue(false);
+    vi.mocked(getClusterMembership).mockResolvedValue({ kind: 'no' });
     vi.mocked(computePatchDiff).mockRejectedValue(
       new LegacyPromotionNotPatchableError(FACTSHEET_ID),
     );

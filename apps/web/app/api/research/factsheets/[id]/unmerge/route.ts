@@ -5,7 +5,8 @@ import {
   unmergeFactsheet,
   FactsheetNotPromotedError,
   PersonDirtyError,
-  ClusterPromotedError,
+  ClusterMemberUseClusterUnmergeError,
+  LegacyClusterNotSupportedError,
   requireReason,
   ReasonRequiredError,
 } from '@ancstra/research';
@@ -49,8 +50,8 @@ export async function POST(
     if (err instanceof PersonDirtyError) {
       return NextResponse.json({ error: 'dirty', message: err.message }, { status: 400 });
     }
-    if (err instanceof ClusterPromotedError) {
-      return NextResponse.json({ error: 'cluster-promoted', message: err.message }, { status: 400 });
+    if (err instanceof ClusterMemberUseClusterUnmergeError || err instanceof LegacyClusterNotSupportedError) {
+      return NextResponse.json({ error: 'ClusterUnsupported', message: err.message }, { status: 422 });
     }
     console.error('[factsheets/[id]/unmerge POST]', err);
     return NextResponse.json({ error: String(err) }, { status: 500 });

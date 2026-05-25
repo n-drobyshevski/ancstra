@@ -1,7 +1,11 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createTestCentralDb, type TestCentralDb } from '@ancstra/db/test-fixtures';
 import { softDetachFactsheet } from '../../factsheets/detach';
-import { FactsheetNotPromotedError, ClusterPromotedError } from '../../factsheets/unmerge';
+import { FactsheetNotPromotedError } from '../../factsheets/unmerge';
+import {
+  ClusterDetachNotSupportedError,
+  LegacyClusterNotSupportedError,
+} from '../../factsheets/cluster';
 import { ReasonRequiredError } from '../../audit/reason';
 
 // Comprehensive DDL — mirrors unmerge.test.ts shape but with source_factsheet_id
@@ -206,9 +210,10 @@ describe('softDetachFactsheet', () => {
     ).rejects.toThrow(FactsheetNotPromotedError);
   });
 
-  it('throws ClusterPromotedError when factsheet belongs to a cluster', async () => {
+  it('throws LegacyClusterNotSupportedError when factsheet belongs to a legacy cluster (±5s heuristic)', async () => {
     // Insert a second promoted person P2, then link P1+P2 in families
-    // with created_at within ±5s of PROMOTED_AT — triggers cluster guard.
+    // with created_at within ±5s of PROMOTED_AT — triggers legacy cluster guard
+    // (no cluster_promotion_id set, so heuristic fires).
     seedPromoted('F2', 'P2', '2026-05-24T10:00:02.000Z');
     client()
       .prepare(
@@ -219,7 +224,7 @@ describe('softDetachFactsheet', () => {
 
     await expect(
       softDetachFactsheet(db as any, { factsheetId: 'F1', reason: 'r', actorId: 'u' }),
-    ).rejects.toThrow(ClusterPromotedError);
+    ).rejects.toThrow(LegacyClusterNotSupportedError);
   });
 
   it('throws ReasonRequiredError (matching /reason is required/) on whitespace-only reason', async () => {

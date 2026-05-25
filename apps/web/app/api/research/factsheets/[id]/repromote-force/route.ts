@@ -7,11 +7,10 @@ import {
   _promoteSingleFactsheetInTransaction,
   computePatchDiff,
   hashPatchDiff,
-  isClusterPromoted,
+  getClusterMembership,
   logReverseEvent,
   requireReason,
   ReasonRequiredError,
-  ClusterPromotedError,
 } from '@ancstra/research';
 import { getActiveThreadIdFromCookies } from '@/lib/research/active-thread-server';
 
@@ -44,7 +43,8 @@ export async function POST(
     const threadId = await getActiveThreadIdFromCookies(ctx.familyId);
 
     // Cluster guard first
-    if (await isClusterPromoted(familyDb, factsheetId)) {
+    const membership = await getClusterMembership(familyDb, factsheetId);
+    if (membership.kind === 'precise' || membership.kind === 'legacy') {
       return NextResponse.json({ error: 'ClusterUnsupported' }, { status: 422 });
     }
 
@@ -129,12 +129,6 @@ export async function POST(
       return NextResponse.json(
         { error: 'reason-required', message: err.message },
         { status: 400 },
-      );
-    }
-    if (err instanceof ClusterPromotedError) {
-      return NextResponse.json(
-        { error: 'ClusterUnsupported', message: err.message },
-        { status: 422 },
       );
     }
     try {

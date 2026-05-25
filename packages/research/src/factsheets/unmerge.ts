@@ -2,6 +2,11 @@ import { sql } from 'drizzle-orm';
 import type { Database } from '@ancstra/db';
 import { logReverseEvent } from '../audit/log-reverse-event';
 import { ReasonRequiredError } from '../audit/reason';
+import {
+  getClusterMembership,
+  ClusterMemberUseClusterUnmergeError,
+  LegacyClusterNotSupportedError,
+} from './cluster';
 
 /**
  * Bundle B 2026-05-24 — atomic single-factsheet unmerge.
@@ -47,15 +52,6 @@ export class PersonDirtyError extends Error {
   }
 }
 
-export class ClusterPromotedError extends Error {
-  constructor(public factsheetId: string) {
-    super(
-      `Factsheet ${factsheetId} was promoted as part of a cluster. Cluster unmerge is not supported in this release.`,
-    );
-    this.name = 'ClusterPromotedError';
-  }
-}
-
 /**
  * Read the `changes` (better-sqlite3) / `rowsAffected` (libsql) count off a
  * db.run() result. Bare `.changes` is the better-sqlite3 path used in tests;
@@ -86,68 +82,6 @@ export async function isPersonDirtySincePromote(
     ) WHERE updated_at > ${promotedAt}
   `);
   return (rows[0]?.n ?? 0) > 0;
-}
-
-/**
- * Heuristic: a factsheet was cluster-promoted if its promoted person also
- * appears as a partner in a `families` row OR a child in a `children` row
- * whose created_at is within ±5s of the factsheet's promoted_at.
- * See spec §7 — ISO-8601 strings sort lexicographically so SQL BETWEEN works.
- *
- * False-positive risk: two unrelated solo promotions within 5s of each
- * other (one creating a family row) will both be refused. Accepted
- * tradeoff per spec §7 — refuse-on-ambiguity is safer than
- * accept-and-corrupt for v1. Future enhancement: store cluster_promotion_id
- * on the factsheets row at promotion time to make the check exact.
- */
-
-/**
- * Private — performs the cluster check with already-resolved person/promotion
- * values. `unmergeFactsheet` calls this directly so it doesn't re-fetch the
- * factsheet row it already loaded for the status guard.
- */
-async function _isClusterPromotedForPerson(
-  db: Database,
-  personId: string,
-  promotedAt: string,
-): Promise<boolean> {
-  const t = new Date(promotedAt).getTime();
-  const lo = new Date(t - 5_000).toISOString();
-  const hi = new Date(t + 5_000).toISOString();
-
-  const families = await db.all<{ n: number }>(sql`
-    SELECT COUNT(*) AS n FROM families
-    WHERE (partner1_id = ${personId} OR partner2_id = ${personId})
-      AND created_at BETWEEN ${lo} AND ${hi}
-  `);
-  if ((families[0]?.n ?? 0) > 0) return true;
-
-  const children = await db.all<{ n: number }>(sql`
-    SELECT COUNT(*) AS n FROM children
-    WHERE person_id = ${personId}
-      AND created_at BETWEEN ${lo} AND ${hi}
-  `);
-  return (children[0]?.n ?? 0) > 0;
-}
-
-/**
- * Public — keeps the original signature for standalone callers (e.g. tests
- * and external probes). Fetches the factsheet row first, then delegates.
- */
-export async function isClusterPromoted(
-  db: Database,
-  factsheetId: string,
-): Promise<boolean> {
-  const fs = await db.all<{
-    promoted_person_id: string | null;
-    promoted_at: string | null;
-  }>(sql`
-    SELECT promoted_person_id, promoted_at
-    FROM factsheets WHERE id = ${factsheetId}
-  `);
-  const row = fs[0];
-  if (!row || !row.promoted_person_id || !row.promoted_at) return false;
-  return _isClusterPromotedForPerson(db, row.promoted_person_id, row.promoted_at);
 }
 
 /**
@@ -185,9 +119,12 @@ export async function _unmergeFactsheetInTransaction(
   const promotedAt = fs.promoted_at;
 
   // Cluster guard FIRST — if it's part of a cluster, no point checking dirtiness.
-  // Use the private helper to avoid re-fetching the factsheet row we already have.
-  if (await _isClusterPromotedForPerson(db, personId, promotedAt)) {
-    throw new ClusterPromotedError(input.factsheetId);
+  const membership = await getClusterMembership(db, input.factsheetId);
+  if (membership.kind === 'precise') {
+    throw new ClusterMemberUseClusterUnmergeError(input.factsheetId, membership.clusterPromotionId);
+  }
+  if (membership.kind === 'legacy') {
+    throw new LegacyClusterNotSupportedError(input.factsheetId);
   }
 
   if (!input.skipDirtyCheck && await isPersonDirtySincePromote(db, personId, promotedAt)) {

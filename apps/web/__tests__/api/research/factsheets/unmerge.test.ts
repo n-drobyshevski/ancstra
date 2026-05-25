@@ -34,7 +34,8 @@ import {
   unmergeFactsheet,
   FactsheetNotPromotedError,
   PersonDirtyError,
-  ClusterPromotedError,
+  ClusterMemberUseClusterUnmergeError,
+  LegacyClusterNotSupportedError,
 } from '@ancstra/research';
 import { revalidateTag } from 'next/cache';
 
@@ -113,13 +114,22 @@ describe('POST /api/research/factsheets/:id/unmerge', () => {
     expect(body.message).toContain('edited since promotion');
   });
 
-  it('returns 400 with error=cluster-promoted when ClusterPromotedError is thrown', async () => {
+  it('returns 422 with error=ClusterUnsupported when ClusterMemberUseClusterUnmergeError is thrown', async () => {
     authSuccess();
-    vi.mocked(unmergeFactsheet).mockRejectedValue(new ClusterPromotedError('fs-1'));
+    vi.mocked(unmergeFactsheet).mockRejectedValue(new ClusterMemberUseClusterUnmergeError('fs-1', 'cp-1'));
     const res = await POST(makeRequest({ reason: 'wrong cluster' }), { params: PARAMS });
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(422);
     const body = await res.json();
-    expect(body.error).toBe('cluster-promoted');
+    expect(body.error).toBe('ClusterUnsupported');
+  });
+
+  it('returns 422 with error=ClusterUnsupported when LegacyClusterNotSupportedError is thrown', async () => {
+    authSuccess();
+    vi.mocked(unmergeFactsheet).mockRejectedValue(new LegacyClusterNotSupportedError('fs-1'));
+    const res = await POST(makeRequest({ reason: 'legacy cluster' }), { params: PARAMS });
+    expect(res.status).toBe(422);
+    const body = await res.json();
+    expect(body.error).toBe('ClusterUnsupported');
   });
 
   it('returns 400 with error=not-promoted when FactsheetNotPromotedError is thrown', async () => {
