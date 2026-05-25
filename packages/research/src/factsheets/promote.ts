@@ -2,20 +2,14 @@ import { eq, sql } from 'drizzle-orm';
 import {
   factsheets,
   factsheetLinks,
-  researchFacts,
-  researchItems,
-  persons,
-  personNames,
-  events,
   families,
   children,
-  sources,
-  sourceCitations,
   refreshSummary,
 } from '@ancstra/db';
 import type { Database } from '@ancstra/db';
 import { isFactsheetPromotable } from './validation';
 import { getFactsheetCluster } from './links';
+import { _createPersonFromFactsheet, _writeFactsheetEvidence } from './promote-helpers';
 import { addEvent } from '../threads/events';
 
 export interface PromoteSingleInput {
@@ -50,18 +44,6 @@ export interface PromoteClusterResult {
   results: PromoteSingleResult[];
 }
 
-/** Map fact types to event types for event creation. */
-const FACT_TO_EVENT: Record<string, string> = {
-  birth_date: 'birth',
-  birth_place: 'birth',
-  death_date: 'death',
-  death_place: 'death',
-  marriage_date: 'marriage',
-  marriage_place: 'marriage',
-  immigration: 'immigration',
-  military_service: 'military',
-};
-
 /**
  * Inner transaction body for single-factsheet promote. Caller MUST have
  * opened a transaction; responsible for COMMIT/ROLLBACK.
@@ -81,6 +63,11 @@ const FACT_TO_EVENT: Record<string, string> = {
  *
  * The `now` ISO timestamp is threaded from the caller so unmerge + promote
  * inside the same outer transaction share a consistent timestamp.
+ *
+ * Bundle D Task 8 (2026-05-25): the data-creation phases (person + evidence)
+ * are now delegated to the private helpers in `./promote-helpers` so the
+ * Task 11 surgical-swap path in `/repromote-force` can reuse them. This
+ * function retains responsibility for the factsheets-row state flip.
  */
 export async function _promoteSingleFactsheetInTransaction(
   db: Database,
@@ -89,146 +76,22 @@ export async function _promoteSingleFactsheetInTransaction(
 ): Promise<PromoteSingleResult> {
   const mode = input.mode;
   let personId: string;
-  let eventsCreated = 0;
-  let sourcesCreated = 0;
-
-  // Get accepted/unresolved facts (skip rejected)
-  const facts = await db.all<{
-    id: string;
-    factType: string;
-    factValue: string;
-    factDateSort: number | null;
-    researchItemId: string | null;
-    confidence: string;
-    accepted: number | null;
-  }>(sql`
-    SELECT id, fact_type as factType, fact_value as factValue,
-           fact_date_sort as factDateSort, research_item_id as researchItemId,
-           confidence, accepted
-    FROM research_facts
-    WHERE factsheet_id = ${input.factsheetId}
-      AND (accepted IS NULL OR accepted = 1)
-    ORDER BY fact_type
-  `);
 
   if (mode === 'create') {
-    // Extract name and sex from facts
-    const nameFact = facts.find(f => f.factType === 'name');
-    const nameParts = (nameFact?.factValue ?? 'Unknown').split(' ');
-    const givenName = nameParts[0] ?? 'Unknown';
-    const surname = nameParts.slice(1).join(' ') || '';
-
-    personId = crypto.randomUUID();
-
-    await db.insert(persons)
-      .values({
-        id: personId,
-        sex: 'U',
-        isLiving: false,
-        privacyLevel: 'public',
-        createdBy: input.userId,
-        createdAt: now,
-        updatedAt: now,
-      })
-      .run();
-
-    await db.insert(personNames)
-      .values({
-        id: crypto.randomUUID(),
-        personId,
-        nameType: 'birth',
-        givenName,
-        surname,
-        isPrimary: true,
-        createdAt: now,
-      })
-      .run();
+    personId = await _createPersonFromFactsheet(db, input.factsheetId, input.userId, now);
   } else {
+    // mode === 'merge' — caller supplied the target person. Validation in the
+    // public wrapper guarantees mergeTargetPersonId is set.
     personId = input.mergeTargetPersonId!;
   }
 
-  // Create events from date/place facts
-  const eventGroups = new Map<string, { date?: string; place?: string; dateFact?: typeof facts[0]; placeFact?: typeof facts[0] }>();
-
-  for (const fact of facts) {
-    const eventType = FACT_TO_EVENT[fact.factType];
-    if (!eventType) continue;
-
-    const group = eventGroups.get(eventType) ?? {};
-    if (fact.factType.endsWith('_date')) {
-      group.date = fact.factValue;
-      group.dateFact = fact;
-    } else if (fact.factType.endsWith('_place')) {
-      group.place = fact.factValue;
-      group.placeFact = fact;
-    }
-    eventGroups.set(eventType, group);
-  }
-
-  for (const [eventType, group] of eventGroups) {
-    const eventId = crypto.randomUUID();
-    await db.insert(events)
-      .values({
-        id: eventId,
-        personId,
-        eventType: eventType as any,
-        // Bundle C Task 5: stamp source factsheet on every promotion-created
-        // event (both create + merge modes) so /repromote-force can attribute
-        // and so the UI can surface "promoted from factsheet X".
-        sourceFactsheetId: input.factsheetId,
-        dateOriginal: group.date ?? null,
-        dateSort: group.dateFact?.factDateSort ?? null,
-        placeText: group.place ?? null,
-        createdAt: now,
-        updatedAt: now,
-      })
-      .run();
-    eventsCreated++;
-  }
-
-  // Create source + citations from linked research items
-  const researchItemIds = [...new Set(facts.filter(f => f.researchItemId).map(f => f.researchItemId!))];
-
-  for (const riId of researchItemIds) {
-    const items = await db.select().from(researchItems).where(eq(researchItems.id, riId)).all();
-    const item = items[0];
-    if (!item) continue;
-
-    const sourceId = crypto.randomUUID();
-    const citationId = crypto.randomUUID();
-
-    await db.insert(sources)
-      .values({
-        id: sourceId,
-        title: item.title,
-        repositoryUrl: item.url ?? null,
-        sourceType: 'online' as any,
-        createdBy: input.userId,
-        createdAt: now,
-        updatedAt: now,
-      })
-      .run();
-
-    await db.insert(sourceCitations)
-      .values({
-        id: citationId,
-        sourceId,
-        personId,
-        confidence: 'medium',
-        createdAt: now,
-      })
-      .run();
-
-    // Link facts to citation
-    await db.run(sql`
-      UPDATE research_facts
-      SET source_citation_id = ${citationId}, updated_at = ${now}
-      WHERE factsheet_id = ${input.factsheetId}
-        AND research_item_id = ${riId}
-    `);
-
-    sourcesCreated++;
-  }
+  const { eventsCreated, sourcesCreated } = await _writeFactsheetEvidence(
+    db,
+    input.factsheetId,
+    personId,
+    input.userId,
+    now,
+  );
 
   // Update factsheet status
   await db.update(factsheets)
