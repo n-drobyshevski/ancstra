@@ -1,0 +1,16 @@
+{
+  "actions": {
+    "unmergeCluster": "Unmerge cluster"
+  },
+  "unmergeCluster": {
+    "title": "Unmerge cluster",
+    "description": "This reverses the promotion of {count} factsheets and removes their cluster relationships.",
+    "action": "Unmerge cluster",
+    "summary": "{families} families and {children} children rows will be removed."
+  },
+  "errors": {
+    "clusterDetachNotSupported": "Cannot detach a cluster member. Use Unmerge cluster instead.",
+    "clusterMemberUseClusterUnmerge": "This factsheet was promoted as part of a cluster. Use Unmerge cluster.",
+    "legacyClusterNotSupported": "Legacy cluster (pre-Bundle-D) — cluster operations not yet supported."
+  }
+}
