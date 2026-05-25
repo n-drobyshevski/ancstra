@@ -1,6 +1,6 @@
 'use client';
-import type { Confidence } from '@ancstra/db';
-import { CONFIDENCE_BAND_META } from '@ancstra/db';
+import type { Confidence } from '@ancstra/db/vocab';
+import { CONFIDENCE_BAND_META } from '@ancstra/db/vocab';
 import { HoverCard, HoverCardTrigger, HoverCardContent } from '@/components/ui/hover-card';
 import { useTranslations } from 'next-intl';
 

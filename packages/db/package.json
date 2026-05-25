@@ -12,6 +12,7 @@
     "./family-schema": "./src/family-schema.ts",
     "./schema": "./src/schema.ts",
     "./completeness-sql": "./src/completeness-sql.ts",
+    "./vocab": "./src/vocab.ts",
     "./test-fixtures": {
       "types": "./src/test-fixtures/index.ts",
       "default": "./src/test-fixtures/index.ts"
