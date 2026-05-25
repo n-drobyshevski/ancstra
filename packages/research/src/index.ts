@@ -121,6 +121,7 @@ export {
   LegacyClusterNotSupportedError,
   unmergeFactsheetCluster,
   FactsheetNotPromotedAsClusterError,
+  _forceRepromoteClusterMemberInTransaction,
 } from './factsheets';
 export type {
   CreateFactsheetInput,
@@ -147,6 +148,8 @@ export type {
   ClusterMember,
   UnmergeFactsheetClusterInput,
   UnmergeFactsheetClusterResult,
+  ForceRepromoteClusterMemberInput,
+  ForceRepromoteClusterMemberResult,
 } from './factsheets';
 
 // Scrape Jobs
