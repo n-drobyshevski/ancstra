@@ -119,6 +119,8 @@ export {
   ClusterDetachNotSupportedError,
   ClusterMemberUseClusterUnmergeError,
   LegacyClusterNotSupportedError,
+  unmergeFactsheetCluster,
+  FactsheetNotPromotedAsClusterError,
 } from './factsheets';
 export type {
   CreateFactsheetInput,
@@ -143,6 +145,8 @@ export type {
   AddedCitation,
   ClusterMembership,
   ClusterMember,
+  UnmergeFactsheetClusterInput,
+  UnmergeFactsheetClusterResult,
 } from './factsheets';
 
 // Scrape Jobs

@@ -97,7 +97,17 @@ export async function isPersonDirtySincePromote(
  */
 export async function _unmergeFactsheetInTransaction(
   db: Database,
-  input: Pick<UnmergeFactsheetInput, 'factsheetId'> & { skipDirtyCheck?: boolean },
+  input: Pick<UnmergeFactsheetInput, 'factsheetId'> & {
+    skipDirtyCheck?: boolean;
+    /**
+     * Bundle D 2026-05-25: when true, skip the cluster-member guard. ONLY set
+     * by `unmergeFactsheetCluster` (spec §3.5), which is itself responsible
+     * for the cluster-level membership check and for ordering child/family
+     * deletes correctly. All other callers MUST leave this false so a stray
+     * single-factsheet unmerge cannot corrupt a cluster.
+     */
+    skipClusterCheck?: boolean;
+  },
 ): Promise<UnmergeFactsheetResult & { personId: string; promotedAt: string }> {
   const fsRows = await db.all<{
     status: string;
@@ -119,12 +129,16 @@ export async function _unmergeFactsheetInTransaction(
   const promotedAt = fs.promoted_at;
 
   // Cluster guard FIRST — if it's part of a cluster, no point checking dirtiness.
-  const membership = await getClusterMembership(db, input.factsheetId);
-  if (membership.kind === 'precise') {
-    throw new ClusterMemberUseClusterUnmergeError(input.factsheetId, membership.clusterPromotionId);
-  }
-  if (membership.kind === 'legacy') {
-    throw new LegacyClusterNotSupportedError(input.factsheetId);
+  // Bundle D Task 9: skipClusterCheck bypasses this guard for the cluster-unmerge
+  // outer driver (spec §3.5), which handles cluster-level membership itself.
+  if (!input.skipClusterCheck) {
+    const membership = await getClusterMembership(db, input.factsheetId);
+    if (membership.kind === 'precise') {
+      throw new ClusterMemberUseClusterUnmergeError(input.factsheetId, membership.clusterPromotionId);
+    }
+    if (membership.kind === 'legacy') {
+      throw new LegacyClusterNotSupportedError(input.factsheetId);
+    }
   }
 
   if (!input.skipDirtyCheck && await isPersonDirtySincePromote(db, personId, promotedAt)) {

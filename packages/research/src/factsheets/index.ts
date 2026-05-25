@@ -70,3 +70,12 @@ export {
   LegacyClusterNotSupportedError,
 } from './cluster';
 export type { ClusterMembership, ClusterMember } from './cluster';
+
+export {
+  unmergeFactsheetCluster,
+  FactsheetNotPromotedAsClusterError,
+} from './unmerge-cluster';
+export type {
+  UnmergeFactsheetClusterInput,
+  UnmergeFactsheetClusterResult,
+} from './unmerge-cluster';
