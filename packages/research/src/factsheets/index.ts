@@ -79,3 +79,11 @@ export type {
   UnmergeFactsheetClusterInput,
   UnmergeFactsheetClusterResult,
 } from './unmerge-cluster';
+
+export {
+  _forceRepromoteClusterMemberInTransaction,
+} from './repromote-force';
+export type {
+  ForceRepromoteClusterMemberInput,
+  ForceRepromoteClusterMemberResult,
+} from './repromote-force';
