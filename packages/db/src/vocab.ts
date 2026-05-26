@@ -75,6 +75,41 @@ export const CLUSTER_OP_REFUSAL_KINDS = [
 ] as const;
 export type ClusterOpRefusalKind = (typeof CLUSTER_OP_REFUSAL_KINDS)[number];
 
+// Bundle E 2026-05-26: research-log search-attempts vocab.
+// See: docs/superpowers/specs/2026-05-26-research-flow-unification-bundle-e-design.md §2.2.
+//
+// Declaration order = canonical UI order. Frequent providers first; ad-hoc kinds
+// (archive/library/family/other) last. The 4 ad-hoc kinds use the free-text
+// `provider_label` column for the actual name (E-Q4).
+export const SEARCH_PROVIDER_KINDS = [
+  'familysearch',
+  'ancestry',
+  'myheritage',
+  'findmypast',
+  'geni',
+  'wikitree',
+  'archive',
+  'library',
+  'family',
+  'other',
+] as const;
+export type SearchProviderKind = (typeof SEARCH_PROVIDER_KINDS)[number];
+
+// Bundle E 2026-05-26: outcome enum (E-Q7).
+// `found`        — search produced a relevant record; user should link a research_item.
+// `negative`     — searched, nothing relevant. Requires notes (E-Q8).
+// `inconclusive` — possible matches but no decisive evidence. Requires notes (E-Q8).
+export const SEARCH_OUTCOMES = ['found', 'negative', 'inconclusive'] as const;
+export type SearchOutcome = (typeof SEARCH_OUTCOMES)[number];
+
+// Bundle E 2026-05-26: outcomes that require non-empty `notes` at the route layer.
+// `found` is exempt — the linked research_item carries the evidence (E-Q8).
+// The AST guard in vocab-consistency.test.ts enforces:
+//   SEARCH_OUTCOMES_REQUIRING_NOTES ⊆ SEARCH_OUTCOMES
+//   'found' ∉ SEARCH_OUTCOMES_REQUIRING_NOTES
+export const SEARCH_OUTCOMES_REQUIRING_NOTES = ['negative', 'inconclusive'] as const;
+export type SearchOutcomeRequiringNotes = (typeof SEARCH_OUTCOMES_REQUIRING_NOTES)[number];
+
 // Map AI tool input enum (3-value) → factType for the new factsheet path. Spec §2.2.
 // 'spouse' is intentionally omitted — the AI tool's 3-value input enum has no
 // 'spouse' arm; it emits 'partner' and the user can upgrade to 'spouse' during
