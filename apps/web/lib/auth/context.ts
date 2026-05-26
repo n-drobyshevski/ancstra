@@ -39,7 +39,14 @@ export interface AuthContext {
  * HANGING_PROMISE_REJECTION warnings during Next.js prerendering.
  */
 export async function getAuthContext(request?: Request): Promise<AuthContext | null> {
-  await connection();
+  try {
+    await connection();
+  } catch {
+    // Expected during prerender bail-out under Next.js 16 cacheComponents:
+    // connection() rejects when the prerender completes, but the rejection
+    // IS the bail-out signal — the route is now correctly marked dynamic
+    // and will rerun at request time. See ~/.claude/projects/D--projects-ancstra/memory/feedback_hanging_promise_rejection.md
+  }
   const headerStore = request?.headers ?? await headers();
   const userId = headerStore.get('x-user-id');
   if (!userId) return null;

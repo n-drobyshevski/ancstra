@@ -38,6 +38,24 @@ vi.mock('next/server', () => ({
   connection: vi.fn(async () => undefined),
 }));
 
+describe('prerender bail-out resilience', () => {
+  it('getAuthContext does not reject when connection() rejects (prerender bail-out)', async () => {
+    const { connection } = await import('next/server');
+    vi.mocked(connection).mockRejectedValueOnce(new Error('PRERENDER_BAIL'));
+
+    // Provide a valid request so the rest of the auth flow can proceed.
+    const ctx = await getAuthContext(
+      new Request('http://localhost/', {
+        headers: { 'x-user-id': 'u-viewer', 'x-family-id': 'f1', 'x-family-db': 'f1.db' },
+      }),
+    );
+
+    // Must not propagate — valid context returned from JWT mock above.
+    expect(ctx).not.toBeNull();
+    expect(ctx!.userId).toBe('u-viewer');
+  });
+});
+
 describe('header-strip / role re-derivation', () => {
   it('ignores forged x-family-role header — role comes from JWT', async () => {
     const forgedRequest = new Request('http://localhost/api/test', {
