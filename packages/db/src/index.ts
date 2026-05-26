@@ -422,15 +422,15 @@ async function ensureFamilySchemaInner(db: FamilyDatabase): Promise<void> {
     )
   `);
   await db.run(sql`
-    CREATE INDEX IF NOT EXISTS search_attempts_person_idx
+    CREATE INDEX IF NOT EXISTS idx_search_attempts_person
     ON search_attempts(person_id, searched_at)
   `);
   await db.run(sql`
-    CREATE INDEX IF NOT EXISTS search_attempts_thread_idx
+    CREATE INDEX IF NOT EXISTS idx_search_attempts_thread
     ON search_attempts(thread_id)
   `);
   await db.run(sql`
-    CREATE INDEX IF NOT EXISTS search_attempts_research_item_idx
+    CREATE INDEX IF NOT EXISTS idx_search_attempts_research_item
     ON search_attempts(research_item_id)
   `);
 
