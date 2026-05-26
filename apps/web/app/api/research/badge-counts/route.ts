@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { withAuth, handleAuthError } from '@/lib/auth/api-guard';
-import { matchCandidates } from '@ancstra/db';
+import { matchCandidates, searchAttempts } from '@ancstra/db';
 import { eq, and, sql } from 'drizzle-orm';
 import { detectConflicts } from '@ancstra/research';
 
@@ -18,8 +18,8 @@ export async function GET(request: Request) {
       );
     }
 
-    // Run all three counts in parallel
-    const [conflicts, hintRows, factsheetCountRows] = await Promise.all([
+    // Run all four counts in parallel
+    const [conflicts, hintRows, factsheetCountRows, searchAttemptCountRows] = await Promise.all([
       detectConflicts(familyDb, personId),
       familyDb
         .select({ count: sql<number>`count(*)` })
@@ -39,12 +39,19 @@ export async function GET(request: Request) {
         WHERE rf.person_id = ${personId}
           AND f.status != 'dismissed'
       `),
+      // Bundle E 2026-05-26: search attempts count for the Research log tab badge.
+      familyDb
+        .select({ count: sql<number>`count(*)` })
+        .from(searchAttempts)
+        .where(eq(searchAttempts.personId, personId))
+        .all(),
     ]);
 
     return NextResponse.json({
       conflictCount: conflicts.length,
       hintCount: hintRows[0]?.count ?? 0,
       factsheetCount: factsheetCountRows[0]?.count ?? 0,
+      searchAttemptCount: searchAttemptCountRows[0]?.count ?? 0,
     });
   } catch (err) {
     try { return handleAuthError(err); } catch { /* not an auth error */ }

@@ -6,6 +6,8 @@ interface BadgeCounts {
   conflictCount: number;
   hintCount: number;
   factsheetCount: number;
+  // Bundle E 2026-05-26: Research log tab badge.
+  searchAttemptCount: number;
 }
 
 export function useBadgeCounts(personId: string) {
@@ -13,6 +15,7 @@ export function useBadgeCounts(personId: string) {
     conflictCount: 0,
     hintCount: 0,
     factsheetCount: 0,
+    searchAttemptCount: 0,
   });
 
   const refetch = useCallback(async () => {
