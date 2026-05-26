@@ -129,7 +129,7 @@ describe('CLUSTER_OP_REFUSAL_KINDS (Bundle D)', () => {
   });
 });
 
-describe('Bundle E — search-attempts vocab', () => {
+describe('SEARCH_PROVIDER_KINDS / SEARCH_OUTCOMES (Bundle E)', () => {
   it('SEARCH_PROVIDER_KINDS contains exactly the 10 locked kinds (spec E-Q4)', () => {
     expect([...SEARCH_PROVIDER_KINDS].sort()).toEqual([
       'familysearch', 'ancestry', 'myheritage', 'findmypast',
@@ -144,28 +144,19 @@ describe('Bundle E — search-attempts vocab', () => {
     );
   });
 
-  it('SEARCH_OUTCOMES_REQUIRING_NOTES is non-empty', () => {
-    expect(SEARCH_OUTCOMES_REQUIRING_NOTES.length).toBeGreaterThan(0);
+  it('SEARCH_OUTCOMES_REQUIRING_NOTES contains exactly negative + inconclusive (spec E-Q8)', () => {
+    expect([...SEARCH_OUTCOMES_REQUIRING_NOTES].sort()).toEqual(['inconclusive', 'negative']);
   });
 
-  it('SEARCH_OUTCOMES_REQUIRING_NOTES is a subset of SEARCH_OUTCOMES', () => {
-    for (const v of SEARCH_OUTCOMES_REQUIRING_NOTES) {
-      expect(SEARCH_OUTCOMES).toContain(v);
-    }
-  });
-
-  it('SEARCH_OUTCOMES_REQUIRING_NOTES does NOT include `found` (spec E-Q8)', () => {
-    expect((SEARCH_OUTCOMES_REQUIRING_NOTES as readonly string[])).not.toContain('found');
-  });
-
-  it('declaration order of SEARCH_PROVIDER_KINDS is canonical (frequent first, ad-hoc last)', () => {
+  it('declaration order: all 6 frequent providers precede all 4 ad-hoc kinds', () => {
     // Spec §2.2: declaration order drives the form select dropdown. The 6
     // "frequent provider" kinds come first; the 4 ad-hoc kinds last.
+    const FREQUENT = ['familysearch', 'ancestry', 'myheritage', 'findmypast', 'geni', 'wikitree'] as const;
+    const ADHOC    = ['archive', 'library', 'family', 'other'] as const;
     const arr = [...SEARCH_PROVIDER_KINDS];
-    const frequentEnd = arr.indexOf('wikitree');
-    const adhocStart = arr.indexOf('archive');
-    expect(frequentEnd).toBeGreaterThanOrEqual(0);
-    expect(adhocStart).toBeGreaterThan(frequentEnd);
+    const lastFrequentIdx = Math.max(...FREQUENT.map((k) => arr.indexOf(k)));
+    const firstAdHocIdx   = Math.min(...ADHOC.map((k) => arr.indexOf(k)));
+    expect(lastFrequentIdx).toBeLessThan(firstAdHocIdx);
   });
 });
 
