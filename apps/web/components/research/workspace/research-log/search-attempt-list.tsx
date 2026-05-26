@@ -21,6 +21,7 @@ interface SearchAttemptListProps {
   items: SearchAttempt[];
   onEdit: (a: SearchAttempt) => void;
   onDelete: (a: SearchAttempt) => void;
+  onAdd?: () => void;
 }
 
 const ALL = '__all__';
@@ -32,17 +33,15 @@ const ALL = '__all__';
  * client-side filtering via two dropdowns: outcome and providerKind.
  * Empty state shown when `items` is empty (before filtering).
  *
- * TODO(Task 11): wire `isAddOpen` / `setIsAddOpen` to the real SearchAttemptForm
- * once Task 11 implements it.
+ * `onAdd` is called when the user clicks either Add-search button (empty-state
+ * CTA or filter-bar action). Provided by ResearchLogSection via openCreate.
  *
  * See: docs/superpowers/specs/2026-05-26-research-flow-unification-bundle-e-design.md §4.5.
  */
-export function SearchAttemptList({ personId: _personId, items, onEdit, onDelete }: SearchAttemptListProps) {
+export function SearchAttemptList({ personId: _personId, items, onEdit, onDelete, onAdd }: SearchAttemptListProps) {
   const t = useTranslations('persons.researchLog');
   const [outcomeFilter, setOutcomeFilter] = useState<string>(ALL);
   const [providerFilter, setProviderFilter] = useState<string>(ALL);
-  // TODO(Task 11): open SearchAttemptForm dialog when true.
-  const [, setIsAddOpen] = useState(false);
 
   const filtered = useMemo(() => {
     return items.filter((a) => {
@@ -62,7 +61,8 @@ export function SearchAttemptList({ personId: _personId, items, onEdit, onDelete
           variant="outline"
           size="sm"
           className="mt-2"
-          onClick={() => setIsAddOpen(true)}
+          disabled={!onAdd}
+          onClick={() => onAdd?.()}
         >
           {t('addButton')}
         </Button>
@@ -115,7 +115,8 @@ export function SearchAttemptList({ personId: _personId, items, onEdit, onDelete
           variant="outline"
           size="sm"
           className="ml-auto"
-          onClick={() => setIsAddOpen(true)}
+          disabled={!onAdd}
+          onClick={() => onAdd?.()}
         >
           {t('addButton')}
         </Button>

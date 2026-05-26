@@ -100,4 +100,18 @@ describe('SearchAttemptList (Bundle E)', () => {
     expect(document.querySelector('[data-outcome="found"]')).not.toBeNull();
     expect(document.querySelector('[data-outcome="negative"]')).not.toBeNull();
   });
+
+  it('calls onAdd when the Add search button is clicked (empty state)', () => {
+    const onAdd = vi.fn();
+    renderWithIntl(<SearchAttemptList personId="p1" items={[]} onEdit={() => {}} onDelete={() => {}} onAdd={onAdd} />);
+    fireEvent.click(screen.getByRole('button', { name: /add search/i }));
+    expect(onAdd).toHaveBeenCalledTimes(1);
+  });
+
+  it('calls onAdd when the Add search button is clicked (filter bar)', () => {
+    const onAdd = vi.fn();
+    renderWithIntl(<SearchAttemptList personId="p1" items={seedItems} onEdit={() => {}} onDelete={() => {}} onAdd={onAdd} />);
+    fireEvent.click(screen.getByRole('button', { name: /add search/i }));
+    expect(onAdd).toHaveBeenCalledTimes(1);
+  });
 });
