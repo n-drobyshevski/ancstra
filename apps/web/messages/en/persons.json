@@ -222,6 +222,19 @@
       "providerKind": "Provider",
       "allOutcomes": "All outcomes",
       "allProviders": "All providers"
+    },
+    "form": {
+      "providerKindLabel": "Provider",
+      "providerLabelLabel": "Provider name",
+      "providerLabelPlaceholder": "e.g. State Archive, Lviv",
+      "queryLabel": "Query",
+      "queryPlaceholder": "e.g. \"Anna Petrova\" 1900–1930",
+      "searchedAtLabel": "Searched at",
+      "outcomeLabel": "Outcome",
+      "notesLabel": "Notes",
+      "notesRequiredHint": "Notes are required for negative or inconclusive outcomes.",
+      "submitLabel": "Save",
+      "cancelLabel": "Cancel"
     }
   }
 }
