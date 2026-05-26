@@ -214,6 +214,14 @@
     },
     "emptyTitle": "No searches logged yet.",
     "emptyCta": "Click \"Add search\" to record one.",
-    "addButton": "Add search"
+    "addButton": "Add search",
+    "editAction": "Edit",
+    "deleteAction": "Delete",
+    "filters": {
+      "outcome": "Outcome",
+      "providerKind": "Provider",
+      "allOutcomes": "All outcomes",
+      "allProviders": "All providers"
+    }
   }
 }
