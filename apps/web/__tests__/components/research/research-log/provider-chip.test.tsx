@@ -5,8 +5,7 @@ import { NextIntlClientProvider } from 'next-intl';
 import { ProviderChip } from '@/components/research/workspace/research-log/provider-chip';
 
 // Inline stub — only the namespace consumed by ProviderChip.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const messages: any = {
+const messages: Record<string, unknown> = {
   persons: {
     researchLog: {
       providers: {

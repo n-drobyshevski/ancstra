@@ -10,10 +10,12 @@ vi.mock('@/lib/auth/api-guard', () => ({
     // Implement the same contract as the real handleAuthError so 403/401
     // paths return proper JSON responses (not thrown errors).
     if (err instanceof Error && err.name === 'ForbiddenError') {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { NextResponse } = require('next/server');
       return NextResponse.json({ error: err.message }, { status: 403 });
     }
     if (err instanceof Error && err.message.includes('Not authenticated')) {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { NextResponse } = require('next/server');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -91,10 +93,6 @@ function authSuccess(familyDb: ReturnType<typeof makeFamilyDb> = makeFamilyDb())
 function authForbidden() {
   const err = Object.assign(new Error('ai:research'), { name: 'ForbiddenError' });
   vi.mocked(withAuth).mockRejectedValue(err);
-}
-
-function authUnauthenticated() {
-  vi.mocked(withAuth).mockRejectedValue(new Error('Not authenticated'));
 }
 
 function makeRequest(personId: string, body: unknown) {
