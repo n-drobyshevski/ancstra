@@ -135,4 +135,48 @@ export async function PATCH(
   }
 }
 
-// DELETE is wired in Task 7.
+/**
+ * Bundle E 2026-05-26 — DELETE a search attempt (hard delete).
+ *
+ * Auth: editor+ ('ai:research') on the family that owns the attempt's person.
+ * Side effects: hard DELETE row + revalidateTag.
+ * No audit event (E-Q9) — search_attempts are personal log data, user owns them.
+ * ReverseEventType union unchanged at 9 values.
+ *
+ * See: docs/superpowers/specs/2026-05-26-research-flow-unification-bundle-e-design.md §3.4.
+ */
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id: attemptId } = await params;
+  try {
+    const { familyDb } = await withAuth('ai:research', request);
+
+    const existing = await familyDb
+      .select({ id: searchAttempts.id, personId: searchAttempts.personId })
+      .from(searchAttempts)
+      .where(eq(searchAttempts.id, attemptId))
+      .all();
+    if (existing.length === 0) {
+      return NextResponse.json({
+        error: { code: 'NOT_FOUND', message: 'Search attempt not found.' },
+      }, { status: 404 });
+    }
+    const { personId } = existing[0];
+
+    await familyDb.delete(searchAttempts)
+      .where(eq(searchAttempts.id, attemptId))
+      .run();
+
+    revalidateTag(`search-attempts:person:${personId}`, 'max');
+
+    return new NextResponse(null, { status: 204 });
+  } catch (err) {
+    try { return handleAuthError(err); } catch { /* not auth */ }
+    console.error('[search-attempts/[id] DELETE]', err);
+    return NextResponse.json({
+      error: { code: 'INTERNAL', message: String(err) },
+    }, { status: 500 });
+  }
+}
