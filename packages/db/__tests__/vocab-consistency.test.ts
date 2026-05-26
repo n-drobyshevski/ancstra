@@ -1,7 +1,15 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
-import { CONFIDENCE_BAND_META, CONFIDENCE_BANDS, CLUSTER_OP_REFUSAL_KINDS } from '../src/vocab';
+import {
+  CONFIDENCE_BAND_META,
+  CONFIDENCE_BANDS,
+  CLUSTER_OP_REFUSAL_KINDS,
+  // Bundle E:
+  SEARCH_PROVIDER_KINDS,
+  SEARCH_OUTCOMES,
+  SEARCH_OUTCOMES_REQUIRING_NOTES,
+} from '../src/vocab';
 
 const REPO_ROOT = path.resolve(__dirname, '../../..');
 
@@ -118,6 +126,46 @@ describe('CLUSTER_OP_REFUSAL_KINDS (Bundle D)', () => {
     for (const kind of CLUSTER_OP_REFUSAL_KINDS) {
       expect(clusterSrc).toMatch(new RegExp(`export class ${kind}Error extends Error`));
     }
+  });
+});
+
+describe('Bundle E — search-attempts vocab', () => {
+  it('SEARCH_PROVIDER_KINDS contains exactly the 10 locked kinds (spec E-Q4)', () => {
+    expect([...SEARCH_PROVIDER_KINDS].sort()).toEqual([
+      'familysearch', 'ancestry', 'myheritage', 'findmypast',
+      'geni', 'wikitree',
+      'archive', 'library', 'family', 'other',
+    ].sort());
+  });
+
+  it('SEARCH_OUTCOMES contains exactly 3 locked values (spec E-Q7)', () => {
+    expect([...SEARCH_OUTCOMES].sort()).toEqual(
+      ['found', 'inconclusive', 'negative'].sort(),
+    );
+  });
+
+  it('SEARCH_OUTCOMES_REQUIRING_NOTES is non-empty', () => {
+    expect(SEARCH_OUTCOMES_REQUIRING_NOTES.length).toBeGreaterThan(0);
+  });
+
+  it('SEARCH_OUTCOMES_REQUIRING_NOTES is a subset of SEARCH_OUTCOMES', () => {
+    for (const v of SEARCH_OUTCOMES_REQUIRING_NOTES) {
+      expect(SEARCH_OUTCOMES).toContain(v);
+    }
+  });
+
+  it('SEARCH_OUTCOMES_REQUIRING_NOTES does NOT include `found` (spec E-Q8)', () => {
+    expect((SEARCH_OUTCOMES_REQUIRING_NOTES as readonly string[])).not.toContain('found');
+  });
+
+  it('declaration order of SEARCH_PROVIDER_KINDS is canonical (frequent first, ad-hoc last)', () => {
+    // Spec §2.2: declaration order drives the form select dropdown. The 6
+    // "frequent provider" kinds come first; the 4 ad-hoc kinds last.
+    const arr = [...SEARCH_PROVIDER_KINDS];
+    const frequentEnd = arr.indexOf('wikitree');
+    const adhocStart = arr.indexOf('archive');
+    expect(frequentEnd).toBeGreaterThanOrEqual(0);
+    expect(adhocStart).toBeGreaterThan(frequentEnd);
   });
 });
 
