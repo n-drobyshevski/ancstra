@@ -193,5 +193,62 @@
       "death": "Дата смерти",
       "source": "Источник"
     }
+  },
+  "researchLog": {
+    "providers": {
+      "familysearch": "FamilySearch",
+      "ancestry": "Ancestry",
+      "myheritage": "MyHeritage",
+      "findmypast": "Findmypast",
+      "geni": "Geni",
+      "wikitree": "WikiTree",
+      "archive": "Архив",
+      "library": "Библиотека",
+      "family": "Семейные источники",
+      "other": "Другое"
+    },
+    "outcomes": {
+      "found": "Найдено",
+      "negative": "Не найдено",
+      "inconclusive": "Неоднозначно"
+    },
+    "tabLabel": "Журнал поиска",
+    "tabDescription": "Попытки поиска и отрицательные результаты",
+    "emptyTitle": "Поисков ещё не зарегистрировано.",
+    "emptyCta": "Нажмите «Добавить поиск», чтобы внести запись.",
+    "addButton": "Добавить поиск",
+    "loading": "Загрузка…",
+    "editAction": "Редактировать",
+    "deleteAction": "Удалить",
+    "deleteConfirmTitle": "Удалить попытку поиска?",
+    "deleteConfirmBody": "Запись будет удалена без возможности восстановления. Журнал аудита не ведётся.",
+    "filters": {
+      "outcome": "Результат",
+      "providerKind": "Источник",
+      "allOutcomes": "Все результаты",
+      "allProviders": "Все источники"
+    },
+    "form": {
+      "providerKindLabel": "Источник",
+      "providerLabelLabel": "Название источника",
+      "providerLabelPlaceholder": "напр. Государственный архив, Львов",
+      "queryLabel": "Запрос",
+      "queryPlaceholder": "напр. «Анна Петрова» 1900–1930",
+      "searchedAtLabel": "Дата поиска",
+      "outcomeLabel": "Результат",
+      "notesLabel": "Примечания",
+      "notesRequiredHint": "Примечания обязательны при отрицательном или неоднозначном результате.",
+      "threadLabel": "Исследовательская нить",
+      "submitLabel": "Сохранить",
+      "cancelLabel": "Отмена"
+    },
+    "errors": {
+      "notesRequired": "Примечания обязательны, если результат поиска — «Не найдено» или «Неоднозначно»."
+    },
+    "toasts": {
+      "created": "Попытка поиска зарегистрирована.",
+      "updated": "Попытка поиска обновлена.",
+      "deleted": "Попытка поиска удалена."
+    }
   }
 }

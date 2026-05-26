@@ -61,7 +61,7 @@ export function ResearchLogSection({ personId }: ResearchLogSectionProps) {
       {error ? (
         <p className="text-sm text-destructive">{error.message}</p>
       ) : isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <p className="text-sm text-muted-foreground">{t('loading')}</p>
       ) : (
         <SearchAttemptList
           personId={personId}

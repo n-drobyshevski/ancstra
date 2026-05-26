@@ -212,11 +212,12 @@
       "negative": "Negative",
       "inconclusive": "Inconclusive"
     },
+    "tabLabel": "Research log",
+    "tabDescription": "Search attempts and negative results",
     "emptyTitle": "No searches logged yet.",
     "emptyCta": "Click \"Add search\" to record one.",
     "addButton": "Add search",
-    "tabLabel": "Research log",
-    "tabDescription": "Search attempts and negative results",
+    "loading": "Loading…",
     "editAction": "Edit",
     "deleteAction": "Delete",
     "deleteConfirmTitle": "Delete search attempt?",
@@ -237,8 +238,17 @@
       "outcomeLabel": "Outcome",
       "notesLabel": "Notes",
       "notesRequiredHint": "Notes are required for negative or inconclusive outcomes.",
+      "threadLabel": "Research thread",
       "submitLabel": "Save",
       "cancelLabel": "Cancel"
+    },
+    "errors": {
+      "notesRequired": "Notes are required when the outcome is negative or inconclusive."
+    },
+    "toasts": {
+      "created": "Search attempt recorded.",
+      "updated": "Search attempt updated.",
+      "deleted": "Search attempt deleted."
     }
   }
 }
