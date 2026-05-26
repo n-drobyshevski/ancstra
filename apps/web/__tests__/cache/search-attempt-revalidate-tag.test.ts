@@ -28,8 +28,9 @@ const TAG_RE = /revalidateTag\(\s*[`'"]search-attempts:person:[^`'"]*[`'"][^,]*,
 // Bundle E mutating-route surface. Task 4 ships POST; Tasks 6/7 add PATCH/DELETE.
 const MUTATING_ROUTES: string[] = [
   'persons/[id]/search-attempts/route.ts',
-  // Task 6 adds 'search-attempts/[id]/route.ts' (PATCH lives here)
-  // Task 7 confirms 'search-attempts/[id]/route.ts' (DELETE in same file)
+  'search-attempts/[id]/route.ts',
+  // Task 7's DELETE lives in the same file as Task 6's PATCH — both share
+  // this single route module entry.
 ];
 
 describe('search-attempts revalidation discipline (Bundle E §5)', () => {
