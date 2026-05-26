@@ -270,3 +270,41 @@ export const researchThreadEvents = sqliteTable('research_thread_events', {
   index('idx_thread_events_factsheet').on(table.factsheetId),
   index('idx_thread_events_person').on(table.personId),
 ]);
+
+// ==================== SEARCH ATTEMPTS (Research Log) ====================
+// Bundle E 2026-05-26: F1 + F2 — search attempts (negative + inconclusive
+// results first-class). Per-person research log surfaced as a Research log
+// workspace tab. See spec §2.1 + §4.
+//
+// FK rules (spec §2.1):
+//   person_id        ON DELETE CASCADE   — drop log when person is deleted
+//   thread_id        ON DELETE SET NULL  — search survives thread deletion
+//   research_item_id ON DELETE SET NULL  — search survives item deletion
+//
+// Notes-required invariant is enforced at the route layer (spec E-Q8),
+// NOT via DB CHECK constraint — keeps the schema portable and lets a future
+// admin override edit a row without rewriting the DDL.
+export const searchAttempts = sqliteTable('search_attempts', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  personId: text('person_id').notNull().references(() => persons.id, { onDelete: 'cascade' }),
+  threadId: text('thread_id').references(() => researchThreads.id, { onDelete: 'set null' }),
+  researchItemId: text('research_item_id').references(() => researchItems.id, { onDelete: 'set null' }),
+  // SEARCH_PROVIDER_KINDS enum — enforced by Zod at the route layer.
+  providerKind: text('provider_kind').notNull(),
+  // Free-text label, used when provider_kind ∈ {archive, library, family, other}.
+  providerLabel: text('provider_label'),
+  // Nullable — browsing an archive in person has no query string.
+  query: text('query'),
+  searchedAt: integer('searched_at', { mode: 'timestamp_ms' }).notNull(),
+  // SEARCH_OUTCOMES enum — enforced by Zod at the route layer.
+  outcome: text('outcome').notNull(),
+  // Required at route layer when outcome ∈ SEARCH_OUTCOMES_REQUIRING_NOTES.
+  notes: text('notes'),
+  createdBy: text('created_by').notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull().$defaultFn(() => new Date()),
+  updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull().$defaultFn(() => new Date()),
+}, (table) => [
+  index('search_attempts_person_idx').on(table.personId, table.searchedAt),
+  index('search_attempts_thread_idx').on(table.threadId),
+  index('search_attempts_research_item_idx').on(table.researchItemId),
+]);

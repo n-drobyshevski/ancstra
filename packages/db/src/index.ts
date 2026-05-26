@@ -401,6 +401,39 @@ async function ensureFamilySchemaInner(db: FamilyDatabase): Promise<void> {
     `);
   } catch { /* index already exists — idempotent */ }
 
+  // Bundle E 2026-05-26: search_attempts table + indexes. See spec §2.1 + §6.1.
+  // No ALTER (this is a new table) — CREATE TABLE IF NOT EXISTS is sufficient
+  // on warm DBs because the table simply didn't exist before.
+  await db.run(sql`
+    CREATE TABLE IF NOT EXISTS search_attempts (
+      id TEXT PRIMARY KEY,
+      person_id TEXT NOT NULL REFERENCES persons(id) ON DELETE CASCADE,
+      thread_id TEXT REFERENCES research_threads(id) ON DELETE SET NULL,
+      research_item_id TEXT REFERENCES research_items(id) ON DELETE SET NULL,
+      provider_kind TEXT NOT NULL,
+      provider_label TEXT,
+      query TEXT,
+      searched_at INTEGER NOT NULL,
+      outcome TEXT NOT NULL,
+      notes TEXT,
+      created_by TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )
+  `);
+  await db.run(sql`
+    CREATE INDEX IF NOT EXISTS search_attempts_person_idx
+    ON search_attempts(person_id, searched_at)
+  `);
+  await db.run(sql`
+    CREATE INDEX IF NOT EXISTS search_attempts_thread_idx
+    ON search_attempts(thread_id)
+  `);
+  await db.run(sql`
+    CREATE INDEX IF NOT EXISTS search_attempts_research_item_idx
+    ON search_attempts(research_item_id)
+  `);
+
   await db.run(sql`
     CREATE TABLE IF NOT EXISTS person_summary (
       person_id TEXT PRIMARY KEY REFERENCES persons(id) ON DELETE CASCADE,
