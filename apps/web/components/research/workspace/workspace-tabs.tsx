@@ -9,6 +9,7 @@ import {
   Clock,
   PenTool,
   BookOpen,
+  BookmarkPlus,
   FileText,
   Layers,
   UserPen,
@@ -37,6 +38,7 @@ export type WorkspaceView =
   | 'record'
   | 'timeline'
   | 'conflicts'
+  | 'research-log'  // Bundle E 2026-05-26
   | 'board'
   | 'matrix'
   | 'factsheets'
@@ -72,9 +74,13 @@ const TAB_GROUPS: TabGroup[] = [
       // Record/Timeline/Conflicts are read-only views available to anyone who
       // can see the person — viewer included. Edit affordances inside the
       // Record tab are gated separately by their own server checks.
-      { value: 'record',    label: 'Record',    icon: UserPen,         description: 'Vital information & family' },
-      { value: 'timeline',  label: 'Timeline',  icon: Clock,           description: 'Chronological events' },
-      { value: 'conflicts', label: 'Conflicts', icon: GitCompareArrows, description: 'Contradicting facts' },
+      { value: 'record',       label: 'Record',       icon: UserPen,          description: 'Vital information & family' },
+      { value: 'timeline',     label: 'Timeline',     icon: Clock,            description: 'Chronological events' },
+      { value: 'conflicts',    label: 'Conflicts',    icon: GitCompareArrows, description: 'Contradicting facts' },
+      // Bundle E 2026-05-26: F1 + F2 — search-attempts log. No permission
+      // clause — visible to all roles (viewer+). AI-research gating lives on
+      // the write endpoints, not the read surface.
+      { value: 'research-log', label: 'Research log', icon: BookmarkPlus,     description: 'Search attempts and negative results' },
     ],
   },
   {
@@ -130,15 +136,17 @@ export function useVisibleWorkspaceTabs(): {
   }, [role, isExperimentalEnabled]);
 }
 
-/** The 4 tabs shown inline on mobile */
+/** The 5 tabs shown inline on mobile (Bundle E adds research-log). */
 const PRIMARY_TAB_VALUES: Set<WorkspaceView> = new Set([
-  'record', 'timeline', 'board', 'conflicts',
+  'record', 'timeline', 'board', 'conflicts', 'research-log',
 ]);
 
 interface WorkspaceTabsProps {
   conflictCount?: number;
   hintCount?: number;
   factsheetCount?: number;
+  // Bundle E 2026-05-26: Research log tab badge.
+  searchAttemptCount?: number;
 }
 
 interface IndicatorState {
@@ -151,6 +159,7 @@ function getBadge(
   conflictCount: number,
   hintCount: number,
   factsheetCount: number,
+  searchAttemptCount: number,
 ) {
   if (value === 'conflicts' && conflictCount > 0) {
     return (
@@ -176,6 +185,15 @@ function getBadge(
       </Badge>
     );
   }
+  // Bundle E 2026-05-26: research-log count badge. Muted variant — log is
+  // passive information, not a pending action queue.
+  if (value === 'research-log' && searchAttemptCount > 0) {
+    return (
+      <Badge className="ml-1 h-4 min-w-4 px-1 text-[10px] bg-muted text-muted-foreground">
+        {searchAttemptCount}
+      </Badge>
+    );
+  }
   return null;
 }
 
@@ -183,6 +201,7 @@ export function WorkspaceTabs({
   conflictCount = 0,
   hintCount = 0,
   factsheetCount = 0,
+  searchAttemptCount = 0,
 }: WorkspaceTabsProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -316,7 +335,7 @@ export function WorkspaceTabs({
                       >
                         <Icon className="size-3.5" />
                         {tab.label}
-                        {getBadge(tab.value, conflictCount, hintCount, factsheetCount)}
+                        {getBadge(tab.value, conflictCount, hintCount, factsheetCount, searchAttemptCount)}
                       </button>
                     </TooltipTrigger>
                     {shortcut && (
@@ -370,7 +389,7 @@ export function WorkspaceTabs({
               >
                 <Icon className="size-3.5" />
                 {tab.label}
-                {getBadge(tab.value, conflictCount, hintCount, factsheetCount)}
+                {getBadge(tab.value, conflictCount, hintCount, factsheetCount, searchAttemptCount)}
               </button>
             );
           })}
@@ -435,7 +454,7 @@ export function WorkspaceTabs({
                             {tab.description}
                           </span>
                         </span>
-                        {getBadge(tab.value, conflictCount, hintCount, factsheetCount)}
+                        {getBadge(tab.value, conflictCount, hintCount, factsheetCount, searchAttemptCount)}
                         {isActive && <Check className="size-4 shrink-0 text-primary" />}
                       </button>
                     );

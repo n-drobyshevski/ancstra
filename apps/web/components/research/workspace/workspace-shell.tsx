@@ -26,6 +26,7 @@ import { CanvasTab } from '../canvas/canvas-tab';
 import { ProofTab } from '../proof/proof-tab';
 import { FactsheetsTab } from '../factsheets/factsheets-tab';
 import { ResearchBiographyTab } from '../biography/biography-tab';
+import { ResearchLogSection } from './research-log/research-log-section';
 import { RoleGate } from '@/components/auth/role-gate';
 
 interface WorkspaceShellProps {
@@ -56,7 +57,7 @@ function ShellInner({ person, children }: WorkspaceShellProps) {
   const { allTabs: visibleTabs, isVisible } = useVisibleWorkspaceTabs();
   const requestedView = (searchParams.get('view') as WorkspaceView) || 'record';
   const activeView: WorkspaceView = isVisible(requestedView) ? requestedView : 'record';
-  const { conflictCount, hintCount, factsheetCount } = useBadgeCounts(person.id);
+  const { conflictCount, hintCount, factsheetCount, searchAttemptCount } = useBadgeCounts(person.id);
   const dates = formatDates(person.birthDate, person.deathDate);
   const birthPlace = person.birthPlace;
   const deathPlace = person.deathPlace;
@@ -202,6 +203,7 @@ function ShellInner({ person, children }: WorkspaceShellProps) {
         conflictCount={conflictCount}
         hintCount={hintCount}
         factsheetCount={factsheetCount}
+        searchAttemptCount={searchAttemptCount}
       />
 
       {/* Tab content — keyed for enter animation */}
@@ -236,6 +238,8 @@ function ShellInner({ person, children }: WorkspaceShellProps) {
             {activeView === 'biography' && (
               <ResearchBiographyTab personId={person.id} personName={personName} />
             )}
+            {/* Bundle E 2026-05-26: Research log tab. */}
+            {activeView === 'research-log' && <ResearchLogSection personId={person.id} />}
           </>
         )}
       </div>
