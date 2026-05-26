@@ -193,5 +193,27 @@
       "death": "Death date",
       "source": "Source"
     }
+  },
+  "researchLog": {
+    "providers": {
+      "familysearch": "FamilySearch",
+      "ancestry": "Ancestry",
+      "myheritage": "MyHeritage",
+      "findmypast": "Findmypast",
+      "geni": "Geni",
+      "wikitree": "WikiTree",
+      "archive": "Archive",
+      "library": "Library",
+      "family": "Family member",
+      "other": "Other"
+    },
+    "outcomes": {
+      "found": "Found",
+      "negative": "Negative",
+      "inconclusive": "Inconclusive"
+    },
+    "emptyTitle": "No searches logged yet.",
+    "emptyCta": "Click \"Add search\" to record one.",
+    "addButton": "Add search"
   }
 }
