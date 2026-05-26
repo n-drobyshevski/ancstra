@@ -68,6 +68,7 @@ export function ResearchLogSection({ personId }: ResearchLogSectionProps) {
           items={items}
           onEdit={openEdit}
           onDelete={openDelete}
+          onAdd={openCreate}
         />
       )}
 
