@@ -284,6 +284,7 @@ export const researchThreadEvents = sqliteTable('research_thread_events', {
 // Notes-required invariant is enforced at the route layer (spec E-Q8),
 // NOT via DB CHECK constraint — keeps the schema portable and lets a future
 // admin override edit a row without rewriting the DDL.
+// Keep in sync with ensureFamilySchemaInner in packages/db/src/index.ts (Bundle E mirror block).
 export const searchAttempts = sqliteTable('search_attempts', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   personId: text('person_id').notNull().references(() => persons.id, { onDelete: 'cascade' }),
@@ -304,7 +305,7 @@ export const searchAttempts = sqliteTable('search_attempts', {
   createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull().$defaultFn(() => new Date()),
   updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull().$defaultFn(() => new Date()),
 }, (table) => [
-  index('search_attempts_person_idx').on(table.personId, table.searchedAt),
-  index('search_attempts_thread_idx').on(table.threadId),
-  index('search_attempts_research_item_idx').on(table.researchItemId),
+  index('idx_search_attempts_person').on(table.personId, table.searchedAt),
+  index('idx_search_attempts_thread').on(table.threadId),
+  index('idx_search_attempts_research_item').on(table.researchItemId),
 ]);

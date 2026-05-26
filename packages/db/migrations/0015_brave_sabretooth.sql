@@ -17,6 +17,6 @@ CREATE TABLE `search_attempts` (
 	FOREIGN KEY (`research_item_id`) REFERENCES `research_items`(`id`) ON UPDATE no action ON DELETE set null
 );
 --> statement-breakpoint
-CREATE INDEX `search_attempts_person_idx` ON `search_attempts` (`person_id`,`searched_at`);--> statement-breakpoint
-CREATE INDEX `search_attempts_thread_idx` ON `search_attempts` (`thread_id`);--> statement-breakpoint
-CREATE INDEX `search_attempts_research_item_idx` ON `search_attempts` (`research_item_id`);
+CREATE INDEX `idx_search_attempts_person` ON `search_attempts` (`person_id`,`searched_at`);--> statement-breakpoint
+CREATE INDEX `idx_search_attempts_thread` ON `search_attempts` (`thread_id`);--> statement-breakpoint
+CREATE INDEX `idx_search_attempts_research_item` ON `search_attempts` (`research_item_id`);

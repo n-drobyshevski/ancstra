@@ -55,9 +55,9 @@ PRAGMA foreign_keys = ON;
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL
   );
-  CREATE INDEX search_attempts_person_idx ON search_attempts(person_id, searched_at);
-  CREATE INDEX search_attempts_thread_idx ON search_attempts(thread_id);
-  CREATE INDEX search_attempts_research_item_idx ON search_attempts(research_item_id);
+  CREATE INDEX idx_search_attempts_person ON search_attempts(person_id, searched_at);
+  CREATE INDEX idx_search_attempts_thread ON search_attempts(thread_id);
+  CREATE INDEX idx_search_attempts_research_item ON search_attempts(research_item_id);
 `;
 
 let db: TestCentralDb;
@@ -208,6 +208,6 @@ describe('search_attempts — Bundle E table', () => {
         WHERE person_id = ? ORDER BY searched_at DESC`)
       .all('p1') as Array<{ detail: string }>;
     const detail = plan.map((r) => r.detail).join('\n');
-    expect(detail).toMatch(/search_attempts_person_idx/i);
+    expect(detail).toMatch(/idx_search_attempts_person/i);
   });
 });
