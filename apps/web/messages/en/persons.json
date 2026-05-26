@@ -215,8 +215,12 @@
     "emptyTitle": "No searches logged yet.",
     "emptyCta": "Click \"Add search\" to record one.",
     "addButton": "Add search",
+    "tabLabel": "Research log",
+    "tabDescription": "Search attempts and negative results",
     "editAction": "Edit",
     "deleteAction": "Delete",
+    "deleteConfirmTitle": "Delete search attempt?",
+    "deleteConfirmBody": "This permanently removes the log entry. There is no audit trail to recover it.",
     "filters": {
       "outcome": "Outcome",
       "providerKind": "Provider",
